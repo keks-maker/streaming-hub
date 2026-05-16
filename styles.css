@@ -77,7 +77,7 @@ body {
 }
 
 .logo-icon {
-  width:32px; height:32px; border-radius:8px;
+  width:32px; height:32px; min-width:32px; border-radius:8px;
   background:linear-gradient(135deg, var(--accent), #a78bfa);
   display:flex; align-items:center; justify-content:center;
   font-weight:700; font-size:16px; color:#fff; flex-shrink:0;
@@ -87,6 +87,10 @@ body {
 .logo-icon svg {
   width: 20px;
   height: 20px;
+}
+
+.sidebar.collapsed .logo-icon {
+  margin: 0;
 }
 
 .logo-text { font-size:14px; font-weight:600; white-space:nowrap; transition: opacity var(--t); }
@@ -109,7 +113,17 @@ body {
   transition: all var(--t); margin-bottom:2px; position:relative;
 }
 .nav-item:hover { background:var(--glass); color:var(--text); }
+.nav-item:hover .nav-icon { background: var(--icon-bg-hover, var(--icon-bg)); }
+
+.nav-item.netflix:hover .nav-icon { --icon-bg-hover: rgba(229,9,20,0.35); }
+.nav-item.youtube:hover .nav-icon { --icon-bg-hover: rgba(255,0,0,0.35); }
+.nav-item.disney:hover .nav-icon { --icon-bg-hover: rgba(0,99,204,0.35); }
+.nav-item.prime:hover .nav-icon { --icon-bg-hover: rgba(0,168,225,0.35); }
+.nav-item.twitch:hover .nav-icon { --icon-bg-hover: rgba(145,70,255,0.35); }
+.nav-item.spotify:hover .nav-icon { --icon-bg-hover: rgba(29,185,84,0.35); }
+
 .nav-item.active { background:var(--glass-hover); color:var(--text); }
+.nav-item.active .nav-icon { border-color: var(--icon-border); }
 .nav-item.active::before {
   content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
   width:3px; height:20px; border-radius:0 3px 3px 0;
@@ -120,15 +134,17 @@ body {
   width:32px; height:32px; border-radius:8px;
   display:flex; align-items:center; justify-content:center;
   font-size:14px; font-weight:700; color:#fff; flex-shrink:0;
-  background: var(--icon-bg, #333);
+  background: var(--icon-bg, rgba(255,255,255,0.1));
+  border: 1px solid var(--icon-border, rgba(255,255,255,0.15));
+  backdrop-filter: blur(8px);
 }
 
-.nav-icon.netflix { --icon-bg: #e50914; }
-.nav-icon.youtube { --icon-bg: #ff0000; }
-.nav-icon.disney { --icon-bg: #0063cc; }
-.nav-icon.prime { --icon-bg: #00a8e1; }
-.nav-icon.twitch { --icon-bg: #9146ff; }
-.nav-icon.spotify { --icon-bg: #1db954; }
+.nav-icon.netflix { --icon-bg: rgba(229,9,20,0.25); --icon-border: rgba(229,9,20,0.4); }
+.nav-icon.youtube { --icon-bg: rgba(255,0,0,0.25); --icon-border: rgba(255,0,0,0.4); }
+.nav-icon.disney { --icon-bg: rgba(0,99,204,0.25); --icon-border: rgba(0,99,204,0.4); }
+.nav-icon.prime { --icon-bg: rgba(0,168,225,0.25); --icon-border: rgba(0,168,225,0.4); }
+.nav-icon.twitch { --icon-bg: rgba(145,70,255,0.25); --icon-border: rgba(145,70,255,0.4); }
+.nav-icon.spotify { --icon-bg: rgba(29,185,84,0.25); --icon-border: rgba(29,185,84,0.4); }
 
 .nav-icon svg {
   width: 18px;
