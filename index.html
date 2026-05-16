@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Streaming Hub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="titlebar">
+    <div class="titlebar-drag-region"></div>
+    <div class="titlebar-buttons">
+      <button class="titlebar-btn minimize" onclick="window.electronAPI.minimizeWindow()">&#9472;</button>
+      <button class="titlebar-btn close" onclick="window.electronAPI.closeWindow()">&#9587;</button>
+    </div>
+  </div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">S</div>
+      <span class="logo-text">Streaming Hub</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Dienste</div>
+
+      <button class="nav-item" data-url="https://www.netflix.com">
+        <span class="nav-icon" style="background:#e50914">N</span>
+        <span class="nav-label">Netflix</span>
+      </button>
+
+      <button class="nav-item" data-url="https://www.youtube.com">
+        <span class="nav-icon" style="background:#ff0000">&#9654;</span>
+        <span class="nav-label">YouTube</span>
+      </button>
+
+      <button class="nav-item" data-url="https://www.disneyplus.com">
+        <span class="nav-icon" style="background:#0063cc">D+</span>
+        <span class="nav-label">Disney+</span>
+      </button>
+
+      <button class="nav-item" data-url="https://www.primevideo.com">
+        <span class="nav-icon" style="background:#00a8e1">P</span>
+        <span class="nav-label">Prime Video</span>
+      </button>
+
+      <button class="nav-item" data-url="https://www.twitch.tv">
+        <span class="nav-icon" style="background:#9146ff">T</span>
+        <span class="nav-label">Twitch</span>
+      </button>
+
+      <button class="nav-item" data-url="https://open.spotify.com">
+        <span class="nav-icon" style="background:#1db954">S</span>
+        <span class="nav-label">Spotify</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="sidebar-toggle-btn" id="sidebarToggle" title="Sidebar einklappen">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="11 17 6 12 11 7"></polyline>
+          <polyline points="18 17 13 12 18 7"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <div class="toolbar-nav">
+      <button class="toolbar-btn" id="backBtn" title="Zur&uuml;ck">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      <button class="toolbar-btn" id="forwardBtn" title="Vor">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+      <button class="toolbar-btn" id="reloadBtn" title="Neu laden">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+      </button>
+    </div>
+    <div class="toolbar-url" id="urlDisplay">W&auml;hle einen Dienst</div>
+    <div class="toolbar-spacer"></div>
+    <div class="toolbar-service-name" id="serviceName"></div>
+  </div>
+
+  <div class="welcome-screen" id="welcomeScreen">
+    <div class="welcome-icon">S</div>
+    <h2>Willkommen bei Streaming Hub</h2>
+    <p>W&auml;hle einen Dienst aus der Sidebar</p>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

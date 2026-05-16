@@ -1,0 +1,21 @@
+{
+  "name": "streaming-hub",
+  "version": "4.0.0",
+  "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": [
+    "streaming",
+    "netflix",
+    "widevine",
+    "castlabs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "github:castlabs/electron-releases#v42.0.0+wvcus"
+  }
+}
