@@ -57,8 +57,9 @@ body {
   display:flex; flex-direction:column;
   border-right: 1px solid var(--border);
   z-index:50;
-  transition: width var(--t);
+  transition: width 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   overflow:hidden;
+  will-change: width;
 }
 
 .sidebar.collapsed { width: var(--sidebar-min); }
@@ -148,7 +149,7 @@ body {
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   z-index:40;
-  transition: left var(--t);
+  transition: left 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .sidebar.collapsed ~ .toolbar,
@@ -183,7 +184,7 @@ body:has(.sidebar.collapsed) .toolbar {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:16px; color:var(--text-muted);
   background: radial-gradient(ellipse at 30% 50%, rgba(108,92,231,0.06) 0%, transparent 60%);
-  transition: left var(--t);
+  transition: left 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   z-index:30;
 }
 

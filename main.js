@@ -61,7 +61,8 @@ function createWindow() {
     },
   });
 
-  contentView.setAutoResize({ width: true, height: true, horizontal: false, vertical: false });
+  // Manual bounds management for smooth sidebar animation
+  // setAutoResize conflicts with sidebar collapse animation
 
   // Inject custom scrollbar CSS into all pages
   contentView.webContents.on('did-finish-load', () => {
@@ -96,11 +97,11 @@ function createWindow() {
   mainWindow.loadFile('index.html');
   mainWindow.setMenuBarVisibility(false);
 
-  mainWindow.on('resize', updateContentBounds);
-
-  // Ensure bounds are set correctly on first show
-  mainWindow.once('show', () => {
-    updateContentBounds();
+  // Debounced resize handler for window resizing (not sidebar animation)
+  let resizeTimer;
+  mainWindow.on('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(updateContentBounds, 100);
   });
 }
 
@@ -134,6 +135,9 @@ ipcMain.on('close-window', () => mainWindow?.close());
 ipcMain.on('toggle-sidebar', () => {
   sidebarCollapsed = !sidebarCollapsed;
   mainWindow?.webContents.send('sidebar-state', sidebarCollapsed);
+  
+  // Update BrowserView bounds immediately to fill new space
+  // CSS animation runs in parallel on the sidebar
   updateContentBounds();
 });
 
