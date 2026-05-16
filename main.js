@@ -56,7 +56,22 @@ function createWindow() {
       plugins: true,
       webSecurity: true,
       partition: 'persist:streaming',
+      preload: path.join(__dirname, 'preload-content.js'),
     },
+  });
+
+  contentView.setAutoResize({ width: true, height: true, horizontal: false, vertical: false });
+
+  // Inject custom scrollbar CSS into all pages
+  contentView.webContents.on('did-finish-load', () => {
+    contentView.webContents.insertCSS(`
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+      ::-webkit-scrollbar-corner { background: transparent; }
+      * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+    `).catch(() => {});
   });
 
   const chromeUA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
