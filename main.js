@@ -26,6 +26,7 @@ app.commandLine.appendSwitch('no-zygote');
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-gpu-compositing');
 app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('disable-service-worker-autostart');
 app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedDolbyVision');
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaRouterProvider');
 
