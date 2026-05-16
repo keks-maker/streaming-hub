@@ -66,9 +66,14 @@ body {
 
 .sidebar-header {
   display:flex; align-items:center; gap:12px;
-  padding:16px 18px;
+  padding:16px 12px;
   border-bottom:1px solid var(--border);
   min-height:56px;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding:16px 0;
+  justify-content:center;
 }
 
 .logo-icon {
@@ -77,6 +82,11 @@ body {
   display:flex; align-items:center; justify-content:center;
   font-weight:700; font-size:16px; color:#fff; flex-shrink:0;
   box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+.logo-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .logo-text { font-size:14px; font-weight:600; white-space:nowrap; transition: opacity var(--t); }
@@ -110,6 +120,19 @@ body {
   width:32px; height:32px; border-radius:8px;
   display:flex; align-items:center; justify-content:center;
   font-size:14px; font-weight:700; color:#fff; flex-shrink:0;
+  background: var(--icon-bg, #333);
+}
+
+.nav-icon.netflix { --icon-bg: #e50914; }
+.nav-icon.youtube { --icon-bg: #ff0000; }
+.nav-icon.disney { --icon-bg: #0063cc; }
+.nav-icon.prime { --icon-bg: #00a8e1; }
+.nav-icon.twitch { --icon-bg: #9146ff; }
+.nav-icon.spotify { --icon-bg: #1db954; }
+
+.nav-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .nav-label { font-size:13px; font-weight:500; white-space:nowrap; transition: opacity var(--t); }
@@ -122,7 +145,7 @@ body {
 }
 
 .sidebar.collapsed .nav-icon {
-  margin:0 auto;
+  margin:0;
 }
 
 .sidebar-footer { padding:10px; border-top:1px solid var(--border); }
