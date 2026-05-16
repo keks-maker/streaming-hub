@@ -139,16 +139,15 @@ body {
 .nav-item.active.spotify { background: rgba(29,185,84,0.25); }
 
 .nav-item.active .nav-icon {
-  border-color: var(--active-border, var(--icon-border));
-  box-shadow: 0 0 12px var(--active-glow, rgba(255,255,255,0.15));
+  border-width: 2px;
 }
 
-.nav-item.active.netflix .nav-icon { --active-border: #e50914; --active-glow: rgba(229,9,20,0.5); }
-.nav-item.active.youtube .nav-icon { --active-border: #ff0000; --active-glow: rgba(255,0,0,0.5); }
-.nav-item.active.disney .nav-icon { --active-border: #0063cc; --active-glow: rgba(0,99,204,0.5); }
-.nav-item.active.prime .nav-icon { --active-border: #00a8e1; --active-glow: rgba(0,168,225,0.5); }
-.nav-item.active.twitch .nav-icon { --active-border: #9146ff; --active-glow: rgba(145,70,255,0.5); }
-.nav-item.active.spotify .nav-icon { --active-border: #1db954; --active-glow: rgba(29,185,84,0.5); }
+.nav-item.active.netflix .nav-icon { border-color: #e50914; box-shadow: 0 0 12px rgba(229,9,20,0.5); }
+.nav-item.active.youtube .nav-icon { border-color: #ff0000; box-shadow: 0 0 12px rgba(255,0,0,0.5); }
+.nav-item.active.disney .nav-icon { border-color: #0063cc; box-shadow: 0 0 12px rgba(0,99,204,0.5); }
+.nav-item.active.prime .nav-icon { border-color: #00a8e1; box-shadow: 0 0 12px rgba(0,168,225,0.5); }
+.nav-item.active.twitch .nav-icon { border-color: #9146ff; box-shadow: 0 0 12px rgba(145,70,255,0.5); }
+.nav-item.active.spotify .nav-icon { border-color: #1db954; box-shadow: 0 0 12px rgba(29,185,84,0.5); }
 
 .nav-icon {
   width:32px; height:32px; border-radius:8px;
