@@ -37,6 +37,7 @@ function createWindow() {
     height: Math.min(850, height),
     minWidth: 900,
     minHeight: 600,
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -96,6 +97,12 @@ function createWindow() {
   mainWindow.setMenuBarVisibility(false);
 
   mainWindow.on('resize', updateContentBounds);
+
+  // Show window only after everything is ready
+  mainWindow.once('ready-to-show', () => {
+    updateContentBounds();
+    mainWindow.show();
+  });
 }
 
 function updateContentBounds() {
