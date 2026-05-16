@@ -72,8 +72,14 @@ body {
 }
 
 .sidebar.collapsed .sidebar-header {
-  padding:16px 0;
+  padding:16px 12px;
   justify-content:center;
+}
+
+.sidebar.collapsed .sidebar-header .logo-icon {
+  margin: 0 !important;
+  display: flex !important;
+  opacity: 1 !important;
 }
 
 .logo-icon {
@@ -82,6 +88,7 @@ body {
   display:flex; align-items:center; justify-content:center;
   font-weight:700; font-size:16px; color:#fff; flex-shrink:0;
   box-shadow: 0 2px 12px var(--accent-glow);
+  opacity: 1;
 }
 
 .logo-icon svg {
@@ -91,10 +98,11 @@ body {
 
 .sidebar.collapsed .logo-icon {
   margin: 0;
+  opacity: 1;
 }
 
 .logo-text { font-size:14px; font-weight:600; white-space:nowrap; transition: opacity var(--t); }
-.sidebar.collapsed .logo-text { opacity:0; }
+.sidebar.collapsed .logo-text { opacity:0; width:0; overflow:hidden; }
 
 .sidebar-nav { flex:1; padding:12px 10px; overflow-y:auto; overflow-x:hidden; }
 
@@ -115,20 +123,33 @@ body {
 .nav-item:hover { background:var(--glass); color:var(--text); }
 .nav-item:hover .nav-icon { background: var(--icon-bg-hover, var(--icon-bg)); }
 
-.nav-item.netflix:hover .nav-icon { --icon-bg-hover: rgba(229,9,20,0.35); }
-.nav-item.youtube:hover .nav-icon { --icon-bg-hover: rgba(255,0,0,0.35); }
-.nav-item.disney:hover .nav-icon { --icon-bg-hover: rgba(0,99,204,0.35); }
-.nav-item.prime:hover .nav-icon { --icon-bg-hover: rgba(0,168,225,0.35); }
-.nav-item.twitch:hover .nav-icon { --icon-bg-hover: rgba(145,70,255,0.35); }
-.nav-item.spotify:hover .nav-icon { --icon-bg-hover: rgba(29,185,84,0.35); }
+.nav-item.netflix:hover { background: rgba(229,9,20,0.15); }
+.nav-item.youtube:hover { background: rgba(255,0,0,0.15); }
+.nav-item.disney:hover { background: rgba(0,99,204,0.15); }
+.nav-item.prime:hover { background: rgba(0,168,225,0.15); }
+.nav-item.twitch:hover { background: rgba(145,70,255,0.15); }
+.nav-item.spotify:hover { background: rgba(29,185,84,0.15); }
 
-.nav-item.active { background:var(--glass-hover); color:var(--text); }
-.nav-item.active .nav-icon { border-color: var(--icon-border); }
+.nav-item.active { color:var(--text); }
+.nav-item.active.netflix { background: rgba(229,9,20,0.25); }
+.nav-item.active.youtube { background: rgba(255,0,0,0.25); }
+.nav-item.active.disney { background: rgba(0,99,204,0.25); }
+.nav-item.active.prime { background: rgba(0,168,225,0.25); }
+.nav-item.active.twitch { background: rgba(145,70,255,0.25); }
+.nav-item.active.spotify { background: rgba(29,185,84,0.25); }
+
 .nav-item.active::before {
-  content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  content:''; position:absolute; left:2px; top:50%; transform:translateY(-50%);
   width:3px; height:20px; border-radius:0 3px 3px 0;
   background:var(--accent); box-shadow:0 0 8px var(--accent-glow);
 }
+
+.nav-item.active.netflix::before { background: #e50914; box-shadow: 0 0 8px rgba(229,9,20,0.5); }
+.nav-item.active.youtube::before { background: #ff0000; box-shadow: 0 0 8px rgba(255,0,0,0.5); }
+.nav-item.active.disney::before { background: #0063cc; box-shadow: 0 0 8px rgba(0,99,204,0.5); }
+.nav-item.active.prime::before { background: #00a8e1; box-shadow: 0 0 8px rgba(0,168,225,0.5); }
+.nav-item.active.twitch::before { background: #9146ff; box-shadow: 0 0 8px rgba(145,70,255,0.5); }
+.nav-item.active.spotify::before { background: #1db954; box-shadow: 0 0 8px rgba(29,185,84,0.5); }
 
 .nav-icon {
   width:32px; height:32px; border-radius:8px;
@@ -162,6 +183,10 @@ body {
 
 .sidebar.collapsed .nav-icon {
   margin:0;
+}
+
+.sidebar.collapsed .nav-item.active::before {
+  left: 8px;
 }
 
 .sidebar-footer { padding:10px; border-top:1px solid var(--border); }
