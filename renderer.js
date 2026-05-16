@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const reloadBtn = document.getElementById('reloadBtn');
 
   navItems.forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
       navItems.forEach(n => n.classList.remove('active'));
       item.classList.add('active');
       welcomeScreen.style.display = 'none';
