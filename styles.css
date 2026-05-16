@@ -123,12 +123,12 @@ body {
 .nav-item:hover { background:var(--glass); color:var(--text); }
 .nav-item:hover .nav-icon { background: var(--icon-bg-hover, var(--icon-bg)); }
 
-.nav-item.netflix:hover { background: rgba(229,9,20,0.2); }
-.nav-item.youtube:hover { background: rgba(255,0,0,0.2); }
-.nav-item.disney:hover { background: rgba(0,99,204,0.2); }
-.nav-item.prime:hover { background: rgba(0,168,225,0.2); }
-.nav-item.twitch:hover { background: rgba(145,70,255,0.2); }
-.nav-item.spotify:hover { background: rgba(29,185,84,0.2); }
+.nav-item.netflix:hover { background: #e50914; }
+.nav-item.youtube:hover { background: #ff0000; }
+.nav-item.disney:hover { background: #0063cc; }
+.nav-item.prime:hover { background: #00a8e1; }
+.nav-item.twitch:hover { background: #9146ff; }
+.nav-item.spotify:hover { background: #1db954; }
 
 .nav-item.active { color:var(--text); }
 .nav-item.active.netflix { background: rgba(229,9,20,0.25); }
