@@ -1,12 +1,11 @@
 #!/bin/bash
 
-# Streaming Hub - Electron Shell + Chrome Content
+# Streaming Hub - Castlabs Electron mit Widevine DRM Support
 
 APP_DIR="/home/keks/Dokumente/opencode/Streaming"
 
-cd "$APP_DIR"
+export ELECTRON_DISABLE_SANDBOX=1
 
-echo "Starte Streaming Hub..."
-echo ""
+cd "$APP_DIR"
 
 npx electron .
