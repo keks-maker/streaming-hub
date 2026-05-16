@@ -138,18 +138,17 @@ body {
 .nav-item.active.twitch { background: rgba(145,70,255,0.25); }
 .nav-item.active.spotify { background: rgba(29,185,84,0.25); }
 
-.nav-item.active::before {
-  content:''; position:absolute; left:2px; top:50%; transform:translateY(-50%);
-  width:3px; height:20px; border-radius:0 3px 3px 0;
-  background:var(--accent); box-shadow:0 0 8px var(--accent-glow);
+.nav-item.active .nav-icon {
+  border-color: var(--active-border, var(--icon-border));
+  box-shadow: 0 0 12px var(--active-glow, rgba(255,255,255,0.15));
 }
 
-.nav-item.active.netflix::before { background: #e50914; box-shadow: 0 0 8px rgba(229,9,20,0.5); }
-.nav-item.active.youtube::before { background: #ff0000; box-shadow: 0 0 8px rgba(255,0,0,0.5); }
-.nav-item.active.disney::before { background: #0063cc; box-shadow: 0 0 8px rgba(0,99,204,0.5); }
-.nav-item.active.prime::before { background: #00a8e1; box-shadow: 0 0 8px rgba(0,168,225,0.5); }
-.nav-item.active.twitch::before { background: #9146ff; box-shadow: 0 0 8px rgba(145,70,255,0.5); }
-.nav-item.active.spotify::before { background: #1db954; box-shadow: 0 0 8px rgba(29,185,84,0.5); }
+.nav-item.active.netflix .nav-icon { --active-border: #e50914; --active-glow: rgba(229,9,20,0.5); }
+.nav-item.active.youtube .nav-icon { --active-border: #ff0000; --active-glow: rgba(255,0,0,0.5); }
+.nav-item.active.disney .nav-icon { --active-border: #0063cc; --active-glow: rgba(0,99,204,0.5); }
+.nav-item.active.prime .nav-icon { --active-border: #00a8e1; --active-glow: rgba(0,168,225,0.5); }
+.nav-item.active.twitch .nav-icon { --active-border: #9146ff; --active-glow: rgba(145,70,255,0.5); }
+.nav-item.active.spotify .nav-icon { --active-border: #1db954; --active-glow: rgba(29,185,84,0.5); }
 
 .nav-icon {
   width:32px; height:32px; border-radius:8px;
@@ -183,10 +182,6 @@ body {
 
 .sidebar.collapsed .nav-icon {
   margin:0;
-}
-
-.sidebar.collapsed .nav-item.active::before {
-  left: 6px;
 }
 
 .sidebar-footer { padding:10px; border-top:1px solid var(--border); }
