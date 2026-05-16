@@ -38,7 +38,6 @@ function createWindow() {
     height: Math.min(850, height),
     minWidth: 900,
     minHeight: 600,
-    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -99,10 +98,9 @@ function createWindow() {
 
   mainWindow.on('resize', updateContentBounds);
 
-  // Show window only after everything is ready
-  mainWindow.once('ready-to-show', () => {
+  // Ensure bounds are set correctly on first show
+  mainWindow.once('show', () => {
     updateContentBounds();
-    mainWindow.show();
   });
 }
 
