@@ -5,13 +5,10 @@ const fs = require('fs');
 
 let mainWindow;
 let contentView;
-let sidebarCollapsed = false;
+let isFullscreen = false;
 
-const SIDEBAR_W = 240;
-const SIDEBAR_W_MIN = 56;
-const TITLEBAR_H = 40;
+const OVERLAY_H = 64;
 
-// Use Chrome's Widevine as fallback since component updater may fail without sandbox
 const chromeWidevineDir = '/opt/google/chrome/WidevineCdm';
 const chromeWidevineManifest = path.join(chromeWidevineDir, 'manifest.json');
 if (fs.existsSync(chromeWidevineManifest)) {
@@ -49,6 +46,20 @@ function createWindow() {
     frame: false,
   });
 
+  mainWindow.loadFile('index.html');
+  mainWindow.setMenuBarVisibility(false);
+
+  mainWindow.on('resize', () => {
+    updateContentBounds();
+  });
+}
+
+function showContent(url) {
+  if (contentView) {
+    mainWindow.removeBrowserView(contentView);
+    contentView.webContents.destroy();
+  }
+
   contentView = new BrowserView({
     webPreferences: {
       nodeIntegration: false,
@@ -61,10 +72,6 @@ function createWindow() {
     },
   });
 
-  // Manual bounds management for smooth sidebar animation
-  // setAutoResize conflicts with sidebar collapse animation
-
-  // Inject custom scrollbar CSS into all pages
   contentView.webContents.on('did-finish-load', () => {
     contentView.webContents.insertCSS(`
       ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -91,30 +98,29 @@ function createWindow() {
     return permission === 'media' || permission === 'mediaKeySystemAccess';
   });
 
-  mainWindow.setBrowserView(contentView);
+  mainWindow.addBrowserView(contentView);
+  contentView.webContents.loadURL(url);
   updateContentBounds();
-
-  mainWindow.loadFile('index.html');
-  mainWindow.setMenuBarVisibility(false);
-
-  // Debounced resize handler for window resizing (not sidebar animation)
-  let resizeTimer;
-  mainWindow.on('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(updateContentBounds, 100);
-  });
 }
 
 function updateContentBounds() {
   if (!mainWindow || !contentView) return;
   const bounds = mainWindow.getContentBounds();
-  const sw = sidebarCollapsed ? SIDEBAR_W_MIN : SIDEBAR_W;
-  contentView.setBounds({
-    x: sw,
-    y: TITLEBAR_H,
-    width: bounds.width - sw,
-    height: bounds.height - TITLEBAR_H,
-  });
+  if (isFullscreen) {
+    contentView.setBounds({
+      x: 0,
+      y: 24,
+      width: bounds.width,
+      height: bounds.height - 24,
+    });
+  } else {
+    contentView.setBounds({
+      x: 0,
+      y: OVERLAY_H,
+      width: bounds.width,
+      height: bounds.height - OVERLAY_H,
+    });
+  }
 }
 
 app.whenReady().then(async () => {
@@ -132,17 +138,15 @@ app.on('window-all-closed', () => app.quit());
 ipcMain.on('minimize-window', () => mainWindow?.minimize());
 ipcMain.on('close-window', () => mainWindow?.close());
 
-ipcMain.on('toggle-sidebar', () => {
-  sidebarCollapsed = !sidebarCollapsed;
-  mainWindow?.webContents.send('sidebar-state', sidebarCollapsed);
-  
-  // Update BrowserView bounds immediately to fill new space
-  // CSS animation runs in parallel on the sidebar
+ipcMain.on('toggle-fullscreen', (_e, state) => {
+  isFullscreen = state;
+  mainWindow.webContents.send('fullscreen-state', state);
   updateContentBounds();
 });
 
-ipcMain.on('navigate', (_e, url) => {
-  contentView?.webContents.loadURL(url);
+ipcMain.on('navigate', (_e, url, provider) => {
+  showContent(url);
+  mainWindow.webContents.send('navigate-overlay', provider);
 });
 
 ipcMain.on('go-back', () => {
