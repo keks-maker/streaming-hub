@@ -29,14 +29,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   webview.addEventListener('did-attach', () => {
     webviewReady = true;
+
+    // Override User-Agent for every request (before any page script runs)
+    const filter = { urls: ['*://*/*'] };
+    webview.session.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+      details.requestHeaders['User-Agent'] = chromeUA;
+      callback({ requestHeaders: details.requestHeaders });
+    });
+
     if (pendingNav) {
       webview.loadURL(pendingNav);
       pendingNav = null;
     }
   });
 
-  webview.addEventListener('dom-ready', () => {
-    webview.setUserAgent(chromeUA);
+  webview.addEventListener('destroyed', () => {
+    webview.session?.webRequest.onBeforeSendHeaders(null);
   });
 
   webview.addEventListener('did-finish-load', () => {
