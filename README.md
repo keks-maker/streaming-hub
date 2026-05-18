@@ -38,7 +38,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 ## Installation
 
 ```bash
-cd /home/keks/Dokumente/opencode/Streaming-Hub
+cd /pfad/zum/Streaming-Hub
 npm install
 ```
 
