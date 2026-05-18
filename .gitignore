@@ -3,3 +3,7 @@ package-lock.json
 *.log
 dist/
 .cache/
+release/
+*.7z
+!assets/**
+!assets/icons/**
