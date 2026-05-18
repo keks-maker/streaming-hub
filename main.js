@@ -18,6 +18,7 @@ if (fs.existsSync(chromeWidevineManifest)) {
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('no-zygote');
 app.commandLine.appendSwitch('disable-service-worker-autostart');
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedDolbyVision');
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaRouterProvider');
 

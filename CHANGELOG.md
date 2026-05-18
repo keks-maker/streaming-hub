@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 (2026-05-18)
+- Google-Login-Fix: AutomationControlled-Flag gesetzt
+- navigator.webdriver im Webview-Preload überschrieben
+- User-Agent auf Chrome 134 aktualisiert
+
 ## 0.2.0 (2026-05-18)
 - Picture-in-Picture-Modus (Mini-Player-Fenster)
 - Neues pip.html mit Webview + Close-Button + Titelzeile

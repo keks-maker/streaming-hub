@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     spotify: 'Spotify'
   };
 
-  const chromeUA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+  const chromeUA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
 
   let webviewReady = false;
   let pendingNav = null;
