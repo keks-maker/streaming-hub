@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, components, screen } = require('electron');
-const path = require('path');
-
 const fs = require('fs');
+const path = require('path');
 
 let mainWindow;
 let pipWindow = null;
