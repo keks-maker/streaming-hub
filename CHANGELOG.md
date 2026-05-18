@@ -1,11 +1,12 @@
 # Changelog
 
-## 0.2.1 (2026-05-18)
-- Google-Login-Fix: AutomationControlled-Flag gesetzt
-- navigator.webdriver im Webview-Preload überschrieben
+## 0.1.11 (2026-05-18)
+- Google-Login-Fix: --disable-blink-features=AutomationControlled
+- chrome.runtime, chrome.loadTimes(), chrome.csi(), chrome.app via executeJavaScript injiziert
+- navigator.webdriver im page context überschrieben
 - User-Agent auf Chrome 134 aktualisiert
 
-## 0.2.0 (2026-05-18)
+## 0.1.10 (2026-05-18)
 - Picture-in-Picture-Modus (Mini-Player-Fenster)
 - Neues pip.html mit Webview + Close-Button + Titelzeile
 - PiP-Button in der Overlay-Bar (sichtbar bei Hover)
