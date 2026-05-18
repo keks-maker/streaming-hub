@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain, components } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen } = require('electron');
 const path = require('path');
 
 const fs = require('fs');
 
 let mainWindow;
+let pipWindow = null;
 
 const chromeWidevineDir = '/opt/google/chrome/WidevineCdm';
 const chromeWidevineManifest = path.join(chromeWidevineDir, 'manifest.json');
@@ -54,3 +55,42 @@ app.on('window-all-closed', () => app.quit());
 
 ipcMain.on('minimize-window', () => mainWindow?.minimize());
 ipcMain.on('close-window', () => mainWindow?.close());
+
+ipcMain.on('toggle-pip', (_e, url) => {
+  if (pipWindow) {
+    pipWindow.close();
+    pipWindow = null;
+    mainWindow.webContents.send('pip-state', false);
+    return;
+  }
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const pipW = Math.min(480, Math.round(width * 0.3));
+  const pipH = Math.min(320, Math.round(pipW * 9 / 16) + 32);
+
+  pipWindow = new BrowserWindow({
+    width: pipW,
+    height: pipH,
+    alwaysOnTop: true,
+    frame: false,
+    backgroundColor: '#0a0a0f',
+    webPreferences: {
+      webviewTag: true,
+    },
+  });
+
+  pipWindow.loadFile('pip.html');
+
+  pipWindow.webContents.on('did-finish-load', () => {
+    pipWindow.webContents.executeJavaScript(`
+      window.postMessage({ type: 'load-url', url: ${JSON.stringify(url)} }, '*');
+    `);
+  });
+
+  pipWindow.on('closed', () => {
+    pipWindow = null;
+    mainWindow.webContents.send('pip-state', false);
+  });
+
+  mainWindow.webContents.send('pip-state', true);
+});

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const backBtn = document.getElementById('backBtn');
   const forwardBtn = document.getElementById('forwardBtn');
   const reloadBtn = document.getElementById('reloadBtn');
+  const pipBtn = document.getElementById('pipBtn');
   const webview = document.getElementById('contentView');
 
   const providerNames = {
@@ -76,6 +77,19 @@ document.addEventListener('DOMContentLoaded', () => {
         pendingNav = item.dataset.url;
       }
     });
+  });
+
+  let pipActive = false;
+
+  pipBtn.addEventListener('click', () => {
+    const url = webview.getURL();
+    if (!url || url === 'about:blank') return;
+    window.electronAPI.togglePip(url);
+  });
+
+  window.electronAPI.onPipState((state) => {
+    pipActive = state;
+    pipBtn.classList.toggle('active', state);
   });
 
   backBtn.addEventListener('click', () => webview.goBack());

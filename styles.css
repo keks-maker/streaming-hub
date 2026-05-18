@@ -164,6 +164,41 @@ body {
   -webkit-app-region: no-drag;
 }
 
+.pip-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  opacity: 0;
+  transform: scale(0.5);
+  pointer-events: none;
+}
+
+.overlay-bar:hover .pip-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.pip-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+.pip-btn.active {
+  color: var(--accent);
+  background: rgba(108,92,231,0.15);
+}
+
 .toolbar {
   display: none;
 }

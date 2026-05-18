@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (2026-05-18)
+- Picture-in-Picture-Modus (Mini-Player-Fenster)
+- Neues pip.html mit Webview + Close-Button + Titelzeile
+- PiP-Button in der Overlay-Bar (sichtbar bei Hover)
+- Immer im Vordergrund, gleiche Session (persist:streaming)
+- Automatische 16:9-Berechnung der Fenstergröße
+
 ## 0.1.9 (2026-05-18)
 - Farbiger Strich (5px dick, 120px breit) am unteren Rand der Overlay-Bar
 - Farbverlauf in Akzentfarbe (purple), immer sichtbar
