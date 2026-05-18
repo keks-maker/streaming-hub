@@ -7,6 +7,7 @@
 </head>
 <body>
   <div class="overlay-bar" id="overlayBar">
+    <span class="overlay-location" id="overlayLocation">Startseite</span>
     <nav class="overlay-nav">
       <button class="nav-item" data-provider="netflix" data-url="https://www.netflix.com">
         <span class="nav-icon netflix">
@@ -39,14 +40,6 @@
         </span>
       </button>
     </nav>
-    <button class="fullscreen-btn" id="fullscreenBtn" title="Vollbildmodus">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="15 3 21 3 21 9"></polyline>
-        <polyline points="9 21 3 21 3 15"></polyline>
-        <line x1="21" y1="3" x2="14" y2="10"></line>
-        <line x1="3" y1="21" x2="10" y2="14"></line>
-      </svg>
-    </button>
   </div>
 
   <div class="toolbar" id="toolbar">
@@ -66,14 +59,59 @@
     <div class="toolbar-service-name" id="serviceName"></div>
   </div>
 
-  <div class="welcome-screen" id="welcomeScreen">
-    <div class="welcome-icon">
-      <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-      </svg>
+  <div class="content-area" id="contentArea">
+    <webview id="contentView" class="content-view"
+             src="about:blank"
+             partition="persist:streaming"
+             plugins>
+    </webview>
+    <div class="welcome-screen" id="welcomeScreen">
+      <div class="welcome-bg">
+        <img src="assets/icons/netflix.png" class="bg-logo" style="top:5%;left:6%;rotate:-15deg;scale:1.6;opacity:.25">
+        <img src="assets/icons/youtube.png" class="bg-logo" style="top:3%;left:76%;rotate:22deg;scale:1.3;opacity:.22">
+        <img src="assets/icons/disney.png" class="bg-logo" style="top:15%;left:32%;rotate:-30deg;scale:1.7;opacity:.24">
+        <img src="assets/icons/prime.png" class="bg-logo" style="top:22%;left:58%;rotate:18deg;scale:1.2;opacity:.20">
+        <img src="assets/icons/twitch.png" class="bg-logo" style="top:10%;left:48%;rotate:-8deg;scale:1.4;opacity:.25">
+        <img src="assets/icons/spotify.png" class="bg-logo" style="top:2%;left:22%;rotate:35deg;scale:1.1;opacity:.18">
+        <img src="assets/icons/netflix.png" class="bg-logo" style="top:35%;left:12%;rotate:42deg;scale:1.3;opacity:.22">
+        <img src="assets/icons/youtube.png" class="bg-logo" style="top:40%;left:70%;rotate:-22deg;scale:1.5;opacity:.23">
+        <img src="assets/icons/disney.png" class="bg-logo" style="top:50%;left:28%;rotate:8deg;scale:1.1;opacity:.18">
+        <img src="assets/icons/prime.png" class="bg-logo" style="top:36%;left:42%;rotate:-35deg;scale:1.6;opacity:.25">
+        <img src="assets/icons/twitch.png" class="bg-logo" style="top:55%;left:5%;rotate:18deg;scale:1.4;opacity:.20">
+        <img src="assets/icons/spotify.png" class="bg-logo" style="top:46%;left:80%;rotate:-15deg;scale:1.2;opacity:.22">
+        <img src="assets/icons/netflix.png" class="bg-logo" style="top:65%;left:52%;rotate:-25deg;scale:1.5;opacity:.23">
+        <img src="assets/icons/youtube.png" class="bg-logo" style="top:72%;left:18%;rotate:30deg;scale:1.3;opacity:.20">
+        <img src="assets/icons/disney.png" class="bg-logo" style="top:68%;left:73%;rotate:-10deg;scale:1.4;opacity:.22">
+        <img src="assets/icons/prime.png" class="bg-logo" style="top:80%;left:8%;rotate:20deg;scale:1.2;opacity:.18">
+        <img src="assets/icons/twitch.png" class="bg-logo" style="top:85%;left:62%;rotate:-40deg;scale:1.6;opacity:.25">
+        <img src="assets/icons/spotify.png" class="bg-logo" style="top:76%;left:38%;rotate:12deg;scale:1.1;opacity:.20">
+        <img src="assets/icons/youtube.png" class="bg-logo" style="top:92%;left:45%;rotate:-18deg;scale:1.4;opacity:.18">
+        <img src="assets/icons/netflix.png" class="bg-logo" style="top:60%;left:90%;rotate:28deg;scale:1.2;opacity:.22">
+      </div>
+
+      <div class="welcome-arrow-wrap">
+        <svg class="welcome-arrow" viewBox="0 0 40 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="ag" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#fff" stop-opacity=".08"/>
+              <stop offset="50%" stop-color="#fff" stop-opacity=".3"/>
+              <stop offset="100%" stop-color="#fff" stop-opacity=".7"/>
+            </linearGradient>
+            <linearGradient id="ag2" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#a78bfa" stop-opacity="0"/>
+              <stop offset="70%" stop-color="#a78bfa" stop-opacity=".5"/>
+              <stop offset="100%" stop-color="#a78bfa" stop-opacity=".9"/>
+            </linearGradient>
+          </defs>
+          <line x1="20" y1="50" x2="20" y2="240" stroke="url(#ag)" stroke-width="4" stroke-dasharray="6 5"/>
+          <line x1="20" y1="50" x2="20" y2="240" stroke="url(#ag2)" stroke-width="2" stroke-dasharray="6 5"/>
+          <polyline points="4,70 20,45 36,70" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+          <polyline points="10,59 20,45 30,59" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+        </svg>
+      </div>
+
+      <p class="welcome-text">Hier kannst du einen Streamingdienst<br>mit der Maus ausw&auml;hlen.</p>
     </div>
-    <h2>Willkommen bei Streaming Hub</h2>
-    <p>W&auml;hle einen Dienst aus der Leiste</p>
   </div>
 
   <script src="renderer.js"></script>

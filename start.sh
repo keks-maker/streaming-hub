@@ -2,8 +2,9 @@
 
 # Streaming Hub - Castlabs Electron mit Widevine DRM Support
 
-APP_DIR="/home/keks/Dokumente/opencode/Streaming"
+APP_DIR="$(dirname "$(readlink -f "$0")")"
 
+export PATH="$HOME/.local/node/bin:$HOME/.local/bin:$PATH"
 export ELECTRON_DISABLE_SANDBOX=1
 
 # Clear corrupted service worker storage if present
