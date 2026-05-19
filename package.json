@@ -11,7 +11,8 @@
     "build:linux": "electron-builder --linux AppImage",
     "build:mac": "electron-builder --mac zip",
     "build:win": "electron-builder --win portable",
-    "build:all": "electron-builder --linux AppImage --mac zip --win portable"
+    "build:all": "electron-builder --linux AppImage --mac zip --win portable",
+    "postinstall": "node node_modules/electron/install.js"
   },
   "build": {
     "appId": "com.streaming-hub.app",

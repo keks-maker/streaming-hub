@@ -9,6 +9,7 @@
 - Windows: start.cmd für direkte Ausführung hinzugefügt
 - macOS: Build als `.zip` (portabel, keine Installation)
 - Windows: Build als portable `.exe` (keine Installation)
+- Fix: postinstall-Script lädt Castlabs-Electron-Binary nach `npm install` herunter
 
 ## 0.1.11 (2026-05-18)
 - Google-Login-Fix: --disable-blink-features=AutomationControlled
