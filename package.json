@@ -29,12 +29,10 @@
     },
     "mac": {
       "target": ["zip"],
-      "icon": "assets/icon.svg",
       "category": "public.app-category.video"
     },
     "win": {
-      "target": ["portable"],
-      "icon": "assets/icon.svg"
+      "target": ["portable"]
     }
   },
   "keywords": [
