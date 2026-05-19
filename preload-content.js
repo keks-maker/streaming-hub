@@ -65,7 +65,7 @@ script.textContent = `
           { brand: 'Not;A=Brand', version: '99' },
         ],
         mobile: false,
-        platform: 'Linux',
+        platform: '${(function(){ switch(process.platform){case'darwin':return'macOS';case'win32':return'Windows';default:return'Linux'}})()}',
         getHighEntropyValues: function() { return Promise.resolve({}); },
         toJSON: function() { return { brands: this.brands, mobile: this.mobile, platform: this.platform }; },
       };

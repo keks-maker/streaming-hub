@@ -1,21 +1,62 @@
 const { app, BrowserWindow, ipcMain, components, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 let mainWindow;
 let pipWindow = null;
 
-const chromeWidevineDir = '/opt/google/chrome/WidevineCdm';
-const chromeWidevineManifest = path.join(chromeWidevineDir, 'manifest.json');
-if (fs.existsSync(chromeWidevineManifest)) {
-  const manifest = JSON.parse(fs.readFileSync(chromeWidevineManifest, 'utf-8'));
-  app.commandLine.appendSwitch('widevine-cdm-path', chromeWidevineDir);
+function findChromeWidevine() {
+  const platform = process.platform;
+  let searchPaths = [];
+
+  if (platform === 'linux') {
+    searchPaths = [
+      '/opt/google/chrome/WidevineCdm',
+      path.join(os.homedir(), '.config/google-chrome/WidevineCdm'),
+    ];
+  } else if (platform === 'darwin') {
+    searchPaths = [
+      path.join(os.homedir(), 'Library/Application Support/Google/Chrome/WidevineCdm'),
+    ];
+  } else if (platform === 'win32') {
+    searchPaths = [
+      path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/User Data/WidevineCdm'),
+    ];
+  }
+
+  for (const basePath of searchPaths) {
+    const manifestPath = path.join(basePath, 'manifest.json');
+    if (fs.existsSync(manifestPath)) {
+      return { dir: basePath, manifestPath };
+    }
+    if (fs.existsSync(basePath)) {
+      const entries = fs.readdirSync(basePath, { withFileTypes: true });
+      const dirs = entries.filter(e => e.isDirectory()).map(e => e.name).sort().reverse();
+      for (const dir of dirs) {
+        const versionPath = path.join(basePath, dir);
+        const versionManifest = path.join(versionPath, 'manifest.json');
+        if (fs.existsSync(versionManifest)) {
+          return { dir: versionPath, manifestPath: versionManifest };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+const chromeWidevine = findChromeWidevine();
+if (chromeWidevine) {
+  const manifest = JSON.parse(fs.readFileSync(chromeWidevine.manifestPath, 'utf-8'));
+  app.commandLine.appendSwitch('widevine-cdm-path', chromeWidevine.dir);
   app.commandLine.appendSwitch('widevine-cdm-version', manifest.version);
   console.log('Using Chrome Widevine:', manifest.version);
 }
 
 app.commandLine.appendSwitch('no-sandbox');
-app.commandLine.appendSwitch('no-zygote');
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('no-zygote');
+}
 app.commandLine.appendSwitch('disable-service-worker-autostart');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedDolbyVision');

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 (2026-05-19)
+- Cross-Plattform: macOS & Windows Build-Targets in package.json hinzugefügt
+- Cross-Plattform: Widevine-Pfad (main.js) sucht jetzt automatisch auf Linux, macOS und Windows
+- Cross-Plattform: `--no-zygote` nur noch unter Linux
+- Cross-Plattform: `platform` in preload-content.js dynamisch (Linux/macOS/Windows)
+- Cross-Plattform: start.sh mit POSIX-kompatiblem Pfad (auch macOS)
+- Windows: start.cmd für direkte Ausführung hinzugefügt
+- macOS: Build als `.zip` (portabel, keine Installation)
+- Windows: Build als portable `.exe` (keine Installation)
+
 ## 0.1.11 (2026-05-18)
 - Google-Login-Fix: --disable-blink-features=AutomationControlled
 - chrome.runtime, chrome.loadTimes(), chrome.csi(), chrome.app via executeJavaScript injiziert

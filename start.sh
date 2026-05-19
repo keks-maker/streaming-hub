@@ -2,7 +2,7 @@
 
 # Streaming Hub - Castlabs Electron mit Widevine DRM Support
 
-APP_DIR="$(dirname "$(readlink -f "$0")")"
+APP_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 
 export PATH="$HOME/.local/node/bin:$HOME/.local/bin:$PATH"
 export ELECTRON_DISABLE_SANDBOX=1
