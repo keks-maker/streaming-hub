@@ -14,14 +14,18 @@ function findChromeWidevine() {
     searchPaths = [
       '/opt/google/chrome/WidevineCdm',
       path.join(os.homedir(), '.config/google-chrome/WidevineCdm'),
+      path.join(os.homedir(), '.config/chromium/WidevineCdm'),
+      path.join(os.homedir(), '.config/BraveSoftware/Brave-Browser/WidevineCdm'),
+      path.join(os.homedir(), '.config/microsoft-edge/WidevineCdm'),
     ];
   } else if (platform === 'darwin') {
     searchPaths = [
       path.join(os.homedir(), 'Library/Application Support/Google/Chrome/WidevineCdm'),
+      '/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Libraries/WidevineCdm',
     ];
   } else if (platform === 'win32') {
     searchPaths = [
-      path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/User Data/WidevineCdm'),
+      path.join(process.env.LOCALAPPDATA || process.env.USERPROFILE || '', 'Google/Chrome/User Data/WidevineCdm'),
     ];
   }
 
@@ -47,10 +51,17 @@ function findChromeWidevine() {
 
 const chromeWidevine = findChromeWidevine();
 if (chromeWidevine) {
-  const manifest = JSON.parse(fs.readFileSync(chromeWidevine.manifestPath, 'utf-8'));
-  app.commandLine.appendSwitch('widevine-cdm-path', chromeWidevine.dir);
-  app.commandLine.appendSwitch('widevine-cdm-version', manifest.version);
-  console.log('Using Chrome Widevine:', manifest.version);
+  try {
+    const raw = fs.readFileSync(chromeWidevine.manifestPath, 'utf-8');
+    const manifest = JSON.parse(raw);
+    if (manifest.version) {
+      app.commandLine.appendSwitch('widevine-cdm-path', chromeWidevine.dir);
+      app.commandLine.appendSwitch('widevine-cdm-version', manifest.version);
+      console.log('Using Chrome Widevine:', manifest.version);
+    }
+  } catch (e) {
+    console.log('Failed to parse Chrome Widevine manifest:', e.message);
+  }
 }
 
 app.commandLine.appendSwitch('no-sandbox');

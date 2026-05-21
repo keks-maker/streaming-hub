@@ -199,43 +199,6 @@ body {
   background: rgba(108,92,231,0.15);
 }
 
-.toolbar {
-  display: none;
-}
-
-.toolbar-nav { display: flex; gap: 4px; }
-
-.toolbar-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--t);
-}
-.toolbar-btn:hover { background: var(--glass); color: var(--text); }
-
-.toolbar-url {
-  flex: 1;
-  padding: 6px 12px;
-  background: var(--glass);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 12px;
-  color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.toolbar-spacer { width: 8px; }
-
-.toolbar-service-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
 
 .content-area {
   flex: 1;

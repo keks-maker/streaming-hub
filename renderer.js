@@ -4,12 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const toolbar = document.getElementById('toolbar');
   const contentArea = document.getElementById('contentArea');
   const welcomeScreen = document.getElementById('welcomeScreen');
-  const urlDisplay = document.getElementById('urlDisplay');
-  const serviceName = document.getElementById('serviceName');
   const overlayLocation = document.getElementById('overlayLocation');
-  const backBtn = document.getElementById('backBtn');
-  const forwardBtn = document.getElementById('forwardBtn');
-  const reloadBtn = document.getElementById('reloadBtn');
   const pipBtn = document.getElementById('pipBtn');
   const webview = document.getElementById('contentView');
 
@@ -22,7 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     spotify: 'Spotify'
   };
 
-  const chromeUA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
+  const uaMap = { linux: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36', darwin: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36', win32: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36' };
+  const chromeUA = uaMap[process.platform] || uaMap.linux;
 
   let webviewReady = false;
   let pendingNav = null;
@@ -58,9 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `).catch(() => {});
   });
 
-  webview.addEventListener('did-navigate', (e) => {
-    urlDisplay.textContent = e.url;
-  });
+  webview.addEventListener('did-navigate', () => {});
 
   webview.addEventListener('permissionrequest', (e) => {
     if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {
@@ -76,8 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
       navItems.forEach(n => n.classList.remove('active'));
       item.classList.add('active');
       welcomeScreen.style.display = 'none';
-      urlDisplay.textContent = item.dataset.url;
-      serviceName.textContent = providerNames[item.dataset.provider] || '';
       overlayLocation.textContent = providerNames[item.dataset.provider] || '';
       if (webviewReady) {
         webview.loadURL(item.dataset.url);
@@ -100,7 +92,5 @@ document.addEventListener('DOMContentLoaded', () => {
     pipBtn.classList.toggle('active', state);
   });
 
-  backBtn.addEventListener('click', () => webview.goBack());
-  forwardBtn.addEventListener('click', () => webview.goForward());
-  reloadBtn.addEventListener('click', () => webview.reload());
+
 });

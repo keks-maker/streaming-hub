@@ -1,9 +1,9 @@
 node_modules/
-package-lock.json
+# package-lock.json committed for reproducible builds
 *.log
 dist/
 .cache/
 release/
 *.7z
-!assets/**
-!assets/icons/**
+.serena/
+

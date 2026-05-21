@@ -10,6 +10,17 @@
 - macOS: Build als `.zip` (portabel, keine Installation)
 - Windows: Build als portable `.exe` (keine Installation)
 - Fix: postinstall-Script lädt Castlabs-Electron-Binary nach `npm install` herunter
+- Fix: User-Agent in renderer.js dynamisch pro Plattform (Linux/macOS/Windows)
+- Fix: PiP-Webview in pip.html lädt jetzt preload-content.js (fehlendes Spoofing)
+- Fix: try/catch um Chrome-Widevine-Manifest-Parsing (main.js)
+- Fix: asar: true für verschlüsselte Builds (Sicherheit)
+- Fix: package-lock.json wieder im Repository (reproduzierbare Builds)
+- Fix: Zusätzliche Chromium/Brave/Edge-Widevine-Pfade (main.js)
+- Fix: Windows LOCALAPPDATA-Fallback auf USERPROFILE
+- Cleanup: toolbar toter Code entfernt (index.html, styles.css, renderer.js)
+- Cleanup: setup-castlabs.js entfernt (kaputter Paket-Check)
+- Cleanup: bak_disney.png entfernt (unbenutzt)
+- Cleanup: .gitignore – überflüssige Negationen entfernt
 
 ## 0.1.11 (2026-05-18)
 - Google-Login-Fix: --disable-blink-features=AutomationControlled

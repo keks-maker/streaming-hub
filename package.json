@@ -18,7 +18,11 @@
     "appId": "com.streaming-hub.app",
     "productName": "Streaming Hub",
     "electronDist": "node_modules/electron/dist",
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "start.sh",
+      "start.cmd"
+    ],
     "directories": {
       "output": "release"
     },
