@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('pip-state', pipCb);
     return () => ipcRenderer.removeListener('pip-state', pipCb);
   },
+  toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
   getServices: () => ipcRenderer.invoke('get-services'),
   addService: (svc) => ipcRenderer.invoke('add-service', svc),
   removeService: (id) => ipcRenderer.invoke('remove-service', id),

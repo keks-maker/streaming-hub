@@ -165,6 +165,10 @@ ipcMain.on('toggle-pip', (_e, url) => {
   mainWindow.webContents.send('pip-state', true);
 });
 
+ipcMain.on('toggle-fullscreen', () => {
+  mainWindow?.setFullScreen(!mainWindow.isFullScreen());
+});
+
 ipcMain.handle('get-services', () => loadServices());
 
 ipcMain.handle('add-service', (_e, service) => {

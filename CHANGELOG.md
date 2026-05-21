@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 (2026-05-21)
+- Feature: Dienst-Liste mit Entfernen-Button im Modal
+- Feature: Tastaturkürzel (Strg+Tab, Strg+P, F11, Escape, ?)
+- Feature: Shortcuts-Übersicht per `?` (halbtransparentes Overlay)
+- Fix: Escape schließt Modal/Overlay auch bei fokussierten Inputs
+- Refactor: Hardcodierte nav-icon/active-CSS entfernt (dynamisch generiert)
+
 ## 0.3.0 (2026-05-21)
 - Feature: Dienste aus services.json (external config, nicht mehr hartcodiert)
 - Feature: Eingabemaske zum Hinzufügen eigener Streamingdienste (Name, URL, Icon, Farbe)

@@ -131,12 +131,7 @@ body {
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
-.nav-icon.netflix { --icon-bg: rgba(229,9,20,0.2); --icon-border: rgba(229,9,20,0.5); }
-.nav-icon.youtube { --icon-bg: rgba(255,0,0,0.2); --icon-border: rgba(255,0,0,0.5); }
-.nav-icon.disney { --icon-bg: rgba(0,99,204,0.2); --icon-border: rgba(0,99,204,0.5); }
-.nav-icon.prime { --icon-bg: rgba(0,168,225,0.2); --icon-border: rgba(0,168,225,0.5); }
-.nav-icon.twitch { --icon-bg: rgba(145,70,255,0.2); --icon-border: rgba(145,70,255,0.5); }
-.nav-icon.spotify { --icon-bg: rgba(29,185,84,0.2); --icon-border: rgba(29,185,84,0.5); }
+/* All service nav-icon styles are generated dynamically in renderer.js */
 
 .nav-item.active .nav-icon {
   border-width: 3px;
@@ -147,12 +142,7 @@ body {
     0 0 16px var(--active-glow);
 }
 
-.nav-item.active.netflix .nav-icon { border-color: #e50914; --active-glow: rgba(229,9,20,0.6); }
-.nav-item.active.youtube .nav-icon { border-color: #ff0000; --active-glow: rgba(255,0,0,0.6); }
-.nav-item.active.disney .nav-icon { border-color: #0063cc; --active-glow: rgba(0,99,204,0.6); }
-.nav-item.active.prime .nav-icon { border-color: #00a8e1; --active-glow: rgba(0,168,225,0.6); }
-.nav-item.active.twitch .nav-icon { border-color: #9146ff; --active-glow: rgba(145,70,255,0.6); }
-.nav-item.active.spotify .nav-icon { border-color: #1db954; --active-glow: rgba(29,185,84,0.6); }
+/* Active border/glow is generated dynamically in renderer.js */
 
 .overlay-location {
   font-size: 13px;
@@ -485,4 +475,146 @@ body {
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.08);
   white-space: nowrap;
+}
+
+/* Service list in modal */
+.service-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.service-list-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.service-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+}
+
+.service-row-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  padding: 3px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.service-row-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.service-row-remove {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+
+.service-row-remove:hover {
+  background: rgba(229,9,20,0.2);
+  color: #e50914;
+}
+
+.modal-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0 12px;
+}
+
+/* Shortcuts overlay */
+.shortcuts-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  z-index: 80;
+  align-items: center;
+  justify-content: center;
+}
+
+.shortcuts-overlay.open {
+  display: flex;
+}
+
+.shortcuts-panel {
+  background: rgba(18,18,26,0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 32px;
+  min-width: 360px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  animation: modalIn 0.2s ease;
+}
+
+.shortcuts-header {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shortcut-keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.shortcut-keys kbd {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.shortcut-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: right;
 }

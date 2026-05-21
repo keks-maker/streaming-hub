@@ -12,12 +12,13 @@ const pipBtn = document.getElementById('pipBtn');
 const addBtn = document.getElementById('addBtn');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalClose = document.getElementById('modalClose');
-const modalCancel = document.getElementById('modalCancel');
 const modalSave = document.getElementById('modalSave');
+const serviceList = document.getElementById('serviceList');
 const inputName = document.getElementById('inputName');
 const inputUrl = document.getElementById('inputUrl');
 const inputIcon = document.getElementById('inputIcon');
 const inputColor = document.getElementById('inputColor');
+const shortcutsOverlay = document.getElementById('shortcutsOverlay');
 
 const uaMap = {
   linux: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
@@ -46,6 +47,12 @@ if (bg) {
   }
 }
 
+function getIconSrc(svc) {
+  return svc.icon && (svc.icon.startsWith('http://') || svc.icon.startsWith('https://'))
+    ? svc.icon
+    : `assets/icons/${svc.icon || 'default.png'}`;
+}
+
 function renderNav() {
   nav.innerHTML = '';
   const styleEl = document.getElementById('dynamic-service-styles') || (() => {
@@ -62,15 +69,11 @@ function renderNav() {
     btn.dataset.provider = svc.id;
     btn.dataset.url = svc.url;
 
-    const iconSrc = svc.icon && (svc.icon.startsWith('http://') || svc.icon.startsWith('https://'))
-      ? svc.icon
-      : `assets/icons/${svc.icon || 'default.png'}`;
-
     css += `.nav-icon.${svc.id} { --icon-bg: ${svc.color}33; --icon-border: ${svc.color}80; }\n`;
     css += `.nav-item.active.${svc.id} .nav-icon { border-color: ${svc.color}; --active-glow: ${svc.color}99; }\n`;
 
     btn.innerHTML = `<span class="nav-icon ${svc.id}">
-        <img src="${iconSrc}" alt="${svc.name}" loading="lazy">
+        <img src="${getIconSrc(svc)}" alt="${svc.name}" loading="lazy">
       </span>`;
 
     btn.addEventListener('mousedown', (e) => {
@@ -102,8 +105,44 @@ function getCurrentSvc() {
   return services.find(s => s.id === currentProvider) || null;
 }
 
+function navigateRelative(dir) {
+  if (!services.length) return;
+  const idx = services.findIndex(s => s.id === currentProvider);
+  const next = (idx + dir + services.length) % services.length;
+  navigateTo(services[next]);
+}
+
+// Service list in modal
+function renderServiceList() {
+  serviceList.innerHTML = '';
+  if (!services.length) {
+    serviceList.innerHTML = '<div class="service-list-empty">Keine Dienste konfiguriert.</div>';
+    return;
+  }
+  services.forEach(svc => {
+    const row = document.createElement('div');
+    row.className = 'service-row';
+
+    const iconSrc = getIconSrc(svc);
+    const color = svc.color || '#6c5ce7';
+
+    row.innerHTML = `
+      <img class="service-row-icon" src="${iconSrc}" alt="" style="background:${color}33;border-color:${color}66">
+      <span class="service-row-name">${svc.name}</span>
+      <button class="service-row-remove" data-id="${svc.id}" title="Entfernen">&times;</button>
+    `;
+
+    row.querySelector('.service-row-remove').addEventListener('click', () => {
+      window.electronAPI.removeService(svc.id);
+    });
+
+    serviceList.appendChild(row);
+  });
+}
+
 // Modal
 function openModal() {
+  renderServiceList();
   inputName.value = '';
   inputUrl.value = '';
   inputIcon.value = '';
@@ -128,8 +167,19 @@ function saveService() {
   if (icon) svc.icon = icon;
 
   window.electronAPI.addService(svc).then(() => {
-    closeModal();
+    renderServiceList();
+    inputName.value = '';
+    inputUrl.value = '';
+    inputIcon.value = '';
+    inputColor.value = '#6c5ce7';
+    inputName.focus();
   });
+}
+
+// Shortcuts overlay
+function toggleShortcuts() {
+  const isOpen = shortcutsOverlay.classList.toggle('open');
+  if (!isOpen) shortcutsOverlay.classList.remove('open');
 }
 
 // Webview events
@@ -196,7 +246,6 @@ window.electronAPI.onPipState((state) => {
 
 addBtn.addEventListener('click', openModal);
 modalClose.addEventListener('click', closeModal);
-modalCancel.addEventListener('click', closeModal);
 modalOverlay.addEventListener('click', (e) => {
   if (e.target === modalOverlay) closeModal();
 });
@@ -212,6 +261,57 @@ inputIcon.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') saveService();
 });
 
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Escape always works (closing overlays / go back)
+  if (e.key === 'Escape') {
+    if (shortcutsOverlay.classList.contains('open')) {
+      shortcutsOverlay.classList.remove('open');
+      e.preventDefault();
+      return;
+    }
+    if (modalOverlay.classList.contains('open')) {
+      closeModal();
+      e.preventDefault();
+      return;
+    }
+    return;
+  }
+
+  // Ignore other shortcuts when typing in inputs
+  if (e.target.tagName === 'INPUT') return;
+
+  // Shortcuts overlay (?)
+  if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+    toggleShortcuts();
+    return;
+  }
+
+  // F11: fullscreen
+  if (e.key === 'F11') {
+    e.preventDefault();
+    window.electronAPI.toggleFullscreen();
+    return;
+  }
+
+  // Ctrl+Tab / Ctrl+Shift+Tab: next/prev service
+  if (e.ctrlKey && e.key === 'Tab') {
+    e.preventDefault();
+    navigateRelative(e.shiftKey ? -1 : 1);
+    return;
+  }
+
+  // Ctrl+P: toggle PiP
+  if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
+    e.preventDefault();
+    const url = webview.getURL();
+    if (url && url !== 'about:blank') {
+      window.electronAPI.togglePip(url);
+    }
+    return;
+  }
+});
+
 // Services laden
 window.electronAPI.getServices().then((svcs) => {
   services = svcs;
@@ -221,7 +321,7 @@ window.electronAPI.getServices().then((svcs) => {
 window.electronAPI.onServicesChanged((svcs) => {
   services = svcs;
   renderNav();
-  // Re-activate current provider if still present
+  renderServiceList();
   if (currentProvider && services.find(s => s.id === currentProvider)) {
     const btn = nav.querySelector(`.nav-item[data-provider="${currentProvider}"]`);
     if (btn) btn.classList.add('active');

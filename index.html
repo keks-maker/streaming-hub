@@ -11,8 +11,8 @@
     <nav class="overlay-nav" id="overlayNav">
     </nav>
     <div class="overlay-actions">
-      <button class="add-btn" id="addBtn" title="Dienst hinzufügen">+</button>
-      <button class="pip-btn" id="pipBtn" title="Bild-in-Bild">
+      <button class="add-btn" id="addBtn" title="Dienste verwalten">+</button>
+      <button class="pip-btn" id="pipBtn" title="Bild-in-Bild (Strg+P)">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2"/>
           <rect x="11" y="9" width="9" height="6" rx="1"/>
@@ -56,13 +56,16 @@
     </div>
   </div>
 
+  <!-- Service-Manager Modal -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal" id="addModal">
       <div class="modal-header">
-        <span class="modal-title">Streamingdienst hinzufügen</span>
+        <span class="modal-title">Dienste verwalten</span>
         <button class="modal-close" id="modalClose">&times;</button>
       </div>
       <div class="modal-body">
+        <div class="service-list" id="serviceList"></div>
+        <div class="modal-divider"></div>
         <label class="modal-label">Name</label>
         <input class="modal-input" id="inputName" type="text" placeholder="z.B. Netflix">
 
@@ -76,8 +79,22 @@
         <input class="modal-color" id="inputColor" type="color" value="#6c5ce7">
       </div>
       <div class="modal-footer">
-        <button class="modal-btn modal-btn-cancel" id="modalCancel">Abbrechen</button>
         <button class="modal-btn modal-btn-save" id="modalSave">Hinzufügen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shortcuts Overlay -->
+  <div class="shortcuts-overlay" id="shortcutsOverlay">
+    <div class="shortcuts-panel">
+      <div class="shortcuts-header">Tastaturkürzel</div>
+      <div class="shortcuts-list">
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Nächster Dienst</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Umsch</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Vorheriger Dienst</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>P</kbd></span><span class="shortcut-desc">Bild-in-Bild umschalten</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>F11</kbd></span><span class="shortcut-desc">Vollbild umschalten</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span class="shortcut-desc">Diese Übersicht</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Escape</kbd></span><span class="shortcut-desc">Modal / Overlay schließen</span></div>
       </div>
     </div>
   </div>
