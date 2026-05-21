@@ -619,6 +619,46 @@ body {
   text-align: right;
 }
 
+/* Welcome-screen shortcuts hint */
+.welcome-shortcuts {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: rgba(10,10,15,0.3);
+  backdrop-filter: blur(6px);
+  padding: 8px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.ws-row {
+  font-size: 11px;
+  color: rgba(240,240,245,0.25);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ws-row kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 500;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 3px;
+  color: rgba(240,240,245,0.3);
+  line-height: 1.3;
+}
+
 /* Version tag (bottom-left) */
 .version-tag {
   position: absolute;
