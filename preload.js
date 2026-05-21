@@ -20,4 +20,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('services-changed', handler);
     return () => ipcRenderer.removeListener('services-changed', handler);
   },
+  onWebviewKeydown: (cb) => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('webview-keydown', handler);
+    return () => ipcRenderer.removeListener('webview-keydown', handler);
+  },
 });

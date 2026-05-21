@@ -261,55 +261,68 @@ inputIcon.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') saveService();
 });
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-  // Escape always works (closing overlays / go back)
-  if (e.key === 'Escape') {
+// Keyboard shortcut handler (shared for document + webview forwarding)
+function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
+  if (key === 'Escape') {
     if (shortcutsOverlay.classList.contains('open')) {
       shortcutsOverlay.classList.remove('open');
-      e.preventDefault();
-      return;
+      return true;
     }
     if (modalOverlay.classList.contains('open')) {
       closeModal();
-      e.preventDefault();
-      return;
+      return true;
     }
-    return;
+    return true;
   }
 
-  // Ignore other shortcuts when typing in inputs
-  if (e.target.tagName === 'INPUT') return;
-
-  // Shortcuts overlay (?)
-  if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+  if (key === '?' && !ctrlKey && !metaKey) {
     toggleShortcuts();
-    return;
+    return true;
   }
 
-  // F11: fullscreen
-  if (e.key === 'F11') {
-    e.preventDefault();
+  if (key === 'F11') {
     window.electronAPI.toggleFullscreen();
-    return;
+    return true;
   }
 
-  // Ctrl+Tab / Ctrl+Shift+Tab: next/prev service
-  if (e.ctrlKey && e.key === 'Tab') {
-    e.preventDefault();
-    navigateRelative(e.shiftKey ? -1 : 1);
-    return;
+  if (ctrlKey && key === 'Tab') {
+    navigateRelative(shiftKey ? -1 : 1);
+    return true;
   }
 
-  // Ctrl+P: toggle PiP
-  if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
-    e.preventDefault();
+  if (ctrlKey && (key === 'p' || key === 'P')) {
     const url = webview.getURL();
     if (url && url !== 'about:blank') {
       window.electronAPI.togglePip(url);
     }
+    return true;
+  }
+
+  return false;
+}
+
+document.addEventListener('keydown', (e) => {
+  // Skip when typing in inputs (except Escape which is handled by webview forward)
+  if (e.target.tagName === 'INPUT') {
+    if (e.key === 'Escape') {
+      if (shortcutsOverlay.classList.contains('open')) {
+        shortcutsOverlay.classList.remove('open');
+        e.preventDefault();
+      } else if (modalOverlay.classList.contains('open')) {
+        closeModal();
+        e.preventDefault();
+      }
+    }
     return;
   }
+  if (handleKeyShortcut(e.key, e.ctrlKey, e.shiftKey, e.metaKey)) {
+    e.preventDefault();
+  }
+});
+
+// Forwarded shortcuts from webview (via main process)
+const cleanupShortcuts = window.electronAPI.onWebviewKeydown((data) => {
+  handleKeyShortcut(data.key, data.ctrlKey, data.shiftKey, data.metaKey);
 });
 
 // Version anzeigen

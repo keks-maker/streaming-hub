@@ -165,6 +165,10 @@ ipcMain.on('toggle-pip', (_e, url) => {
   mainWindow.webContents.send('pip-state', true);
 });
 
+ipcMain.on('webview-keydown', (_e, data) => {
+  mainWindow?.webContents.send('webview-keydown', data);
+});
+
 ipcMain.handle('get-app-version', () => app.getVersion());
 
 ipcMain.on('toggle-fullscreen', () => {

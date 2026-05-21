@@ -76,3 +76,20 @@ script.textContent = `
 document.documentElement.appendChild(script);
 
 // No electronAPI exposed to webview content (security)
+
+// Forward keyboard shortcuts to main window (via main process)
+document.addEventListener('keydown', (e) => {
+  if (
+    e.key === 'Escape' ||
+    e.key === 'F11' ||
+    e.key === '?' ||
+    (e.ctrlKey && (e.key === 'Tab' || e.key === 'p' || e.key === 'P'))
+  ) {
+    ipcRenderer.send('webview-keydown', {
+      key: e.key,
+      ctrlKey: e.ctrlKey,
+      shiftKey: e.shiftKey,
+      metaKey: e.metaKey,
+    });
+  }
+});
