@@ -167,12 +167,7 @@ function saveService() {
   if (icon) svc.icon = icon;
 
   window.electronAPI.addService(svc).then(() => {
-    renderServiceList();
-    inputName.value = '';
-    inputUrl.value = '';
-    inputIcon.value = '';
-    inputColor.value = '#6c5ce7';
-    inputName.focus();
+    closeModal();
   });
 }
 

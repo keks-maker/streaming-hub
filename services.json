@@ -1,8 +1,50 @@
 [
-  { "id": "netflix", "name": "Netflix", "url": "https://www.netflix.com", "icon": "netflix.png", "color": "#e50914" },
-  { "id": "youtube", "name": "YouTube", "url": "https://www.youtube.com", "icon": "youtube.png", "color": "#ff0000" },
-  { "id": "disney", "name": "Disney+", "url": "https://www.disneyplus.com", "icon": "disney.png", "color": "#0063cc" },
-  { "id": "prime", "name": "Prime Video", "url": "https://www.primevideo.com", "icon": "prime.png", "color": "#00a8e1" },
-  { "id": "twitch", "name": "Twitch", "url": "https://www.twitch.tv", "icon": "twitch.png", "color": "#9146ff" },
-  { "id": "spotify", "name": "Spotify", "url": "https://open.spotify.com", "icon": "spotify.png", "color": "#1db954" }
+  {
+    "id": "netflix",
+    "name": "Netflix",
+    "url": "https://www.netflix.com",
+    "icon": "netflix.png",
+    "color": "#e50914"
+  },
+  {
+    "id": "youtube",
+    "name": "YouTube",
+    "url": "https://www.youtube.com",
+    "icon": "youtube.png",
+    "color": "#ff0000"
+  },
+  {
+    "id": "disney",
+    "name": "Disney+",
+    "url": "https://www.disneyplus.com",
+    "icon": "disney.png",
+    "color": "#0063cc"
+  },
+  {
+    "id": "prime",
+    "name": "Prime Video",
+    "url": "https://www.primevideo.com",
+    "icon": "prime.png",
+    "color": "#00a8e1"
+  },
+  {
+    "id": "twitch",
+    "name": "Twitch",
+    "url": "https://www.twitch.tv",
+    "icon": "twitch.png",
+    "color": "#9146ff"
+  },
+  {
+    "id": "spotify",
+    "name": "Spotify",
+    "url": "https://open.spotify.com",
+    "icon": "spotify.png",
+    "color": "#1db954"
+  },
+  {
+    "name": "youtube1",
+    "url": "www.youtube.com",
+    "color": "#6c5ce7",
+    "id": "youtube1"
+  }
 ]
