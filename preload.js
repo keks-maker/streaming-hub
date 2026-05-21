@@ -10,4 +10,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('pip-state', pipCb);
     return () => ipcRenderer.removeListener('pip-state', pipCb);
   },
+  getServices: () => ipcRenderer.invoke('get-services'),
+  addService: (svc) => ipcRenderer.invoke('add-service', svc),
+  removeService: (id) => ipcRenderer.invoke('remove-service', id),
+  onServicesChanged: (cb) => {
+    const handler = (_e, services) => cb(services);
+    ipcRenderer.on('services-changed', handler);
+    return () => ipcRenderer.removeListener('services-changed', handler);
+  },
 });

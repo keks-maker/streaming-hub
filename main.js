@@ -5,6 +5,7 @@ const os = require('os');
 
 let mainWindow;
 let pipWindow = null;
+const servicesPath = path.join(__dirname, 'services.json');
 
 function findChromeWidevine() {
   const platform = process.platform;
@@ -75,6 +76,24 @@ app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedDolbyVision');
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaRouterProvider');
 
+function loadServices() {
+  try {
+    const raw = fs.readFileSync(servicesPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function saveServices(services) {
+  fs.writeFileSync(servicesPath, JSON.stringify(services, null, 2), 'utf-8');
+}
+
+function broadcastServices() {
+  const services = loadServices();
+  mainWindow?.webContents.send('services-changed', services);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -144,4 +163,25 @@ ipcMain.on('toggle-pip', (_e, url) => {
   });
 
   mainWindow.webContents.send('pip-state', true);
+});
+
+ipcMain.handle('get-services', () => loadServices());
+
+ipcMain.handle('add-service', (_e, service) => {
+  const services = loadServices();
+  service.id = service.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  if (services.find(s => s.id === service.id)) {
+    service.id = service.id + '-' + Date.now();
+  }
+  services.push(service);
+  saveServices(services);
+  broadcastServices();
+  return service;
+});
+
+ipcMain.handle('remove-service', (_e, id) => {
+  let services = loadServices();
+  services = services.filter(s => s.id !== id);
+  saveServices(services);
+  broadcastServices();
 });

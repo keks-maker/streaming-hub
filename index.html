@@ -8,46 +8,18 @@
 <body>
   <div class="overlay-bar" id="overlayBar">
     <span class="overlay-location" id="overlayLocation">Startseite</span>
-    <nav class="overlay-nav">
-      <button class="nav-item" data-provider="netflix" data-url="https://www.netflix.com">
-        <span class="nav-icon netflix">
-          <img src="assets/icons/netflix.png" alt="Netflix">
-        </span>
-      </button>
-      <button class="nav-item" data-provider="youtube" data-url="https://www.youtube.com">
-        <span class="nav-icon youtube">
-          <img src="assets/icons/youtube.png" alt="YouTube">
-        </span>
-      </button>
-      <button class="nav-item" data-provider="disney" data-url="https://www.disneyplus.com">
-        <span class="nav-icon disney">
-          <img src="assets/icons/disney.png" alt="Disney+">
-        </span>
-      </button>
-      <button class="nav-item" data-provider="prime" data-url="https://www.primevideo.com">
-        <span class="nav-icon prime">
-          <img src="assets/icons/prime.png" alt="Prime Video">
-        </span>
-      </button>
-      <button class="nav-item" data-provider="twitch" data-url="https://www.twitch.tv">
-        <span class="nav-icon twitch">
-          <img src="assets/icons/twitch.png" alt="Twitch">
-        </span>
-      </button>
-      <button class="nav-item" data-provider="spotify" data-url="https://open.spotify.com">
-        <span class="nav-icon spotify">
-          <img src="assets/icons/spotify.png" alt="Spotify">
-        </span>
-      </button>
+    <nav class="overlay-nav" id="overlayNav">
     </nav>
-    <button class="pip-btn" id="pipBtn" title="Bild-in-Bild">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2"/>
-        <rect x="11" y="9" width="9" height="6" rx="1"/>
-      </svg>
-    </button>
+    <div class="overlay-actions">
+      <button class="add-btn" id="addBtn" title="Dienst hinzufügen">+</button>
+      <button class="pip-btn" id="pipBtn" title="Bild-in-Bild">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <rect x="11" y="9" width="9" height="6" rx="1"/>
+        </svg>
+      </button>
+    </div>
   </div>
-
 
   <div class="content-area" id="contentArea">
     <webview id="contentView" class="content-view"
@@ -81,6 +53,32 @@
       </div>
 
       <p class="welcome-text">Hier kannst du einen Streamingdienst<br>mit der Maus ausw&auml;hlen.</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="addModal">
+      <div class="modal-header">
+        <span class="modal-title">Streamingdienst hinzufügen</span>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label">Name</label>
+        <input class="modal-input" id="inputName" type="text" placeholder="z.B. Netflix">
+
+        <label class="modal-label">URL</label>
+        <input class="modal-input" id="inputUrl" type="url" placeholder="z.B. https://www.netflix.com">
+
+        <label class="modal-label">Icon (URL oder Dateiname)</label>
+        <input class="modal-input" id="inputIcon" type="text" placeholder="z.B. netflix.png oder https://…">
+
+        <label class="modal-label">Akzentfarbe</label>
+        <input class="modal-color" id="inputColor" type="color" value="#6c5ce7">
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" id="modalCancel">Abbrechen</button>
+        <button class="modal-btn modal-btn-save" id="modalSave">Hinzufügen</button>
+      </div>
     </div>
   </div>
 

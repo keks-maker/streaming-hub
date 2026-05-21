@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 (2026-05-21)
+- Feature: Dienste aus services.json (external config, nicht mehr hartcodiert)
+- Feature: Eingabemaske zum Hinzufügen eigener Streamingdienste (Name, URL, Icon, Farbe)
+- Feature: Dynamische Nav-Generierung aus services.json
+- Feature: IPC-Handler für CRUD auf services.json
+- Fix: Dynamische Styles für Dienste-Farben im Document-Head (nicht in Buttons)
+
 ## 0.2.2 (2026-05-21)
 - Fix: `process.platform` in renderer.js per contextBridge exposed (Runtime-Error behoben)
 - Fix: `--no-sandbox` nur noch aktiv wenn Chrome-Widevine-Fallback verwendet wird
