@@ -5,6 +5,11 @@ let pipCb = null;
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
   togglePip: (url) => ipcRenderer.send('toggle-pip', url),
+  onMediaKey: (cb) => {
+    const handler = (_e, action) => cb(action);
+    ipcRenderer.on('media-key', handler);
+    return () => ipcRenderer.removeListener('media-key', handler);
+  },
   onPipState: (cb) => {
     pipCb = (_e, state) => cb(state);
     ipcRenderer.on('pip-state', pipCb);

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, components, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -74,7 +74,7 @@ if (chromeWidevine) {
 app.commandLine.appendSwitch('disable-service-worker-autostart');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedDolbyVision');
-app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaRouterProvider');
+app.commandLine.appendSwitch('disable-features', 'MediaRouterProvider');
 
 function loadServices() {
   try {
@@ -112,6 +112,21 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
   mainWindow.setMenuBarVisibility(false);
+
+  // Global media keys (Play/Pause, Next, Previous, Stop)
+  const mediaActions = [
+    ['MediaPlayPause', 'playpause'],
+    ['MediaNextTrack', 'nexttrack'],
+    ['MediaPreviousTrack', 'previoustrack'],
+    ['MediaStop', 'stop'],
+  ];
+  for (const [key, action] of mediaActions) {
+    try {
+      globalShortcut.register(key, () => {
+        mainWindow?.webContents.send('media-key', action);
+      });
+    } catch (_) { /* key not available on this platform */ }
+  }
 }
 
 app.whenReady().then(async () => {
@@ -125,6 +140,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => globalShortcut.unregisterAll());
 
 ipcMain.on('toggle-pip', (_e, url) => {
   if (pipWindow) {

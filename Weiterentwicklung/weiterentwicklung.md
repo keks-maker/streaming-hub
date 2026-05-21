@@ -13,7 +13,7 @@ Der Nutzer kann eigene Dienste über eine UI-Maske hinzufügen/bearbeiten/lösch
 - Strg+P – PiP togglen
 - Escape – Vollbild verlassen
 
-### 3. Media Session API + globale Medientasten
+### 3. Media Session API + globale Medientasten ✅
 Systemweit Pause/Play über MPRIS (Linux), Touch Bar (macOS) oder Medien-Tasten.
 
 ### 4. Auto-Update (electron-updater)

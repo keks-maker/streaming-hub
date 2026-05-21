@@ -335,6 +335,20 @@ const cleanupShortcuts = window.electronAPI.onWebviewKeydown((data) => {
   handleKeyShortcut(data.key, data.ctrlKey, data.shiftKey, data.metaKey);
 });
 
+// Global media keys → webview Media Session
+window.electronAPI.onMediaKey((action) => {
+  const cmds = {
+    playpause: 'navigator.mediaSession.playPause()',
+    nexttrack: 'navigator.mediaSession.nextTrack()',
+    previoustrack: 'navigator.mediaSession.previousTrack()',
+    stop: 'navigator.mediaSession.stop()',
+  };
+  const cmd = cmds[action];
+  if (cmd && webviewReady && webview.getURL() !== 'about:blank') {
+    webview.executeJavaScript(cmd).catch(() => {});
+  }
+});
+
 // Version anzeigen
 window.electronAPI.getAppVersion().then((v) => {
   document.getElementById('versionTag').textContent = 'v' + v;
