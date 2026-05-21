@@ -94,10 +94,11 @@ function navigateTo(svc) {
   if (btn) btn.classList.add('active');
   welcomeScreen.style.display = 'none';
   overlayLocation.textContent = svc.name;
+  const targetUrl = normalizeUrl(svc.url);
   if (webviewReady) {
-    webview.loadURL(svc.url);
+    try { webview.loadURL(targetUrl); } catch (e) { console.warn('loadURL failed:', targetUrl, e); }
   } else {
-    pendingNav = svc.url;
+    pendingNav = targetUrl;
   }
 }
 
@@ -155,9 +156,16 @@ function closeModal() {
   modalOverlay.classList.remove('open');
 }
 
+function normalizeUrl(u) {
+  u = u.trim();
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  return u;
+}
+
 function saveService() {
   const name = inputName.value.trim();
-  const url = inputUrl.value.trim();
+  const url = normalizeUrl(inputUrl.value);
   const icon = inputIcon.value.trim();
   const color = inputColor.value;
 

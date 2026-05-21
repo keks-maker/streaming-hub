@@ -42,9 +42,9 @@
     "color": "#1db954"
   },
   {
-    "name": "youtube1",
-    "url": "www.youtube.com",
-    "color": "#6c5ce7",
-    "id": "youtube1"
+    "name": "YouTube DE",
+    "url": "https://www.youtube.de",
+    "color": "#ff0000",
+    "id": "youtube-de"
   }
 ]
