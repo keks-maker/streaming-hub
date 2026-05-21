@@ -8,6 +8,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const pipBtn = document.getElementById('pipBtn');
   const webview = document.getElementById('contentView');
 
+  // Generate welcome-screen background logos
+  const bg = document.getElementById('welcomeBg');
+  const icons = ['netflix','youtube','disney','prime','twitch','spotify'];
+  if (bg) {
+    for (let i = 0; i < 20; i++) {
+      const img = document.createElement('img');
+      img.className = 'bg-logo';
+      img.src = `assets/icons/${icons[i % icons.length]}.png`;
+      img.alt = '';
+      img.style.cssText = [
+        `top:${(Math.random() * 90 + 2).toFixed(0)}%`,
+        `left:${(Math.random() * 88 + 2).toFixed(0)}%`,
+        `rotate:${(Math.random() * 70 - 35).toFixed(0)}deg`,
+        `scale:${(Math.random() * 0.8 + 1).toFixed(1)}`,
+        `opacity:${(Math.random() * 0.1 + 0.18).toFixed(2)}`,
+      ].join(';');
+      bg.appendChild(img);
+    }
+  }
+
   const providerNames = {
     netflix: 'Netflix',
     youtube: 'YouTube',
@@ -18,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const uaMap = { linux: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36', darwin: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36', win32: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36' };
-  const chromeUA = uaMap[process.platform] || uaMap.linux;
+  const chromeUA = uaMap[window.electronAPI.platform] || uaMap.linux;
 
   let webviewReady = false;
   let pendingNav = null;
@@ -54,7 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
     `).catch(() => {});
   });
 
-  webview.addEventListener('did-navigate', () => {});
+  webview.addEventListener('did-navigate', () => {
+    const url = webview.getURL();
+    for (const [key, name] of Object.entries(providerNames)) {
+      if (url.includes(key)) { overlayLocation.textContent = name; break; }
+    }
+  });
 
   webview.addEventListener('permissionrequest', (e) => {
     if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {

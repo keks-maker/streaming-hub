@@ -16,6 +16,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 ## Funktionen
 
 - **Dienst-Navigation** – Icon-Leiste zum schnellen Wechseln; erscheint bei Hover auf der kompakten Leiste
+- **Picture-in-Picture** – Schwebe-Fenster für paralleles Streamen
 - **Browser-Navigation** – Zurück, Vorwärts und Neu-laden über Webview-API
 - **Compact-Overlay** – Leiste standardmäßig 24px, expandiert bei Hover auf 64px
 - **Draggable Titlebar** – Fenster per Leiste verschiebbar
@@ -56,14 +57,15 @@ npm start
 Streaming-Hub/
 ├── main.js              # Electron-Hauptprozess (Fenster, DRM)
 ├── preload.js           # Preload für Hauptfenster
-├── preload-content.js   # Preload für Webview-Inhalte
+├── preload-content.js   # Preload für Webview-Inhalte (Anti-Detection)
 ├── renderer.js          # UI-Logik, Webview-Steuerung
 ├── index.html           # Haupt-UI
+├── pip.html             # Picture-in-Picture-Fenster
 ├── styles.css           # Dark-UI, Animationen
-├── start.sh             # Startskript
+├── start.sh             # Startskript (Linux/macOS)
+├── start.cmd            # Startskript (Windows)
 ├── package.json         # Abhängigkeiten
 ├── CHANGELOG.md         # Versionshistorie
-├── setup-castlabs.js    # Castlabs-Einrichtungshilfe
 └── assets/
     ├── icons/           # Dienst-Icons
     └── icon.svg         # App-Icon

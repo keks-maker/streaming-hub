@@ -64,9 +64,11 @@ if (chromeWidevine) {
   }
 }
 
-app.commandLine.appendSwitch('no-sandbox');
-if (process.platform === 'linux') {
-  app.commandLine.appendSwitch('no-zygote');
+if (chromeWidevine) {
+  app.commandLine.appendSwitch('no-sandbox');
+  if (process.platform === 'linux') {
+    app.commandLine.appendSwitch('no-zygote');
+  }
 }
 app.commandLine.appendSwitch('disable-service-worker-autostart');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
@@ -104,9 +106,6 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => app.quit());
-
-ipcMain.on('minimize-window', () => mainWindow?.minimize());
-ipcMain.on('close-window', () => mainWindow?.close());
 
 ipcMain.on('toggle-pip', (_e, url) => {
   if (pipWindow) {

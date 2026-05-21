@@ -33,23 +33,18 @@ script.textContent = `
   navigator.languages = ['de-DE', 'de', 'en-US', 'en'];
 
   // Chrome-like plugins
-  var pluginData = [
+  const pluginData = [
     { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format', suffixes: 'pdf' },
     { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '', suffixes: 'pdf' },
     { name: 'Native Client', filename: 'internal-nacl-plugin', description: '', suffixes: '' },
   ];
-  function makePlugin(arr, idx) {
-    return arr[idx];
-  }
-  var plugins = [];
-  pluginData.forEach(function(p, i) {
-    plugins[i] = p;
-  });
+  const plugins = [];
+  pluginData.forEach(function(p) { plugins.push(p); });
   Object.defineProperty(navigator, 'plugins', {
     get: function() {
-      var p = [].concat(plugins);
+      const p = [].concat(plugins);
       p.item = function(i) { return p[i] || null; };
-      p.namedItem = function(n) { for (var j = 0; j < p.length; j++) { if (p[j].name === n) return p[j]; } return null; };
+      p.namedItem = function(n) { for (let j = 0; j < p.length; j++) { if (p[j].name === n) return p[j]; } return null; };
       p.refresh = function() {};
       return p;
     }
@@ -80,7 +75,4 @@ script.textContent = `
 `;
 document.documentElement.appendChild(script);
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  minimizeWindow: () => ipcRenderer.send('minimize-window'),
-  closeWindow: () => ipcRenderer.send('close-window'),
-});
+// No electronAPI exposed to webview content (security)

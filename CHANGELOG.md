@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.2 (2026-05-21)
+- Fix: `process.platform` in renderer.js per contextBridge exposed (Runtime-Error behoben)
+- Fix: `--no-sandbox` nur noch aktiv wenn Chrome-Widevine-Fallback verwendet wird
+- Fix: `did-navigate`-Listener aktualisiert jetzt die Standort-Anzeige
+- Fix: `makePlugin`-Funktion entfernt (dead code)
+- Fix: `var` → `let/const` in preload-content.js
+- Fix: Welcome-Screen-Logos werden jetzt dynamisch generiert (keine Inline-Styles mehr)
+- Fix: Dead `.bg-logo:hover`-CSS-Regel entfernt (blockiert durch `pointer-events: none`)
+- Fix: `closeWindow`/`minimizeWindow`-IPC entfernt (nicht verwendet + Sicherheit)
+- Fix: `ipcRenderer.on`-Listener mit Cleanup-Funktion
+- Fix: Hard-coded Node.js-Pfade in start.sh entfernt
+- Fix: Doppelte CSS-Werte in pip.html konsolidiert (nutzt jetzt styles.css-Variablen)
+- Fix: `npx electron .` → `npm start` in start.sh/start.cmd
+- Fix: README.md aktualisiert (Struktur + PiP-Feature)
+- Version bump auf 0.2.2
+
 ## 0.2.1 (2026-05-19)
 - Cross-Plattform: macOS & Windows Build-Targets in package.json hinzugefügt
 - Cross-Plattform: Widevine-Pfad (main.js) sucht jetzt automatisch auf Linux, macOS und Windows

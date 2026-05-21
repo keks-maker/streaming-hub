@@ -254,10 +254,6 @@ body {
   66% { transform: translateY(4px); }
 }
 
-.bg-logo:hover {
-  opacity: .2 !important;
-  filter: grayscale(0) blur(0);
-}
 
 .welcome-arrow-wrap {
   position: absolute;
