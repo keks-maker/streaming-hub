@@ -165,6 +165,8 @@ ipcMain.on('toggle-pip', (_e, url) => {
   mainWindow.webContents.send('pip-state', true);
 });
 
+ipcMain.handle('get-app-version', () => app.getVersion());
+
 ipcMain.on('toggle-fullscreen', () => {
   mainWindow?.setFullScreen(!mainWindow.isFullScreen());
 });

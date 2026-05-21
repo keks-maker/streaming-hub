@@ -312,6 +312,11 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Version anzeigen
+window.electronAPI.getAppVersion().then((v) => {
+  document.getElementById('versionTag').textContent = 'v' + v;
+});
+
 // Services laden
 window.electronAPI.getServices().then((svcs) => {
   services = svcs;
