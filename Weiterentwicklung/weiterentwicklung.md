@@ -30,9 +30,9 @@ Zwei Webviews nebeneinander – z.B. Twitch + YouTube gleichzeitig.
 ### 7. Such-/Filterleiste
 Schnell einen Dienst finden, wenn die Liste wächst. Per Strg+K oder Strg+F.
 
-### 8. History / Favoriten
-- Letzte besuchte URLs merken (localStorage oder JSON-Datei)
-- Dienste als Favoriten markieren
+### 8. History / Favoriten ✅
+- Zuletzt abgespielte Inhalte (Titel, Dienst, Datum/Uhrzeit) in `history.json`
+- Uhr-Icon in Overlay-Bar → mittiges Overlay
 
 ## 🛠 Technisch
 

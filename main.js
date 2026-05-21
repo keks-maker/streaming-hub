@@ -6,6 +6,7 @@ const os = require('os');
 let mainWindow;
 let pipWindow = null;
 const servicesPath = path.join(__dirname, 'services.json');
+const historyPath = path.join(__dirname, 'history.json');
 
 function findChromeWidevine() {
   const platform = process.platform;
@@ -92,6 +93,19 @@ function saveServices(services) {
 function broadcastServices() {
   const services = loadServices();
   mainWindow?.webContents.send('services-changed', services);
+}
+
+function loadHistory() {
+  try {
+    const raw = fs.readFileSync(historyPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(history) {
+  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
 }
 
 function createWindow() {
@@ -210,4 +224,26 @@ ipcMain.handle('remove-service', (_e, id) => {
   services = services.filter(s => s.id !== id);
   saveServices(services);
   broadcastServices();
+});
+
+// History
+ipcMain.handle('get-history', () => loadHistory());
+
+ipcMain.handle('save-history-entry', (_e, entry) => {
+  let history = loadHistory();
+  const idx = history.findIndex(e => e.title === entry.title && e.serviceKey === entry.serviceKey);
+  if (idx !== -1) {
+    history[idx].timestamp = new Date().toISOString();
+  } else {
+    entry.timestamp = new Date().toISOString();
+    history.unshift(entry);
+    if (history.length > 20) history = history.slice(0, 20);
+  }
+  saveHistory(history);
+  return history;
+});
+
+ipcMain.handle('clear-history', () => {
+  saveHistory([]);
+  return [];
 });

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.6 (2026-05-21)
+- Feature: Verlauf der zuletzt abgespielten Inhalte (Titel, Dienst, Datum/Uhrzeit)
+- Feature: Uhr-Icon in der Overlay-Bar öffnet mittiges History-Overlay
+- Feature: `Strg+H` – Verlauf öffnen/schließen
+- Feature: `page-title-updated`-Event speichert Titel automatisch in `history.json`
+- Fix: Escape schließt jetzt auch History-Overlay
+- Version bump auf 0.2.6
+
 ## 0.2.5 (2026-05-21)
 - Feature: Media Session API – globale Medientasten (Play/Pause, Next, Previous, Stop)
 - Feature: Tastaturkürzel dauerhaft auf dem Startbildschirm sichtbar

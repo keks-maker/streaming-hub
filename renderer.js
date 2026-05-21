@@ -19,6 +19,11 @@ const inputUrl = document.getElementById('inputUrl');
 const inputIcon = document.getElementById('inputIcon');
 const inputColor = document.getElementById('inputColor');
 const shortcutsOverlay = document.getElementById('shortcutsOverlay');
+const historyOverlay = document.getElementById('historyOverlay');
+const historyBtn = document.getElementById('historyBtn');
+const historyList = document.getElementById('historyList');
+const historyClose = document.getElementById('historyClose');
+const historyClear = document.getElementById('historyClear');
 
 const uaMap = {
   linux: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
@@ -192,6 +197,72 @@ function toggleShortcuts() {
   if (!isOpen) shortcutsOverlay.classList.remove('open');
 }
 
+// History overlay
+function formatTS(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderHistory(entries) {
+  historyList.innerHTML = '';
+  if (!entries || entries.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">Noch keine Einträge.</div>';
+    return;
+  }
+  for (const e of entries) {
+    const svc = services.find(s => s.id === e.serviceKey);
+    const color = svc ? svc.color : '#6c5ce7';
+    const svcName = svc ? svc.name : e.serviceName || e.serviceKey;
+
+    const row = document.createElement('div');
+    row.className = 'history-entry';
+
+    const dot = document.createElement('span');
+    dot.className = 'history-entry-dot';
+    dot.style.background = color;
+    row.appendChild(dot);
+
+    const body = document.createElement('div');
+    body.className = 'history-entry-body';
+    body.innerHTML = `
+      <div class="history-entry-title">${escapeHtml(e.title)}</div>
+      <div class="history-entry-meta">${escapeHtml(svcName)} · ${formatTS(e.timestamp)}</div>
+    `;
+    row.appendChild(body);
+
+    row.addEventListener('click', () => {
+      closeHistory();
+      if (svc) navigateTo(svc);
+    });
+
+    historyList.appendChild(row);
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function openHistory() {
+  window.electronAPI.getHistory().then(renderHistory);
+  historyOverlay.classList.add('open');
+}
+
+function closeHistory() {
+  historyOverlay.classList.remove('open');
+}
+
+function toggleHistory() {
+  if (historyOverlay.classList.contains('open')) {
+    closeHistory();
+  } else {
+    openHistory();
+  }
+}
+
 // Webview events
 webview.addEventListener('did-attach', () => {
   webviewReady = true;
@@ -242,6 +313,17 @@ webview.addEventListener('permissionrequest', (e) => {
   }
 });
 
+// page-title-updated → save to history
+webview.addEventListener('page-title-updated', (e) => {
+  const title = (e.title || '').trim();
+  if (!title) return;
+  const svc = getCurrentSvc();
+  if (!svc) return;
+  const ignore = ['about:blank', 'Startseite', svc.name, 'Streaming Hub'];
+  if (ignore.includes(title)) return;
+  window.electronAPI.saveHistoryEntry({ title, serviceKey: svc.id, serviceName: svc.name });
+});
+
 // Buttons
 pipBtn.addEventListener('click', () => {
   const url = webview.getURL();
@@ -252,6 +334,15 @@ pipBtn.addEventListener('click', () => {
 window.electronAPI.onPipState((state) => {
   pipActive = state;
   pipBtn.classList.toggle('active', state);
+});
+
+historyBtn.addEventListener('click', toggleHistory);
+historyClose.addEventListener('click', closeHistory);
+historyOverlay.addEventListener('click', (e) => {
+  if (e.target === historyOverlay) closeHistory();
+});
+historyClear.addEventListener('click', () => {
+  window.electronAPI.clearHistory().then(renderHistory);
 });
 
 addBtn.addEventListener('click', openModal);
@@ -282,6 +373,10 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
       closeModal();
       return true;
     }
+    if (historyOverlay.classList.contains('open')) {
+      closeHistory();
+      return true;
+    }
     return true;
   }
 
@@ -308,6 +403,11 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
     return true;
   }
 
+  if (ctrlKey && (key === 'h' || key === 'H')) {
+    toggleHistory();
+    return true;
+  }
+
   return false;
 }
 
@@ -320,6 +420,9 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
       } else if (modalOverlay.classList.contains('open')) {
         closeModal();
+        e.preventDefault();
+      } else if (historyOverlay.classList.contains('open')) {
+        closeHistory();
         e.preventDefault();
       }
     }

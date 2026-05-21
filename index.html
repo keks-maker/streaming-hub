@@ -11,6 +11,12 @@
     <nav class="overlay-nav" id="overlayNav">
     </nav>
     <div class="overlay-actions">
+      <button class="add-btn" id="historyBtn" title="Verlauf (Strg+H)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <polyline points="12,7 12,12 16,14"/>
+        </svg>
+      </button>
       <button class="add-btn" id="addBtn" title="Dienste verwalten">+</button>
       <button class="pip-btn" id="pipBtn" title="Bild-in-Bild (Strg+P)">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -55,6 +61,7 @@
       <p class="welcome-text">Hier kannst du einen Streamingdienst<br>mit der Maus ausw&auml;hlen.</p>
       <div class="welcome-shortcuts">
         <span class="ws-row"><kbd>Strg</kbd>+<kbd>Tab</kbd> nächster Dienst</span>
+        <span class="ws-row"><kbd>Strg</kbd>+<kbd>H</kbd> Verlauf</span>
         <span class="ws-row"><kbd>Strg</kbd>+<kbd>P</kbd> Bild-in-Bild</span>
         <span class="ws-row"><kbd>F11</kbd> Vollbild</span>
         <span class="ws-row"><kbd>?</kbd> alle Kürzel</span>
@@ -98,10 +105,27 @@
       <div class="shortcuts-list">
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Nächster Dienst</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Umsch</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Vorheriger Dienst</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>H</kbd></span><span class="shortcut-desc">Verlauf anzeigen</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>P</kbd></span><span class="shortcut-desc">Bild-in-Bild umschalten</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>F11</kbd></span><span class="shortcut-desc">Vollbild umschalten</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span class="shortcut-desc">Diese Übersicht</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Escape</kbd></span><span class="shortcut-desc">Modal / Overlay schließen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Overlay -->
+  <div class="history-overlay" id="historyOverlay">
+    <div class="history-panel">
+      <div class="history-header">
+        <span>Verlauf</span>
+        <div class="history-header-actions">
+          <button class="history-clear" id="historyClear">Löschen</button>
+          <button class="history-close" id="historyClose">&times;</button>
+        </div>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Noch keine Einträge.</div>
       </div>
     </div>
   </div>
