@@ -40,11 +40,5 @@
     "url": "https://open.spotify.com",
     "icon": "spotify.png",
     "color": "#1db954"
-  },
-  {
-    "name": "YouTube DE",
-    "url": "https://www.youtube.de",
-    "color": "#ff0000",
-    "id": "youtube-de"
   }
 ]

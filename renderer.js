@@ -48,9 +48,16 @@ if (bg) {
 }
 
 function getIconSrc(svc) {
-  return svc.icon && (svc.icon.startsWith('http://') || svc.icon.startsWith('https://'))
-    ? svc.icon
-    : `assets/icons/${svc.icon || 'default.png'}`;
+  if (svc.icon) {
+    if (svc.icon.startsWith('http://') || svc.icon.startsWith('https://')) return svc.icon;
+    return `assets/icons/${svc.icon}`;
+  }
+  try {
+    const domain = new URL(svc.url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  } catch {
+    return 'assets/icons/default.png';
+  }
 }
 
 function renderNav() {
