@@ -101,6 +101,7 @@ function renderNav() {
 
 function navigateTo(svc) {
   currentProvider = svc.id;
+  lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const btn = nav.querySelector(`.nav-item[data-provider="${svc.id}"]`);
   if (btn) btn.classList.add('active');
@@ -292,6 +293,7 @@ webview.addEventListener('did-finish-load', () => {
     ::-webkit-scrollbar-corner { background: transparent; }
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
   `).catch(() => {});
+  scheduleMediaCheck();
 });
 
 webview.addEventListener('did-navigate', () => {
@@ -313,14 +315,27 @@ webview.addEventListener('permissionrequest', (e) => {
   }
 });
 
-// Media Session title → save to history (from preload-content.js injection)
-window.electronAPI.onMediaTitleChanged((data) => {
-  const title = (data.title || '').trim();
-  if (!title) return;
+// Media Session title → save to history (poll via executeJavaScript)
+let lastMediaTitle = '';
+function pollMediaTitle() {
   const svc = getCurrentSvc();
   if (!svc) return;
-  window.electronAPI.saveHistoryEntry({ title, serviceKey: svc.id, serviceName: svc.name });
-});
+  webview.executeJavaScript('navigator.mediaSession?.metadata?.title || ""')
+    .then((title) => {
+      if (title && title !== lastMediaTitle) {
+        lastMediaTitle = title;
+        window.electronAPI.saveHistoryEntry({ title, serviceKey: svc.id, serviceName: svc.name });
+      }
+    })
+    .catch(() => {});
+}
+
+// Quick check after page load (setTimeout to wait for SPA title)
+function scheduleMediaCheck() {
+  setTimeout(pollMediaTitle, 2000);
+}
+
+setInterval(pollMediaTitle, 3000);
 
 // Buttons
 pipBtn.addEventListener('click', () => {

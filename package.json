@@ -1,6 +1,6 @@
 {
   "name": "streaming-hub",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {

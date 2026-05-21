@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.8 (2026-05-21)
+- Fix: History pollt jetzt `navigator.mediaSession?.metadata?.title` via `webview.executeJavaScript` alle 3s (funktioniert mit contextIsolation)
+- Fix: contextBridge-Ansatz verworfen (unbrauchbar mit contextIsolation im webview)
+- preload-content.js: auf Original zurückgesetzt (nur Anti-Detection + Keyboard)
+- Version bump auf 0.2.8
+
 ## 0.2.7 (2026-05-21)
 - Fix: History erfasst jetzt echte Medientitel via `navigator.mediaSession.metadata` (Injection in preload-content.js)
 - Fix: `page-title-updated` entfernt (fing nur Dienstnamen, keine Inhalte)
