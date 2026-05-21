@@ -313,14 +313,12 @@ webview.addEventListener('permissionrequest', (e) => {
   }
 });
 
-// page-title-updated → save to history
-webview.addEventListener('page-title-updated', (e) => {
-  const title = (e.title || '').trim();
+// Media Session title → save to history (from preload-content.js injection)
+window.electronAPI.onMediaTitleChanged((data) => {
+  const title = (data.title || '').trim();
   if (!title) return;
   const svc = getCurrentSvc();
   if (!svc) return;
-  const ignore = ['about:blank', 'Startseite', svc.name, 'Streaming Hub'];
-  if (ignore.includes(title)) return;
   window.electronAPI.saveHistoryEntry({ title, serviceKey: svc.id, serviceName: svc.name });
 });
 

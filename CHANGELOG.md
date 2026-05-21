@@ -1,10 +1,16 @@
 # Changelog
 
+## 0.2.7 (2026-05-21)
+- Fix: History erfasst jetzt echte Medientitel via `navigator.mediaSession.metadata` (Injection in preload-content.js)
+- Fix: `page-title-updated` entfernt (fing nur Dienstnamen, keine Inhalte)
+- Feature: contextBridge `__mediaBridge` für Kommunikation Injected Script → main process
+- Verbesserung: polling alle 2s + bei `play`-Event auf Video-Elementen
+- Version bump auf 0.2.7
+
 ## 0.2.6 (2026-05-21)
 - Feature: Verlauf der zuletzt abgespielten Inhalte (Titel, Dienst, Datum/Uhrzeit)
 - Feature: Uhr-Icon in der Overlay-Bar öffnet mittiges History-Overlay
 - Feature: `Strg+H` – Verlauf öffnen/schließen
-- Feature: `page-title-updated`-Event speichert Titel automatisch in `history.json`
 - Fix: Escape schließt jetzt auch History-Overlay
 - Version bump auf 0.2.6
 

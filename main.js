@@ -199,6 +199,10 @@ ipcMain.on('webview-keydown', (_e, data) => {
   mainWindow?.webContents.send('webview-keydown', data);
 });
 
+ipcMain.on('webview-media-title', (_e, data) => {
+  mainWindow?.webContents.send('media-title-changed', data);
+});
+
 ipcMain.handle('get-app-version', () => app.getVersion());
 
 ipcMain.on('toggle-fullscreen', () => {

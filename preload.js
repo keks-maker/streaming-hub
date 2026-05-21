@@ -30,10 +30,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('webview-keydown', handler);
     return () => ipcRenderer.removeListener('webview-keydown', handler);
   },
-  onTitleChanged: (cb) => {
+  onMediaTitleChanged: (cb) => {
     const handler = (_e, data) => cb(data);
-    ipcRenderer.on('title-changed', handler);
-    return () => ipcRenderer.removeListener('title-changed', handler);
+    ipcRenderer.on('media-title-changed', handler);
+    return () => ipcRenderer.removeListener('media-title-changed', handler);
   },
   saveHistoryEntry: (entry) => ipcRenderer.invoke('save-history-entry', entry),
   getHistory: () => ipcRenderer.invoke('get-history'),

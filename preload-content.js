@@ -71,11 +71,37 @@ script.textContent = `
   if (!window.external) {
     window.external = { AddSearchProvider: function(){}, IsSearchProviderInstalled: function(){} };
   }
+
+  // Media Session monitor – track currently playing content
+  let lastMediaTitle = '';
+  function checkMediaSession() {
+    try {
+      const meta = navigator.mediaSession.metadata;
+      if (meta && meta.title && meta.title !== lastMediaTitle) {
+        lastMediaTitle = meta.title;
+        window.__mediaBridge.onMediaChange(meta.title);
+      }
+    } catch(e) {}
+  }
+
+  setInterval(checkMediaSession, 2000);
+
+  // Re-check when a video starts playing
+  document.addEventListener('play', function(e) {
+    if (e.target.tagName === 'VIDEO') {
+      setTimeout(checkMediaSession, 500);
+    }
+  }, true);
 })();
 `;
 document.documentElement.appendChild(script);
 
-// No electronAPI exposed to webview content (security)
+// Bridge for injected script → main process
+contextBridge.exposeInMainWorld('__mediaBridge', {
+  onMediaChange: (title) => {
+    ipcRenderer.send('webview-media-title', { title });
+  },
+});
 
 // Forward keyboard shortcuts to main window (via main process)
 document.addEventListener('keydown', (e) => {
