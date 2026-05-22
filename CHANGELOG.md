@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4 (2026-05-22)
+- Change: Update-Button blendet sich wie andere Buttons mit aus (opacity/scale)
+- Change: TV-Icon durch PNG-Icon (icons8-retro-tv) ersetzt
+- Fix: Alte `.tv-btn`-CSS-Regeln aus styles.css entfernt (dead code)
+
 ## 0.3.3 (2026-05-22)
 - Change: Update-Button immer sichtbar – grüner Haken (aktuell), roter Pfeil+Puls (Update)
 - Change: TV-Button aus Leiste entfernt → als erstes Icon in der Navigationsleiste (wie Dienste-Icons)

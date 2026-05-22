@@ -391,6 +391,14 @@ body {
   transition: all var(--t);
   flex-shrink: 0;
   -webkit-app-region: no-drag;
+  opacity: 0;
+  transform: scale(0.5);
+  pointer-events: none;
+}
+.overlay-bar:hover .update-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
 }
 .update-btn:hover {
   background: rgba(255,255,255,0.08);
@@ -914,22 +922,6 @@ body {
   border-color: var(--accent);
   --active-glow: rgba(108,92,231,0.6);
   box-shadow: 0 0 12px var(--active-glow);
-}
-
-.overlay-bar:hover .tv-btn {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
-}
-
-.tv-btn:hover {
-  background: rgba(255,255,255,0.08);
-  color: #a78bfa;
-}
-
-.tv-btn.active {
-  color: #a78bfa;
-  background: rgba(167,139,250,0.15);
 }
 
 /* TV Sources Modal */

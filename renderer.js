@@ -123,10 +123,7 @@ function renderNav() {
   tvNavBtn.id = 'tvBtn';
   tvNavBtn.dataset.provider = '__tv__';
   tvNavBtn.innerHTML = `<span class="nav-icon nav-tv-icon">
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="7" width="20" height="14" rx="2"/>
-      <polyline points="8,21 16,21 12,17"/>
-    </svg>
+    <img src="assets/icons/tv-icon.png" alt="TV" draggable="false">
   </span>`;
   tvNavBtn.addEventListener('mousedown', (e) => {
     e.preventDefault();
