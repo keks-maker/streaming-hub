@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 (2026-05-22)
+- New: Backup/Restore für Settings (Dienste, TV-Quellen, Verlauf) – Zahnrad-Button in der Leiste
+- Version bump auf 0.3.2
+
 ## 0.3.1 (2026-05-22)
 - Fix: `start.sh` löst Symlink auf (readlink -f), damit Aufruf über `~/.local/bin/streaming-hub` funktioniert
 - New: Autoupdate-Infrastruktur – updater.js (Git-Fork) + Gitea-API (AppImage)
