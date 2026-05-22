@@ -399,10 +399,17 @@ body {
   opacity: 0.4;
   pointer-events: none;
 }
+.update-btn .path-arrow { display: none; }
+.update-btn .path-check { display: inline; }
+.update-btn.uptodate { color: #22c55e; }
+.update-btn.uptodate .path-arrow { display: none; }
+.update-btn.uptodate .path-check { display: inline; }
 .update-btn.update-available {
   color: #ef4444;
   animation: pulse-red 2s infinite;
 }
+.update-btn.update-available .path-arrow { display: inline; }
+.update-btn.update-available .path-check { display: none; }
 @keyframes pulse-red {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }

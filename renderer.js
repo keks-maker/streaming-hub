@@ -1418,27 +1418,23 @@ let updateAvailableVersion = null;
 let updateChecking = false;
 
 function setUpdateState(state) {
-  updateBtn.classList.remove('update-available');
+  updateBtn.classList.remove('update-available', 'uptodate');
   if (state === 'checking') {
     updateBtn.title = 'Suche…';
-    updateBtn.style.color = '';
     updateBtn.disabled = true;
   } else if (state === 'uptodate') {
     updateBtn.title = 'Update auf dem neuesten Stand';
-    updateBtn.style.color = '#22c55e';
     updateBtn.disabled = false;
+    updateBtn.classList.add('uptodate');
   } else if (state === 'available') {
     updateBtn.title = `Update v${updateAvailableVersion} verfügbar – Klicken zum Installieren`;
-    updateBtn.style.color = '';
     updateBtn.disabled = false;
     updateBtn.classList.add('update-available');
   } else if (state === 'progress') {
     updateBtn.title = `Update wird geladen… ${Math.round(updateBtn._percent || 0)}%`;
-    updateBtn.style.color = '';
     updateBtn.disabled = true;
   } else if (state === 'downloaded') {
     updateBtn.title = 'Update bereit – Neustart…';
-    updateBtn.style.color = '';
     updateBtn.disabled = true;
   }
 }
