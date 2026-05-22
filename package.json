@@ -26,6 +26,10 @@
     "directories": {
       "output": "release"
     },
+    "publish": {
+      "provider": "generic",
+      "url": "http://192.168.4.105:3000/kekskarlo/Streaming-Hub/releases/latest/download"
+    },
     "linux": {
       "target": [
         "AppImage"

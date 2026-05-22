@@ -377,6 +377,38 @@ body {
   background: rgba(108,92,231,0.15);
 }
 
+.update-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  opacity: 0;
+  transform: scale(0.5);
+  pointer-events: none;
+}
+.overlay-bar:hover .update-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.update-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: #22c55e;
+}
+.update-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 
 .content-area {
   flex: 1;

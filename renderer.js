@@ -1395,6 +1395,55 @@ window.electronAPI.getAppVersion().then((v) => {
   document.getElementById('versionTag').textContent = 'v' + v;
 });
 
+// ── Autoupdate ──
+
+const updateBtn = document.getElementById('updateBtn');
+let updateAvailableVersion = null;
+
+async function checkForUpdates() {
+  updateBtn.title = 'Suche…';
+  const result = await window.electronAPI.checkForUpdate();
+  if (result.hasUpdate && result.latestVersion) {
+    updateAvailableVersion = result.latestVersion;
+    updateBtn.style.display = '';
+    updateBtn.title = `Update v${result.latestVersion} verfügbar – Klicken zum Installieren`;
+  } else {
+    updateBtn.style.display = 'none';
+  }
+}
+
+const cleanupUpdateStatus = window.electronAPI.onUpdateStatus((status) => {
+  if (status.type === 'available') {
+    updateAvailableVersion = status.version;
+    updateBtn.style.display = '';
+    updateBtn.title = `Update v${status.version} verfügbar – Klicken zum Installieren`;
+  } else if (status.type === 'not-available' || status.type === 'error') {
+    updateBtn.style.display = 'none';
+  } else if (status.type === 'progress') {
+    updateBtn.title = `Update wird geladen… ${Math.round(status.percent)}%`;
+  } else if (status.type === 'downloaded') {
+    updateBtn.title = 'Update bereit – Neustart…';
+    updateBtn.disabled = true;
+  }
+});
+
+updateBtn.addEventListener('click', async () => {
+  if (!updateAvailableVersion) return;
+  if (confirm(`Update v${updateAvailableVersion} installieren?\nDie App wird nach der Installation neugestartet.`)) {
+    updateBtn.disabled = true;
+    updateBtn.title = 'Installiere…';
+    const result = await window.electronAPI.applyUpdate(updateAvailableVersion);
+    if (!result.success && !result.downloading) {
+      updateBtn.disabled = false;
+      updateBtn.title = `Update fehlgeschlagen: ${result.error}`;
+      setTimeout(() => { updateBtn.title = `Update v${updateAvailableVersion} verfügbar`; }, 5000);
+    }
+  }
+});
+
+// Prüfe beim Start (nach kurzer Verzögerung)
+setTimeout(checkForUpdates, 4000);
+
 // Services laden
 window.electronAPI.getServices().then((svcs) => {
   services = svcs;

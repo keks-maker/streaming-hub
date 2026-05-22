@@ -48,4 +48,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('tv-sources-changed', handler);
     return () => ipcRenderer.removeListener('tv-sources-changed', handler);
   },
+
+  // Autoupdate
+  checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
+  applyUpdate: (version) => ipcRenderer.invoke('apply-update', version),
+  onUpdateStatus: (cb) => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('update-status', handler);
+    return () => ipcRenderer.removeListener('update-status', handler);
+  },
 });

@@ -2,12 +2,17 @@ const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { fork } = require('child_process');
 
 let mainWindow;
 let pipWindow = null;
 const servicesPath = path.join(__dirname, 'services.json');
 const historyPath = path.join(__dirname, 'history.json');
 const tvSourcesPath = path.join(__dirname, 'tvsources.json');
+
+// Updater
+let updaterProcess = null;
+let autoUpdater = null;
 
 function findChromeWidevine() {
   const platform = process.platform;
@@ -225,6 +230,150 @@ function saveHistory(history) {
   fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
 }
 
+// ── Updater ──
+
+const GITEA_BASE = 'http://192.168.4.105:3000';
+const GITEA_OWNER = 'kekskarlo';
+const GITEA_REPO = 'Streaming-Hub';
+
+function cmpVersions(a, b) {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const va = pa[i] || 0, vb = pb[i] || 0;
+    if (va !== vb) return va - vb;
+  }
+  return 0;
+}
+
+async function giteaApi(path) {
+  const token = process.env.GITEA_TOKEN;
+  const url = `${GITEA_BASE}/api/v1/repos/${GITEA_OWNER}/${GITEA_REPO}/${path}`;
+  const headers = { Accept: 'application/json' };
+  if (token) headers.Authorization = `token ${token}`;
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`Gitea API ${res.status}`);
+  return res.json();
+}
+
+function startUpdater() {
+  if (process.env.APPIMAGE) {
+    // AppImage: use Gitea API for updates
+    autoUpdater = {
+      check: async () => {
+        try {
+          const release = await giteaApi('releases/latest');
+          const tag = release.tag_name?.replace(/^v/i, '');
+          if (!tag) return { hasUpdate: false, error: 'no tag' };
+          return {
+            hasUpdate: cmpVersions(tag, app.getVersion()) > 0,
+            latestVersion: tag,
+            releaseId: release.id,
+          };
+        } catch (e) {
+          return { hasUpdate: false, error: e.message };
+        }
+      },
+      download: async (version) => {
+        try {
+          const release = await giteaApi('releases/latest');
+          const asset = release.assets?.find(a => a.name.endsWith('.AppImage'));
+          if (!asset) throw new Error('keine AppImage in Release gefunden');
+
+          const currentAppImage = process.env.APPIMAGE;
+          const appDir = path.dirname(currentAppImage);
+          const tmpDest = path.join(appDir, `.update-${Date.now()}.AppImage`);
+          const finalDest = path.join(appDir, `Streaming Hub-${version}.AppImage`);
+          const token = process.env.GITEA_TOKEN;
+          const headers = {};
+          if (token) headers.Authorization = `token ${token}`;
+
+          mainWindow?.webContents.send('update-status', { type: 'progress', percent: 0 });
+          const res = await fetch(asset.browser_download_url, { headers, signal: AbortSignal.timeout(300000) });
+          if (!res.ok) throw new Error(`Download ${res.status}`);
+          const total = parseInt(res.headers.get('content-length') || '0');
+          const reader = res.body.getReader();
+          const ws = fs.createWriteStream(tmpDest);
+          let received = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            ws.write(value);
+            received += value.length;
+            if (total) mainWindow?.webContents.send('update-status', { type: 'progress', percent: (received / total) * 100 });
+          }
+          ws.end();
+          await new Promise(r => ws.on('finish', r));
+          fs.chmodSync(tmpDest, 0o755);
+
+          if (currentAppImage !== finalDest) {
+            try { fs.unlinkSync(finalDest); } catch (e) {}
+          }
+          fs.renameSync(tmpDest, finalDest);
+          return finalDest;
+        } catch (e) {
+          throw e;
+        }
+      },
+    };
+  } else {
+    const updaterPath = path.join(__dirname, 'updater.js');
+    if (fs.existsSync(updaterPath)) {
+      updaterProcess = fork(updaterPath, [__dirname]);
+      updaterProcess.on('exit', () => { updaterProcess = null; });
+    }
+  }
+}
+
+ipcMain.handle('check-for-update', async () => {
+  if (process.env.APPIMAGE) {
+    if (!autoUpdater) return { hasUpdate: false, error: 'kein updater' };
+    return autoUpdater.check();
+  }
+  if (!updaterProcess) return { hasUpdate: false, error: 'kein update-prozess' };
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve({ hasUpdate: false, error: 'timeout' }), 20000);
+    updaterProcess.once('message', (msg) => {
+      clearTimeout(timer);
+      if (msg.type === 'result') resolve({ hasUpdate: msg.hasUpdate, latestVersion: msg.latest, error: msg.error });
+    });
+    updaterProcess.send({ type: 'check', currentVersion: app.getVersion() });
+  });
+});
+
+ipcMain.handle('apply-update', async (_e, version) => {
+  if (process.env.APPIMAGE) {
+    if (!autoUpdater) return { success: false, error: 'kein updater' };
+    try {
+      const newAppImage = await autoUpdater.download(version);
+      // Remove old AppImage if replaced by a differently-named version
+      const oldAppImage = process.env.APPIMAGE;
+      if (oldAppImage && oldAppImage !== newAppImage) {
+        try { fs.unlinkSync(oldAppImage); } catch (e) {}
+      }
+      mainWindow?.webContents.send('update-status', { type: 'downloaded' });
+      setTimeout(() => { app.relaunch(); app.quit(); }, 2000);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+  if (!updaterProcess) return { success: false, error: 'kein update-prozess' };
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 180000);
+    updaterProcess.once('message', (msg) => {
+      clearTimeout(timer);
+      if (msg.type === 'applied') {
+        resolve({ success: !msg.error, error: msg.error });
+        if (!msg.error) {
+          setTimeout(() => { app.relaunch(); app.quit(); }, 500);
+        }
+      }
+    });
+    updaterProcess.send({ type: 'apply', version });
+  });
+});
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -267,6 +416,7 @@ app.whenReady().then(async () => {
   } catch (e) {
     console.log('Component updater failed (expected without sandbox), using system Widevine if available');
   }
+  startUpdater();
   createWindow();
 });
 
