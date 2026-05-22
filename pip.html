@@ -8,6 +8,7 @@
 body {
   background:var(--bg); overflow:hidden; height:100vh;
   display:flex; flex-direction:column; user-select:none;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',Roboto,sans-serif;
 }
 .pip-bar {
   height:32px; background:rgba(10,10,15,0.96); display:flex;
@@ -25,7 +26,8 @@ body {
 }
 .pip-close:hover { background:var(--glass-hover); color:var(--text); }
 .pip-content { flex:1; position:relative; }
-webview { position:absolute; inset:0; width:100%; height:100%; border:none; }
+webview, video { position:absolute; inset:0; width:100%; height:100%; border:none; }
+video { object-fit:contain; background:#000; }
 </style>
 </head>
 <body>
@@ -35,12 +37,40 @@ webview { position:absolute; inset:0; width:100%; height:100%; border:none; }
 </div>
 <div class="pip-content">
   <webview id="pipView" partition="persist:streaming" preload="preload-content.js" plugins></webview>
+  <video id="pipVideo" autoplay muted playsinline style="display:none"></video>
 </div>
+<script src="node_modules/hls.js/dist/hls.min.js"></script>
 <script>
 document.getElementById('closeBtn').onclick = () => window.close();
+
+const webview = document.getElementById('pipView');
+const video = document.getElementById('pipVideo');
+
 window.addEventListener('message', (e) => {
   if (e.data.type === 'load-url') {
-    document.getElementById('pipView').src = e.data.url;
+    video.style.display = 'none';
+    webview.style.display = 'block';
+    webview.src = e.data.url;
+  } else if (e.data.type === 'load-tv-stream') {
+    webview.style.display = 'none';
+    video.style.display = 'block';
+
+    // Unmute on first interaction
+    document.addEventListener('click', () => { video.muted = false; }, { once: true });
+    document.addEventListener('keydown', () => { video.muted = false; }, { once: true });
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = e.data.url;
+    } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: false, maxBufferLength: 30, liveSyncDuration: 15 });
+      hls.loadSource(e.data.url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {});
+      });
+    } else {
+      video.src = e.data.url;
+    }
   }
 });
 </script>

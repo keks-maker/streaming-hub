@@ -1,6 +1,6 @@
 {
   "name": "streaming-hub",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {
@@ -27,16 +27,22 @@
       "output": "release"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "Video",
       "icon": "assets/icon.svg"
     },
     "mac": {
-      "target": ["zip"],
+      "target": [
+        "zip"
+      ],
       "category": "public.app-category.video"
     },
     "win": {
-      "target": ["portable"]
+      "target": [
+        "portable"
+      ]
     }
   },
   "keywords": [
@@ -50,5 +56,8 @@
   "devDependencies": {
     "electron": "github:castlabs/electron-releases#v42.0.0+wvcus",
     "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "hls.js": "^1.6.16"
   }
 }

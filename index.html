@@ -17,6 +17,16 @@
           <polyline points="12,7 12,12 16,14"/>
         </svg>
       </button>
+      <button class="tv-btn" id="tvBtn" title="TV (Strg+T)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="12" rx="2" ry="2"/>
+          <polyline points="8,21 16,21 12,17"/>
+          <line x1="12" y1="2" x2="12" y2="7"/>
+          <line x1="7" y1="2" x2="17" y2="2"/>
+          <line x1="9" y1="18" x2="7" y2="19"/>
+          <line x1="15" y1="18" x2="17" y2="19"/>
+        </svg>
+      </button>
       <button class="add-btn" id="addBtn" title="Dienste verwalten">+</button>
       <button class="pip-btn" id="pipBtn" title="Bild-in-Bild (Strg+P)">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -62,6 +72,7 @@
       <div class="welcome-shortcuts">
         <span class="ws-row"><kbd>Strg</kbd>+<kbd>Tab</kbd> nächster Dienst</span>
         <span class="ws-row"><kbd>Strg</kbd>+<kbd>H</kbd> Verlauf</span>
+        <span class="ws-row"><kbd>Strg</kbd>+<kbd>T</kbd> TV</span>
         <span class="ws-row"><kbd>Strg</kbd>+<kbd>P</kbd> Bild-in-Bild</span>
         <span class="ws-row"><kbd>F11</kbd> Vollbild</span>
         <span class="ws-row"><kbd>?</kbd> alle Kürzel</span>
@@ -106,6 +117,7 @@
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Nächster Dienst</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Umsch</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Vorheriger Dienst</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>H</kbd></span><span class="shortcut-desc">Verlauf anzeigen</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>T</kbd></span><span class="shortcut-desc">TV Sidebar umschalten</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>P</kbd></span><span class="shortcut-desc">Bild-in-Bild umschalten</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>F11</kbd></span><span class="shortcut-desc">Vollbild umschalten</span></div>
         <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span class="shortcut-desc">Diese Übersicht</span></div>
@@ -129,6 +141,87 @@
       </div>
     </div>
   </div>
+
+  <!-- TV Sources Modal -->
+  <div class="modal-overlay" id="tvModalOverlay">
+    <div class="modal" id="tvModal">
+      <div class="modal-header">
+        <span class="modal-title">TV-Quellen verwalten</span>
+        <button class="modal-close" id="tvModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tv-source-list" id="tvSourceList"></div>
+        <div class="modal-divider"></div>
+        <label class="modal-label">Quellen-Name</label>
+        <input class="modal-input" id="tvInputName" type="text" placeholder="z.B. Deutsche Sender">
+
+        <label class="modal-label">M3U-URL</label>
+        <div class="tv-url-row">
+          <input class="modal-input tv-url-input" id="tvInputUrl" type="url" placeholder="https://example.com/playlist.m3u">
+          <button class="tv-file-btn" id="tvFileBtn" title="Lokale Datei auswählen">📁</button>
+        </div>
+
+        <label class="modal-label">EPG-URL (optional)</label>
+        <input class="modal-input" id="tvInputEpgUrl" type="url" placeholder="https://example.com/epg.xml">
+
+        <label class="modal-label">Akzentfarbe</label>
+        <input class="modal-color" id="tvInputColor" type="color" value="#a78bfa">
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-save" id="tvModalSave">Hinzufügen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TV Channel Editor Modal -->
+  <div class="modal-overlay" id="tvChModalOverlay">
+    <div class="modal tv-ch-modal" id="tvChModal">
+      <div class="modal-header">
+        <span class="modal-title">Sender bearbeiten</span>
+        <button class="modal-close" id="tvChModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tv-ch-search">
+          <input class="modal-input" id="tvChSearch" type="text" placeholder="Sender filtern..." autocomplete="off">
+        </div>
+        <div class="tv-ch-list" id="tvChList"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="tv-ch-status" id="tvChStatus"></span>
+        <button class="modal-btn modal-btn-save" id="tvChModalSave">Änderungen speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TV Sidebar -->
+  <div class="tv-sidebar" id="tvSidebar">
+    <div class="tv-sidebar-header">
+      <span class="tv-sidebar-title">TV Sender</span>
+      <div class="tv-sidebar-actions">
+        <button class="tv-sidebar-manage" id="tvSidebarEpgRefresh" title="EPG aktualisieren">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
+        <button class="tv-sidebar-manage" id="tvSidebarManage" title="Quellen verwalten">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <button class="tv-sidebar-manage" id="tvSidebarEdit" title="Sender bearbeiten">✎</button>
+        <button class="tv-sidebar-close" id="tvSidebarClose">&times;</button>
+      </div>
+    </div>
+    <div class="tv-sidebar-sources" id="tvSidebarSources"></div>
+    <div class="tv-sidebar-status" id="tvSidebarStatus"></div>
+    <div class="tv-sidebar-search" id="tvSidebarSearch">
+      <input class="tv-search-input" id="tvSearchInput" type="text" placeholder="Sender suchen..." autocomplete="off">
+    </div>
+    <div class="tv-sidebar-channels" id="tvSidebarChannels">
+      <div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>
+    </div>
+  </div>
+  <div class="tv-sidebar-trigger" id="tvSidebarTrigger"></div>
 
   <script src="renderer.js"></script>
 </body>

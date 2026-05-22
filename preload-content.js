@@ -80,7 +80,13 @@ script.textContent = `
   }, true);
 })();
 `;
-document.documentElement.appendChild(script);
+if (document.documentElement) {
+  document.documentElement.appendChild(script);
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.documentElement.appendChild(script);
+  });
+}
 
 // Forward keyboard shortcuts to main window (via main process)
 document.addEventListener('keydown', (e) => {

@@ -1,1 +1,122 @@
-[]
+[
+  {
+    "title": "TV: RBB Brandenburg",
+    "serviceKey": "__tv__",
+    "serviceName": "RBB Brandenburg",
+    "timestamp": "2026-05-22T19:14:58.098Z"
+  },
+  {
+    "title": "TV: phoenix",
+    "serviceKey": "__tv__",
+    "serviceName": "phoenix",
+    "timestamp": "2026-05-22T19:12:09.575Z"
+  },
+  {
+    "title": "TV: Tagesschau 24",
+    "serviceKey": "__tv__",
+    "serviceName": "Tagesschau 24",
+    "timestamp": "2026-05-22T19:10:52.991Z"
+  },
+  {
+    "title": "TV: ZDFinfo",
+    "serviceKey": "__tv__",
+    "serviceName": "ZDFinfo",
+    "timestamp": "2026-05-22T19:10:21.515Z"
+  },
+  {
+    "title": "TV: ZDFneo",
+    "serviceKey": "__tv__",
+    "serviceName": "ZDFneo",
+    "timestamp": "2026-05-22T19:09:54.712Z"
+  },
+  {
+    "title": "TV: ZDFneo HD",
+    "serviceKey": "__tv__",
+    "serviceName": "ZDFneo HD",
+    "timestamp": "2026-05-22T19:09:01.143Z"
+  },
+  {
+    "title": "TV: Zee One German",
+    "serviceKey": "__tv__",
+    "serviceName": "Zee One German",
+    "timestamp": "2026-05-22T19:08:14.220Z"
+  },
+  {
+    "title": "TV: One HD",
+    "serviceKey": "__tv__",
+    "serviceName": "One HD",
+    "timestamp": "2026-05-22T19:08:22.431Z"
+  },
+  {
+    "title": "TV: 3sat HD",
+    "serviceKey": "__tv__",
+    "serviceName": "3sat HD",
+    "timestamp": "2026-05-22T19:19:22.190Z"
+  },
+  {
+    "title": "TV: MDR Fernsehen Thüringen",
+    "serviceKey": "__tv__",
+    "serviceName": "MDR Fernsehen Thüringen",
+    "timestamp": "2026-05-22T19:13:35.967Z"
+  },
+  {
+    "title": "TV: ARD-alpha",
+    "serviceKey": "__tv__",
+    "serviceName": "ARD-alpha",
+    "timestamp": "2026-05-22T19:02:24.573Z"
+  },
+  {
+    "title": "TV: ARD-alpha HD",
+    "serviceKey": "__tv__",
+    "serviceName": "ARD-alpha HD",
+    "timestamp": "2026-05-22T19:02:16.622Z"
+  },
+  {
+    "title": "TV: RTL",
+    "serviceKey": "__tv__",
+    "serviceName": "RTL",
+    "timestamp": "2026-05-22T14:23:48.192Z"
+  },
+  {
+    "title": "TV: N24 Doku",
+    "serviceKey": "__tv__",
+    "serviceName": "N24 Doku",
+    "timestamp": "2026-05-22T18:54:59.117Z"
+  },
+  {
+    "title": "TV: kabel eins Doku",
+    "serviceKey": "__tv__",
+    "serviceName": "kabel eins Doku",
+    "timestamp": "2026-05-22T14:16:46.569Z"
+  },
+  {
+    "title": "TV: ZDF HD",
+    "serviceKey": "__tv__",
+    "serviceName": "ZDF HD",
+    "timestamp": "2026-05-22T19:06:18.896Z"
+  },
+  {
+    "title": "TV: Das Erste HD",
+    "serviceKey": "__tv__",
+    "serviceName": "Das Erste HD",
+    "timestamp": "2026-05-22T19:17:01.603Z"
+  },
+  {
+    "title": "TV: 3sat",
+    "serviceKey": "__tv__",
+    "serviceName": "3sat",
+    "timestamp": "2026-05-22T18:58:35.722Z"
+  },
+  {
+    "title": "TV: ZDF (720p) [Geo-blocked]",
+    "serviceKey": "__tv__",
+    "serviceName": "ZDF (720p) [Geo-blocked]",
+    "timestamp": "2026-05-22T13:30:25.166Z"
+  },
+  {
+    "title": "TV: Motorvision.tv (French)",
+    "serviceKey": "__tv__",
+    "serviceName": "Motorvision.tv (French)",
+    "timestamp": "2026-05-22T13:29:05.717Z"
+  }
+]

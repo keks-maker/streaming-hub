@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 (2026-05-22)
+- Feature: Live-TV-Integration – M3U-Playlists laden und daraus streamen
+- Feature: TV-Sidebar mit Sendersuche, Quellenverwaltung und EPG-Anzeige
+- Feature: Eingebauter HLS-Player (tv.html) mit Play/Pause, Lautstärke, Vollbild, Audiospuren
+- Feature: EPG (Electronic Program Guide) – XMLTV-Parsing mit aktueller Sendungsinfo
+- Feature: Channel-Editor – Sender umbenennen, URL/Logo/Gruppe bearbeiten
+- Feature: TV-Quellen-Verwaltung (M3U-URL, lokale Datei, EPG-URL, Farbe)
+- Feature: Tastaturkürzel `Strg+T` – TV-Sidebar umschalten
+- Feature: `autoplay-policy: no-user-gesture-required` für nahtlose TV-Wiedergabe
+- New: `tv.html` – eigenständiger HLS-Player für TV-Streams
+- New: `tvsources.json` – persistente TV-Quellen-Konfiguration
+- Fix: PiP erkennt jetzt TV-Stream-URLs (`.m3u8`, `.mpd`, `.ts`) und lädt TV-Player
+- Version bump auf 0.3.0
+
 ## 0.2.8 (2026-05-21)
 - Fix: History pollt jetzt `navigator.mediaSession?.metadata?.title` via `webview.executeJavaScript` alle 3s (funktioniert mit contextIsolation)
 - Fix: contextBridge-Ansatz verworfen (unbrauchbar mit contextIsolation im webview)
