@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 (2026-05-22)
+- Fix: `start.sh` löst Symlink auf (readlink -f), damit Aufruf über `~/.local/bin/streaming-hub` funktioniert
+- New: Autoupdate-Infrastruktur – updater.js (Git-Fork) + Gitea-API (AppImage)
+- New: install.sh – One-Line-Installer (curl | bash) mit Dependency-Prüfung
+- Version bump auf 0.3.1
+
 ## 0.3.0 (2026-05-22)
 - Feature: Live-TV-Integration – M3U-Playlists laden und daraus streamen
 - Feature: TV-Sidebar mit Sendersuche, Quellenverwaltung und EPG-Anzeige
