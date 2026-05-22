@@ -19,6 +19,7 @@ let tvChOverrides = {}; // {sourceId: {chId: {name?,url?,tvgId?,tvgLogo?}}} – 
 let tvChDirty = false;
 
 const nav = document.getElementById('overlayNav');
+let tvBtn = null;
 const webview = document.getElementById('contentView');
 const welcomeScreen = document.getElementById('welcomeScreen');
 const overlayLocation = document.getElementById('overlayLocation');
@@ -40,7 +41,6 @@ const historyClose = document.getElementById('historyClose');
 const historyClear = document.getElementById('historyClear');
 
 // TV DOM references
-const tvBtn = document.getElementById('tvBtn');
 const tvSidebar = document.getElementById('tvSidebar');
 const tvSidebarTrigger = document.getElementById('tvSidebarTrigger');
 const tvSidebarClose = document.getElementById('tvSidebarClose');
@@ -116,6 +116,23 @@ function renderNav() {
     return s;
   })();
   let css = '';
+
+  // TV button (first in nav)
+  const tvNavBtn = document.createElement('button');
+  tvNavBtn.className = 'nav-item';
+  tvNavBtn.id = 'tvBtn';
+  tvNavBtn.dataset.provider = '__tv__';
+  tvNavBtn.innerHTML = `<span class="nav-icon nav-tv-icon">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2"/>
+      <polyline points="8,21 16,21 12,17"/>
+    </svg>
+  </span>`;
+  tvNavBtn.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    toggleTvSidebar();
+  });
+  nav.appendChild(tvNavBtn);
 
   services.forEach(svc => {
     const btn = document.createElement('button');
@@ -1216,7 +1233,6 @@ inputIcon.addEventListener('keydown', (e) => {
 });
 
 // TV event listeners
-tvBtn.addEventListener('click', toggleTvSidebar);
 tvSidebarClose.addEventListener('click', closeTvSidebar);
 tvSidebarManage.addEventListener('click', openTvModal);
 tvSidebarEpgRefresh.addEventListener('click', refreshEpg);
@@ -1399,45 +1415,80 @@ window.electronAPI.getAppVersion().then((v) => {
 
 const updateBtn = document.getElementById('updateBtn');
 let updateAvailableVersion = null;
+let updateChecking = false;
+
+function setUpdateState(state) {
+  updateBtn.classList.remove('update-available');
+  if (state === 'checking') {
+    updateBtn.title = 'Suche…';
+    updateBtn.style.color = '';
+    updateBtn.disabled = true;
+  } else if (state === 'uptodate') {
+    updateBtn.title = 'Update auf dem neuesten Stand';
+    updateBtn.style.color = '#22c55e';
+    updateBtn.disabled = false;
+  } else if (state === 'available') {
+    updateBtn.title = `Update v${updateAvailableVersion} verfügbar – Klicken zum Installieren`;
+    updateBtn.style.color = '';
+    updateBtn.disabled = false;
+    updateBtn.classList.add('update-available');
+  } else if (state === 'progress') {
+    updateBtn.title = `Update wird geladen… ${Math.round(updateBtn._percent || 0)}%`;
+    updateBtn.style.color = '';
+    updateBtn.disabled = true;
+  } else if (state === 'downloaded') {
+    updateBtn.title = 'Update bereit – Neustart…';
+    updateBtn.style.color = '';
+    updateBtn.disabled = true;
+  }
+}
 
 async function checkForUpdates() {
-  updateBtn.title = 'Suche…';
+  if (updateChecking) return;
+  updateChecking = true;
+  setUpdateState('checking');
   const result = await window.electronAPI.checkForUpdate();
+  updateChecking = false;
   if (result.hasUpdate && result.latestVersion) {
     updateAvailableVersion = result.latestVersion;
-    updateBtn.style.display = '';
-    updateBtn.title = `Update v${result.latestVersion} verfügbar – Klicken zum Installieren`;
+    setUpdateState('available');
   } else {
-    updateBtn.style.display = 'none';
+    updateAvailableVersion = null;
+    setUpdateState('uptodate');
   }
 }
 
 const cleanupUpdateStatus = window.electronAPI.onUpdateStatus((status) => {
   if (status.type === 'available') {
     updateAvailableVersion = status.version;
-    updateBtn.style.display = '';
-    updateBtn.title = `Update v${status.version} verfügbar – Klicken zum Installieren`;
-  } else if (status.type === 'not-available' || status.type === 'error') {
-    updateBtn.style.display = 'none';
+    setUpdateState('available');
+  } else if (status.type === 'not-available') {
+    setUpdateState('uptodate');
+  } else if (status.type === 'error') {
+    setUpdateState('uptodate');
   } else if (status.type === 'progress') {
-    updateBtn.title = `Update wird geladen… ${Math.round(status.percent)}%`;
+    updateBtn._percent = status.percent;
+    setUpdateState('progress');
   } else if (status.type === 'downloaded') {
-    updateBtn.title = 'Update bereit – Neustart…';
-    updateBtn.disabled = true;
+    setUpdateState('downloaded');
   }
 });
 
 updateBtn.addEventListener('click', async () => {
-  if (!updateAvailableVersion) return;
-  if (confirm(`Update v${updateAvailableVersion} installieren?\nDie App wird nach der Installation neugestartet.`)) {
-    updateBtn.disabled = true;
-    updateBtn.title = 'Installiere…';
-    const result = await window.electronAPI.applyUpdate(updateAvailableVersion);
-    if (!result.success && !result.downloading) {
-      updateBtn.disabled = false;
-      updateBtn.title = `Update fehlgeschlagen: ${result.error}`;
-      setTimeout(() => { updateBtn.title = `Update v${updateAvailableVersion} verfügbar`; }, 5000);
+  if (updateChecking || updateBtn.disabled) return;
+  if (updateAvailableVersion) {
+    if (confirm(`Update v${updateAvailableVersion} installieren?\nDie App wird nach der Installation neugestartet.`)) {
+      updateBtn.disabled = true;
+      updateBtn.title = 'Installiere…';
+      const result = await window.electronAPI.applyUpdate(updateAvailableVersion);
+      if (!result.success && !result.downloading) {
+        updateBtn.disabled = false;
+        updateBtn.title = `Fehlgeschlagen: ${result.error}`;
+        setTimeout(() => setUpdateState('available'), 5000);
+      }
     }
+  } else {
+    checkForUpdates();
   }
 });
 
@@ -1499,11 +1550,13 @@ restoreBtn.addEventListener('click', async () => {
 window.electronAPI.getServices().then((svcs) => {
   services = svcs;
   renderNav();
+  tvBtn = document.getElementById('tvBtn');
 });
 
 window.electronAPI.onServicesChanged((svcs) => {
   services = svcs;
   renderNav();
+  tvBtn = document.getElementById('tvBtn');
   renderServiceList();
   if (currentProvider === '__tv__') {
     // Stay in TV mode

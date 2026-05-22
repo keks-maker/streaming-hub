@@ -383,7 +383,7 @@ body {
   border: none;
   background: rgba(255,255,255,0.04);
   border-radius: 8px;
-  color: var(--text-dim);
+  color: #22c55e;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -391,22 +391,21 @@ body {
   transition: all var(--t);
   flex-shrink: 0;
   -webkit-app-region: no-drag;
-  opacity: 0;
-  transform: scale(0.5);
-  pointer-events: none;
-}
-.overlay-bar:hover .update-btn {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
 }
 .update-btn:hover {
   background: rgba(255,255,255,0.08);
-  color: #22c55e;
 }
 .update-btn:disabled {
   opacity: 0.4;
   pointer-events: none;
+}
+.update-btn.update-available {
+  color: #ef4444;
+  animation: pulse-red 2s infinite;
+}
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .settings-btn {
@@ -898,23 +897,16 @@ body {
 }
 
 /* TV Button */
-.tv-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: rgba(255,255,255,0.04);
-  border-radius: 8px;
-  color: var(--text-dim);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--t);
-  opacity: 0;
-  transform: scale(0.5);
-  pointer-events: none;
-  flex-shrink: 0;
-  -webkit-app-region: no-drag;
+.nav-tv-icon {
+  --icon-bg: rgba(108,92,231,0.15);
+  --icon-border: rgba(108,92,231,0.4);
+  background: var(--icon-bg);
+  border-color: var(--icon-border);
+}
+.nav-item.active .nav-tv-icon {
+  border-color: var(--accent);
+  --active-glow: rgba(108,92,231,0.6);
+  box-shadow: 0 0 12px var(--active-glow);
 }
 
 .overlay-bar:hover .tv-btn {
