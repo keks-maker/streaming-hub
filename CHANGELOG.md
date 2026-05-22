@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 (2026-05-22)
+- Change: Update-Button immer sichtbar – grüner Haken (aktuell), roter Pfeil+Puls (Update)
+- Change: TV-Button aus Leiste entfernt → als erstes Icon in der Navigationsleiste (wie Dienste-Icons)
+- Version bump auf 0.3.3
+
 ## 0.3.2 (2026-05-22)
 - New: Backup/Restore für Settings (Dienste, TV-Quellen, Verlauf) – Zahnrad-Button in der Leiste
 - Version bump auf 0.3.2
