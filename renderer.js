@@ -1444,6 +1444,57 @@ updateBtn.addEventListener('click', async () => {
 // Prüfe beim Start (nach kurzer Verzögerung)
 setTimeout(checkForUpdates, 4000);
 
+// ── Backup / Restore ──
+
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsClose = document.getElementById('settingsClose');
+const settingsStatus = document.getElementById('settingsStatus');
+const backupBtn = document.getElementById('backupBtn');
+const restoreBtn = document.getElementById('restoreBtn');
+
+function openSettings() {
+  settingsStatus.textContent = '';
+  settingsOverlay.classList.add('open');
+}
+
+function closeSettings() {
+  settingsOverlay.classList.remove('open');
+}
+
+settingsBtn.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+
+backupBtn.addEventListener('click', async () => {
+  backupBtn.disabled = true;
+  settingsStatus.textContent = 'Speichere…';
+  const result = await window.electronAPI.backupSettings();
+  if (result.success) {
+    settingsStatus.textContent = '✓ Backup gespeichert';
+  } else {
+    settingsStatus.textContent = 'Abgebrochen';
+  }
+  setTimeout(() => { backupBtn.disabled = false; }, 2000);
+});
+
+restoreBtn.addEventListener('click', async () => {
+  if (!confirm('Backup einspielen?\nAktuelle Dienste, TV-Quellen und Verlauf werden überschrieben.')) return;
+  restoreBtn.disabled = true;
+  settingsStatus.textContent = 'Stelle wieder her…';
+  const result = await window.electronAPI.restoreSettings();
+  if (result.success) {
+    settingsStatus.textContent = '✓ Backup eingespielt';
+  } else if (result.error) {
+    settingsStatus.textContent = '✗ Fehler: ' + result.error;
+  } else {
+    settingsStatus.textContent = 'Abgebrochen';
+  }
+  setTimeout(() => { restoreBtn.disabled = false; }, 3000);
+});
+
 // Services laden
 window.electronAPI.getServices().then((svcs) => {
   services = svcs;

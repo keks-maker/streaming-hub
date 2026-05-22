@@ -409,6 +409,70 @@ body {
   pointer-events: none;
 }
 
+.settings-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  opacity: 0;
+  transform: scale(0.5);
+  pointer-events: none;
+}
+.overlay-bar:hover .settings-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.settings-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+.settings-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.settings-action-btn:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--accent);
+}
+.settings-action-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+.settings-status {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+  min-height: 18px;
+  margin-top: 4px;
+}
+
 
 .content-area {
   flex: 1;

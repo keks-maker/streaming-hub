@@ -602,6 +602,44 @@ ipcMain.handle('fetch-and-parse-m3u', async (_e, urlOrPath) => {
 
 ipcMain.handle('get-app-path', () => __dirname);
 
+// ── Backup / Restore ──
+
+ipcMain.handle('backup-settings', async () => {
+  const data = {
+    version: app.getVersion(),
+    date: new Date().toISOString(),
+    services: loadServices(),
+    tvsources: loadTvSources(),
+    history: loadHistory(),
+  };
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: `streaming-hub-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    filters: [{ name: 'Sicherungsdatei', extensions: ['json'] }],
+  });
+  if (result.canceled || !result.filePath) return { success: false };
+  fs.writeFileSync(result.filePath, JSON.stringify(data, null, 2), 'utf-8');
+  return { success: true, path: result.filePath };
+});
+
+ipcMain.handle('restore-settings', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    filters: [{ name: 'Sicherungsdatei', extensions: ['json'] }],
+    properties: ['openFile'],
+  });
+  if (result.canceled || !result.filePaths[0]) return { success: false };
+  try {
+    const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
+    const data = JSON.parse(raw);
+    if (!data.services && !data.tvsources) throw new Error('ungültiges Backup-Format');
+    if (data.services) { saveServices(data.services); broadcastServices(); }
+    if (data.tvsources) { saveTvSources(data.tvsources); broadcastTvSources(); }
+    if (data.history) saveHistory(data.history);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
 ipcMain.handle('fetch-epg', async (_e, url) => {
   try {
     const response = await fetch(url);

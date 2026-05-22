@@ -57,4 +57,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update-status', handler);
     return () => ipcRenderer.removeListener('update-status', handler);
   },
+
+  // Backup / Restore
+  backupSettings: () => ipcRenderer.invoke('backup-settings'),
+  restoreSettings: () => ipcRenderer.invoke('restore-settings'),
 });
