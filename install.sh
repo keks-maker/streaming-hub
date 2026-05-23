@@ -79,6 +79,15 @@ if ! command -v git &>/dev/null; then
 fi
 
 # ------------------------------------------------------------------
+# unzip installieren (wird für Electron-Binary-Extraktion benötigt)
+# ------------------------------------------------------------------
+if ! command -v unzip &>/dev/null; then
+  info "Installiere unzip …"
+  $UPDATE_CMD
+  $INSTALL_CMD unzip
+fi
+
+# ------------------------------------------------------------------
 # Node.js prüfen / installieren
 # ------------------------------------------------------------------
 install_nodejs() {
@@ -158,10 +167,42 @@ fi
 # ------------------------------------------------------------------
 info "Installiere npm-Abhängigkeiten …"
 cd "$INSTALL_DIR"
-npm install
 
-# Castlabs Electron-Binary nachladen
-npx electron --version &>/dev/null || true
+# --ignore-scripts: Das postinstall-Skript (install.js) nutzt extract-zip@2.0.1,
+# welches mit Node.js >= 26 hängt (stream.pipeline + yauzl.openReadStream).
+# Daher wird das Electron-Binary manuell via unzip extrahiert.
+npm install --ignore-scripts
+
+# Castlabs Electron-Binary manuell laden und extrahieren (Workaround)
+ELECTRON_DIR="node_modules/electron"
+DIST_DIR="$ELECTRON_DIR/dist"
+PATH_FILE="$ELECTRON_DIR/path.txt"
+
+if [ ! -f "$DIST_DIR/electron" ] && [ ! -f "$DIST_DIR/electron.exe" ] && [ ! -d "$DIST_DIR/Electron.app" ]; then
+  info "Lade Electron-Binary (Castlabs) …"
+
+  # @electron/get ist durch npm install bereits vorhanden
+  ZIP_PATH=$(node -e "
+    const { downloadArtifact } = require('@electron/get');
+    downloadArtifact({
+      version: require('./$ELECTRON_DIR/package').version,
+      artifactName: 'electron',
+      mirrorOptions: { mirror: 'https://github.com/castlabs/electron-releases/releases/download/' },
+      platform: 'linux',
+      arch: 'x64'
+    }).then(p => console.log(p));
+  " 2>/dev/null) || true
+
+  if [ -n "$ZIP_PATH" ] && [ -f "$ZIP_PATH" ]; then
+    info "Extrahiere Electron-Binary …"
+    unzip -qo "$ZIP_PATH" -d "$DIST_DIR"
+    printf "electron" > "$PATH_FILE"
+    chmod +x "$DIST_DIR/electron" 2>/dev/null || true
+    info "Electron-Binary bereit"
+  else
+    error "Electron-Binary konnte nicht geladen werden."
+  fi
+fi
 
 # ------------------------------------------------------------------
 # Desktop-Eintrag
