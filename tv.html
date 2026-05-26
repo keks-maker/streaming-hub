@@ -1,4 +1,4 @@
-<!-- v0.3.7. – Kanalwechsel in-place per postMessage (kein Vollbild-Ende) + setupChannel-Funktion -->
+<!-- v0.3.8. – EPG-Schriftgröße verdoppelt (56px / 40px) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -27,16 +27,16 @@
     .tv-top-logo { width:40px; height:40px; border-radius:6px; object-fit:contain; }
     .tv-top-name { font-size:32px; font-weight:600; color:#f0f0f5; }
     .tv-epg-bar {
-      text-align:center; padding:8px 20px; margin:0 16px 8px;
-      font-size:28px; color:#e2e8f0;
+      text-align:center; padding:14px 28px; margin:0 16px 10px;
+      font-size:56px; color:#e2e8f0;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      background:rgba(0,0,0,0.55); border-radius:10px;
+      background:rgba(0,0,0,0.55); border-radius:12px;
       display:none;
     }
     .tv-epg-bar .epg-time { color:#a78bfa; font-weight:600; }
     .tv-epg-bar .epg-title { color:#e2e8f0; }
-    .tv-epg-bar .epg-next { color:#64748b; font-size:20px; }
-    .tv-epg-bar .epg-sep { color:#475569; margin:0 10px; }
+    .tv-epg-bar .epg-next { color:#64748b; font-size:40px; }
+    .tv-epg-bar .epg-sep { color:#475569; margin:0 14px; }
 
     /* Controls bar */
     .tv-controls {

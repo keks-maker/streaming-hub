@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.8 (2026-05-26)
+- Change: EPG-Schrift im TV-Player auf 56px verdoppelt (epg-next auf 40px)
+- Version bump auf 0.3.8
+
 ## 0.3.7 (2026-05-26)
 - Fix: Kanalwechsel per Pfeiltasten beendet nicht mehr das Vollbild (postMessage statt page-reload)
 - Fix: Kanalwechsel-Reihenfolge folgt jetzt der Sidebar-Anzeige (sortOrder), nicht dem favorites-Array
