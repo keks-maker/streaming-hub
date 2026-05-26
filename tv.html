@@ -1,4 +1,4 @@
-<!-- v0.3.6. – TV-Player UI auf TV-Maßstab vergrößert + Kanalwechsel per Pfeiltasten (Favoriten) + Volume auf +/- -->
+<!-- v0.3.7. – Kanalwechsel in-place per postMessage (kein Vollbild-Ende) + setupChannel-Funktion -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -205,73 +205,216 @@
       const audioWrap = document.getElementById('tvAudioWrap');
       const audioBtn = document.getElementById('tvAudioBtn');
       const audioDropdown = document.getElementById('tvAudioDropdown');
+      const epgBar = document.getElementById('tvEpgBar');
+
+      let hideOverlayTimer = null;
+      let isPlaying = false;
+      let hlsInstance = null;
+      let audioTracks = [];
+      let stallTimer = null;
+      let lastStallTime = 0;
+      let hlsLoaded = false;
+      let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null;
+
       // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
       function loadHlsJs(cb) {
+        if (hlsLoaded) { if (cb) cb(); return; }
         var base = window.location.href.split('?')[0];
         var dir = base.substring(0, base.lastIndexOf('/') + 1);
         var s = document.createElement('script');
-        s.onload = function() { audioBtn.textContent += '|hlsLoaded'; if (cb) cb(); };
+        s.onload = function() { hlsLoaded = true; if (cb) cb(); };
         s.onerror = function() { audioBtn.textContent += '|hlsErr'; };
         s.src = dir + 'node_modules/hls.js/dist/hls.min.js';
         document.head.appendChild(s);
       }
-      var params, streamUrl, channelName, channelLogo, channelEpg, epgStart, epgEnd, epgNext, decodedUrl;
-      params = new URLSearchParams(location.search);
-      streamUrl = params.get('channel');
-      channelName = params.get('name') || 'TV';
-      channelLogo = params.get('logo');
-      channelEpg = params.get('epg');
-      epgStart = params.get('epgStart');
-      epgEnd = params.get('epgEnd');
-      epgNext = params.get('epgNext');
 
-      let hideOverlayTimer = null;
-      let isPlaying = false;
+      // ── Reusable channel setup ──
+      function setupChannel(url, name, logo, epg, start, end, next) {
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        loadingEl.style.display = 'block';
+        errorDiv.style.display = 'none';
+        audioTracks = [];
+        audioDropdown.innerHTML = '';
+        audioWrap.style.display = 'none';
 
-      // Set channel info
-      topName.textContent = channelName;
-      channelNameEl.textContent = channelName;
-      const epgBar = document.getElementById('tvEpgBar');
-      if (channelEpg) {
-        epgBar.innerHTML = '<span class="epg-time" id="epgStartSpan"></span>'
-          + '<span class="epg-sep">–</span>'
-          + '<span class="epg-time" id="epgEndSpan"></span>'
-          + '<span class="epg-sep">·</span>'
-          + '<span class="epg-title" id="epgTitleSpan"></span>'
-          + '<span class="epg-sep" id="epgNextSep" style="display:none">|</span>'
-          + '<span class="epg-next" id="epgNextSpan"></span>';
-        document.getElementById('epgStartSpan').textContent = epgStart;
-        document.getElementById('epgEndSpan').textContent = epgEnd;
-        document.getElementById('epgTitleSpan').textContent = channelEpg;
-        if (epgNext) {
-          document.getElementById('epgNextSep').style.display = '';
-          document.getElementById('epgNextSpan').textContent = epgNext;
+        const channelName = name || 'TV';
+        const channelLogo = logo;
+
+        topName.textContent = channelName;
+        channelNameEl.textContent = channelName;
+
+        if (epg) {
+          epgBar.innerHTML = '<span class="epg-time">' + (start || '') + '</span>'
+            + '<span class="epg-sep">–</span>'
+            + '<span class="epg-time">' + (end || '') + '</span>'
+            + '<span class="epg-sep">·</span>'
+            + '<span class="epg-title">' + epg + '</span>'
+            + (next ? '<span class="epg-sep">|</span><span class="epg-next">' + next + '</span>' : '');
+          epgBar.style.display = 'block';
+        } else {
+          epgBar.style.display = 'none';
         }
-        epgBar.style.display = 'block';
-      }
-      if (channelLogo) { topLogo.src = channelLogo; topLogo.style.display = 'block'; }
-      else { topLogo.style.display = 'none'; }
 
-      // Media Session API for history tracking
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: 'TV: ' + channelName,
-          artist: 'Streaming Hub',
-          album: 'TV',
-          artwork: channelLogo ? [{ src: channelLogo, sizes: '256x256', type: 'image/png' }] : [],
-        });
-        navigator.mediaSession.setActionHandler('play', () => video.play());
-        navigator.mediaSession.setActionHandler('pause', () => video.pause());
-        navigator.mediaSession.setActionHandler('seekforward', () => { video.currentTime = Math.min(video.currentTime + 30, video.duration); });
-        navigator.mediaSession.setActionHandler('seekbackward', () => { video.currentTime = Math.max(video.currentTime - 30, 0); });
+        if (channelLogo) { topLogo.src = channelLogo; topLogo.style.display = 'block'; }
+        else { topLogo.style.display = 'none'; }
+
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'TV: ' + channelName,
+            artist: 'Streaming Hub',
+            album: 'TV',
+            artwork: channelLogo ? [{ src: channelLogo, sizes: '256x256', type: 'image/png' }] : [],
+          });
+        }
+
+        if (!url) {
+          showError('Keine Stream-URL');
+          loadingEl.style.display = 'none';
+          return;
+        }
+
+        const decodedUrl = decodeURIComponent(url);
+
+        if (prevCanplay) video.removeEventListener('canplay', prevCanplay);
+        if (prevWaiting) video.removeEventListener('waiting', prevWaiting);
+        if (prevPlaying) video.removeEventListener('playing', prevPlaying);
+        if (prevError) video.removeEventListener('error', prevError);
+        if (stallTimer) { clearInterval(stallTimer); stallTimer = null; }
+
+        prevCanplay = function() {
+          loadingEl.style.display = 'none';
+          showOverlay();
+        };
+        prevWaiting = function() {
+          loadingEl.style.display = 'block';
+          lastStallTime = Date.now();
+        };
+        prevPlaying = function() {
+          loadingEl.style.display = 'none';
+          if (stallTimer) clearInterval(stallTimer);
+          lastStallTime = Date.now();
+          stallTimer = setInterval(function() {
+            if (video.paused || video.ended) return;
+            if (video.readyState < 2) return;
+            if (Date.now() - lastStallTime > 15000) {
+              showError('Stream hängt – keine Daten für 15s');
+              if (stallTimer) clearInterval(stallTimer);
+            }
+          }, 3000);
+        };
+        prevError = function() {
+          loadingEl.style.display = 'none';
+          showError('Stream-Wiedergabe fehlgeschlagen');
+        };
+
+        video.addEventListener('canplay', prevCanplay);
+        video.addEventListener('waiting', prevWaiting);
+        video.addEventListener('playing', prevPlaying);
+        video.addEventListener('error', prevError);
+
+        try {
+          var initHls = function() {
+            if (typeof Hls === 'undefined' || !Hls.isSupported()) {
+              video.src = decodedUrl;
+              video.addEventListener('loadedmetadata', function() {
+                var nt = video.audioTracks;
+                if (nt && nt.length) {
+                  setAudioTracks(Array.from(nt).map(function(t, i) { return { name: t.label || 'Track ' + (i+1), lang: t.language, id: i }; }));
+                } else { renderAudioTracks(); }
+              });
+              return;
+            }
+            const hls = new Hls({
+              enableWorker: false,
+              maxBufferLength: 15,
+              liveSyncDurationCount: 3,
+              liveMaxLatencyDurationCount: 6,
+              subtitleTrackController: null,
+            });
+            hls.loadSource(decodedUrl);
+            hls.attachMedia(video);
+            fetch(decodedUrl).then(function(r) { return r.text(); }).then(function(txt) {
+              var parsed = parseAudioTracksFromManifest(txt);
+              if (parsed.length && !audioTracks.length) setAudioTracks(parsed);
+            }).catch(function() {});
+            hls.on(Hls.Events.MANIFEST_LOADED, function(_event, data) {
+              hlsInstance = hls;
+              if (!audioTracks.length) {
+                if (data.audioTracks && data.audioTracks.length) {
+                  setAudioTracks(data.audioTracks);
+                } else if (data.url) {
+                  fetch(data.url).then(function(r) { return r.text(); }).then(function(txt) {
+                    var parsed = parseAudioTracksFromManifest(txt);
+                    if (parsed.length && !audioTracks.length) setAudioTracks(parsed);
+                  }).catch(function() {});
+                }
+              }
+            });
+            hls.on(Hls.Events.MANIFEST_PARSED, function(_event, data) {
+              hlsInstance = hls;
+              if (data.audioTracks && data.audioTracks.length && !audioTracks.length) {
+                setAudioTracks(data.audioTracks);
+              }
+              video.play().catch(function() {
+                video.muted = true;
+                video.play().catch(function() {});
+              });
+            });
+            hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, function() {
+              if (hlsInstance) {
+                var t = hlsInstance.audioTracks || hlsInstance.allAudioTracks || [];
+                if (t && t.length) setAudioTracks(t);
+              }
+            });
+            hls.on(Hls.Events.ERROR, function(_event, data) {
+              if (data.fatal) {
+                switch (data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    hls.startLoad();
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    video.src = decodedUrl;
+                    break;
+                }
+              }
+            });
+            renderAudioTracks();
+          };
+          if (typeof Hls !== 'undefined') { initHls(); }
+          else { loadHlsJs(initHls); }
+        } catch (e) {
+          showError('Fehler: ' + e.message);
+          loadingEl.style.display = 'none';
+        }
       }
 
-      // Show/hide controls
+      // ── Initial load from URL params ──
+      var params = new URLSearchParams(location.search);
+      setupChannel(
+        params.get('channel'), params.get('name'), params.get('logo'),
+        params.get('epg'), params.get('epgStart'), params.get('epgEnd'), params.get('epgNext')
+      );
+
+      // ── Message listener for host-initiated channel switches ──
+      window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'switch-channel') {
+          setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
+            e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+        }
+      });
+
+      // ── Show/hide controls overlay ──
       function showOverlay() {
         topOverlay.classList.add('visible');
         controls.classList.add('visible');
         clearTimeout(hideOverlayTimer);
-        hideOverlayTimer = setTimeout(() => {
+        hideOverlayTimer = setTimeout(function() {
           if (isPlaying) {
             topOverlay.classList.remove('visible');
             controls.classList.remove('visible');
@@ -287,13 +430,10 @@
       document.addEventListener('mousemove', showOverlay);
       document.addEventListener('keydown', showOverlay);
 
-      // Play/Pause
+      // ── Play/Pause ──
       function togglePlay() {
-        if (video.paused) {
-          video.play();
-        } else {
-          video.pause();
-        }
+        if (video.paused) { video.play(); }
+        else { video.pause(); }
       }
 
       function updatePlayState() {
@@ -306,7 +446,7 @@
       video.addEventListener('play', updatePlayState);
       video.addEventListener('pause', updatePlayState);
 
-      // Time update
+      // ── Time update ──
       function formatTime(t) {
         if (!t || !isFinite(t)) return '00:00';
         const h = Math.floor(t / 3600);
@@ -316,35 +456,37 @@
         return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
       }
 
-      video.addEventListener('timeupdate', () => {
+      video.addEventListener('timeupdate', function() {
         if (video.duration && isFinite(video.duration)) {
           progress.value = (video.currentTime / video.duration) * 100;
           timeEl.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration - video.currentTime);
         }
       });
+      video.addEventListener('timeupdate', function() { lastStallTime = Date.now(); });
+      video.addEventListener('pause', function() { if (stallTimer) { clearInterval(stallTimer); stallTimer = null; } });
 
-      progress.addEventListener('input', () => {
+      progress.addEventListener('input', function() {
         if (video.duration && isFinite(video.duration)) {
           video.currentTime = (progress.value / 100) * video.duration;
         }
       });
 
-      // Volume
-      volumeSlider.addEventListener('input', () => {
+      // ── Volume ──
+      volumeSlider.addEventListener('input', function() {
         video.volume = volumeSlider.value;
         video.muted = false;
       });
 
-      muteBtn.addEventListener('click', () => {
+      muteBtn.addEventListener('click', function() {
         video.muted = !video.muted;
       });
 
-      video.addEventListener('volumechange', () => {
+      video.addEventListener('volumechange', function() {
         volumeSlider.value = video.muted ? 0 : video.volume;
       });
 
-      // Fullscreen
-      fullscreenBtn.addEventListener('click', () => {
+      // ── Fullscreen ──
+      fullscreenBtn.addEventListener('click', function() {
         if (document.fullscreenElement) {
           document.exitFullscreen();
         } else {
@@ -352,34 +494,8 @@
         }
       });
 
-      // Stall detection – Stream läuft ins Leere
-      let stallTimer = null;
-      let lastStallTime = 0;
-      video.addEventListener('timeupdate', () => {
-        lastStallTime = Date.now();
-      });
-      video.addEventListener('playing', () => {
-        if (stallTimer) clearInterval(stallTimer);
-        lastStallTime = Date.now();
-        stallTimer = setInterval(() => {
-          if (video.paused || video.ended) return;
-          if (video.readyState < 2) return; // noch keine Daten
-          if (Date.now() - lastStallTime > 15000) {
-            showError('Stream hängt – keine Daten für 15s');
-            if (stallTimer) clearInterval(stallTimer);
-          }
-        }, 3000);
-      });
-      video.addEventListener('pause', () => {
-        if (stallTimer) { clearInterval(stallTimer); stallTimer = null; }
-      });
-      video.addEventListener('waiting', () => {
-        // reset timer during re-buffering
-        lastStallTime = Date.now();
-      });
-
-      // Keyboard shortcuts
-      document.addEventListener('keydown', (e) => {
+      // ── Keyboard shortcuts ──
+      document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT') return;
         switch (e.key) {
           case ' ':
@@ -399,17 +515,14 @@
         }
       });
 
-      // Error
+      // ── Error ──
       function showError(msg) {
         errorDiv.textContent = msg;
         errorDiv.style.display = 'block';
-        setTimeout(() => { errorDiv.style.display = 'none'; }, 6000);
+        setTimeout(function() { errorDiv.style.display = 'none'; }, 6000);
       }
 
-      // Audio track handling
-      let hlsInstance = null;
-      let audioTracks = [];
-
+      // ── Audio track handling ──
       function parseAudioTracksFromManifest(str) {
         const tracks = [];
         const seen = {};
@@ -417,14 +530,14 @@
         let m;
         while ((m = re.exec(str)) !== null) {
           const attrs = {};
-          m[1].split(',').forEach(p => {
+          m[1].split(',').forEach(function(p) {
             const eq = p.indexOf('=');
             if (eq > 0) attrs[p.slice(0, eq).trim()] = p.slice(eq + 1).trim().replace(/^"(.*)"$/, '$1');
           });
           const name = attrs.NAME;
           if (name && !seen[name]) {
             seen[name] = 1;
-            tracks.push({ name, groupId: attrs['GROUP-ID'] || '', lang: attrs.LANGUAGE || '', 'default': attrs.DEFAULT === 'YES', uri: attrs.URI, hlsId: -1 });
+            tracks.push({ name: name, groupId: attrs['GROUP-ID'] || '', lang: attrs.LANGUAGE || '', 'default': attrs.DEFAULT === 'YES', uri: attrs.URI, hlsId: -1 });
           }
         }
         return tracks;
@@ -466,113 +579,11 @@
         audioBtn.textContent = '🔊 ' + (activeTrack ? activeTrack.name : 'Standard');
       }
 
-      audioBtn.addEventListener('click', (e) => {
+      audioBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         audioDropdown.classList.toggle('open');
       });
-      document.addEventListener('click', () => { audioDropdown.classList.remove('open'); });
-
-      // Load stream
-      if (!streamUrl) {
-        showError('Keine Stream-URL');
-        loadingEl.style.display = 'none';
-      } else {
-        const decodedUrl = decodeURIComponent(streamUrl);
-
-        video.addEventListener('canplay', () => {
-          loadingEl.style.display = 'none';
-          showOverlay();
-        });
-        video.addEventListener('waiting', () => { loadingEl.style.display = 'block'; });
-        video.addEventListener('playing', () => { loadingEl.style.display = 'none'; });
-        video.addEventListener('error', () => {
-          loadingEl.style.display = 'none';
-          showError('Stream-Wiedergabe fehlgeschlagen');
-        });
-
-        try {
-          var initHls = function() {
-              if (typeof Hls === 'undefined' || !Hls.isSupported()) {
-                video.src = decodedUrl;
-                video.addEventListener('loadedmetadata', function() {
-                  var nt = video.audioTracks;
-                  if (nt && nt.length) {
-                    setAudioTracks(Array.from(nt).map(function(t, i) { return { name: t.label || 'Track ' + (i+1), lang: t.language, id: i }; }));
-                  } else { renderAudioTracks(); }
-                });
-                return;
-              }
-              const hls = new Hls({
-                enableWorker: false,
-                maxBufferLength: 15,
-                liveSyncDurationCount: 3,
-                liveMaxLatencyDurationCount: 6,
-                subtitleTrackController: null,
-              });
-              hls.loadSource(decodedUrl);
-              hls.attachMedia(video);
-              fetch(decodedUrl).then(function(r) {
-                return r.text();
-              }).then(function(txt) {
-                var parsed = parseAudioTracksFromManifest(txt);
-                if (parsed.length && !audioTracks.length) setAudioTracks(parsed);
-              }).catch(function() {});
-              hls.on(Hls.Events.MANIFEST_LOADED, function(_event, data) {
-                hlsInstance = hls;
-                if (!audioTracks.length) {
-                  if (data.audioTracks && data.audioTracks.length) {
-                    setAudioTracks(data.audioTracks);
-                  } else if (data.url) {
-                    fetch(data.url).then(function(r) { return r.text(); }).then(function(txt) {
-                      var parsed = parseAudioTracksFromManifest(txt);
-                      if (parsed.length && !audioTracks.length) setAudioTracks(parsed);
-                    }).catch(function() {});
-                  }
-                }
-              });
-              hls.on(Hls.Events.MANIFEST_PARSED, function(_event, data) {
-                hlsInstance = hls;
-                if (data.audioTracks && data.audioTracks.length && !audioTracks.length) {
-                  setAudioTracks(data.audioTracks);
-                }
-                video.play().catch(function() {
-                  video.muted = true;
-                  video.play().catch(function() {});
-                });
-              });
-              hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, function() {
-                if (hlsInstance) {
-                  var t = hlsInstance.audioTracks || hlsInstance.allAudioTracks || [];
-                  if (t && t.length) setAudioTracks(t);
-                }
-              });
-              hls.on(Hls.Events.ERROR, (_event, data) => {
-                if (data.fatal) {
-                  switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                      hls.startLoad();
-                      break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                      hls.recoverMediaError();
-                      break;
-                    default:
-                      video.src = decodedUrl;
-                      break;
-                  }
-                }
-              });
-              renderAudioTracks();
-            };
-            loadHlsJs(initHls);
-        } catch (e) {
-          showError('Fehler: ' + e.message);
-          loadingEl.style.display = 'none';
-        }
-
-        // Unmute on first interaction
-        document.addEventListener('click', () => { video.muted = false; }, { once: true });
-        document.addEventListener('keydown', () => { video.muted = false; }, { once: true });
-      }
+      document.addEventListener('click', function() { audioDropdown.classList.remove('open'); });
 
       // Init volume
       video.volume = 0.5;

@@ -1,4 +1,4 @@
-// v0.3.6. – switchTvChannel + ipc-message Handler für Kanalnavigation durch Favoriten
+// v0.3.7. – Kanalwechsel per postMessage (kein Vollbild-Ende) + Reihenfolge = Sidebar
 let services = [];
 let webviewReady = false;
 let pendingNav = null;
@@ -973,30 +973,46 @@ async function selectTvChannel(ch) {
   }
 
   // Load tv.html with channel URL as parameter (needs file:// protocol)
-  const appPath = await window.electronAPI.getAppPath();
-  const playerUrl = 'file://' + appPath + '/tv.html?channel=' + encodeURIComponent(ch.url)
-    + '&name=' + encodeURIComponent(ch.name)
-    + '&logo=' + encodeURIComponent(ch.logo || '')
-    + '&epg=' + encodeURIComponent(epgTitle)
-    + '&epgStart=' + encodeURIComponent(epgStart)
-    + '&epgEnd=' + encodeURIComponent(epgEnd)
-    + '&epgNext=' + encodeURIComponent(epgNext);
-  if (webviewReady) {
-    try { webview.loadURL(playerUrl); } catch (e) { console.warn('loadURL failed:', e); }
+  const isTvPage = webview.getURL() && webview.getURL().includes('tv.html');
+  if (isTvPage && webviewReady) {
+    try {
+      webview.executeJavaScript("window.postMessage(" + JSON.stringify({
+        type: 'switch-channel',
+        url: ch.url,
+        name: ch.name,
+        logo: ch.logo || '',
+        epg: epgTitle,
+        epgStart: epgStart,
+        epgEnd: epgEnd,
+        epgNext: epgNext,
+      }) + ",'*')");
+    } catch (e) { console.warn('postMessage to tv.html failed:', e); }
   } else {
-    pendingNav = playerUrl;
+    const appPath = await window.electronAPI.getAppPath();
+    const playerUrl = 'file://' + appPath + '/tv.html?channel=' + encodeURIComponent(ch.url)
+      + '&name=' + encodeURIComponent(ch.name)
+      + '&logo=' + encodeURIComponent(ch.logo || '')
+      + '&epg=' + encodeURIComponent(epgTitle)
+      + '&epgStart=' + encodeURIComponent(epgStart)
+      + '&epgEnd=' + encodeURIComponent(epgEnd)
+      + '&epgNext=' + encodeURIComponent(epgNext);
+    if (webviewReady) {
+      try { webview.loadURL(playerUrl); } catch (e) { console.warn('loadURL failed:', e); }
+    } else {
+      pendingNav = playerUrl;
+    }
   }
 }
 
 function switchTvChannel(dir) {
   if (!tvActiveChannelId || !tvChannels.length) return;
-  const currentCh = tvChannels.find(c => c.id === tvActiveChannelId);
-  if (!currentCh) return;
-  const source = tvSources.find(s => s.id === currentCh.sourceId);
-  if (!source || !source.favorites || !source.favorites.length) return;
-  const idx = source.favorites.indexOf(currentCh.id);
+  const sourceId = tvChannels.find(c => c.id === tvActiveChannelId)?.sourceId;
+  if (!sourceId) return;
+  const favOrder = tvChannels.filter(ch => ch.sourceId === sourceId && isFavorite(ch)).map(ch => ch.id);
+  if (!favOrder.length) return;
+  const idx = favOrder.indexOf(tvActiveChannelId);
   if (idx === -1) return;
-  const nextId = source.favorites[(idx + dir + source.favorites.length) % source.favorites.length];
+  const nextId = favOrder[(idx + dir + favOrder.length) % favOrder.length];
   const nextCh = tvChannels.find(c => c.id === nextId);
   if (nextCh) selectTvChannel(nextCh);
 }

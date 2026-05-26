@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.7 (2026-05-26)
+- Fix: Kanalwechsel per Pfeiltasten beendet nicht mehr das Vollbild (postMessage statt page-reload)
+- Fix: Kanalwechsel-Reihenfolge folgt jetzt der Sidebar-Anzeige (sortOrder), nicht dem favorites-Array
+- Technical: setupChannel-Funktion in tv.html für sauberen Kanalwechsel ohne Seitenneuladung
+- Version bump auf 0.3.7
+
 ## 0.3.6 (2026-05-26)
 - Feature: TV-Player (tv.html) UI auf TV-Maßstab vergrößert (Schrift, Buttons, Slider)
 - Feature: Kanalwechsel per Pfeiltasten ↑/↓ im TV-Player (nur Favoriten)
