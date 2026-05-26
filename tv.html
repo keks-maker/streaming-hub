@@ -1,4 +1,4 @@
-<!-- v0.3.8. – EPG-Schriftgröße verdoppelt (56px / 40px) -->
+<!-- v0.3.9. – EPG-Update per Polling alle 30s + EPG-Schrift vergrößert -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -228,6 +228,33 @@
         document.head.appendChild(s);
       }
 
+      // ── EPG update (ohne Rest des Channels zu berühren) ──
+      function updateEpgBar(epg, start, end, next) {
+        if (epg) {
+          epgBar.innerHTML = '<span class="epg-time">' + (start || '') + '</span>'
+            + '<span class="epg-sep">–</span>'
+            + '<span class="epg-time">' + (end || '') + '</span>'
+            + '<span class="epg-sep">·</span>'
+            + '<span class="epg-title">' + epg + '</span>'
+            + (next ? '<span class="epg-sep">|</span><span class="epg-next">' + next + '</span>' : '');
+          epgBar.style.display = 'block';
+        } else {
+          epgBar.style.display = 'none';
+        }
+      }
+
+      // ── EPG-Polling: Host um aktuelle EPG-Daten bitten ──
+      var epgPollTimer = null;
+      function startEpgPolling() {
+        stopEpgPolling();
+        epgPollTimer = setInterval(function() {
+          window.postMessage({ source: 'tv-player', action: 'request-epg' }, '*');
+        }, 30000); // alle 30 Sekunden
+      }
+      function stopEpgPolling() {
+        if (epgPollTimer) { clearInterval(epgPollTimer); epgPollTimer = null; }
+      }
+
       // ── Reusable channel setup ──
       function setupChannel(url, name, logo, epg, start, end, next) {
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
@@ -246,17 +273,8 @@
         topName.textContent = channelName;
         channelNameEl.textContent = channelName;
 
-        if (epg) {
-          epgBar.innerHTML = '<span class="epg-time">' + (start || '') + '</span>'
-            + '<span class="epg-sep">–</span>'
-            + '<span class="epg-time">' + (end || '') + '</span>'
-            + '<span class="epg-sep">·</span>'
-            + '<span class="epg-title">' + epg + '</span>'
-            + (next ? '<span class="epg-sep">|</span><span class="epg-next">' + next + '</span>' : '');
-          epgBar.style.display = 'block';
-        } else {
-          epgBar.style.display = 'none';
-        }
+        updateEpgBar(epg, start, end, next);
+        startEpgPolling();
 
         if (channelLogo) { topLogo.src = channelLogo; topLogo.style.display = 'block'; }
         else { topLogo.style.display = 'none'; }
@@ -401,11 +419,13 @@
         params.get('epg'), params.get('epgStart'), params.get('epgEnd'), params.get('epgNext')
       );
 
-      // ── Message listener for host-initiated channel switches ──
+      // ── Message listener (host → webview) ──
       window.addEventListener('message', function(e) {
         if (e.data && e.data.type === 'switch-channel') {
           setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
             e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+        } else if (e.data && e.data.type === 'epg-update') {
+          updateEpgBar(e.data.epg, e.data.epgStart, e.data.epgEnd, e.data.epgNext);
         }
       });
 

@@ -1141,8 +1141,44 @@ webview.addEventListener('ipc-message', (e) => {
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
+    else if (e.args[0].action === 'request-epg') sendEpgUpdate();
   }
 });
+
+function sendEpgUpdate() {
+  if (!tvActiveChannelId) return;
+  const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+  if (!ch) return;
+  const now = new Date();
+  const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+  const chNorm = normId(ch.tvgId);
+  let epgTitle = '', epgStart = '', epgEnd = '', epgNext = '';
+  const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
+  const currentIdx = epgList ? epgList.findIndex(e => {
+    const s = parseEpgTime(e.start);
+    const t = parseEpgTime(e.stop);
+    return s <= now && t >= now;
+  }) : -1;
+  if (currentIdx !== -1) {
+    const cur = epgList[currentIdx];
+    epgTitle = decodeEntities(cur.title);
+    epgStart = formatEpgTime(cur.start);
+    epgEnd = formatEpgTime(cur.stop);
+    if (currentIdx + 1 < epgList.length) {
+      epgNext = decodeEntities(epgList[currentIdx + 1].title);
+    }
+  }
+  const data = {
+    type: 'epg-update',
+    epg: epgTitle,
+    epgStart: epgStart,
+    epgEnd: epgEnd,
+    epgNext: epgNext,
+  };
+  try {
+    webview.executeJavaScript("window.postMessage(" + JSON.stringify(data) + ",'*')");
+  } catch (err) { console.warn('sendEpgUpdate failed:', err); }
+}
 
 // Webview events
 webview.addEventListener('did-attach', () => {

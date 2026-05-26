@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.9 (2026-05-26)
+- Fix: EPG im TV-Player wird jetzt alle 30s aktualisiert (Sendungswechsel erkannt)
+- Technical: sendEpgUpdate in renderer.js, updateEpgBar + Polling in tv.html
+- Version bump auf 0.3.9
+
 ## 0.3.8 (2026-05-26)
 - Change: EPG-Schrift im TV-Player auf 56px verdoppelt (epg-next auf 40px)
 - Version bump auf 0.3.8
