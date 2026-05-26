@@ -1,3 +1,4 @@
+// v0.3.6. – switchTvChannel + ipc-message Handler für Kanalnavigation durch Favoriten
 let services = [];
 let webviewReady = false;
 let pendingNav = null;
@@ -987,6 +988,19 @@ async function selectTvChannel(ch) {
   }
 }
 
+function switchTvChannel(dir) {
+  if (!tvActiveChannelId || !tvChannels.length) return;
+  const currentCh = tvChannels.find(c => c.id === tvActiveChannelId);
+  if (!currentCh) return;
+  const source = tvSources.find(s => s.id === currentCh.sourceId);
+  if (!source || !source.favorites || !source.favorites.length) return;
+  const idx = source.favorites.indexOf(currentCh.id);
+  if (idx === -1) return;
+  const nextId = source.favorites[(idx + dir + source.favorites.length) % source.favorites.length];
+  const nextCh = tvChannels.find(c => c.id === nextId);
+  if (nextCh) selectTvChannel(nextCh);
+}
+
 function parseEpgTime(timeStr) {
   // XMLTV time format: YYYYMMDDHHMMSS [+-]HHMM
   // Mit Timezone
@@ -1105,6 +1119,14 @@ function toggleHistory() {
     openHistory();
   }
 }
+
+// TV channel navigation via webview ipc-message (from tv.html → preload-content bridge)
+webview.addEventListener('ipc-message', (e) => {
+  if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
+    if (e.args[0].action === 'channel-next') switchTvChannel(1);
+    else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
+  }
+});
 
 // Webview events
 webview.addEventListener('did-attach', () => {

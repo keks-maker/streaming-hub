@@ -1,3 +1,4 @@
+// v0.3.6.
 const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');

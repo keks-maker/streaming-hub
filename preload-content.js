@@ -1,3 +1,4 @@
+// v0.3.6. – postMessage-Bridge für tv-player Befehle
 const { ipcRenderer } = require('electron');
 
 const script = document.createElement('script');
@@ -102,5 +103,12 @@ document.addEventListener('keydown', (e) => {
       shiftKey: e.shiftKey,
       metaKey: e.metaKey,
     });
+  }
+});
+
+// Bridge: page postMessage → host renderer (for tv-player channel commands)
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.source === 'tv-player') {
+    ipcRenderer.sendToHost('tv-channel', e.data);
   }
 });

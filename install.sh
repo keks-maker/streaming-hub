@@ -1,4 +1,5 @@
 #!/bin/bash
+# v0.3.6.
 #
 # Streaming Hub Installer
 # =======================

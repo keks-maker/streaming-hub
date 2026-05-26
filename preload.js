@@ -1,3 +1,4 @@
+// v0.3.6.
 const { contextBridge, ipcRenderer } = require('electron');
 
 let pipCb = null;

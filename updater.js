@@ -1,3 +1,4 @@
+// v0.3.6.
 const { execSync } = require('child_process');
 
 const appDir = process.argv[2];

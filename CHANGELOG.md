@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.6 (2026-05-26)
+- Feature: TV-Player (tv.html) UI auf TV-Maßstab vergrößert (Schrift, Buttons, Slider)
+- Feature: Kanalwechsel per Pfeiltasten ↑/↓ im TV-Player (nur Favoriten)
+- Change: Lautstärkeregelung im TV-Player auf +/= und -/_ umgestellt
+- Technical: postMessage-Bridge in preload-content.js für Webview→Host-Kommunikation
+- Version bump auf 0.3.6
+
 ## 0.3.4 (2026-05-22)
 - Change: Update-Button blendet sich wie andere Buttons mit aus (opacity/scale)
 - Change: TV-Icon durch PNG-Icon (icons8-retro-tv) ersetzt
