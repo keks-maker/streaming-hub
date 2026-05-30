@@ -1008,7 +1008,7 @@ function reorderChannel(draggedId, targetId) {
   });
 }
 
-async function selectTvChannel(ch) {
+async function selectTvChannel(ch, options = {}) {
   tvActiveChannelId = ch.id;
   overlayBar.classList.remove('always-visible');
   renderTvChannels();
@@ -1052,8 +1052,7 @@ async function selectTvChannel(ch) {
   const isTvPage = webview.getURL() && webview.getURL().includes('tv.html');
   if (isTvPage && webviewReady) {
     try {
-      const channelList = buildTvChannelList(ch);
-      webview.executeJavaScript("window.postMessage(" + JSON.stringify({
+      const msg = {
         type: 'switch-channel',
         url: ch.url,
         name: ch.name,
@@ -1062,9 +1061,13 @@ async function selectTvChannel(ch) {
         epgStart: epgStart,
         epgEnd: epgEnd,
         epgNext: epgNext,
-        channelList: channelList.channels,
-        channelIndex: channelList.currentIndex,
-      }) + ",'*')");
+      };
+      if (!options.suppressChannelList) {
+        const channelList = buildTvChannelList(ch);
+        msg.channelList = channelList.channels;
+        msg.channelIndex = channelList.currentIndex;
+      }
+      webview.executeJavaScript("window.postMessage(" + JSON.stringify(msg) + ",'*')");
     } catch (e) { console.warn('postMessage to tv.html failed:', e); }
   } else {
     const appPath = await window.electronAPI.getAppPath();
@@ -1271,7 +1274,7 @@ function showEpgDetail(data) {
     closeEpgView();
     const ch = tvChannels.find(c => c.id === data.channelId);
     if (ch) {
-      selectTvChannel(ch);
+      selectTvChannel(ch, { suppressChannelList: true });
       openTvSidebar();
     }
   });
