@@ -140,6 +140,42 @@
       animation:spin .8s linear infinite; z-index:5;
     }
     @keyframes spin { to { transform:translate(-50%,-50%) rotate(360deg); } }
+
+    /* Channel list overlay */
+    .tv-channel-list {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      z-index: 25; display: none;
+      background: rgba(0,0,0,0.82); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 8px;
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      overflow: hidden;
+      min-width: 420px;
+    }
+    .tv-channel-list.visible { display: block; }
+    .tv-channel-list-inner {
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .tv-channel-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 20px; margin: 3px 0;
+      border-radius: 12px;
+      color: rgba(255,255,255,0.35);
+      white-space: nowrap; overflow: hidden;
+      min-height: 60px; box-sizing: border-box;
+      font-size: 40px; font-weight: 500;
+    }
+    .tv-channel-item img {
+      width: 44px; height: 44px; border-radius: 8px;
+      object-fit: contain; flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+    }
+    .tv-channel-item span {
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .tv-channel-item.active {
+      background: rgba(167,139,250,0.2);
+      color: #fff; font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -182,6 +218,10 @@
     </div>
   </div>
 
+  <div class="tv-channel-list" id="tvChannelList">
+    <div class="tv-channel-list-inner" id="tvChannelListInner"></div>
+  </div>
+
   <div class="tv-error" id="tvError"></div>
 
   <script>
@@ -209,6 +249,9 @@
 
       let hideOverlayTimer = null;
       let isPlaying = false;
+      let channelListData = null;
+      let channelListIndex = -1;
+      let channelListTimer = null;
       let hlsInstance = null;
       let audioTracks = [];
       let stallTimer = null;
@@ -253,6 +296,50 @@
       }
       function stopEpgPolling() {
         if (epgPollTimer) { clearInterval(epgPollTimer); epgPollTimer = null; }
+      }
+
+      // ── Channel list overlay ──
+      function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+      function showChannelList(channels, currentIdx) {
+        channelListData = channels;
+        channelListIndex = currentIdx;
+        var container = document.getElementById('tvChannelList');
+        var inner = document.getElementById('tvChannelListInner');
+
+        if (!channels || !channels.length) { container.classList.remove('visible'); return; }
+
+        inner.innerHTML = channels.map(function(ch, i) {
+          return '<div class="tv-channel-item' + (i === currentIdx ? ' active' : '') + '">'
+            + (ch.logo ? '<img src="' + esc(ch.logo) + '" alt="" loading="lazy">' : '')
+            + '<span>' + esc(ch.name) + '</span></div>';
+        }).join('');
+
+        var itemHeight = 66;
+        var visibleCount = 7;
+        var containerHeight = visibleCount * itemHeight;
+        container.style.height = containerHeight + 'px';
+
+        var half = Math.floor(visibleCount / 2);
+        var targetScroll = currentIdx * itemHeight - half * itemHeight;
+        var maxScroll = Math.max(0, channels.length * itemHeight - containerHeight);
+        var clamped = Math.max(0, Math.min(targetScroll, maxScroll));
+        inner.style.transform = 'translateY(' + (-clamped) + 'px)';
+
+        container.classList.add('visible');
+        resetChannelListTimer();
+      }
+
+      function resetChannelListTimer() {
+        clearTimeout(channelListTimer);
+        channelListTimer = setTimeout(function() {
+          document.getElementById('tvChannelList').classList.remove('visible');
+        }, 4000);
+      }
+
+      function hideChannelList() {
+        clearTimeout(channelListTimer);
+        document.getElementById('tvChannelList').classList.remove('visible');
       }
 
       // ── Reusable channel setup ──
@@ -424,6 +511,14 @@
         if (e.data && e.data.type === 'switch-channel') {
           setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
             e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+          if (e.data.channelList && e.data.channelIndex !== undefined) {
+            showChannelList(e.data.channelList, e.data.channelIndex);
+          }
+        } else if (e.data && e.data.type === 'channel-list') {
+          if (e.data.channels && e.data.currentIndex !== undefined) {
+            channelListData = e.data.channels;
+            channelListIndex = e.data.currentIndex;
+          }
         } else if (e.data && e.data.type === 'epg-update') {
           updateEpgBar(e.data.epg, e.data.epgStart, e.data.epgEnd, e.data.epgNext);
         }
@@ -517,6 +612,9 @@
       // ── Keyboard shortcuts ──
       document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT') return;
+        if (document.getElementById('tvChannelList').classList.contains('visible')) {
+          resetChannelListTimer();
+        }
         switch (e.key) {
           case ' ':
           case 'k': e.preventDefault(); togglePlay(); break;

@@ -1012,6 +1012,7 @@ async function selectTvChannel(ch) {
   const isTvPage = webview.getURL() && webview.getURL().includes('tv.html');
   if (isTvPage && webviewReady) {
     try {
+      const channelList = buildTvChannelList(ch);
       webview.executeJavaScript("window.postMessage(" + JSON.stringify({
         type: 'switch-channel',
         url: ch.url,
@@ -1021,6 +1022,8 @@ async function selectTvChannel(ch) {
         epgStart: epgStart,
         epgEnd: epgEnd,
         epgNext: epgNext,
+        channelList: channelList.channels,
+        channelIndex: channelList.currentIndex,
       }) + ",'*')");
     } catch (e) { console.warn('postMessage to tv.html failed:', e); }
   } else {
@@ -1051,6 +1054,14 @@ function switchTvChannel(dir) {
   const nextId = favOrder[(idx + dir + favOrder.length) % favOrder.length];
   const nextCh = tvChannels.find(c => c.id === nextId);
   if (nextCh) selectTvChannel(nextCh);
+}
+
+function buildTvChannelList(ch) {
+  const sourceId = ch.sourceId;
+  const sorted = tvChannels
+    .filter(c => c.sourceId === sourceId && isFavorite(c))
+    .map(c => ({ id: c.id, name: c.name, logo: c.logo || '' }));
+  return { channels: sorted, currentIndex: sorted.findIndex(c => c.id === ch.id) };
 }
 
 function parseEpgTime(timeStr) {
@@ -1248,6 +1259,18 @@ webview.addEventListener('did-finish-load', () => {
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
   `).catch(() => {});
   scheduleMediaCheck();
+  // Send channel list when tv.html finishes loading
+  if (tvActiveChannelId && webview.getURL().includes('tv.html')) {
+    const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+    if (ch) {
+      const cl = buildTvChannelList(ch);
+      webview.executeJavaScript("window.postMessage(" + JSON.stringify({
+        type: 'channel-list',
+        channels: cl.channels,
+        currentIndex: cl.currentIndex,
+      }) + ",'*')").catch(() => {});
+    }
+  }
 });
 
 webview.addEventListener('did-navigate', () => {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 (2026-05-30)
+- Feature: TV-Kanal-Liste beim Senderwechsel (Pfeiltasten) – mittig, max. 7 sichtbar
+- Feature: Aktueller Sender immer in der Mitte der Liste, smooth-scroll per CSS-Transform
+- Feature: 4s Inaktivitäts-Timer blendet Liste aus
+- Change: Senderlogos + -namen in EPG-Schriftgröße (40px) für Fernsichtbarkeit
+- Technical: renderer.js buildTvChannelList() + channelList/channelIndex in switch-channel-msg
+- Technical: tv.html channel-list-overlay + timer + keydown-reset
+
 ## 0.4.0 (2026-05-30)
 - Feature: ARD Mediathek, ZDF Mediathek, ARTE als neue Dienste integriert
 - Feature: Nav-Leiste in Gruppen eingeteilt – LiveTV | Streaming | Mediatheken
