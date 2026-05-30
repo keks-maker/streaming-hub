@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.8 (2026-05-30)
+- Change: EPG-Zeilen füllen Bildschirm (max. 7 sichtbar, flex: 1)
+- Change: EPG-Schrift vergrößert (Titel 15px, Uhrzeit 12px, Kanal 15px, Logo 40×40)
+
 ## 0.4.7 (2026-05-30)
 - Fix: `git fetch --tags` mit `--force` in updater.js (schlug fehl bei force-pushed Tags)
 - Change: `install.sh` ebenfalls mit `--force` für Tags
