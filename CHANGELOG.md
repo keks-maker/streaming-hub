@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.7 (2026-05-30)
+- Fix: `git fetch --tags` mit `--force` in updater.js (schlug fehl bei force-pushed Tags)
+- Change: `install.sh` ebenfalls mit `--force` für Tags
+
 ## 0.4.6 (2026-05-30)
 - Change: Kein Kanal-Overlay beim Senderstart aus EPG (nur noch bei Pfeiltasten)
 - Technical: `selectTvChannel()` akzeptiert `options.suppressChannelList`

@@ -36,7 +36,7 @@ process.on('message', (msg) => {
     }
   } else if (msg.type === 'apply') {
     try {
-      execSync('git fetch --tags origin', {
+      execSync('git fetch --tags --force origin', {
         cwd: appDir, encoding: 'utf-8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'],
       });
       execSync(`git checkout v${msg.version}`, {

@@ -143,7 +143,7 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   # Bereits installiert – pull
   info "Aktualisiere vorhandene Installation in $INSTALL_DIR …"
   cd "$INSTALL_DIR"
-  git fetch --tags origin
+  git fetch --tags --force origin 2>/dev/null || git fetch --tags origin
   LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
   if [ -n "$LATEST_TAG" ]; then
     git checkout "$LATEST_TAG" 2>/dev/null || git pull
