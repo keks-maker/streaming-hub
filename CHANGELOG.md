@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 (2026-05-30)
+- Change: Rahmen von Nav-Icons entfernt (border: none) – Dienste-Farbe nur noch als Hintergrund
+- Cleanup: `--icon-border`, `border-color`, `border-width` aus CSS + renderer.js entfernt
+- Cleanup: `.nav-tv-icon` border-Regeln entfernt
+
 ## 0.4.1 (2026-05-30)
 - Feature: TV-Kanal-Liste beim Senderwechsel (Pfeiltasten) – mittig, max. 7 sichtbar
 - Feature: Aktueller Sender immer in der Mitte der Liste, smooth-scroll per CSS-Transform

@@ -160,8 +160,8 @@ function renderNav() {
       btn.dataset.provider = svc.id;
       btn.dataset.url = svc.url;
 
-      css += `.nav-icon.${svc.id} { --icon-bg: ${svc.color}33; --icon-border: ${svc.color}80; }\n`;
-      css += `.nav-item.active.${svc.id} .nav-icon { border-color: ${svc.color}; --active-glow: ${svc.color}99; }\n`;
+      css += `.nav-icon.${svc.id} { --icon-bg: ${svc.color}33; }\n`;
+      css += `.nav-item.active.${svc.id} .nav-icon { --active-glow: ${svc.color}99; }\n`;
 
       btn.innerHTML = `<span class="nav-icon ${svc.id}">
           <img src="${getIconSrc(svc)}" alt="${svc.name}" loading="lazy">

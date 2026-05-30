@@ -123,17 +123,17 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 12px;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   background: var(--icon-bg);
-  border: 2px solid var(--icon-border);
   box-shadow:
     0 4px 8px rgba(0,0,0,0.4),
     0 2px 4px rgba(0,0,0,0.3),
     inset 0 1px 0 rgba(255,255,255,0.1);
-  transition: box-shadow var(--t), border-color var(--t);
+  transition: box-shadow var(--t);
 }
 
 .nav-icon::before {
@@ -155,7 +155,6 @@ body {
 /* All service nav-icon styles are generated dynamically in renderer.js */
 
 .nav-item.active .nav-icon {
-  border-width: 3px;
   box-shadow:
     0 4px 8px rgba(0,0,0,0.4),
     0 2px 4px rgba(0,0,0,0.3),
@@ -935,12 +934,9 @@ body {
 /* TV Button */
 .nav-tv-icon {
   --icon-bg: rgba(108,92,231,0.15);
-  --icon-border: rgba(108,92,231,0.4);
   background: var(--icon-bg);
-  border-color: var(--icon-border);
 }
 .nav-item.active .nav-tv-icon {
-  border-color: var(--accent);
   --active-glow: rgba(108,92,231,0.6);
   box-shadow: 0 0 12px var(--active-glow);
 }
