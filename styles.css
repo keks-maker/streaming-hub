@@ -41,6 +41,22 @@ body {
   transition: height 0.3s ease;
   -webkit-app-region: drag;
 }
+.overlay-bar.always-visible {
+  height: var(--overlay-h);
+}
+.overlay-bar.always-visible .overlay-nav {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.overlay-bar.always-visible .add-btn,
+.overlay-bar.always-visible .update-btn,
+.overlay-bar.always-visible .settings-btn,
+.overlay-bar.always-visible .pip-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
 
 .overlay-bar::after {
   content: '';

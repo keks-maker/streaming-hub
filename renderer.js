@@ -19,6 +19,7 @@ let tvEpgIndex = null; // Map<normId, epgEntry[]> für schnelle EPG-Lookups
 let tvChOverrides = {}; // {sourceId: {chId: {name?,url?,tvgId?,tvgLogo?}}} – ungespeicherte Änderungen
 let tvChDirty = false;
 
+const overlayBar = document.getElementById('overlayBar');
 const nav = document.getElementById('overlayNav');
 let tvBtn = null;
 const webview = document.getElementById('contentView');
@@ -197,6 +198,7 @@ function goToStartPage() {
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   welcomeScreen.style.display = '';
+  overlayBar.classList.add('always-visible');
   if (webviewReady) {
     try { webview.loadURL('about:blank'); } catch (e) { console.warn('loadURL failed'); }
   }
@@ -209,6 +211,7 @@ function navigateTo(svc) {
   const btn = nav.querySelector(`.nav-item[data-provider="${svc.id}"]`);
   if (btn) btn.classList.add('active');
   welcomeScreen.style.display = 'none';
+  overlayBar.classList.remove('always-visible');
   const targetUrl = normalizeUrl(svc.url);
   if (webviewReady) {
     try { webview.loadURL(targetUrl); } catch (e) { console.warn('loadURL failed:', targetUrl, e); }
@@ -979,6 +982,7 @@ function reorderChannel(draggedId, targetId) {
 
 async function selectTvChannel(ch) {
   tvActiveChannelId = ch.id;
+  overlayBar.classList.remove('always-visible');
   renderTvChannels();
   closeTvSidebar();
 

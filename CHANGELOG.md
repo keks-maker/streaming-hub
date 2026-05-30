@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.4 (2026-05-30)
+- Change: Overlay-Bar auf Startseite immer sichtbar (expanded + alle Icons sichtbar)
+- Change: Bar klappt erst nach Auswahl eines Dienstes/TV ein (always-visible-Klasse)
+- New: CSS-Klasse `.overlay-bar.always-visible`
+- Technical: `overlayBar`-Referenz + class toggles in renderer.js
+
 ## 0.4.3 (2026-05-30)
 - Change: overlayLocation zeigt immer „Startseite" (nie den Dienstnamen)
 - Change: Klick auf „Startseite" navigiert zum Welcome-Screen
