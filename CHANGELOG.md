@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3 (2026-05-30)
+- Change: overlayLocation zeigt immer „Startseite" (nie den Dienstnamen)
+- Change: Klick auf „Startseite" navigiert zum Welcome-Screen
+- Change: Hover auf „Startseite" skaliert wie Nav-Icons (scale 1.15)
+- Cleanup: Alle `overlayLocation.textContent =`-Zuweisungen entfernt
+
 ## 0.4.2 (2026-05-30)
 - Change: Rahmen von Nav-Icons entfernt (border: none) – Dienste-Farbe nur noch als Hintergrund
 - Cleanup: `--icon-border`, `border-color`, `border-width` aus CSS + renderer.js entfernt

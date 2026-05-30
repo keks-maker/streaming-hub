@@ -192,6 +192,16 @@ function createGroupLabel(text) {
   return l;
 }
 
+function goToStartPage() {
+  currentProvider = '';
+  lastMediaTitle = '';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  welcomeScreen.style.display = '';
+  if (webviewReady) {
+    try { webview.loadURL('about:blank'); } catch (e) { console.warn('loadURL failed'); }
+  }
+}
+
 function navigateTo(svc) {
   currentProvider = svc.id;
   lastMediaTitle = '';
@@ -199,7 +209,6 @@ function navigateTo(svc) {
   const btn = nav.querySelector(`.nav-item[data-provider="${svc.id}"]`);
   if (btn) btn.classList.add('active');
   welcomeScreen.style.display = 'none';
-  overlayLocation.textContent = svc.name;
   const targetUrl = normalizeUrl(svc.url);
   if (webviewReady) {
     try { webview.loadURL(targetUrl); } catch (e) { console.warn('loadURL failed:', targetUrl, e); }
@@ -984,7 +993,6 @@ async function selectTvChannel(ch) {
   currentProvider = '__tv__';
   lastMediaTitle = 'TV: ' + ch.name;
   welcomeScreen.style.display = 'none';
-  overlayLocation.textContent = 'TV: ' + ch.name;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
   // Find current + next EPG entry (via Index)
@@ -1277,7 +1285,6 @@ webview.addEventListener('did-navigate', () => {
   const url = webview.getURL();
   for (const svc of services) {
     if (url.includes(svc.id) || url.startsWith(svc.url)) {
-      overlayLocation.textContent = svc.name;
       currentProvider = svc.id;
       break;
     }
@@ -1696,6 +1703,9 @@ window.electronAPI.onServicesChanged((svcs) => {
     overlayLocation.textContent = 'Startseite';
   }
 });
+
+// Startseite-Klick
+overlayLocation.addEventListener('click', goToStartPage);
 
 // TV Sources laden
 window.electronAPI.getTvSources().then((sources) => {
