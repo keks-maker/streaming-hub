@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6 (2026-05-30)
+- Change: Kein Kanal-Overlay beim Senderstart aus EPG (nur noch bei Pfeiltasten)
+- Technical: `selectTvChannel()` akzeptiert `options.suppressChannelList`
+
 ## 0.4.5 (2026-05-30)
 - New: EPG-Programmübersicht für alle Favoriten (Vollbild-Overlay)
 - New: Konfigurierbarer Zeitslot (2/4/8/12/24h), aktuelle Uhrzeit zentriert
