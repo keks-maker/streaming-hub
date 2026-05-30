@@ -67,6 +67,34 @@ const tvChModalClose = document.getElementById('tvChModalClose');
 const tvChModalSave = document.getElementById('tvChModalSave');
 const tvChList = document.getElementById('tvChList');
 const tvChSearch = document.getElementById('tvChSearch');
+
+// EPG Overlay DOM
+const epgOverlay = document.getElementById('epgOverlay');
+const epgBody = document.getElementById('epgBody');
+const epgRangeLabel = document.getElementById('epgRangeLabel');
+const epgCloseBtn = document.getElementById('epgCloseBtn');
+const epgRefreshBtn = document.getElementById('epgRefreshBtn');
+const epgDetailBackdrop = document.getElementById('epgDetailBackdrop');
+const epgDetailTitle = document.getElementById('epgDetailTitle');
+const epgDetailMeta = document.getElementById('epgDetailMeta');
+const epgDetailDesc = document.getElementById('epgDetailDesc');
+const epgDetailActions = document.getElementById('epgDetailActions');
+const epgDetailClose = document.getElementById('epgDetailClose');
+const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
+
+let epgSlotHours = 8;
+let epgViewTimer = null;
+
+// Mediathek mapping for EPG -> service search
+const mediathekChannelMap = [
+  { match: /^(DasErste|ARD|BR|HR|MDR|NDR|RB|RBB|SR|SWR|WDR|tagesschau24|one|phoenix|ARD-alpha)/i, serviceId: 'ard', searchUrl: 'https://www.ardmediathek.de/suche/' },
+  { match: /^(ZDF|3sat|ZDFinfo|ZDFneo|ZDFdoku)/i, serviceId: 'zdf', searchUrl: 'https://www.zdf.de/suche?q=' },
+  { match: /^ARTE/i, serviceId: 'arte', searchUrl: 'https://www.arte.tv/de/search/?q=' },
+];
+
+function getMediathekForChannel(tvgIdOrName) {
+  return mediathekChannelMap.find(e => e.match.test(tvgIdOrName)) || null;
+}
 const tvChStatus = document.getElementById('tvChStatus');
 
 const uaMap = {
@@ -1111,6 +1139,168 @@ function buildEpgIndex() {
   });
 }
 
+// ── EPG Program Overview ──
+
+function openEpgView() {
+  epgOverlay.style.display = 'flex';
+  renderEpg();
+  if (epgViewTimer) clearInterval(epgViewTimer);
+  epgViewTimer = setInterval(renderEpg, 60000);
+}
+
+function closeEpgView() {
+  epgOverlay.style.display = 'none';
+  if (epgViewTimer) {
+    clearInterval(epgViewTimer);
+    epgViewTimer = null;
+  }
+}
+
+function renderEpg() {
+  const now = Date.now();
+  const totalMs = epgSlotHours * 3600000;
+  const halfMs = totalMs / 2;
+  const windowStart = new Date(now - halfMs);
+  const windowEnd = new Date(now + halfMs);
+  const totalMin = epgSlotHours * 60;
+
+  // Favorite channels
+  const favChannels = tvChannels.filter(ch => isFavorite(ch));
+
+  // Ruler: hour markers
+  let rulerHtml = '';
+  const rulerStart = new Date(windowStart);
+  rulerStart.setMinutes(0, 0, 0);
+  const rulerEnd = new Date(windowEnd);
+  while (rulerStart < rulerEnd) {
+    const left = (rulerStart.getTime() - windowStart.getTime()) / totalMs * 100;
+    rulerHtml += `<div class="epg-time-marker" style="left:${left}%">${String(rulerStart.getHours()).padStart(2,'0')}:00</div>`;
+    rulerStart.setHours(rulerStart.getHours() + 1);
+  }
+
+  let rowsHtml = '';
+
+  for (const ch of favChannels) {
+    const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+    const chNorm = normId(ch.tvgId);
+    const epgList = (tvEpgIndex && tvEpgIndex.get(chNorm)) || [];
+
+    const visibleProgs = epgList.filter(e => {
+      const start = parseEpgTime(e.start).getTime();
+      const stop = parseEpgTime(e.stop).getTime();
+      return start < windowEnd.getTime() && stop > windowStart.getTime();
+    });
+
+    let progsHtml = '';
+    for (const prog of visibleProgs) {
+      const startMs = parseEpgTime(prog.start).getTime();
+      const stopMs = parseEpgTime(prog.stop).getTime();
+      const clampedStart = Math.max(startMs, windowStart.getTime());
+      const clampedStop = Math.min(stopMs, windowEnd.getTime());
+      const left = (clampedStart - windowStart.getTime()) / totalMs * 100;
+      const width = (clampedStop - clampedStart) / totalMs * 100;
+      const isCurrent = startMs <= now && stopMs >= now;
+      const isPast = stopMs <= now;
+
+      progsHtml += `<div class="epg-program${isCurrent ? ' current' : ''}${isPast ? ' past' : ''}"
+        style="left:${left}%;width:${width}%"
+        data-title="${escapeHtml(prog.title)}"
+        data-start="${prog.start}"
+        data-stop="${prog.stop}"
+        data-desc="${escapeHtml(prog.description || '')}"
+        data-channel="${escapeHtml(ch.name)}"
+        data-channel-id="${ch.id}"
+        data-tvg-id="${ch.tvgId}">
+        <div class="epg-program-title">${escapeHtml(prog.title)}</div>
+        <div class="epg-program-time">${formatEpgTime(prog.start)}–${formatEpgTime(prog.stop)}</div>
+      </div>`;
+    }
+
+    const nowLeft = (now - windowStart.getTime()) / totalMs * 100;
+
+    rowsHtml += `<div class="epg-row" data-channel-id="${ch.id}">
+      <div class="epg-channel-col">
+        <img class="epg-channel-logo" src="${ch.logo || ''}" alt="" onerror="this.style.display='none'" loading="lazy">
+        <span class="epg-channel-name">${escapeHtml(ch.name)}</span>
+      </div>
+      <div class="epg-programs-col">
+        ${progsHtml}
+        <div class="epg-now-line" style="left:${nowLeft}%"></div>
+      </div>
+    </div>`;
+  }
+
+  // Range label
+  const fmtOpt = { hour: '2-digit', minute: '2-digit' };
+  epgRangeLabel.textContent = `${windowStart.toLocaleTimeString('de-DE', fmtOpt)} – ${windowEnd.toLocaleTimeString('de-DE', fmtOpt)} (${epgSlotHours}h)`;
+
+  if (!favChannels.length) {
+    epgBody.innerHTML = '<div class="epg-loading">Keine Favoriten vorhanden.<br>Markiere Sender in der TV-Seitenleiste als Favorit.</div>';
+    return;
+  }
+
+  epgBody.innerHTML = `<div class="epg-grid">
+    <div class="epg-row epg-ruler">
+      <div class="epg-channel-col"><span class="epg-channel-name"></span></div>
+      <div class="epg-programs-col">${rulerHtml}</div>
+    </div>
+    ${rowsHtml}
+  </div>`;
+
+  // Click handlers
+  epgBody.querySelectorAll('.epg-program').forEach(el => {
+    el.addEventListener('click', () => showEpgDetail(el.dataset));
+  });
+}
+
+function showEpgDetail(data) {
+  epgDetailTitle.textContent = data.title;
+  const startStr = formatEpgTime(data.start);
+  const stopStr = formatEpgTime(data.stop);
+  epgDetailMeta.textContent = `${startStr} – ${stopStr} · ${data.channel}`;
+  epgDetailDesc.textContent = data.desc || 'Keine Beschreibung verfügbar.';
+
+  epgDetailActions.innerHTML = '';
+
+  // Watch button
+  const watchBtn = document.createElement('button');
+  watchBtn.className = 'epg-action-btn epg-watch-btn';
+  watchBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Sender öffnen';
+  watchBtn.addEventListener('click', () => {
+    closeEpgDetail();
+    closeEpgView();
+    const ch = tvChannels.find(c => c.id === data.channelId);
+    if (ch) {
+      selectTvChannel(ch);
+      openTvSidebar();
+    }
+  });
+  epgDetailActions.appendChild(watchBtn);
+
+  // Mediathek button
+  const mediathek = getMediathekForChannel(data.tvgId || data.channel);
+  if (mediathek) {
+    const svc = services.find(s => s.id === mediathek.serviceId);
+    const medBtn = document.createElement('button');
+    medBtn.className = 'epg-action-btn epg-mediathek-btn';
+    medBtn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> In ${svc ? svc.name : 'Mediathek'} ansehen`;
+    medBtn.addEventListener('click', () => {
+      closeEpgDetail();
+      closeEpgView();
+      if (svc) {
+        navigateTo({ ...svc, url: mediathek.searchUrl + encodeURIComponent(data.title) });
+      }
+    });
+    epgDetailActions.appendChild(medBtn);
+  }
+
+  epgDetailBackdrop.style.display = 'flex';
+}
+
+function closeEpgDetail() {
+  epgDetailBackdrop.style.display = 'none';
+}
+
 // ── TV Keyboard shortcut ──
 
 // ── Shortcuts overlay ──
@@ -1443,6 +1633,28 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ── EPG Event Wiring ──
+tvSidebarEpgBtn.addEventListener('click', openEpgView);
+epgCloseBtn.addEventListener('click', closeEpgView);
+epgRefreshBtn.addEventListener('click', () => {
+  refreshEpg();
+  renderEpg();
+});
+epgDetailClose.addEventListener('click', closeEpgDetail);
+epgDetailBackdrop.addEventListener('click', (e) => {
+  if (e.target === epgDetailBackdrop) closeEpgDetail();
+});
+
+// EPG time slot buttons
+document.querySelectorAll('.epg-slot-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.epg-slot-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    epgSlotHours = parseInt(btn.dataset.hours, 10);
+    renderEpg();
+  });
+});
+
 // Keyboard shortcut handler (shared for document + webview forwarding)
 function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
   if (key === 'Escape') {
@@ -1460,6 +1672,14 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
     }
     if (tvSidebarOpen) {
       closeTvSidebar();
+      return true;
+    }
+    if (epgDetailBackdrop.style.display !== 'none') {
+      closeEpgDetail();
+      return true;
+    }
+    if (epgOverlay.style.display !== 'none') {
+      closeEpgView();
       return true;
     }
     if (historyOverlay.classList.contains('open')) {

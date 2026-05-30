@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.5 (2026-05-30)
+- New: EPG-Programmübersicht für alle Favoriten (Vollbild-Overlay)
+- New: Konfigurierbarer Zeitslot (2/4/8/12/24h), aktuelle Uhrzeit zentriert
+- New: Jetzt-Linie + aktuelle Sendung hervorgehoben
+- New: Detail-Popup mit „Sender öffnen" + „In Mediathek ansehen"
+- New: Hervorgehobener EPG-Button in der TV-Seitenleiste
+- New: Mediathek-Mapper (ARD/ZDF/Arte) für Programmlinks
+- Technical: EpgView-Funktionen + CSS-Grid + Detail-Modal
+
 ## 0.4.4 (2026-05-30)
 - Change: Overlay-Bar auf Startseite immer sichtbar (expanded + alle Icons sichtbar)
 - Change: Bar klappt erst nach Auswahl eines Dienstes/TV ein (always-visible-Klasse)

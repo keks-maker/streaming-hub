@@ -245,6 +245,16 @@
     </div>
     <div class="tv-sidebar-sources" id="tvSidebarSources"></div>
     <div class="tv-sidebar-status" id="tvSidebarStatus"></div>
+    <div class="tv-sidebar-epg-bar">
+      <button class="tv-sidebar-epg-btn" id="tvSidebarEpgBtn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+        EPG-Programmübersicht
+      </button>
+    </div>
     <div class="tv-sidebar-search" id="tvSidebarSearch">
       <input class="tv-search-input" id="tvSearchInput" type="text" placeholder="Sender suchen..." autocomplete="off">
     </div>
@@ -253,6 +263,46 @@
     </div>
   </div>
   <div class="tv-sidebar-trigger" id="tvSidebarTrigger"></div>
+
+  <!-- EPG Full Screen Overlay -->
+  <div class="epg-overlay" id="epgOverlay" style="display:none">
+    <div class="epg-header">
+      <div class="epg-header-left">
+        <div class="epg-timeslots">
+          <button class="epg-slot-btn" data-hours="2">2h</button>
+          <button class="epg-slot-btn" data-hours="4">4h</button>
+          <button class="epg-slot-btn active" data-hours="8">8h</button>
+          <button class="epg-slot-btn" data-hours="12">12h</button>
+          <button class="epg-slot-btn" data-hours="24">24h</button>
+        </div>
+        <span class="epg-range-label" id="epgRangeLabel"></span>
+      </div>
+      <div class="epg-header-right">
+        <button class="epg-refresh-btn" id="epgRefreshBtn" title="EPG aktualisieren">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
+        <button class="epg-close-btn" id="epgCloseBtn">&times;</button>
+      </div>
+    </div>
+    <div class="epg-body" id="epgBody">
+      <div class="epg-loading">EPG-Daten werden geladen...</div>
+    </div>
+  </div>
+
+  <!-- EPG Detail Modal -->
+  <div class="epg-detail-backdrop" id="epgDetailBackdrop" style="display:none">
+    <div class="epg-detail-modal">
+      <div class="epg-detail-header">
+        <h3 class="epg-detail-title" id="epgDetailTitle"></h3>
+        <button class="epg-detail-close" id="epgDetailClose">&times;</button>
+      </div>
+      <div class="epg-detail-meta" id="epgDetailMeta"></div>
+      <div class="epg-detail-desc" id="epgDetailDesc"></div>
+      <div class="epg-detail-actions" id="epgDetailActions"></div>
+    </div>
+  </div>
 
   <script src="renderer.js"></script>
 </body>
