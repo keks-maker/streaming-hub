@@ -4,41 +4,71 @@
     "name": "Netflix",
     "url": "https://www.netflix.com",
     "icon": "netflix.png",
-    "color": "#e50914"
+    "color": "#e50914",
+    "group": "streaming"
   },
   {
     "id": "youtube",
     "name": "YouTube",
     "url": "https://www.youtube.com",
     "icon": "youtube.png",
-    "color": "#ff0000"
+    "color": "#ff0000",
+    "group": "streaming"
   },
   {
     "id": "disney",
     "name": "Disney+",
     "url": "https://www.disneyplus.com",
     "icon": "disney.png",
-    "color": "#0063cc"
+    "color": "#0063cc",
+    "group": "streaming"
   },
   {
     "id": "prime",
     "name": "Prime Video",
     "url": "https://www.primevideo.com",
     "icon": "prime.png",
-    "color": "#00a8e1"
+    "color": "#00a8e1",
+    "group": "streaming"
   },
   {
     "id": "twitch",
     "name": "Twitch",
     "url": "https://www.twitch.tv",
     "icon": "twitch.png",
-    "color": "#9146ff"
+    "color": "#9146ff",
+    "group": "streaming"
   },
   {
     "id": "spotify",
     "name": "Spotify",
     "url": "https://open.spotify.com",
     "icon": "spotify.png",
-    "color": "#1db954"
+    "color": "#1db954",
+    "group": "streaming"
+  },
+  {
+    "id": "ard",
+    "name": "ARD Mediathek",
+    "url": "https://www.ardmediathek.de/",
+    "icon": "ard.png",
+    "color": "#004b91",
+    "group": "mediathek"
+  },
+  {
+    "id": "zdf",
+    "name": "ZDF Mediathek",
+    "url": "https://www.zdf.de/",
+    "icon": "zdf.png",
+    "color": "#df0024",
+    "group": "mediathek"
+  },
+  {
+    "id": "arte",
+    "name": "ARTE",
+    "url": "https://www.arte.tv/de/",
+    "icon": "arte.png",
+    "color": "#000000",
+    "group": "mediathek"
   }
 ]

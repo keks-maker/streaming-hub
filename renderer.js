@@ -118,42 +118,78 @@ function renderNav() {
   })();
   let css = '';
 
-  // TV button (first in nav)
-  const tvNavBtn = document.createElement('button');
-  tvNavBtn.className = 'nav-item';
-  tvNavBtn.id = 'tvBtn';
-  tvNavBtn.dataset.provider = '__tv__';
-  tvNavBtn.innerHTML = `<span class="nav-icon nav-tv-icon">
-    <img src="assets/icons/tv-icon.png" alt="TV" draggable="false">
-  </span>`;
-  tvNavBtn.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    toggleTvSidebar();
-  });
-  nav.appendChild(tvNavBtn);
+  const groups = [
+    { key: 'livetv',    label: 'LiveTV' },
+    { key: 'streaming', label: 'Streaming' },
+    { key: 'mediathek', label: 'Mediatheken' },
+  ];
 
-  services.forEach(svc => {
-    const btn = document.createElement('button');
-    btn.className = 'nav-item';
-    btn.dataset.provider = svc.id;
-    btn.dataset.url = svc.url;
+  groups.forEach((group, gi) => {
+    if (group.key === 'livetv') {
+      if (gi > 0) {
+        nav.appendChild(createDivider());
+      }
+      nav.appendChild(createGroupLabel(group.label));
 
-    css += `.nav-icon.${svc.id} { --icon-bg: ${svc.color}33; --icon-border: ${svc.color}80; }\n`;
-    css += `.nav-item.active.${svc.id} .nav-icon { border-color: ${svc.color}; --active-glow: ${svc.color}99; }\n`;
-
-    btn.innerHTML = `<span class="nav-icon ${svc.id}">
-        <img src="${getIconSrc(svc)}" alt="${svc.name}" loading="lazy">
+      const btn = document.createElement('button');
+      btn.className = 'nav-item';
+      btn.id = 'tvBtn';
+      btn.dataset.provider = '__tv__';
+      btn.innerHTML = `<span class="nav-icon nav-tv-icon">
+        <img src="assets/icons/tv-icon.png" alt="TV" draggable="false">
       </span>`;
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        toggleTvSidebar();
+      });
+      nav.appendChild(btn);
+      return;
+    }
 
-    btn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      navigateTo(svc);
+    const items = services.filter(s => (s.group || 'streaming') === group.key);
+    if (!items.length) return;
+
+    if (gi > 0) {
+      nav.appendChild(createDivider());
+    }
+    nav.appendChild(createGroupLabel(group.label));
+
+    items.forEach(svc => {
+      const btn = document.createElement('button');
+      btn.className = 'nav-item';
+      btn.dataset.provider = svc.id;
+      btn.dataset.url = svc.url;
+
+      css += `.nav-icon.${svc.id} { --icon-bg: ${svc.color}33; --icon-border: ${svc.color}80; }\n`;
+      css += `.nav-item.active.${svc.id} .nav-icon { border-color: ${svc.color}; --active-glow: ${svc.color}99; }\n`;
+
+      btn.innerHTML = `<span class="nav-icon ${svc.id}">
+          <img src="${getIconSrc(svc)}" alt="${svc.name}" loading="lazy">
+        </span>`;
+
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        navigateTo(svc);
+      });
+
+      nav.appendChild(btn);
     });
-
-    nav.appendChild(btn);
   });
 
   styleEl.textContent = css;
+}
+
+function createDivider() {
+  const d = document.createElement('div');
+  d.className = 'nav-divider';
+  return d;
+}
+
+function createGroupLabel(text) {
+  const l = document.createElement('span');
+  l.className = 'nav-group-label';
+  l.textContent = text;
+  return l;
 }
 
 function navigateTo(svc) {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (2026-05-30)
+- Feature: ARD Mediathek, ZDF Mediathek, ARTE als neue Dienste integriert
+- Feature: Nav-Leiste in Gruppen eingeteilt – LiveTV | Streaming | Mediatheken
+- New: Gruppen-Label („LiveTV", „Streaming", „Mediatheken") + Divider zwischen Gruppen
+- New: `group`-Feld in services.json (streaming/mediathek), rückwärtskompatibel
+
 ## 0.3.9 (2026-05-26)
 - Fix: EPG im TV-Player wird jetzt alle 30s aktualisiert (Sendungswechsel erkannt)
 - Technical: sendEpgUpdate in renderer.js, updateEpgBar + Polling in tv.html
@@ -12,15 +18,21 @@
 ## 0.3.7 (2026-05-26)
 - Fix: Kanalwechsel per Pfeiltasten beendet nicht mehr das Vollbild (postMessage statt page-reload)
 - Fix: Kanalwechsel-Reihenfolge folgt jetzt der Sidebar-Anzeige (sortOrder), nicht dem favorites-Array
-- Technical: setupChannel-Funktion in tv.html für sauberen Kanalwechsel ohne Seitenneuladung
-- Version bump auf 0.3.7
 
 ## 0.3.6 (2026-05-26)
-- Feature: TV-Player (tv.html) UI auf TV-Maßstab vergrößert (Schrift, Buttons, Slider)
-- Feature: Kanalwechsel per Pfeiltasten ↑/↓ im TV-Player (nur Favoriten)
-- Change: Lautstärkeregelung im TV-Player auf +/= und -/_ umgestellt
-- Technical: postMessage-Bridge in preload-content.js für Webview→Host-Kommunikation
+- Change: TV-UI – Schriftgrößen/Skalierung per vh statt px (besser auf verschiedenen Bildschirmen)
+- Change: Kanalwechsel im Vollbild jetzt auch über Pfeiltasten links/rechts (neben Mausrad)
+- Fix: Favoriten-Channels werden beim Wechseln priorisiert
 - Version bump auf 0.3.6
+
+## 0.3.5 (2026-05-26)
+- Fix: install.sh – workaround für npm hänger bei extract-zip mit Node.js 26 (--foreground-scripts)
+- Version bump auf 0.3.5
+
+## 0.3.4 (2026-05-26)
+- Change: Update-Button blendet sich wie andere Buttons mit aus (opacity/scale)
+- Change: TV-Icon durch PNG-Icon (icons8-retro-tv) ersetzt
+- Fix: Alte `.tv-btn`-CSS-Regeln aus styles.css entfernt (dead code)
 
 ## 0.3.4 (2026-05-22)
 - Change: Update-Button blendet sich wie andere Buttons mit aus (opacity/scale)
