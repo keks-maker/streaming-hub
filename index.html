@@ -33,7 +33,6 @@
           </g>
         </svg>
       </button>
-      <button class="add-btn" id="addBtn" title="Dienste verwalten">+</button>
       <button class="pip-btn" id="pipBtn" title="Bild-in-Bild (Strg+P)">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -85,34 +84,6 @@
       </div>
     </div>
     <span class="version-tag" id="versionTag"></span>
-  </div>
-
-  <!-- Service-Manager Modal -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal" id="addModal">
-      <div class="modal-header">
-        <span class="modal-title">Dienste verwalten</span>
-        <button class="modal-close" id="modalClose">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="service-list" id="serviceList"></div>
-        <div class="modal-divider"></div>
-        <label class="modal-label">Name</label>
-        <input class="modal-input" id="inputName" type="text" placeholder="z.B. Netflix">
-
-        <label class="modal-label">URL</label>
-        <input class="modal-input" id="inputUrl" type="url" placeholder="z.B. https://www.netflix.com">
-
-        <label class="modal-label">Icon (URL oder Dateiname)</label>
-        <input class="modal-input" id="inputIcon" type="text" placeholder="z.B. netflix.png oder https://…">
-
-        <label class="modal-label">Akzentfarbe</label>
-        <input class="modal-color" id="inputColor" type="color" value="#6c5ce7">
-      </div>
-      <div class="modal-footer">
-        <button class="modal-btn modal-btn-save" id="modalSave">Hinzufügen</button>
-      </div>
-    </div>
   </div>
 
   <!-- Shortcuts Overlay -->
@@ -219,6 +190,40 @@
           </svg>
           Backup einspielen
         </button>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <span class="settings-section-title">Dienste verwalten</span>
+            <button class="settings-add-dienst-btn" id="settingsAddDienstBtn" title="Dienst hinzufügen">+</button>
+          </div>
+
+          <div class="settings-service-group">
+            <span class="settings-service-group-label">Streamingdienste</span>
+            <div class="service-list" id="settingsServiceListStreaming"></div>
+          </div>
+
+          <div class="settings-service-group">
+            <span class="settings-service-group-label">Mediatheken</span>
+            <div class="service-list" id="settingsServiceListMediathek"></div>
+          </div>
+
+          <div class="settings-add-form" id="settingsAddForm" style="display:none">
+            <input class="modal-input" id="settingsInputName" type="text" placeholder="Name">
+            <input class="modal-input" id="settingsInputUrl" type="url" placeholder="URL (z.B. https://www.netflix.com)">
+            <input class="modal-input" id="settingsInputIcon" type="text" placeholder="Icon (URL oder Dateiname)">
+            <div class="settings-add-row">
+              <input class="modal-color" id="settingsInputColor" type="color" value="#6c5ce7">
+              <select class="settings-group-select" id="settingsInputGroup">
+                <option value="streaming">Streamingdienst</option>
+                <option value="mediathek">Mediathek</option>
+              </select>
+              <button class="modal-btn modal-btn-save" id="settingsAddSave">Hinzufügen</button>
+            </div>
+          </div>
+        </div>
+
         <div class="settings-status" id="settingsStatus"></div>
       </div>
     </div>

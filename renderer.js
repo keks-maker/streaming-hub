@@ -26,15 +26,6 @@ const webview = document.getElementById('contentView');
 const welcomeScreen = document.getElementById('welcomeScreen');
 const overlayLocation = document.getElementById('overlayLocation');
 const pipBtn = document.getElementById('pipBtn');
-const addBtn = document.getElementById('addBtn');
-const modalOverlay = document.getElementById('modalOverlay');
-const modalClose = document.getElementById('modalClose');
-const modalSave = document.getElementById('modalSave');
-const serviceList = document.getElementById('serviceList');
-const inputName = document.getElementById('inputName');
-const inputUrl = document.getElementById('inputUrl');
-const inputIcon = document.getElementById('inputIcon');
-const inputColor = document.getElementById('inputColor');
 const shortcutsOverlay = document.getElementById('shortcutsOverlay');
 const historyOverlay = document.getElementById('historyOverlay');
 const historyBtn = document.getElementById('historyBtn');
@@ -264,49 +255,6 @@ function navigateRelative(dir) {
   navigateTo(services[next]);
 }
 
-// Service list in modal
-function renderServiceList() {
-  serviceList.innerHTML = '';
-  if (!services.length) {
-    serviceList.innerHTML = '<div class="service-list-empty">Keine Dienste konfiguriert.</div>';
-    return;
-  }
-  services.forEach(svc => {
-    const row = document.createElement('div');
-    row.className = 'service-row';
-
-    const iconSrc = getIconSrc(svc);
-    const color = svc.color || '#6c5ce7';
-
-    row.innerHTML = `
-      <img class="service-row-icon" src="${iconSrc}" alt="" style="background:${color}33;border-color:${color}66">
-      <span class="service-row-name">${svc.name}</span>
-      <button class="service-row-remove" data-id="${svc.id}" title="Entfernen">&times;</button>
-    `;
-
-    row.querySelector('.service-row-remove').addEventListener('click', () => {
-      window.electronAPI.removeService(svc.id);
-    });
-
-    serviceList.appendChild(row);
-  });
-}
-
-// Modal
-function openModal() {
-  renderServiceList();
-  inputName.value = '';
-  inputUrl.value = '';
-  inputIcon.value = '';
-  inputColor.value = '#6c5ce7';
-  modalOverlay.classList.add('open');
-  inputName.focus();
-}
-
-function closeModal() {
-  modalOverlay.classList.remove('open');
-}
-
 function normalizeUrl(u) {
   u = u.trim();
   if (!u) return '';
@@ -314,21 +262,98 @@ function normalizeUrl(u) {
   return u;
 }
 
-function saveService() {
-  const name = inputName.value.trim();
-  const url = normalizeUrl(inputUrl.value);
-  const icon = inputIcon.value.trim();
-  const color = inputColor.value;
+// ── Settings: Service Management ──
+
+function renderSettingsServices() {
+  const streamingList = document.getElementById('settingsServiceListStreaming');
+  const mediathekList = document.getElementById('settingsServiceListMediathek');
+  if (!streamingList || !mediathekList) return;
+
+  const streaming = services.filter(s => (s.group || 'streaming') === 'streaming');
+  const mediathek = services.filter(s => s.group === 'mediathek');
+
+  function renderList(container, items) {
+    container.innerHTML = '';
+    if (!items.length) {
+      container.innerHTML = '<div class="service-list-empty">Keine Dienste.</div>';
+      return;
+    }
+    items.forEach(svc => {
+      const row = document.createElement('div');
+      row.className = 'service-row';
+      const iconSrc = getIconSrc(svc);
+      const color = svc.color || '#6c5ce7';
+      row.innerHTML = `
+        <img class="service-row-icon" src="${iconSrc}" alt="" style="background:${color}33;border-color:${color}66">
+        <span class="service-row-name">${svc.name}</span>
+        <button class="service-row-remove" data-id="${svc.id}" title="Entfernen">&times;</button>
+      `;
+      row.querySelector('.service-row-remove').addEventListener('click', () => {
+        window.electronAPI.removeService(svc.id);
+      });
+      container.appendChild(row);
+    });
+  }
+
+  renderList(streamingList, streaming);
+  renderList(mediathekList, mediathek);
+}
+
+// ── Settings: Add Service Form ──
+
+const settingsAddDienstBtn = document.getElementById('settingsAddDienstBtn');
+const settingsAddForm = document.getElementById('settingsAddForm');
+const settingsInputName = document.getElementById('settingsInputName');
+const settingsInputUrl = document.getElementById('settingsInputUrl');
+const settingsInputIcon = document.getElementById('settingsInputIcon');
+const settingsInputColor = document.getElementById('settingsInputColor');
+const settingsInputGroup = document.getElementById('settingsInputGroup');
+const settingsAddSave = document.getElementById('settingsAddSave');
+
+settingsAddDienstBtn.addEventListener('click', () => {
+  const isOpen = settingsAddForm.style.display !== 'none';
+  settingsAddForm.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    settingsInputName.value = '';
+    settingsInputUrl.value = '';
+    settingsInputIcon.value = '';
+    settingsInputColor.value = '#6c5ce7';
+    settingsInputName.focus();
+  }
+});
+
+settingsInputName.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') settingsInputUrl.focus();
+});
+settingsInputUrl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') settingsInputIcon.focus();
+});
+settingsInputIcon.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') settingsAddSave.click();
+});
+
+function saveSettingsService() {
+  const name = settingsInputName.value.trim();
+  const url = normalizeUrl(settingsInputUrl.value);
+  const icon = settingsInputIcon.value.trim();
+  const color = settingsInputColor.value;
+  const group = settingsInputGroup.value;
 
   if (!name || !url) return;
 
-  const svc = { name, url, color };
+  const svc = { name, url, color, group };
   if (icon) svc.icon = icon;
 
   window.electronAPI.addService(svc).then(() => {
-    closeModal();
+    settingsInputName.value = '';
+    settingsInputUrl.value = '';
+    settingsInputIcon.value = '';
+    settingsInputColor.value = '#6c5ce7';
+    settingsAddForm.style.display = 'none';
   });
 }
+
+settingsAddSave.addEventListener('click', saveSettingsService);
 
 // ── TV Sources Modal ──
 
@@ -1549,23 +1574,6 @@ historyClear.addEventListener('click', () => {
   window.electronAPI.clearHistory().then(renderHistory);
 });
 
-addBtn.addEventListener('click', openModal);
-modalClose.addEventListener('click', closeModal);
-modalOverlay.addEventListener('click', (e) => {
-  if (e.target === modalOverlay) closeModal();
-});
-modalSave.addEventListener('click', saveService);
-
-inputName.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') inputUrl.focus();
-});
-inputUrl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') inputIcon.focus();
-});
-inputIcon.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') saveService();
-});
-
 // TV event listeners
 tvSidebarClose.addEventListener('click', closeTvSidebar);
 tvSidebarManage.addEventListener('click', openTvModal);
@@ -1669,8 +1677,8 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
       closeTvModal();
       return true;
     }
-    if (modalOverlay.classList.contains('open')) {
-      closeModal();
+    if (settingsOverlay.classList.contains('open')) {
+      closeSettings();
       return true;
     }
     if (tvSidebarOpen) {
@@ -1741,8 +1749,8 @@ document.addEventListener('keydown', (e) => {
       if (shortcutsOverlay.classList.contains('open')) {
         shortcutsOverlay.classList.remove('open');
         e.preventDefault();
-      } else if (modalOverlay.classList.contains('open')) {
-        closeModal();
+      } else if (settingsOverlay.classList.contains('open')) {
+        closeSettings();
         e.preventDefault();
       } else if (historyOverlay.classList.contains('open')) {
         closeHistory();
@@ -1902,6 +1910,8 @@ const restoreBtn = document.getElementById('restoreBtn');
 
 function openSettings() {
   settingsStatus.textContent = '';
+  renderSettingsServices();
+  settingsAddForm.style.display = 'none';
   settingsOverlay.classList.add('open');
 }
 
@@ -1953,7 +1963,7 @@ window.electronAPI.onServicesChanged((svcs) => {
   services = svcs;
   renderNav();
   tvBtn = document.getElementById('tvBtn');
-  renderServiceList();
+  renderSettingsServices();
   if (currentProvider === '__tv__') {
     // Stay in TV mode
     return;
