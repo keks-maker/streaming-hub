@@ -622,8 +622,6 @@
           case 'F': e.preventDefault(); fullscreenBtn.click(); break;
           case 'm':
           case 'M': e.preventDefault(); muteBtn.click(); break;
-          case 'ArrowUp': e.preventDefault(); window.postMessage({source:'tv-player',action:'channel-prev'},'*'); break;
-          case 'ArrowDown': e.preventDefault(); window.postMessage({source:'tv-player',action:'channel-next'},'*'); break;
           case 'ArrowLeft': e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 10); break;
           case 'ArrowRight': e.preventDefault(); video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
           case '=':

@@ -36,15 +36,19 @@ process.on('message', (msg) => {
     }
   } else if (msg.type === 'apply') {
     try {
+      process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 10 });
       execSync('git fetch --tags --force origin', {
         cwd: appDir, encoding: 'utf-8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'],
       });
+      process.send({ type: 'progress', step: `Version v${msg.version} wird angewendet…`, percent: 40 });
       execSync(`git checkout v${msg.version}`, {
         cwd: appDir, encoding: 'utf-8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'],
       });
+      process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
       execSync('npm install', {
         cwd: appDir, encoding: 'utf-8', timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'],
       });
+      process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
       process.send({ type: 'applied' });
     } catch (e) {
       process.send({ type: 'applied', error: e.message });

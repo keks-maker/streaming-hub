@@ -666,7 +666,7 @@ function renderTvChannelItem(ch, showFav) {
       toggleFavorite(ch);
       return;
     }
-    selectTvChannel(ch);
+    selectTvChannel(ch, { suppressChannelList: true });
   });
 
   const dragHandle = item.querySelector('.tv-channel-drag');
@@ -1726,6 +1726,11 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
     return true;
   }
 
+  if ((key === 'ArrowUp' || key === 'ArrowDown') && currentProvider === '__tv__') {
+    switchTvChannel(key === 'ArrowUp' ? -1 : 1);
+    return true;
+  }
+
   return false;
 }
 
@@ -1818,6 +1823,23 @@ async function checkForUpdates() {
   }
 }
 
+// ── Update Overlay ──
+const updateOverlay = document.getElementById('updateOverlay');
+const updateTitle = document.getElementById('updateTitle');
+const updateStep = document.getElementById('updateStep');
+const updateProgressFill = document.getElementById('updateProgressFill');
+
+function showUpdateOverlay(title) {
+  updateTitle.textContent = title || 'Update wird installiert…';
+  updateStep.textContent = 'Vorbereiten…';
+  updateProgressFill.style.width = '0%';
+  updateOverlay.classList.add('open');
+}
+
+function hideUpdateOverlay() {
+  updateOverlay.classList.remove('open');
+}
+
 const cleanupUpdateStatus = window.electronAPI.onUpdateStatus((status) => {
   if (status.type === 'available') {
     updateAvailableVersion = status.version;
@@ -1825,11 +1847,22 @@ const cleanupUpdateStatus = window.electronAPI.onUpdateStatus((status) => {
   } else if (status.type === 'not-available') {
     setUpdateState('uptodate');
   } else if (status.type === 'error') {
+    hideUpdateOverlay();
     setUpdateState('uptodate');
   } else if (status.type === 'progress') {
     updateBtn._percent = status.percent;
+    if (status.step) {
+      updateStep.textContent = status.step;
+    } else if (status.percent !== undefined) {
+      updateStep.textContent = 'Lade Update herunter… ' + Math.round(status.percent) + '%';
+    }
+    if (status.percent !== undefined) {
+      updateProgressFill.style.width = Math.min(status.percent, 100) + '%';
+    }
     setUpdateState('progress');
   } else if (status.type === 'downloaded') {
+    updateStep.textContent = 'Download abgeschlossen – Neustart…';
+    updateProgressFill.style.width = '100%';
     setUpdateState('downloaded');
   }
 });
@@ -1840,8 +1873,11 @@ updateBtn.addEventListener('click', async () => {
     if (confirm(`Update v${updateAvailableVersion} installieren?\nDie App wird nach der Installation neugestartet.`)) {
       updateBtn.disabled = true;
       updateBtn.title = 'Installiere…';
+      showUpdateOverlay(`Update v${updateAvailableVersion} wird installiert…`);
+      updateStep.textContent = 'Starte Installation…';
       const result = await window.electronAPI.applyUpdate(updateAvailableVersion);
       if (!result.success && !result.downloading) {
+        hideUpdateOverlay();
         updateBtn.disabled = false;
         updateBtn.title = `Fehlgeschlagen: ${result.error}`;
         setTimeout(() => setUpdateState('available'), 5000);

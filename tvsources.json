@@ -312,6 +312,9 @@
       "MDRFernsehen.de@Thuringen": {
         "tvgId": "MDRThuringen.de"
       },
+      "DasErste.de@HD": {
+        "url": "https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8"
+      },
       "rbbFernsehen.de@Brandenburg": {
         "tvgId": "rbbBrandenburg.de"
       }

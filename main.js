@@ -362,15 +362,19 @@ ipcMain.handle('apply-update', async (_e, version) => {
   if (!updaterProcess) return { success: false, error: 'kein update-prozess' };
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 180000);
-    updaterProcess.once('message', (msg) => {
-      clearTimeout(timer);
-      if (msg.type === 'applied') {
+    const onMsg = (msg) => {
+      if (msg.type === 'progress') {
+        mainWindow?.webContents.send('update-status', { type: 'progress', step: msg.step, percent: msg.percent });
+      } else if (msg.type === 'applied') {
+        clearTimeout(timer);
+        updaterProcess.removeListener('message', onMsg);
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => { app.relaunch(); app.quit(); }, 500);
         }
       }
-    });
+    };
+    updaterProcess.on('message', onMsg);
     updaterProcess.send({ type: 'apply', version });
   });
 });
