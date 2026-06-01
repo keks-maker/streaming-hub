@@ -359,7 +359,7 @@ ipcMain.handle('apply-update', async (_e, version) => {
       return { success: false, error: e.message };
     }
   }
-  const proc = fork(path.join(__dirname, 'updater.js'), [], {
+  const proc = fork(path.join(__dirname, 'updater.js'), [__dirname], {
     stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
   });
   return new Promise((resolve) => {
