@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { fork } = require('child_process');
+const { fork, execSync } = require('child_process');
 
 let mainWindow;
 let pipWindow = null;
@@ -492,7 +492,16 @@ ipcMain.on('webview-keydown', (_e, data) => {
   mainWindow?.webContents.send('webview-keydown', data);
 });
 
-ipcMain.handle('get-app-version', () => app.getVersion());
+ipcMain.handle('get-app-version', () => {
+  try {
+    const raw = execSync('git describe --tags --abbrev=0', {
+      cwd: __dirname, encoding: 'utf-8', timeout: 5000,
+    }).trim();
+    return raw.replace(/^v/i, '');
+  } catch (e) {
+    return app.getVersion();
+  }
+});
 
 ipcMain.on('toggle-fullscreen', () => {
   mainWindow?.setFullScreen(!mainWindow.isFullScreen());

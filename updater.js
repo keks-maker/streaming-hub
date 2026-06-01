@@ -13,9 +13,21 @@ function cmpVersions(a, b) {
   return 0;
 }
 
+function getCurrentVersion() {
+  try {
+    const raw = execSync('git describe --tags --abbrev=0', {
+      cwd: appDir, encoding: 'utf-8', timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    return raw.replace(/^v/i, '');
+  } catch (e) {
+    return null;
+  }
+}
+
 process.on('message', (msg) => {
   if (msg.type === 'check') {
     try {
+      const currentVersion = getCurrentVersion() || msg.currentVersion;
       const out = execSync('git ls-remote --tags origin', {
         cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
       });
@@ -29,7 +41,7 @@ process.on('message', (msg) => {
       process.send({
         type: 'result',
         latest,
-        hasUpdate: latest ? cmpVersions(latest, msg.currentVersion) > 0 : false,
+        hasUpdate: latest ? cmpVersions(latest, currentVersion) > 0 : false,
       });
     } catch (e) {
       process.send({ type: 'result', error: e.message });
