@@ -359,7 +359,9 @@ ipcMain.handle('apply-update', async (_e, version) => {
       return { success: false, error: e.message };
     }
   }
-  if (!updaterProcess) return { success: false, error: 'kein update-prozess' };
+  const proc = fork(path.join(__dirname, 'updater.js'), [], {
+    stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+  });
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 180000);
     const onMsg = (msg) => {
@@ -367,15 +369,20 @@ ipcMain.handle('apply-update', async (_e, version) => {
         mainWindow?.webContents.send('update-status', { type: 'progress', step: msg.step, percent: msg.percent });
       } else if (msg.type === 'applied') {
         clearTimeout(timer);
-        updaterProcess.removeListener('message', onMsg);
+        proc.removeListener('message', onMsg);
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => { app.relaunch(); app.quit(); }, 500);
         }
       }
     };
-    updaterProcess.on('message', onMsg);
-    updaterProcess.send({ type: 'apply', version });
+    proc.on('message', onMsg);
+    proc.on('exit', () => {
+      clearTimeout(timer);
+      proc.removeListener('message', onMsg);
+      resolve({ success: false, error: 'prozess unerwartet beendet' });
+    });
+    proc.send({ type: 'apply', version });
   });
 });
 
