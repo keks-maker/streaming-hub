@@ -36,7 +36,7 @@ const historyClear = document.getElementById('historyClear');
 // TV DOM references
 const tvSidebar = document.getElementById('tvSidebar');
 const tvSidebarTrigger = document.getElementById('tvSidebarTrigger');
-const tvSidebarClose = document.getElementById('tvSidebarClose');
+
 const tvSidebarManage = document.getElementById('tvSidebarManage');
 const tvSidebarEpgRefresh = document.getElementById('tvSidebarEpgRefresh');
 const tvSidebarSources = document.getElementById('tvSidebarSources');
@@ -74,7 +74,6 @@ const epgDetailClose = document.getElementById('epgDetailClose');
 const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
 let epgSlotHours = 8;
-let epgViewTimer = null;
 
 // Mediathek mapping for EPG -> service search
 const mediathekChannelMap = [
@@ -453,7 +452,7 @@ function closeTvSidebar() {
 
 function loadTvChannels(forceReload) {
   // Cache: nicht erneut laden wenn Daten bereits vorhanden
-  if (!forceReload && tvChannels.length > 0 && tvEpgData.length > 0) {
+  if (!forceReload && tvChannels.length > 0) {
     renderTvChannels();
     return;
   }
@@ -461,7 +460,6 @@ function loadTvChannels(forceReload) {
   tvChannels = [];
   tvEpgData = [];
   tvEpgIndex = null;
-  let tvEpgUrls = [];
 
   if (!tvSources.length) {
     tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>';
@@ -479,10 +477,6 @@ function loadTvChannels(forceReload) {
         const tagged = result.channels.map(ch => ({ ...ch, sourceId: source.id }));
         sourceChannelMap[source.id] = tagged;
         tvChannels = tvChannels.concat(tagged);
-        const srcEpgUrl = source.epgUrl || (result.epgUrls && result.epgUrls[0]);
-        if (srcEpgUrl && !tvEpgUrls.includes(srcEpgUrl)) {
-          tvEpgUrls.push(srcEpgUrl);
-        }
       })
       .catch(err => {
         console.warn('Fehler beim Laden von', source.name, err.message);
@@ -514,64 +508,35 @@ function loadTvChannels(forceReload) {
     });
 
     renderTvChannels();
-    // Fetch EPG from all discovered URLs
-    if (tvEpgUrls.length) {
-      tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ')
-        + ' <span class="tv-epg-loading">EPG lädt…</span>';
-      Promise.all(tvEpgUrls.map(url =>
-        window.electronAPI.fetchEPG(url).catch(() => [])
-      )).then(results => {
-        tvEpgData = results.flat();
-        buildEpgIndex();
-        tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ');
-        if (tvEpgData.length) {
-          tvSidebarStatus.textContent += ' | EPG: ' + tvEpgIndex.size + ' Kanäle';
-        }
-        renderTvChannels();
-      }).catch(() => {
-        tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG-Fehler';
-      });
-    } else {
-      const hasEpgConfig = tvSources.some(s => s.epgUrl);
-      if (!hasEpgConfig) {
-        tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | Keine EPG-URL';
-      } else {
-        tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | ⏳ EPG lädt…';
-        // EPG-URLs aus Quellen direkt verwenden (Fallback falls M3U-Kopfzeilen fehlen)
-        const fallbackUrls = [...new Set(tvSources.map(s => s.epgUrl).filter(Boolean))];
-        if (fallbackUrls.length) {
-          Promise.all(fallbackUrls.map(url =>
-            window.electronAPI.fetchEPG(url).catch(() => [])
-          )).then(results => {
-            tvEpgData = results.flat();
-            buildEpgIndex();
-            tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ');
-            if (tvEpgData.length) {
-              tvSidebarStatus.textContent += ' | EPG: ' + tvEpgIndex.size + ' Kanäle';
-            }
-            renderTvChannels();
-          });
-        }
-      }
-    }
-    scheduleEpgRefresh(tvEpgUrls);
+    updateEpgStatus();
   });
 }
 
-let epgRefreshTimer = null;
+function updateEpgStatus() {
+  if (tvEpgIndex && tvEpgData.length) {
+    tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG: ' + tvEpgIndex.size + ' Kanäle';
+  } else {
+    const hasEpgConfig = tvSources.some(s => s.epgUrl);
+    tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + (hasEpgConfig ? ' | EPG lädt…' : ' | Keine EPG-URL');
+  }
+}
 
-function scheduleEpgRefresh(urls) {
-  if (epgRefreshTimer) clearInterval(epgRefreshTimer);
-  if (!urls.length) return;
-  epgRefreshTimer = setInterval(() => {
-    Promise.all(urls.map(url =>
-      window.electronAPI.fetchEPG(url).catch(() => [])
-    )).then(results => {
-      tvEpgData = results.flat();
-      buildEpgIndex();
-      if (tvSidebarOpen) renderTvChannels();
-    });
-  }, 30 * 60 * 1000);
+function loadEpgData() {
+  const urls = [...new Set(tvSources.map(s => s.epgUrl).filter(Boolean))];
+  if (!urls.length) {
+    if (tvSidebarOpen) updateEpgStatus();
+    return;
+  }
+  Promise.all(urls.map(url =>
+    window.electronAPI.fetchEPG(url).catch(() => [])
+  )).then(results => {
+    tvEpgData = results.flat();
+    buildEpgIndex();
+    if (tvSidebarOpen) {
+      updateEpgStatus();
+      renderTvChannels();
+    }
+  });
 }
 
 function renderSourcePills() {
@@ -1172,16 +1137,10 @@ function buildEpgIndex() {
 function openEpgView() {
   epgOverlay.style.display = 'flex';
   renderEpg();
-  if (epgViewTimer) clearInterval(epgViewTimer);
-  epgViewTimer = setInterval(renderEpg, 60000);
 }
 
 function closeEpgView() {
   epgOverlay.style.display = 'none';
-  if (epgViewTimer) {
-    clearInterval(epgViewTimer);
-    epgViewTimer = null;
-  }
 }
 
 function renderEpg() {
@@ -1574,7 +1533,6 @@ historyClear.addEventListener('click', () => {
 });
 
 // TV event listeners
-tvSidebarClose.addEventListener('click', closeTvSidebar);
 tvSidebarManage.addEventListener('click', openTvModal);
 tvSidebarEpgRefresh.addEventListener('click', refreshEpg);
 tvModalClose.addEventListener('click', closeTvModal);
@@ -1983,6 +1941,7 @@ overlayLocation.addEventListener('click', goToStartPage);
 window.electronAPI.getTvSources().then((sources) => {
   tvSources = sources;
   tvSelectedSourceIds = sources.map(s => s.id);
+  loadEpgData();
 });
 
 window.electronAPI.onTvSourcesChanged((sources) => {
@@ -2000,7 +1959,9 @@ window.electronAPI.onTvSourcesChanged((sources) => {
   renderTvSourceList();
   if (tvSidebarOpen) {
     renderSourcePills();
-    if (structuralChange) loadTvChannels(true);
-    else renderTvChannels();
+    if (structuralChange) {
+      loadTvChannels(true);
+      loadEpgData();
+    } else renderTvChannels();
   }
 });
