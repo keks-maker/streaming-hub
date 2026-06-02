@@ -517,7 +517,8 @@ function updateEpgStatus() {
     tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG: ' + tvEpgIndex.size + ' Kanäle';
   } else {
     const hasEpgConfig = tvSources.some(s => s.epgUrl);
-    tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + (hasEpgConfig ? ' | EPG lädt…' : ' | Keine EPG-URL');
+    tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ')
+      + (hasEpgConfig ? ' | <span class="tv-epg-loading">EPG lädt…</span>' : ' | Keine EPG-URL');
   }
 }
 
@@ -527,13 +528,15 @@ function loadEpgData() {
     if (tvSidebarOpen) updateEpgStatus();
     return;
   }
+  if (tvSidebarOpen) updateEpgStatus();
   Promise.all(urls.map(url =>
     window.electronAPI.fetchEPG(url).catch(() => [])
   )).then(results => {
     tvEpgData = results.flat();
     buildEpgIndex();
     if (tvSidebarOpen) {
-      updateEpgStatus();
+      tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG geladen ✓</span>';
+      setTimeout(() => updateEpgStatus(), 2000);
       renderTvChannels();
     }
   });
@@ -601,11 +604,18 @@ function refreshEpg() {
     return;
   }
 
+  if (tvSidebarOpen) {
+    tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span class="tv-epg-loading">EPG lädt…</span>';
+  }
   Promise.all(epgUrls.map(url =>
     window.electronAPI.fetchEPG(url).catch(() => [])
   )).then(results => {
     tvEpgData = results.flat();
     buildEpgIndex();
+    if (tvSidebarOpen) {
+      tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG aktualisiert ✓</span>';
+      setTimeout(() => updateEpgStatus(), 2000);
+    }
     renderTvChannels();
   }).finally(() => {
     tvEpgRefreshing = false;
