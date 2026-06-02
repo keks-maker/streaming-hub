@@ -6,4 +6,5 @@ dist/
 release/
 *.7z
 .serena/
+history.json
 

@@ -145,11 +145,14 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   cd "$INSTALL_DIR"
   git fetch --tags --force origin 2>/dev/null || git fetch --tags origin
   LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+  # Stash lokale Änderungen (history/services/tvsources), force-checkout, restore
+  git stash --include-untracked 2>/dev/null || true
   if [ -n "$LATEST_TAG" ]; then
-    git checkout "$LATEST_TAG" 2>/dev/null || git pull
+    git checkout --force "$LATEST_TAG" 2>/dev/null || { git checkout master && git pull; }
   else
     git pull
   fi
+  git stash pop 2>/dev/null || true
 else
   # Neuinstallation
   if [ -d "$INSTALL_DIR" ]; then

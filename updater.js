@@ -53,9 +53,19 @@ process.on('message', (msg) => {
         cwd: appDir, encoding: 'utf-8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'],
       });
       process.send({ type: 'progress', step: `Version v${msg.version} wird angewendet…`, percent: 40 });
-      execSync(`git checkout v${msg.version}`, {
+      try {
+        execSync('git stash --include-untracked', {
+          cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+        });
+      } catch (e) { /* nothing to stash */ }
+      execSync(`git checkout --force v${msg.version}`, {
         cwd: appDir, encoding: 'utf-8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'],
       });
+      try {
+        execSync('git stash pop', {
+          cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+        });
+      } catch (e) { /* stash pop may conflict – user config preserved */ }
       process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
       execSync('npm install', {
         cwd: appDir, encoding: 'utf-8', timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'],
