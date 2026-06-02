@@ -428,7 +428,7 @@ function toggleTvSidebar() {
 function openTvSidebar() {
   tvSidebarOpen = true;
   tvSidebar.classList.add('open');
-  tvBtn.classList.add('active');
+  if (tvBtn) tvBtn.classList.add('active');
 
   // Restore collapsed groups from localStorage
   try {
@@ -448,7 +448,7 @@ function openTvSidebar() {
 function closeTvSidebar() {
   tvSidebarOpen = false;
   tvSidebar.classList.remove('open');
-  tvBtn.classList.remove('active');
+  if (tvBtn) tvBtn.classList.remove('active');
 }
 
 function loadTvChannels(forceReload) {
@@ -1333,8 +1333,7 @@ function closeEpgDetail() {
 
 // ── Shortcuts overlay ──
 function toggleShortcuts() {
-  const isOpen = shortcutsOverlay.classList.toggle('open');
-  if (!isOpen) shortcutsOverlay.classList.remove('open');
+  shortcutsOverlay.classList.toggle('open');
 }
 
 // History overlay
@@ -1884,7 +1883,7 @@ updateBtn.addEventListener('click', async () => {
       showUpdateOverlay(`Update v${updateAvailableVersion} wird installiert…`);
       updateStep.textContent = 'Starte Installation…';
       const result = await window.electronAPI.applyUpdate(updateAvailableVersion);
-      if (!result.success && !result.downloading) {
+      if (!result.success) {
         hideUpdateOverlay();
         updateBtn.disabled = false;
         updateBtn.title = `Fehlgeschlagen: ${result.error}`;

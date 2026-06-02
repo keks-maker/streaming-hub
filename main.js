@@ -334,10 +334,13 @@ ipcMain.handle('check-for-update', async () => {
   if (!updaterProcess) return { hasUpdate: false, error: 'kein update-prozess' };
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve({ hasUpdate: false, error: 'timeout' }), 20000);
-    updaterProcess.once('message', (msg) => {
+    const onMsg = (msg) => {
+      if (msg.type !== 'result') return;
       clearTimeout(timer);
-      if (msg.type === 'result') resolve({ hasUpdate: msg.hasUpdate, latestVersion: msg.latest, error: msg.error });
-    });
+      updaterProcess.removeListener('message', onMsg);
+      resolve({ hasUpdate: msg.hasUpdate, latestVersion: msg.latest, error: msg.error });
+    };
+    updaterProcess.on('message', onMsg);
     updaterProcess.send({ type: 'check', currentVersion: app.getVersion() });
   });
 });

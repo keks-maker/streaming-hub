@@ -67,7 +67,7 @@ process.on('message', (msg) => {
         });
       } catch (e) { /* stash pop may conflict – user config preserved */ }
       process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
-      execSync('npm install', {
+      execSync('npm install --ignore-scripts', {
         cwd: appDir, encoding: 'utf-8', timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'],
       });
       process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
