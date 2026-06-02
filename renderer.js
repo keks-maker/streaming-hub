@@ -220,6 +220,7 @@ function goToStartPage() {
   if (webviewReady) {
     try { webview.loadURL('about:blank'); } catch (e) { console.warn('loadURL failed'); }
   }
+  if (tvSources.length && !tvSidebarOpen) openTvSidebar();
 }
 
 function navigateTo(svc) {
@@ -236,6 +237,7 @@ function navigateTo(svc) {
   } else {
     pendingNav = targetUrl;
   }
+  if (tvSidebarOpen) closeTvSidebar();
 }
 
 function getCurrentSvc() {
@@ -458,8 +460,6 @@ function loadTvChannels(forceReload) {
   }
   tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Lade Sender...</div>';
   tvChannels = [];
-  tvEpgData = [];
-  tvEpgIndex = null;
 
   if (!tvSources.length) {
     tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>';
@@ -1591,9 +1591,9 @@ tvChSearch.addEventListener('keydown', (e) => {
   }
 });
 
-// Close sidebar when clicking outside
+// Close sidebar when clicking outside (not on start page)
 document.addEventListener('click', (e) => {
-  if (tvSidebarOpen &&
+  if (tvSidebarOpen && currentProvider !== '' &&
       !tvSidebar.contains(e.target) &&
       !tvBtn.contains(e.target) &&
       !tvSidebarTrigger.contains(e.target)) {
@@ -1942,6 +1942,7 @@ window.electronAPI.getTvSources().then((sources) => {
   tvSources = sources;
   tvSelectedSourceIds = sources.map(s => s.id);
   loadEpgData();
+  if (tvSources.length) openTvSidebar();
 });
 
 window.electronAPI.onTvSourcesChanged((sources) => {
