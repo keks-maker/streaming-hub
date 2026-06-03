@@ -1090,11 +1090,12 @@ function switchTvChannel(dir) {
   if (!tvActiveChannelId || !tvChannels.length) return;
   const sourceId = tvChannels.find(c => c.id === tvActiveChannelId)?.sourceId;
   if (!sourceId) return;
-  const favOrder = tvChannels.filter(ch => ch.sourceId === sourceId && isFavorite(ch)).map(ch => ch.id);
-  if (!favOrder.length) return;
-  const idx = favOrder.indexOf(tvActiveChannelId);
+  const sourceChannels = tvChannels.filter(ch => ch.sourceId === sourceId);
+  const favOrder = sourceChannels.filter(ch => isFavorite(ch)).map(ch => ch.id);
+  const order = favOrder.length ? favOrder : sourceChannels.map(ch => ch.id);
+  const idx = order.indexOf(tvActiveChannelId);
   if (idx === -1) return;
-  const nextId = favOrder[(idx + dir + favOrder.length) % favOrder.length];
+  const nextId = order[(idx + dir + order.length) % order.length];
   const nextCh = tvChannels.find(c => c.id === nextId);
   if (nextCh) selectTvChannel(nextCh);
 }

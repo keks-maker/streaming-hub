@@ -95,8 +95,13 @@ document.addEventListener('keydown', (e) => {
     e.key === 'Escape' ||
     e.key === 'F11' ||
     e.key === '?' ||
+    e.key === 'ArrowUp' ||
+    e.key === 'ArrowDown' ||
     (e.ctrlKey && (e.key === 'Tab' || e.key === 'p' || e.key === 'P'))
   ) {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
     ipcRenderer.send('webview-keydown', {
       key: e.key,
       ctrlKey: e.ctrlKey,
