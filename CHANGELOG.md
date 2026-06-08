@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.27 (2026-06-08)
+- Fix: Streaming-Player (Netflix/YouTube) pausieren bei Wechsel zu TV – via `executeJavaScript` werden alle `video/audio`-Elemente gestoppt
+- Code-Review: Event-Listener, webview-Referenzen, CSS-Regeln – keine weiteren Querfehler gefunden
+
 ## 0.4.26 (2026-06-08)
 - Fix: TV-Stream stoppt jetzt beim Verlassen des TV-Modus – `tvView.loadURL('about:blank')` räumt den HLS.js-Stream auf (auch aus IIFE-Scope)
 - Fix: `switchWebview()` entfernt `tvViewReady=false` – `did-attach` feuert nur einmalig, sonst bleibt TV-Modus tot

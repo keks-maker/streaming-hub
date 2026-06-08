@@ -29,6 +29,10 @@ let tvViewReady = false;
 
 function switchWebview(useTv) {
   if (useTv) {
+    // Streaming-Player pausieren beim Wechsel zu TV
+    try {
+      contentView.executeJavaScript(`document.querySelectorAll('video,audio').forEach(function(e){e.pause()})`);
+    } catch (_e) {}
     contentView.style.opacity = '0';
     contentView.style.pointerEvents = 'none';
     tvView.style.opacity = '1';
