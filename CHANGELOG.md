@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.22 (2026-06-08)
+- Technical: Test-Release für Update-Mechanismus
+
 ## 0.4.21 (2026-06-08)
 - Fix: `updater.js` – User-Daten (services.json, tvsources.json, history.json) werden vor Update-Checkout gesichert und wiederhergestellt; Named-Stash via `git stash push`, nur bei tatsächlichen lokalen Änderungen; Nutzer-Hinweis bei Stash-Konflikten
 - Fix: `main.js` – `app.relaunch()` startet nun die neue AppImage (`execPath: newAppImage`)
