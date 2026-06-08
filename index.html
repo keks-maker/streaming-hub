@@ -49,6 +49,18 @@
              preload="preload-content.js"
              plugins>
     </webview>
+    <webview id="tvView" class="tv-view"
+             src="about:blank"
+             partition="persist:tv"
+             preload="preload-content.js"
+             plugins>
+    </webview>
+    <div id="errorOverlay" class="error-overlay" style="display:none">
+      <div class="error-overlay-content">
+        <span id="errorMsg" class="error-msg"></span>
+        <button id="errorReloadBtn" class="error-reload-btn">↻ Neu laden</button>
+      </div>
+    </div>
     <div class="welcome-screen" id="welcomeScreen">
       <div class="welcome-bg" id="welcomeBg"></div>
 
@@ -321,6 +333,7 @@
     </div>
   </div>
 
+  <script src="logger.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

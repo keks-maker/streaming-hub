@@ -1,10 +1,18 @@
 # Changelog
 
-## 0.4.22 (2026-06-08)
-- New: ESLint + Prettier Setup (.eslintrc.json, .prettierrc)
-- Fix: `.gitignore` um `Weiterentwicklung/` erweitert
-- Housekeeping: `.serena/` + `history.json` waren bereits im `.gitignore`
-- Housekeeping: Issue #7 "Settings sichern und wieder einspielen" geschlossen (Feature bereits implementiert)
+## 0.4.23 (2026-06-08)
+- New: `logger.js` – Strukturiertes Logging mit Timestamp, Levels (debug/info/warn/error) und Kontext-Autoerkennung (Node/Browser)
+- New: `eslint.config.js` – Migration zu ESLint Flat Config (v10.x), alle JS-Dateien linten sauber
+- New: `.gitea/workflows/build.yaml` – CI/CD Pipeline (Lint + Build + Release via Gitea Actions)
+- New: Error-Boundary für Webviews – `crashed`, `did-fail-load`, `unresponsive`-Handler mit Error-Overlay + „Neu laden"-Button
+- New: Session-Partition – TV-Player (`tvView`) lädt in eigenem `<webview>` mit `partition="persist:tv"`, getrennt vom Streaming-Session (`persist:streaming`)
+- Change: `console.*` in `main.js`, `renderer.js`, `updater.js` durch `logger.*` ersetzt
+- Change: electron-builder auf `26.15.2` aktualisiert
+- Change: eslint + prettier auf aktuellste Version aktualisiert
+- Fix: 1 hochgradige npm-Sicherheitslücke (`tmp`) via `npm audit fix` geschlossen
+- Housekeeping: `npm run audit` + `npm run outdated` als Scripts in package.json
+- Housekeeping: `npm run lint` + `lint:fix` laufen jetzt via Flat Config
+- Housekeeping: CHANGELOG v0.4.23 hinzugefügt
 
 ## 0.4.21 (2026-06-08)
 - Fix: `updater.js` – User-Daten (services.json, tvsources.json, history.json) werden vor Update-Checkout gesichert und wiederhergestellt; Named-Stash via `git stash push`, nur bei tatsächlichen lokalen Änderungen; Nutzer-Hinweis bei Stash-Konflikten

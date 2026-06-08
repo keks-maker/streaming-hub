@@ -22,7 +22,51 @@ let tvChDirty = false;
 const overlayBar = document.getElementById('overlayBar');
 const nav = document.getElementById('overlayNav');
 let tvBtn = null;
-const webview = document.getElementById('contentView');
+const contentView = document.getElementById('contentView');
+const tvView = document.getElementById('tvView');
+let webview = contentView;
+let tvViewReady = false;
+
+function switchWebview(useTv) {
+  if (useTv) {
+    contentView.style.display = 'none';
+    tvView.style.display = '';
+    webview = tvView;
+  } else {
+    tvView.style.display = 'none';
+    contentView.style.display = '';
+    webview = contentView;
+  }
+}
+
+// ── Error Overlay ──
+const errorOverlay = document.getElementById('errorOverlay');
+const errorMsg = document.getElementById('errorMsg');
+const errorReloadBtn = document.getElementById('errorReloadBtn');
+let errorUrl = null;
+
+function showError(message, url) {
+  if (!errorOverlay) return;
+  errorMsg.textContent = message;
+  errorUrl = url || null;
+  errorOverlay.style.display = '';
+}
+
+function hideError() {
+  if (!errorOverlay) return;
+  errorOverlay.style.display = 'none';
+  errorUrl = null;
+}
+
+errorReloadBtn.addEventListener('click', () => {
+  hideError();
+  if (errorUrl && webviewReady) {
+    webview.loadURL(errorUrl);
+  } else if (webviewReady) {
+    webview.reload();
+  }
+});
+
 const welcomeScreen = document.getElementById('welcomeScreen');
 const overlayLocation = document.getElementById('overlayLocation');
 const pipBtn = document.getElementById('pipBtn');
@@ -215,10 +259,11 @@ function goToStartPage() {
   currentProvider = '';
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  switchWebview(false);
   welcomeScreen.style.display = '';
   overlayBar.classList.add('always-visible');
   if (webviewReady) {
-    try { webview.loadURL('about:blank'); } catch (e) { console.warn('loadURL failed'); }
+    try { webview.loadURL('about:blank'); } catch (e) { logger.warn('loadURL failed'); }
   }
   if (tvSources.length && !tvSidebarOpen) openTvSidebar();
 }
@@ -229,11 +274,12 @@ function navigateTo(svc) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const btn = nav.querySelector(`.nav-item[data-provider="${svc.id}"]`);
   if (btn) btn.classList.add('active');
+  switchWebview(false);
   welcomeScreen.style.display = 'none';
   overlayBar.classList.remove('always-visible');
   const targetUrl = normalizeUrl(svc.url);
   if (webviewReady) {
-    try { webview.loadURL(targetUrl); } catch (e) { console.warn('loadURL failed:', targetUrl, e); }
+    try { webview.loadURL(targetUrl); } catch (e) { logger.warn('loadURL failed:', targetUrl, e); }
   } else {
     pendingNav = targetUrl;
   }
@@ -468,8 +514,8 @@ function loadTvChannels(forceReload) {
   }
 
   tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ');
-  let parsePromises = [];
-  let sourceChannelMap = {}; // sourceId → channels[]
+  const parsePromises = [];
+  const sourceChannelMap = {}; // sourceId → channels[]
 
   tvSources.forEach(source => {
     const p = window.electronAPI.fetchAndParseM3U(source.url)
@@ -480,7 +526,7 @@ function loadTvChannels(forceReload) {
         tvChannels = tvChannels.concat(tagged);
       })
       .catch(err => {
-        console.warn('Fehler beim Laden von', source.name, err.message);
+        logger.warn('Fehler beim Laden von', source.name, err.message);
         sourceChannelMap[source.id] = [];
       });
     parsePromises.push(p);
@@ -1031,8 +1077,9 @@ async function selectTvChannel(ch, options = {}) {
     serviceName: ch.name,
   });
 
-  // Switch to TV mode: load player in webview
+  // Switch to TV mode: load player in tvView
   currentProvider = '__tv__';
+  switchWebview(true);
   lastMediaTitle = 'TV: ' + ch.name;
   welcomeScreen.style.display = 'none';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1059,8 +1106,8 @@ async function selectTvChannel(ch, options = {}) {
   }
 
   // Load tv.html with channel URL as parameter (needs file:// protocol)
-  const isTvPage = webview.getURL() && webview.getURL().includes('tv.html');
-  if (isTvPage && webviewReady) {
+  const isTvPage = tvView.getURL() && tvView.getURL().includes('tv.html');
+  if (isTvPage && tvViewReady) {
     try {
       const msg = {
         type: 'switch-channel',
@@ -1077,8 +1124,8 @@ async function selectTvChannel(ch, options = {}) {
         msg.channelList = channelList.channels;
         msg.channelIndex = channelList.currentIndex;
       }
-      webview.executeJavaScript("window.postMessage(" + JSON.stringify(msg) + ",'*')");
-    } catch (e) { console.warn('postMessage to tv.html failed:', e); }
+      tvView.executeJavaScript("window.postMessage(" + JSON.stringify(msg) + ",'*')");
+    } catch (e) { logger.warn('postMessage to tv.html failed:', e); }
   } else {
     const appPath = await window.electronAPI.getAppPath();
     const playerUrl = 'file://' + appPath + '/tv.html?channel=' + encodeURIComponent(ch.url)
@@ -1088,8 +1135,8 @@ async function selectTvChannel(ch, options = {}) {
       + '&epgStart=' + encodeURIComponent(epgStart)
       + '&epgEnd=' + encodeURIComponent(epgEnd)
       + '&epgNext=' + encodeURIComponent(epgNext);
-    if (webviewReady) {
-      try { webview.loadURL(playerUrl); } catch (e) { console.warn('loadURL failed:', e); }
+    if (tvViewReady) {
+      try { tvView.loadURL(playerUrl); } catch (e) { logger.warn('loadURL failed:', e); }
     } else {
       pendingNav = playerUrl;
     }
@@ -1433,7 +1480,7 @@ function sendEpgUpdate() {
   };
   try {
     webview.executeJavaScript("window.postMessage(" + JSON.stringify(data) + ",'*')");
-  } catch (err) { console.warn('sendEpgUpdate failed:', err); }
+  } catch (err) { logger.warn('sendEpgUpdate failed:', err); }
 }
 
 // Webview events
@@ -1459,6 +1506,7 @@ webview.addEventListener('destroyed', () => {
 });
 
 webview.addEventListener('did-finish-load', () => {
+  hideError();
   webview.insertCSS(`
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -1498,6 +1546,105 @@ webview.addEventListener('permissionrequest', (e) => {
   } else {
     e.request.deny();
   }
+});
+
+// ── Webview Error Recovery (contentView) ──
+
+webview.addEventListener('did-fail-load', (e) => {
+  // Ignore cancelled navigations (e.g. from about:blank)
+  if (e.errorCode === -3) return;
+  logger.warn('contentView did-fail-load:', e.errorCode, e.errorDescription, e.validatedURL);
+  showError('Seite konnte nicht geladen werden.\n' + e.errorDescription, e.validatedURL);
+});
+
+webview.addEventListener('crashed', () => {
+  logger.error('contentView crashed – versuche Wiederherstellung');
+  showError('Die Seite ist abgestürzt. Klicke auf "Neu laden" um fortzufahren.');
+});
+
+webview.addEventListener('unresponsive', () => {
+  logger.warn('contentView unresponsive');
+});
+
+// ── tvView Event Listeners ──
+
+tvView.addEventListener('did-attach', () => {
+  tvViewReady = true;
+
+  if (tvView.session) {
+    const filter = { urls: ['*://*/*'] };
+    tvView.session.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+      details.requestHeaders['User-Agent'] = chromeUA;
+      callback({ requestHeaders: details.requestHeaders });
+    });
+  }
+
+  if (pendingNav) {
+    tvView.loadURL(pendingNav);
+    pendingNav = null;
+  }
+});
+
+tvView.addEventListener('destroyed', () => {
+  tvView.session?.webRequest.onBeforeSendHeaders(null);
+});
+
+tvView.addEventListener('did-finish-load', () => {
+  hideError();
+  tvView.insertCSS(`
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+    ::-webkit-scrollbar-corner { background: transparent; }
+    * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+  `).catch(() => {});
+  // Send channel list when tv.html finishes loading
+  if (tvActiveChannelId && tvView.getURL().includes('tv.html')) {
+    const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+    if (ch) {
+      const cl = buildTvChannelList(ch);
+      tvView.executeJavaScript("window.postMessage(" + JSON.stringify({
+        type: 'channel-list',
+        channels: cl.channels,
+        currentIndex: cl.currentIndex,
+      }) + ",'*')").catch(() => {});
+    }
+  }
+});
+
+tvView.addEventListener('permissionrequest', (e) => {
+  if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {
+    e.request.allow();
+  } else {
+    e.request.deny();
+  }
+});
+
+// TV channel navigation from tv.html in tvView
+tvView.addEventListener('ipc-message', (e) => {
+  if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
+    if (e.args[0].action === 'channel-next') switchTvChannel(1);
+    else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
+    else if (e.args[0].action === 'request-epg') sendEpgUpdate();
+  }
+});
+
+// ── tvView Error Recovery ──
+
+tvView.addEventListener('did-fail-load', (e) => {
+  if (e.errorCode === -3) return;
+  logger.warn('tvView did-fail-load:', e.errorCode, e.errorDescription, e.validatedURL);
+  showError('TV-Seite konnte nicht geladen werden.\n' + e.errorDescription, e.validatedURL);
+});
+
+tvView.addEventListener('crashed', () => {
+  logger.error('tvView crashed – versuche Wiederherstellung');
+  showError('TV-Player ist abgestürzt. Klicke auf "Neu laden" um fortzufahren.');
+});
+
+tvView.addEventListener('unresponsive', () => {
+  logger.warn('tvView unresponsive');
 });
 
 // Media Session title → save to history (poll via executeJavaScript)

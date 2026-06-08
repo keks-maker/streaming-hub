@@ -1,4 +1,5 @@
 // v0.4.20 – robuster Update-Prozess: User-Daten sichern, stash verbessert
+const logger = require('./logger.js');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +21,7 @@ function backupUserFiles() {
     }
   } catch (e) {
     // Backup-Fehler sind nicht fatal
-    console.error('Backup warn:', e.message);
+    logger.error('Backup fehlgeschlagen:', e.message);
   }
 }
 
@@ -32,7 +33,7 @@ function restoreUserFiles() {
       try {
         fs.copyFileSync(backup, dest);
       } catch (e) {
-        console.error('Restore warn:', e.message);
+        logger.error('Restore fehlgeschlagen:', e.message);
       }
     }
   }

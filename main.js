@@ -1,4 +1,5 @@
 // v0.3.6.
+const logger = require('./logger.js');
 const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -66,10 +67,10 @@ if (chromeWidevine) {
     if (manifest.version) {
       app.commandLine.appendSwitch('widevine-cdm-path', chromeWidevine.dir);
       app.commandLine.appendSwitch('widevine-cdm-version', manifest.version);
-      console.log('Using Chrome Widevine:', manifest.version);
+      logger.info('Using Chrome Widevine:', manifest.version);
     }
   } catch (e) {
-    console.log('Failed to parse Chrome Widevine manifest:', e.message);
+    logger.warn('Chrome-Widevine-Manifest fehlerhaft:', e.message);
   }
 }
 
@@ -434,9 +435,9 @@ function createWindow() {
 app.whenReady().then(async () => {
   try {
     await components.whenReady();
-    console.log('Widevine CDM status:', components.status());
+    logger.info('Widevine CDM status:', components.status());
   } catch (e) {
-    console.log('Component updater failed (expected without sandbox), using system Widevine if available');
+    logger.warn('Component updater failed (expected without sandbox), using system Widevine if available');
   }
   startUpdater();
   createWindow();
