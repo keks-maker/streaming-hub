@@ -1,7 +1,10 @@
 # Changelog
 
 ## 0.4.22 (2026-06-08)
-- Technical: Test-Release für Update-Mechanismus
+- New: ESLint + Prettier Setup (.eslintrc.json, .prettierrc)
+- Fix: `.gitignore` um `Weiterentwicklung/` erweitert
+- Housekeeping: `.serena/` + `history.json` waren bereits im `.gitignore`
+- Housekeeping: Issue #7 "Settings sichern und wieder einspielen" geschlossen (Feature bereits implementiert)
 
 ## 0.4.21 (2026-06-08)
 - Fix: `updater.js` – User-Daten (services.json, tvsources.json, history.json) werden vor Update-Checkout gesichert und wiederhergestellt; Named-Stash via `git stash push`, nur bei tatsächlichen lokalen Änderungen; Nutzer-Hinweis bei Stash-Konflikten

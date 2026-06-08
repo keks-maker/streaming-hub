@@ -1,0 +1,55 @@
+{
+  "env": {
+    "node": true,
+    "browser": true,
+    "commonjs": true,
+    "es2022": true
+  },
+  "extends": ["eslint:recommended"],
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "script"
+  },
+  "globals": {
+    "tvSources": "writable",
+    "tvChannels": "writable",
+    "tvEpgData": "writable",
+    "tvEpgIndex": "writable",
+    "hlsInstance": "writable",
+    "Hls": "readable"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "args": "none", "caughtErrors": "none" }],
+    "no-undef": "error",
+    "no-constant-condition": ["warn", { "checkLoops": false }],
+    "prefer-const": "warn",
+    "no-var": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["renderer.js"],
+      "env": { "node": false, "browser": true },
+      "globals": {
+        "window": "readable",
+        "document": "readable",
+        "tvSources": "writable",
+        "tvChannels": "writable",
+        "tvEpgData": "writable",
+        "tvEpgIndex": "writable",
+        "Hls": "readable",
+        "Promise": "readable",
+        "fetch": "readable"
+      }
+    },
+    {
+      "files": ["main.js", "preload.js", "updater.js"],
+      "env": { "node": true, "browser": false },
+      "globals": {
+        "app": "readable",
+        "BrowserWindow": "readable",
+        "ipcMain": "readable"
+      }
+    }
+  ],
+  "ignorePatterns": ["node_modules/", "dist/", "release/", ".cache/", ".serena/", "Weiterentwicklung/", "release/"]
+}
