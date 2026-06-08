@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.24 (2026-06-08)
+- Fix: TV-Player unsichtbar – `.tv-view` per CSS ausgeblendet, switchWebview() toggelt jetzt opacity statt display
+- Change: Update-Mechanismus: neue Tags werden für Update-Erkennung benötigt
+
 ## 0.4.23 (2026-06-08)
 - New: `logger.js` – Strukturiertes Logging mit Timestamp, Levels (debug/info/warn/error) und Kontext-Autoerkennung (Node/Browser)
 - New: `eslint.config.js` – Migration zu ESLint Flat Config (v10.x), alle JS-Dateien linten sauber

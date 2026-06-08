@@ -1,4 +1,4 @@
-// v0.4.23 – Structured Logger
+// v0.4.24 – Structured Logger
 // Lädt in beiden Kontexten: Node.js (require) und Browser (script-Tag)
 (function (global) {
   'use strict';
