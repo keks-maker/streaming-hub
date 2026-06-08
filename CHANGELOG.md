@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.25 (2026-06-08)
+- Fix: TV-Player unsichtbar – `switchWebview()` setzt `tvView.style.opacity = '1'` statt `''`
+  ('' entfernte nur Inline-Style, CSS-Klasse opacity:0 blieb aktiv)
+- Fix: TV-Stream läuft im Hintergrund weiter – `hlsInstance.destroy()` + `video.pause()` beim Verlassen des TV-Modus
+
 ## 0.4.24 (2026-06-08)
 - Fix: TV-Player unsichtbar – `.tv-view` per CSS ausgeblendet, switchWebview() toggelt jetzt opacity statt display
 - Change: Update-Mechanismus: neue Tags werden für Update-Erkennung benötigt

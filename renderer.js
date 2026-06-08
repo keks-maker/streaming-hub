@@ -31,10 +31,18 @@ function switchWebview(useTv) {
   if (useTv) {
     contentView.style.opacity = '0';
     contentView.style.pointerEvents = 'none';
-    tvView.style.opacity = '';
+    tvView.style.opacity = '1';
     tvView.style.pointerEvents = '';
     webview = tvView;
   } else {
+    // TV-Stream stoppen beim Verlassen des TV-Modus
+    try {
+      tvView.executeJavaScript(`try {
+        var v = document.querySelector('video');
+        if (v) { v.pause(); v.src = ''; v.load(); }
+        if (typeof hlsInstance !== 'undefined' && hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+      } catch(e){}`);
+    } catch (_e) { /* tvView noch nicht geladen */ }
     tvView.style.opacity = '0';
     tvView.style.pointerEvents = 'none';
     contentView.style.opacity = '';
