@@ -35,13 +35,9 @@ function switchWebview(useTv) {
     tvView.style.pointerEvents = '';
     webview = tvView;
   } else {
-    // TV-Stream stoppen beim Verlassen des TV-Modus
+    // TV-Stream stoppen via about:blank (räumt HLS.js + Video in der IIFE auf)
     try {
-      tvView.executeJavaScript(`try {
-        var v = document.querySelector('video');
-        if (v) { v.pause(); v.src = ''; v.load(); }
-        if (typeof hlsInstance !== 'undefined' && hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-      } catch(e){}`);
+      tvView.loadURL('about:blank');
     } catch (_e) { /* tvView noch nicht geladen */ }
     tvView.style.opacity = '0';
     tvView.style.pointerEvents = 'none';

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.26 (2026-06-08)
+- Fix: TV-Stream stoppt jetzt beim Verlassen des TV-Modus – `tvView.loadURL('about:blank')` räumt den HLS.js-Stream auf (auch aus IIFE-Scope)
+- Fix: `switchWebview()` entfernt `tvViewReady=false` – `did-attach` feuert nur einmalig, sonst bleibt TV-Modus tot
+
 ## 0.4.25 (2026-06-08)
 - Fix: TV-Player unsichtbar – `switchWebview()` setzt `tvView.style.opacity = '1'` statt `''`
   ('' entfernte nur Inline-Style, CSS-Klasse opacity:0 blieb aktiv)
