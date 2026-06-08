@@ -73,10 +73,17 @@ if (chromeWidevine) {
   }
 }
 
+// Widevine ohne Sandbox: Castlabs Electron benötigt i.d.R. keinen --no-sandbox
+// für DRM, aber das System-Widevine aus Chrome kann ohne Sandbox-Zugriff lahmlegen.
+// --no-sandbox ist ein Security-Tradeoff – nur setzen wenn nötig.
 if (chromeWidevine) {
-  app.commandLine.appendSwitch('no-sandbox');
-  if (process.platform === 'linux') {
-    app.commandLine.appendSwitch('no-zygote');
+  const isCastlabs = process.env.ELECTRON_CUSTOM_VERSION?.includes('castlabs')
+    || (process.execPath || '').toLowerCase().includes('castlabs');
+  if (!isCastlabs) {
+    app.commandLine.appendSwitch('no-sandbox');
+    if (process.platform === 'linux') {
+      app.commandLine.appendSwitch('no-zygote');
+    }
   }
 }
 app.commandLine.appendSwitch('disable-service-worker-autostart');
@@ -356,7 +363,7 @@ ipcMain.handle('apply-update', async (_e, version) => {
         try { fs.unlinkSync(oldAppImage); } catch (e) {}
       }
       mainWindow?.webContents.send('update-status', { type: 'downloaded' });
-      setTimeout(() => { app.relaunch(); app.quit(); }, 2000);
+      setTimeout(() => { app.relaunch({ execPath: newAppImage }); app.quit(); }, 2000);
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
@@ -558,6 +565,17 @@ ipcMain.handle('get-tv-sources', () => loadTvSources());
 
 ipcMain.handle('add-tv-source', (_e, source) => {
   const sources = loadTvSources();
+  // Existierende Quelle mit gleicher URL wiedererkennen → ID + Overrides erhalten
+  const existing = sources.find(s => s.url === source.url);
+  if (existing) {
+    // Eigenschaften mergen, aber Overrides/Favoriten/SortOrder aus bestehender Quelle erhalten
+    existing.name = source.name || existing.name;
+    existing.epgUrl = source.epgUrl || existing.epgUrl;
+    existing.sortOrder = source.sortOrder || existing.sortOrder || [];
+    // favorites und channelOverrides bleiben unangetastet
+    return existing;
+  }
+  // Neue Quelle – stabile ID aus dem Namen generieren
   source.id = source.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   if (sources.find(s => s.id === source.id)) {
     source.id = source.id + '-' + Date.now();
@@ -618,7 +636,7 @@ ipcMain.handle('fetch-and-parse-m3u', async (_e, urlOrPath) => {
         ? baseUrl + ch.logo
         : ch.logo,
     }));
-    return { channels, epgUrls: result.epgUrls };
+    return { channels, epgUrls: result.epgUrls, baseUrl };
   } catch (err) {
     throw new Error(`Fehler beim Laden der M3U: ${err.message}`);
   }

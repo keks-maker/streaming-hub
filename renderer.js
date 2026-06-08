@@ -476,6 +476,7 @@ function loadTvChannels(forceReload) {
       .then(result => {
         const tagged = result.channels.map(ch => ({ ...ch, sourceId: source.id }));
         sourceChannelMap[source.id] = tagged;
+        source.baseUrl = result.baseUrl || ''; // für relative Logo-Auflösung in Overrides
         tvChannels = tvChannels.concat(tagged);
       })
       .catch(err => {
@@ -491,9 +492,16 @@ function loadTvChannels(forceReload) {
     tvSources.forEach(source => {
       let srcChannels = sourceChannelMap[source.id] || [];
       const srcOverrides = source.channelOverrides || {};
+      const baseUrl = source.baseUrl || '';
       srcChannels = srcChannels.map(ch => {
         const ov = srcOverrides[ch.id];
-        return ov ? { ...ch, ...ov } : ch;
+        if (!ov) return ch;
+        // Relative Logo-URL in Override auflösen
+        const resolved = { ...ch, ...ov };
+        if (ov.logo && !ov.logo.startsWith('http://') && !ov.logo.startsWith('https://') && !ov.logo.startsWith('file://') && baseUrl) {
+          resolved.logo = baseUrl + ov.logo;
+        }
+        return resolved;
       });
       if (source.sortOrder && source.sortOrder.length) {
         const ordered = [];
@@ -968,6 +976,8 @@ function saveTvChEditor() {
       if (Object.keys(clean).length) merged[chId] = clean;
       else delete merged[chId];
     });
+    // Direkt in tvSources aktualisieren, bevor IPC zurückkommt
+    source.channelOverrides = merged;
     promises.push(window.electronAPI.updateTvSource(sid, { channelOverrides: merged }));
   });
 
@@ -984,7 +994,7 @@ function saveTvChEditor() {
     tvChDirty = false;
     tvChOverrides = {};
     closeTvChEditor();
-    loadTvChannels(true); // neu laden mit Overrides
+    loadTvChannels(true); // neu laden mit Overrides (jetzt in tvSources aktuell)
   });
 }
 
@@ -1957,12 +1967,13 @@ window.electronAPI.getTvSources().then((sources) => {
 });
 
 window.electronAPI.onTvSourcesChanged((sources) => {
-  // Nur bei strukturellen Änderungen (neue/entfernte Quelle, URL-Änderung) neu laden,
+  // Nur bei strukturellen Änderungen (neue/entfernte Quelle, URL-, EPG- oder Override-Änderung) neu laden,
   // nicht bei reinen sortOrder/favorites-Änderungen (Drag&Drop)
   const structuralChange = sources.length !== tvSources.length
     || sources.some(s => {
       const old = tvSources.find(t => t.id === s.id);
-      return !old || old.url !== s.url || old.epgUrl !== s.epgUrl;
+      return !old || old.url !== s.url || old.epgUrl !== s.epgUrl
+        || JSON.stringify(old.channelOverrides) !== JSON.stringify(s.channelOverrides);
     });
   tvSources = sources;
   tvSelectedSourceIds = tvSelectedSourceIds.filter(id => sources.some(s => s.id === id));

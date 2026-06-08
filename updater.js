@@ -1,7 +1,44 @@
-// v0.3.6.
+// v0.4.20 – robuster Update-Prozess: User-Daten sichern, stash verbessert
 const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const appDir = process.argv[2];
+
+// User-Dateien, die vor dem Checkout gesichert werden müssen
+const userFiles = ['services.json', 'tvsources.json', 'history.json'];
+const backupDir = path.join(appDir, '.update-backup');
+
+function backupUserFiles() {
+  try {
+    fs.mkdirSync(backupDir, { recursive: true });
+    for (const f of userFiles) {
+      const src = path.join(appDir, f);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, path.join(backupDir, f));
+      }
+    }
+  } catch (e) {
+    // Backup-Fehler sind nicht fatal
+    console.error('Backup warn:', e.message);
+  }
+}
+
+function restoreUserFiles() {
+  for (const f of userFiles) {
+    const backup = path.join(backupDir, f);
+    const dest = path.join(appDir, f);
+    if (fs.existsSync(backup)) {
+      try {
+        fs.copyFileSync(backup, dest);
+      } catch (e) {
+        console.error('Restore warn:', e.message);
+      }
+    }
+  }
+  // Backup-Verzeichnis aufräumen
+  try { fs.rmSync(backupDir, { recursive: true, force: true }); } catch (e) {}
+}
 
 function cmpVersions(a, b) {
   const pa = a.split('.').map(Number);
@@ -48,24 +85,49 @@ process.on('message', (msg) => {
     }
   } else if (msg.type === 'apply') {
     try {
-      process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 10 });
+      process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 5 });
       execSync('git fetch --tags --force origin', {
         cwd: appDir, encoding: 'utf-8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'],
       });
-      process.send({ type: 'progress', step: `Version v${msg.version} wird angewendet…`, percent: 40 });
+
+      // User-Daten sichern (services.json, tvsources.json, history.json)
+      backupUserFiles();
+
+      process.send({ type: 'progress', step: `Version v${msg.version} wird angewendet…`, percent: 30 });
+
+      // Nur stashen, wenn es tatsächlich lokale Änderungen gibt
+      let stashed = false;
       try {
-        execSync('git stash --include-untracked', {
-          cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+        const status = execSync('git status --porcelain', {
+          cwd: appDir, encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (e) { /* nothing to stash */ }
+        if (status.trim()) {
+          execSync('git stash push --include-untracked -m "streaming-hub-update"', {
+            cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+          });
+          stashed = true;
+        }
+      } catch (e) { /* stash error – continue */ }
+
       execSync(`git checkout --force v${msg.version}`, {
         cwd: appDir, encoding: 'utf-8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'],
       });
-      try {
-        execSync('git stash pop', {
-          cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (e) { /* stash pop may conflict – user config preserved */ }
+
+      // User-Daten nach dem Checkout wiederherstellen (überschreibt ggf. neuere committed Versionen mit User-Daten)
+      restoreUserFiles();
+
+      // Stash anwenden (falls vorhanden und nicht durch restore überschrieben)
+      if (stashed) {
+        try {
+          execSync('git stash pop', {
+            cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+          });
+        } catch (e) {
+          // Konflikte möglich – Stash bleibt erhalten, User kann manuell lösen
+          process.send({ type: 'progress', step: '⚠ Lokale Änderungen konnten nicht automatisch übernommen werden (Konflikte). Stash bleibt erhalten: git stash pop', percent: 50 });
+        }
+      }
+
       process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
       execSync('npm install --ignore-scripts', {
         cwd: appDir, encoding: 'utf-8', timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'],

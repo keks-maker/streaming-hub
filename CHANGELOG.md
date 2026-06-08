@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.21 (2026-06-08)
+- Fix: `updater.js` – User-Daten (services.json, tvsources.json, history.json) werden vor Update-Checkout gesichert und wiederhergestellt; Named-Stash via `git stash push`, nur bei tatsächlichen lokalen Änderungen; Nutzer-Hinweis bei Stash-Konflikten
+- Fix: `main.js` – `app.relaunch()` startet nun die neue AppImage (`execPath: newAppImage`)
+- Fix: `main.js` – `--no-sandbox` wird nur noch bei Nicht-Castlabs-Electron gesetzt (Castlabs-Erkennung via `ELECTRON_CUSTOM_VERSION`)
+- Fix: `main.js` – TV-Quellen werden beim Hinzufügen per URL wiedererkannt, Overrides/Favoriten nicht verwaist
+- Fix: `renderer.js` – Overrides nach Channel-Editor-Speichern sofort in tvSources aktualisiert (kein Race-Condition mehr)
+- Fix: `renderer.js` – structuralChange-Erkennung prüft jetzt auch `channelOverrides`
+- Fix: `renderer.js` + `main.js` – Relative Logo-URLs in channelOverrides werden gegen M3U-baseUrl aufgelöst
+- Technical: Versionierung: nur Patch-Stelle (dritte Ziffer) wird automatisch erhöht
+
 ## 0.4.8 (2026-05-30)
 - Change: EPG-Zeilen füllen Bildschirm (max. 7 sichtbar, flex: 1)
 - Change: EPG-Schrift vergrößert (Titel 15px, Uhrzeit 12px, Kanal 15px, Logo 40×40)
