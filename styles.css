@@ -645,7 +645,8 @@ body {
   height: 100%;
   border: none;
   z-index: 1;
-  display: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .error-overlay {

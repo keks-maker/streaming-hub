@@ -29,12 +29,16 @@ let tvViewReady = false;
 
 function switchWebview(useTv) {
   if (useTv) {
-    contentView.style.display = 'none';
-    tvView.style.display = '';
+    contentView.style.opacity = '0';
+    contentView.style.pointerEvents = 'none';
+    tvView.style.opacity = '';
+    tvView.style.pointerEvents = '';
     webview = tvView;
   } else {
-    tvView.style.display = 'none';
-    contentView.style.display = '';
+    tvView.style.opacity = '0';
+    tvView.style.pointerEvents = 'none';
+    contentView.style.opacity = '';
+    contentView.style.pointerEvents = '';
     webview = contentView;
   }
 }
