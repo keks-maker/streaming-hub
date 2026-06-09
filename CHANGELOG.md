@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.29 (2026-06-09)
+- Fix: `renderer.js` – übersehener `buildTvChannelList()`-Aufruf im `did-finish-load` von contentView auf `buildChannelList()` umgestellt
+
 ## 0.4.28 (2026-06-09)
 - New: `packages/typed-core` – TypeScript-Package mit Datenmodellen + Logik aus renderer.js
 - New: `format.ts`, `epg.ts`, `tv.ts` – Datenlogik-Module mit 33 Unit-Tests (vitest)
