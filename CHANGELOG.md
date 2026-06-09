@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.44 (2026-06-09)
+- New: Zurück-Button als Hover-Fläche links oben (←-Pfeil, nur sichtbar bei canGoBack)
+
 ## 0.4.43 (2026-06-09)
 - Fix: TV-Sidebar schließt zuverlässig per mouseenter/mouseleave (wie TopBar)
 - Change: Polling + IPC-Forward entfernt – einfaches relatedTarget-Pattern

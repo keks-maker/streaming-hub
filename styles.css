@@ -1555,6 +1555,36 @@ body {
   background: rgba(167,139,250,0.08);
 }
 
+.back-trigger {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 25vh;
+  z-index: 50;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0);
+  transition: width 0.2s ease, background 0.2s ease, color 0.15s ease;
+}
+.back-trigger.visible {
+  display: flex;
+}
+.back-trigger:hover {
+  width: 36px;
+  background: rgba(167,139,250,0.12);
+  color: rgba(255,255,255,0.6);
+}
+.back-trigger svg {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.back-trigger:hover svg {
+  opacity: 1;
+}
+
 /* ── TV Channel Editor Modal ── */
 .tv-ch-modal { width:66vw; max-width:960px; }
 .tv-ch-modal .modal-body { display:flex; flex-direction:column; gap:0; padding:0; }

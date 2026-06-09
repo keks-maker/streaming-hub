@@ -114,6 +114,7 @@ const historyClear = document.getElementById('historyClear');
 // TV DOM references
 const tvSidebar = document.getElementById('tvSidebar');
 const tvSidebarTrigger = document.getElementById('tvSidebarTrigger');
+const backTrigger = document.getElementById('backTrigger');
 
 const tvSidebarManage = document.getElementById('tvSidebarManage');
 const tvSidebarEpgRefresh = document.getElementById('tvSidebarEpgRefresh');
@@ -320,6 +321,7 @@ function navigateTo(svc) {
     pendingNav = targetUrl;
   }
   if (tvSidebarOpen) closeTvSidebar();
+  updateBackButton();
 }
 
 function getCurrentSvc() {
@@ -1517,6 +1519,7 @@ webview.addEventListener('did-finish-load', () => {
         .catch(() => {});
     }
   }
+  updateBackButton();
 });
 
 webview.addEventListener('did-navigate', () => {
@@ -1527,6 +1530,7 @@ webview.addEventListener('did-navigate', () => {
       break;
     }
   }
+  updateBackButton();
 });
 
 webview.addEventListener('permissionrequest', e => {
@@ -1736,6 +1740,29 @@ tvSidebarTrigger.addEventListener('mouseleave', e => {
 tvSidebar.addEventListener('mouseleave', e => {
   if (!e.relatedTarget || !tvSidebarTrigger.contains(e.relatedTarget)) {
     closeTvSidebar();
+  }
+});
+
+function updateBackButton() {
+  if (!webviewReady || currentProvider === '__tv__' || currentProvider === '') {
+    backTrigger.classList.remove('visible');
+    return;
+  }
+  try {
+    webview.canGoBack().then(can => {
+      backTrigger.classList.toggle('visible', can);
+    });
+  } catch (_e) {
+    backTrigger.classList.remove('visible');
+  }
+}
+backTrigger.addEventListener('click', () => {
+  if (webviewReady) {
+    try {
+      webview.goBack();
+    } catch (e) {
+      logger.warn('goBack failed', e);
+    }
   }
 });
 
