@@ -44,6 +44,7 @@ export {
   decodeEntities,
   normalizeUrl,
   formatTimestamp,
+  cleanChannelName,
 } from './format.js';
 
 export {
@@ -52,6 +53,7 @@ export {
   buildEpgIndex,
   getEpgChannelList,
   findCurrentEpg,
+  parseXMLTV,
 } from './epg.js';
 
 export {

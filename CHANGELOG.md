@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.32 (2026-06-09)
+- Change: `main.js` nutzt typed-core – `cmpVersions` → `compareVersions`, `cleanChannelName`, `parseEPG` → `parseXMLTV`
+- New: typed-core `format.ts` + `cleanChannelName()`, `epg.ts` + `parseXMLTV()`
+
 ## 0.4.31 (2026-06-09)
 - New: CI/CD-Pipeline – `test-typed-core` Job (Build + 33 Tests) in `.gitea/workflows/build.yaml`
 - Change: ESLint Config aufgeräumt (`packages/`, `scripts/` ignoriert, `preload-content.js` eigene Browser-Konfig)

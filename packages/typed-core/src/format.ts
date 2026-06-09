@@ -31,3 +31,11 @@ export function formatTimestamp(iso: string): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
     + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 }
+
+export function cleanChannelName(raw: string): string {
+  return raw
+    .replace(/\s*\[Geo-Blocked\]\s*/gi, '')
+    .replace(/\s*\(\d{3,4}p\)\s*/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}

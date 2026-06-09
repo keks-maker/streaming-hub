@@ -1,4 +1,5 @@
 // v0.3.6.
+const { compareVersions, cleanChannelName, parseXMLTV } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog } = require('electron');
 const fs = require('fs');
@@ -146,14 +147,6 @@ function broadcastTvSources() {
   mainWindow?.webContents.send('tv-sources-changed', sources);
 }
 
-function cleanChannelName(raw) {
-  return raw
-    .replace(/\s*\[Geo-Blocked\]\s*/gi, '')
-    .replace(/\s*\(\d{3,4}p\)\s*/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
-
 function parseM3U(content) {
   const channels = [];
   const lines = content.split('\n');
@@ -210,29 +203,6 @@ function parseM3U(content) {
   return { channels, epgUrls };
 }
 
-function parseEPG(xml) {
-  const programmes = [];
-  const blockRe = /<programme\s+([\s\S]*?)<\/programme>/g;
-  let block;
-  while ((block = blockRe.exec(xml)) !== null) {
-    const tag = block[1];
-    const ch = tag.match(/channel="([^"]*)"/);
-    const st = tag.match(/start="([^"]*)"/);
-    const sp = tag.match(/stop="([^"]*)"/);
-    const ti = tag.match(/<title[^>]*>(?:<!\[CDATA\[)?([^\]<]*?)(?:\]\]>)?<\/title>/);
-    if (!ch || !st || !sp || !ti) continue;
-    const de = tag.match(/<desc[^>]*>(?:<!\[CDATA\[)?([^\]<]*?)(?:\]\]>)?<\/desc>/);
-    programmes.push({
-      channelId: ch[1],
-      start: st[1],
-      stop: sp[1],
-      title: ti[1].trim(),
-      description: de ? de[1].trim() : '',
-    });
-  }
-  return programmes;
-}
-
 function loadHistory() {
   try {
     const raw = fs.readFileSync(historyPath, 'utf-8');
@@ -251,17 +221,6 @@ function saveHistory(history) {
 const GITEA_BASE = 'http://192.168.4.105:3000';
 const GITEA_OWNER = 'kekskarlo';
 const GITEA_REPO = 'Streaming-Hub';
-
-function cmpVersions(a, b) {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const va = pa[i] || 0,
-      vb = pb[i] || 0;
-    if (va !== vb) return va - vb;
-  }
-  return 0;
-}
 
 async function giteaApi(path) {
   const token = process.env.GITEA_TOKEN;
@@ -283,7 +242,7 @@ function startUpdater() {
           const tag = release.tag_name?.replace(/^v/i, '');
           if (!tag) return { hasUpdate: false, error: 'no tag' };
           return {
-            hasUpdate: cmpVersions(tag, app.getVersion()) > 0,
+            hasUpdate: compareVersions(tag, app.getVersion()) > 0,
             latestVersion: tag,
             releaseId: release.id,
           };
@@ -726,7 +685,7 @@ ipcMain.handle('fetch-epg', async (_e, url) => {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const xml = await response.text();
-    return parseEPG(xml);
+    return parseXMLTV(xml);
   } catch (err) {
     throw new Error(`Fehler beim Laden des EPG: ${err.message}`);
   }

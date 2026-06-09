@@ -56,6 +56,29 @@ export function findCurrentEpg(epgIndex: Map<string, EpgEntry[]> | null, tvgId: 
   }) ?? null;
 }
 
+export function parseXMLTV(xml: string): EpgEntry[] {
+  const programmes: EpgEntry[] = [];
+  const blockRe = /<programme\s+([\s\S]*?)<\/programme>/g;
+  let block;
+  while ((block = blockRe.exec(xml)) !== null) {
+    const tag = block[1]!;
+    const ch = tag.match(/channel="([^"]*)"/);
+    const st = tag.match(/start="([^"]*)"/);
+    const sp = tag.match(/stop="([^"]*)"/);
+    const ti = tag.match(/<title[^>]*>(?:<!\[CDATA\[)?([^\]<]*?)(?:\]\]>)?<\/title>/);
+    if (!ch || !st || !sp || !ti) continue;
+    const de = tag.match(/<desc[^>]*>(?:<!\[CDATA\[)?([^\]<]*?)(?:\]\]>)?<\/desc>/);
+    programmes.push({
+      channelId: ch[1]!,
+      start: st[1]!,
+      stop: sp[1]!,
+      title: ti[1]!.trim(),
+      description: de ? de[1]!.trim() : '',
+    });
+  }
+  return programmes;
+}
+
 function normalizeEpgId(id: string): string {
   return id.replace(/@[^.@]*/g, '').toLowerCase().trim();
 }
