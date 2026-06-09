@@ -361,7 +361,13 @@ ipcMain.handle('apply-update', async (_e, version) => {
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => {
-            app.relaunch();
+            const { spawn } = require('child_process');
+            spawn('npm', ['start'], {
+              cwd: __dirname,
+              stdio: 'inherit',
+              env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' },
+              shell: true,
+            }).unref();
             app.quit();
           }, 500);
         }

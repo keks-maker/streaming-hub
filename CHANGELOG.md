@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.57 (2026-06-09)
+- Fix: App-Neustart nach Update funktioniert jetzt (app.relaunch → spawn npm start)
+- Change: Neustart nutzt start.sh-Pfad (ELECTRON_DISABLE_SANDBOX, prestart build)
+
 ## 0.4.56 (2026-06-09)
 - Change: TV-Kanal-Overlay auf Sidebar-Format umgestellt (schmaler, rechter Rand 4px)
 - Change: Transparenz an EPG-Bar angeglichen (rgba 0.6, backdrop-filter 12px)
