@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.4.70 (2026-06-09)
+## 0.4.71 (2026-06-10)
+- Fix: Restart – 1s sleep nach setsid vor app.exit (Session braucht Zeit zum Initialisieren)
+
+## 0.4.70 (2026-06-10)
 - Fix: Restart – setsid vor nohup (komplette Trennung aus Prozessgruppe)
 - Lokal getestet: setsid + execSync = Kind überlebt Parent-Exit garantiert ✅
 
