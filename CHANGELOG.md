@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.67 (2026-06-09)
+- New: EPG-Informationen für ALLE Sender in der Channel-Liste (nicht nur aktiver)
+- Change: Item-Höhe auf 62px angepasst (Platz für EPG-Zeile)
+- Fix: Kein Overlap – items wachsen natürlich, EPG 16px, margin 2px
+
 ## 0.4.66 (2026-06-09)
 - Change: backdrop-filter:blur(12px) auf allen Overlays (jetzt sicher – Bug in renderer.js gefixt)
 - Change: Floating-Card-Stil für tv-top + tv-controls wiederhergestellt (einheitlich)

@@ -182,7 +182,7 @@
       border-radius: 10px;
       color: rgba(255,255,255,0.35);
       overflow: hidden;
-      min-height: 54px; box-sizing: border-box;
+      min-height: 62px; box-sizing: border-box;
       font-size: 28px; font-weight: 500;
     }
     .tv-channel-item img {
@@ -348,7 +348,7 @@
             + (ch.logo ? '<img src="' + esc(ch.logo) + '" alt="" loading="lazy">' : '')
             + '<div class="tv-channel-info">'
             + '<span class="tv-channel-name">' + esc(ch.name) + '</span>'
-            + (isActive && ch.epg ? '<span class="tv-channel-epg">' + esc(ch.epg) + '</span>' : '')
+            + (ch.epg ? '<span class="tv-channel-epg">' + esc(ch.epg) + '</span>' : '')
             + '</div></div>';
         }).join('');
 
