@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.62 (2026-06-09)
+- Fix: backdrop-filter aus allen Overlays entfernt (blockierte Maus-Events in Electron)
+- Fix: Restart mit Shell-exec + & statt spawn (garantierte Detach)
+- Change: Hintergrund rgba(0,0,0,0.7) statt 0.6 – Tiefe ohne backdrop-filter
+
 ## 0.4.61 (2026-06-09)
 - Fix: Restart nutzt process.execPath direkt statt npm start (unabhängig von PATH)
 - Change: Kein shell:true mehr – electron binary direkt gespawnt

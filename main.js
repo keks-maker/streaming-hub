@@ -361,14 +361,13 @@ ipcMain.handle('apply-update', async (_e, version) => {
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => {
-            const { spawn } = require('child_process');
-            spawn(process.execPath, [__dirname], {
-              cwd: __dirname,
-              stdio: 'ignore',
-              env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' },
-              detached: true,
-            }).unref();
-            app.quit();
+            const { exec } = require('child_process');
+            // Shell-basierter Restart: & + exit des Shells = vollständig gelöst
+            exec(
+              `ELECTRON_DISABLE_SANDBOX=1 "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
+              { cwd: __dirname },
+              () => app.quit()
+            );
           }, 500);
         }
       }
