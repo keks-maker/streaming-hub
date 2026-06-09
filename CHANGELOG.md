@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.60 (2026-06-09)
+- Fix: TV-Overlays (top/controls) nicht bedienbar – pointer-events:none wenn unsichtbar, auto wenn visible
+- Fix: backdrop-filter + opacity Compositing-Layer blockierte Maus-Events
+
 ## 0.4.59 (2026-06-09)
 - Fix: Channel-List füllt jetzt dynamisch 2/3 Viewport-Höhe (vorher 4 Items hardcodiert)
 - Fix: Restart nach Update mit detached:true – wird nicht mehr vom Parent abgewürgt

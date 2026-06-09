@@ -25,7 +25,10 @@
       opacity:0; transition:opacity .3s ease;
       pointer-events:none;
     }
-    .tv-top.visible { opacity:1; }
+    .tv-top.visible {
+      opacity:1;
+      pointer-events:auto;
+    }
     .tv-top-logo { width:40px; height:40px; border-radius:8px; object-fit:contain; }
     .tv-top-name { font-size:28px; font-weight:600; color:#f0f0f5; }
     .tv-epg-bar {
@@ -47,9 +50,14 @@
       border-radius:12px;
       backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
       z-index:10;
-      opacity:0; transition:opacity .3s ease;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .3s ease;
     }
-    .tv-controls.visible { opacity:1; }
+    .tv-controls.visible {
+      opacity:1;
+      pointer-events:auto;
+    }
 
     .tv-controls-top {
       display:flex; align-items:center; gap:16px;
