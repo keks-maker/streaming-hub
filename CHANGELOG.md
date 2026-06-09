@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.66 (2026-06-09)
+- Change: backdrop-filter:blur(12px) auf allen Overlays (jetzt sicher – Bug in renderer.js gefixt)
+- Change: Floating-Card-Stil für tv-top + tv-controls wiederhergestellt (einheitlich)
+- Fix: renderer.js switchWebview – tvView.style.pointerEvents = 'auto' statt ''
+- Beibehaltung: video mousemove fallback, channel-list z-index 15
+
 ## 0.4.65 (2026-06-09)
 - Fix: TV-Webview blockierte Maus-Events – pointer-events:auto statt '' (CSS .tv-view hat none)
 - Das war die Ursache: Keine Mausbewegung/Buttons seit v0.4.54

@@ -15,9 +15,11 @@
 
     /* Top overlay (channel name) */
     .tv-top {
-      position:fixed; top:0; left:0; right:0;
-      padding:16px 24px;
-      background:linear-gradient(180deg,rgba(0,0,0,0.85) 0%,transparent 100%);
+      position:fixed; top:16px; left:16px; right:auto;
+      padding:12px 20px;
+      background:rgba(0,0,0,0.6);
+      border-radius:12px;
+      backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
       z-index:10;
       display:flex; align-items:center; gap:12px;
       opacity:0;
@@ -33,7 +35,6 @@
       text-align:center; padding:8px 16px; margin:0 0 8px;
       font-size:56px; color:#e2e8f0;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      background:rgba(0,0,0,0.55); border-radius:12px;
       display:none;
     }
     .tv-epg-bar .epg-time { color:#a78bfa; font-weight:600; }
@@ -43,13 +44,20 @@
 
     /* Controls bar */
     .tv-controls {
-      position:fixed; bottom:0; left:0; right:0;
-      padding:12px 20px 16px;
-      background:linear-gradient(0deg,rgba(0,0,0,0.88) 0%,transparent 100%);
+      position:fixed; bottom:16px; left:16px; right:16px;
+      padding:12px 16px 16px;
+      background:rgba(0,0,0,0.6);
+      border-radius:12px;
+      backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
       z-index:10;
-      opacity:0; transition:opacity .3s ease;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .3s ease;
     }
-    .tv-controls.visible { opacity:1; }
+    .tv-controls.visible {
+      opacity:1;
+      pointer-events:auto;
+    }
 
     .tv-controls-top {
       display:flex; align-items:center; gap:16px;
@@ -148,8 +156,9 @@
     .tv-channel-list {
       position: fixed; top: 80px; right: 4px; left: auto;
       z-index: 15; display: none;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.6);
       border-radius: 12px; padding: 6px;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       overflow: hidden;
       min-width: 300px; max-width: 360px;
       max-height: calc(100vh * 0.67);
