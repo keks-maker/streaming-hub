@@ -58,7 +58,7 @@ function switchWebview(useTv) {
     contentView.style.opacity = '0';
     contentView.style.pointerEvents = 'none';
     tvView.style.opacity = '1';
-    tvView.style.pointerEvents = '';
+    tvView.style.pointerEvents = 'auto';
     webview = tvView;
   } else {
     // TV-Stream stoppen via about:blank (räumt HLS.js + Video in der IIFE auf)

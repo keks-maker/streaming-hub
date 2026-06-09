@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.65 (2026-06-09)
+- Fix: TV-Webview blockierte Maus-Events – pointer-events:auto statt '' (CSS .tv-view hat none)
+- Das war die Ursache: Keine Mausbewegung/Buttons seit v0.4.54
+
 ## 0.4.64 (2026-06-09)
 - Fix: .tv-controls EXAKT wie Original (kein pointer-events nirgendwo)
 - Fix: video.addEventListener('mousemove', showOverlay) als Fallback
