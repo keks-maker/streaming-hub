@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.58 (2026-06-09)
+- Change: Alle TV-Overlays auf einheitlichen Stil umgestellt (rgba 0.6, blur 12px, radius 12px)
+- Change: TV-Kanal-Overlay Höhe auf 2/3 Viewport vergrößert
+- Change: .tv-top (Kanalname) jetzt als Floating-Card oben links
+- Change: .tv-controls (Player-Steuerung) als Floating-Card unten mit Abstand zum Rand
+- Change: EPG-Bar ohne eigenen Hintergrund (liegt auf Controls auf)
+
 ## 0.4.57 (2026-06-09)
 - Fix: App-Neustart nach Update funktioniert jetzt (app.relaunch → spawn npm start)
 - Change: Neustart nutzt start.sh-Pfad (ELECTRON_DISABLE_SANDBOX, prestart build)
