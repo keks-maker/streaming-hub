@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.70 (2026-06-09)
+- Fix: Restart – setsid vor nohup (komplette Trennung aus Prozessgruppe)
+- Lokal getestet: setsid + execSync = Kind überlebt Parent-Exit garantiert ✅
+
 ## 0.4.69 (2026-06-09)
 - Fix: Restart – execSync + nohup statt exec (exec war asynchron, app.exit kam zu früh)
 - Lokal getestet: Parent stirbt, Kind (electron) lebt weiter ✅

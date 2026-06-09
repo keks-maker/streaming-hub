@@ -363,7 +363,7 @@ ipcMain.handle('apply-update', async (_e, version) => {
           setTimeout(() => {
             const { execSync } = require('child_process');
             execSync(
-              `nohup env ELECTRON_DISABLE_SANDBOX=1 DISPLAY="${process.env.DISPLAY || ''}" "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
+              `setsid env ELECTRON_DISABLE_SANDBOX=1 DISPLAY="${process.env.DISPLAY || ''}" nohup "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
               { cwd: __dirname }
             );
             app.exit(0);
