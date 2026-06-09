@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.43 (2026-06-09)
+- Fix: TV-Sidebar schließt zuverlässig per mouseenter/mouseleave (wie TopBar)
+- Change: Polling + IPC-Forward entfernt – einfaches relatedTarget-Pattern
+
 ## 0.4.42 (2026-06-09)
 - Change: Overlay-Bar immer 64px (kein Height-Übergang), Nav/Buttons faden per opacity – "Startseite" wandert nicht mehr
 - Fix: TV-Sidebar schließt nach 2s ohne Mauskontakt (Polling via :hover statt Event-Propagation)

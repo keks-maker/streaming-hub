@@ -1409,7 +1409,6 @@ function toggleHistory() {
 
 // TV channel navigation via webview ipc-message (from tv.html → preload-content bridge)
 webview.addEventListener('ipc-message', e => {
-  if (e.channel === 'sidebar-close' && tvSidebarOpen) closeTvSidebar();
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
@@ -1623,7 +1622,6 @@ tvView.addEventListener('permissionrequest', e => {
 
 // TV channel navigation from tv.html in tvView
 tvView.addEventListener('ipc-message', e => {
-  if (e.channel === 'sidebar-close' && tvSidebarOpen) closeTvSidebar();
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
@@ -1730,24 +1728,16 @@ tvInputEpgUrl.addEventListener('keydown', e => {
 tvSidebarTrigger.addEventListener('mouseenter', () => {
   if (!tvSidebarOpen) openTvSidebar();
 });
-
-let tvSidebarAwaySince = null;
-setInterval(() => {
-  if (!tvSidebarOpen) {
-    tvSidebarAwaySince = null;
-    return;
-  }
-  if (tvSidebar.matches(':hover') || tvSidebarTrigger.matches(':hover')) {
-    tvSidebarAwaySince = null;
-    return;
-  }
-  const now = Date.now();
-  if (!tvSidebarAwaySince) tvSidebarAwaySince = now;
-  else if (now - tvSidebarAwaySince > 2000) {
+tvSidebarTrigger.addEventListener('mouseleave', e => {
+  if (!e.relatedTarget || !tvSidebar.contains(e.relatedTarget)) {
     closeTvSidebar();
-    tvSidebarAwaySince = null;
   }
-}, 400);
+});
+tvSidebar.addEventListener('mouseleave', e => {
+  if (!e.relatedTarget || !tvSidebarTrigger.contains(e.relatedTarget)) {
+    closeTvSidebar();
+  }
+});
 
 tvSearchInput.addEventListener('input', () => {
   tvSearchFilter = tvSearchInput.value;
