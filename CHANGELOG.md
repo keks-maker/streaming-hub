@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.73 (2026-06-10)
+- Fix: Restart via gtk-launch (Desktop-Environment startet App – kein Prozessgruppen-Konflikt)
+- Change: Alle execSync/setsid/nohup-Experimente raus – gtk-launch ist zuverlässig
+
 ## 0.4.72 (2026-06-10)
 - Chore: Test-Release – identischer Restart-Code wie v0.4.71 (setsid + sleep)
 

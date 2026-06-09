@@ -362,12 +362,7 @@ ipcMain.handle('apply-update', async (_e, version) => {
         if (!msg.error) {
           setTimeout(() => {
             const { execSync } = require('child_process');
-            execSync(
-              `setsid env ELECTRON_DISABLE_SANDBOX=1 DISPLAY="${process.env.DISPLAY || ''}" nohup "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
-              { cwd: __dirname }
-            );
-            // 1s warten bis neue Session vollständig initialisiert ist
-            execSync('sleep 1');
+            execSync('gtk-launch streaming-hub 2>/dev/null');
             app.exit(0);
           }, 500);
         }
