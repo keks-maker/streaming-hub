@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.41 (2026-06-09)
+- Fix: TV-Sidebar schließt bei Klick im Webview (preload-content.js forwarded 'sidebar-close' IPC)
+
 ## 0.4.40 (2026-06-09)
 - Fix: TV-Sidebar schließt jetzt automatisch bei mouseleave (400ms Delay)
 

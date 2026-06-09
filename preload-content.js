@@ -120,6 +120,15 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// Forward clicks: sidebar auto-close when clicking inside webview
+document.addEventListener(
+  'click',
+  () => {
+    ipcRenderer.sendToHost('sidebar-close');
+  },
+  true,
+);
+
 // Bridge: page postMessage → host renderer (for tv-player channel commands)
 window.addEventListener('message', e => {
   if (e.data && e.data.source === 'tv-player') {
