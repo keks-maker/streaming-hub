@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.61 (2026-06-09)
+- Fix: Restart nutzt process.execPath direkt statt npm start (unabhängig von PATH)
+- Change: Kein shell:true mehr – electron binary direkt gespawnt
+
 ## 0.4.60 (2026-06-09)
 - Fix: TV-Overlays (top/controls) nicht bedienbar – pointer-events:none wenn unsichtbar, auto wenn visible
 - Fix: backdrop-filter + opacity Compositing-Layer blockierte Maus-Events
