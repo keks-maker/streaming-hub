@@ -1,4 +1,13 @@
 // v0.3.7. – Kanalwechsel per postMessage (kein Vollbild-Ende) + Reihenfolge = Sidebar
+const {
+  escapeHtml, decodeEntities, normalizeUrl, formatTimestamp,
+  parseEpgTime, formatEpgTime, buildEpgIndex, getEpgChannelList, findCurrentEpg,
+  getMediathekForChannel, normalizeTvId, isFavorite,
+  filterChannels, groupChannels, separateFavorites,
+  buildChannelList, getNextChannelId, applyChannelOverrides, applySortOrder,
+} = require('@streaming-hub/typed-core');
+const logger = require('./logger.js');
+
 let services = [];
 let webviewReady = false;
 let pendingNav = null;
@@ -131,16 +140,7 @@ const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
 let epgSlotHours = 8;
 
-// Mediathek mapping for EPG -> service search
-const mediathekChannelMap = [
-  { match: /^(DasErste|ARD|BR|HR|MDR|NDR|RB|RBB|SR|SWR|WDR|tagesschau24|one|phoenix|ARD-alpha)/i, serviceId: 'ard', searchUrl: 'https://www.ardmediathek.de/suche/' },
-  { match: /^(ZDF|3sat|ZDFinfo|ZDFneo|ZDFdoku)/i, serviceId: 'zdf', searchUrl: 'https://www.zdf.de/suche?q=' },
-  { match: /^ARTE/i, serviceId: 'arte', searchUrl: 'https://www.arte.tv/de/search/?q=' },
-];
-
-function getMediathekForChannel(tvgIdOrName) {
-  return mediathekChannelMap.find(e => e.match.test(tvgIdOrName)) || null;
-}
+// Mediathek mapping for EPG -> service search (now in typed-core tv.ts)
 const tvChStatus = document.getElementById('tvChStatus');
 
 const uaMap = {
@@ -312,13 +312,6 @@ function navigateRelative(dir) {
   const idx = services.findIndex(s => s.id === currentProvider);
   const next = (idx + dir + services.length) % services.length;
   navigateTo(services[next]);
-}
-
-function normalizeUrl(u) {
-  u = u.trim();
-  if (!u) return '';
-  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-  return u;
 }
 
 // ── Settings: Service Management ──
@@ -599,7 +592,7 @@ function loadEpgData() {
     window.electronAPI.fetchEPG(url).catch(() => [])
   )).then(results => {
     tvEpgData = results.flat();
-    buildEpgIndex();
+    tvEpgIndex = buildEpgIndex(tvEpgData);
     if (tvSidebarOpen) {
       tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG geladen ✓</span>';
       setTimeout(() => updateEpgStatus(), 2000);
@@ -647,11 +640,6 @@ function toggleFavorite(ch) {
   renderTvChannels();
 }
 
-function isFavorite(ch) {
-  const source = tvSources.find(s => s.id === ch.sourceId);
-  return source && source.favorites && source.favorites.includes(ch.id);
-}
-
 function refreshEpg() {
   if (tvEpgRefreshing) return;
   tvEpgRefreshing = true;
@@ -677,7 +665,7 @@ function refreshEpg() {
     window.electronAPI.fetchEPG(url).catch(() => [])
   )).then(results => {
     tvEpgData = results.flat();
-    buildEpgIndex();
+    tvEpgIndex = buildEpgIndex(tvEpgData);
     if (tvSidebarOpen) {
       tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG aktualisiert ✓</span>';
       setTimeout(() => updateEpgStatus(), 2000);
@@ -709,7 +697,7 @@ function renderTvChannelItem(ch, showFav) {
 
   const srcIdx = tvSources.findIndex(s => s.id === ch.sourceId);
   const srcColor = srcIdx !== -1 ? tvSources[srcIdx].color || '#a78bfa' : '#a78bfa';
-  const fav = isFavorite(ch);
+  const fav = isFavorite(ch, tvSources);
   const isMultiSource = tvSelectedSourceIds.length > 1;
 
   item.innerHTML = `
@@ -788,8 +776,8 @@ function renderTvChannels() {
   }
 
   // Separate favorites from the rest
-  const favoriteChannels = filtered.filter(ch => isFavorite(ch));
-  const regularChannels = filtered.filter(ch => !isFavorite(ch));
+  const favoriteChannels = filtered.filter(ch => isFavorite(ch, tvSources));
+  const regularChannels = filtered.filter(ch => !isFavorite(ch, tvSources));
 
   // Group regular channels
   const groups = {};
@@ -849,21 +837,11 @@ function renderTvChannels() {
 let tvChEditCache = []; // {ch, source}[] für die aktuelle Editor-Liste
 let tvEpgChannelList = []; // [{normId, channelId, sampleTitle}] für EPG-Dropdown
 
-function getEpgChannelList() {
-  if (!tvEpgIndex) return [];
-  const list = [];
-  tvEpgIndex.forEach((entries, normId) => {
-    const entry = entries[0];
-    list.push({ normId, channelId: entry.channelId, sampleTitle: entry.title });
-  });
-  return list.sort((a, b) => a.normId.localeCompare(b.normId));
-}
-
 function openTvChEditor() {
   tvChOverrides = {};
   tvChDirty = false;
   tvChStatus.textContent = '';
-  tvEpgChannelList = getEpgChannelList();
+  tvEpgChannelList = getEpgChannelList(tvEpgIndex);
   if (!tvEpgChannelList.length) {
     tvChStatus.textContent = '⚠️ EPG nicht geladen – erst EPG über Sidebar laden';
     tvChStatus.style.color = '#fbbf24';
@@ -1132,7 +1110,7 @@ async function selectTvChannel(ch, options = {}) {
         epgNext: epgNext,
       };
       if (!options.suppressChannelList) {
-        const channelList = buildTvChannelList(ch);
+        const channelList = buildChannelList(ch, tvChannels, tvSources);
         msg.channelList = channelList.channels;
         msg.channelIndex = channelList.currentIndex;
       }
@@ -1160,56 +1138,13 @@ function switchTvChannel(dir) {
   const sourceId = tvChannels.find(c => c.id === tvActiveChannelId)?.sourceId;
   if (!sourceId) return;
   const sourceChannels = tvChannels.filter(ch => ch.sourceId === sourceId);
-  const favOrder = sourceChannels.filter(ch => isFavorite(ch)).map(ch => ch.id);
+  const favOrder = sourceChannels.filter(ch => isFavorite(ch, tvSources)).map(ch => ch.id);
   const order = favOrder.length ? favOrder : sourceChannels.map(ch => ch.id);
   const idx = order.indexOf(tvActiveChannelId);
   if (idx === -1) return;
   const nextId = order[(idx + dir + order.length) % order.length];
   const nextCh = tvChannels.find(c => c.id === nextId);
   if (nextCh) selectTvChannel(nextCh);
-}
-
-function buildTvChannelList(ch) {
-  const sourceId = ch.sourceId;
-  const sorted = tvChannels
-    .filter(c => c.sourceId === sourceId && isFavorite(c))
-    .map(c => ({ id: c.id, name: c.name, logo: c.logo || '' }));
-  return { channels: sorted, currentIndex: sorted.findIndex(c => c.id === ch.id) };
-}
-
-function parseEpgTime(timeStr) {
-  // XMLTV time format: YYYYMMDDHHMMSS [+-]HHMM
-  // Mit Timezone
-  const m = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{2})(\d{2})/);
-  if (m) {
-    const utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
-    const tzOffset = (+m[7]) * 60 + (+m[8]);
-    return new Date(utc - tzOffset * 60000);
-  }
-  // Ohne Timezone
-  const m2 = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
-  if (!m2) return new Date(0);
-  return new Date(Date.UTC(+m2[1], +m2[2] - 1, +m2[3], +m2[4], +m2[5], +m2[6]));
-}
-
-function formatEpgTime(timeStr) {
-  const d = parseEpgTime(timeStr);
-  if (d.getTime() === 0) return '';
-  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-}
-
-function buildEpgIndex() {
-  tvEpgIndex = new Map();
-  const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
-  tvEpgData.forEach(e => {
-    const key = normId(e.channelId);
-    if (!tvEpgIndex.has(key)) tvEpgIndex.set(key, []);
-    tvEpgIndex.get(key).push(e);
-  });
-  // Sort by start time for each channel
-  tvEpgIndex.forEach(entries => {
-    entries.sort((a, b) => parseEpgTime(a.start) - parseEpgTime(b.start));
-  });
 }
 
 // ── EPG Program Overview ──
@@ -1232,7 +1167,7 @@ function renderEpg() {
   const totalMin = epgSlotHours * 60;
 
   // Favorite channels
-  const favChannels = tvChannels.filter(ch => isFavorite(ch));
+  const favChannels = tvChannels.filter(ch => isFavorite(ch, tvSources));
 
   // Ruler: hour markers
   let rulerHtml = '';
@@ -1376,12 +1311,6 @@ function toggleShortcuts() {
 }
 
 // History overlay
-function formatTS(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-}
-
 function renderHistory(entries) {
   historyList.innerHTML = '';
   if (!entries || entries.length === 0) {
@@ -1405,7 +1334,7 @@ function renderHistory(entries) {
     body.className = 'history-entry-body';
     body.innerHTML = `
       <div class="history-entry-title">${escapeHtml(e.title)}</div>
-      <div class="history-entry-meta">${escapeHtml(svcName)} · ${formatTS(e.timestamp)}</div>
+      <div class="history-entry-meta">${escapeHtml(svcName)} · ${formatTimestamp(e.timestamp)}</div>
     `;
     row.appendChild(body);
 
@@ -1420,18 +1349,6 @@ function renderHistory(entries) {
 
     historyList.appendChild(row);
   }
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function decodeEntities(str) {
-  const div = document.createElement('div');
-  div.innerHTML = str;
-  return div.textContent || '';
 }
 
 function openHistory() {
@@ -1532,7 +1449,7 @@ webview.addEventListener('did-finish-load', () => {
   if (tvActiveChannelId && webview.getURL().includes('tv.html')) {
     const ch = tvChannels.find(c => c.id === tvActiveChannelId);
     if (ch) {
-      const cl = buildTvChannelList(ch);
+      const cl = buildChannelList(ch, tvChannels, tvSources);
       webview.executeJavaScript("window.postMessage(" + JSON.stringify({
         type: 'channel-list',
         channels: cl.channels,
@@ -1615,7 +1532,7 @@ tvView.addEventListener('did-finish-load', () => {
   if (tvActiveChannelId && tvView.getURL().includes('tv.html')) {
     const ch = tvChannels.find(c => c.id === tvActiveChannelId);
     if (ch) {
-      const cl = buildTvChannelList(ch);
+      const cl = buildChannelList(ch, tvChannels, tvSources);
       tvView.executeJavaScript("window.postMessage(" + JSON.stringify({
         type: 'channel-list',
         channels: cl.channels,

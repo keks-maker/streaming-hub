@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Streaming-Hub iOS – Mockup</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#111;color:#eee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:40px 20px}
+  h1{font-size:28px;font-weight:600;margin-bottom:8px;color:#fff}
+  h2{font-size:18px;font-weight:500;margin:32px 0 16px;color:#999;border-top:1px solid #333;padding-top:24px}
+  .sub{color:#888;margin-bottom:32px;font-size:14px}
+
+  .device-group{display:flex;gap:32px;flex-wrap:wrap;margin-bottom:40px}
+  .device{flex:1;min-width:320px;max-width:420px}
+  .device-label{font-size:13px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+
+  .phone{background:#1c1c1e;border-radius:40px;padding:18px 10px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .phone-inner{background:#000;border-radius:32px;padding:16px 12px;min-height:640px;position:relative;overflow:hidden}
+  .notch{width:160px;height:28px;background:#000;border-radius:0 0 16px 16px;margin:-16px auto 12px}
+  .status-bar{display:flex;justify-content:space-between;font-size:11px;color:#888;padding:0 4px 8px}
+
+  .tab-bar{position:absolute;bottom:0;left:0;right:0;background:rgba(28,28,30,.95);backdrop-filter:blur(20px);border-top:1px solid #333;padding:6px 0 16px;display:flex;justify-content:space-around}
+  .tab{text-align:center;font-size:10px;color:#666;cursor:default}
+  .tab.active{color:#3b82f6}
+  .tab-icon{font-size:20px;margin-bottom:2px}
+
+  .services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+  .svc{background:#2c2c2e;border-radius:14px;padding:14px 8px;text-align:center;font-size:11px;cursor:default}
+  .svc-icon{font-size:28px;margin-bottom:4px}
+  .svc-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .svc-sub{font-size:9px;color:#666}
+
+  .tv-list{margin:12px 0}
+  .tv-item{display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid #222}
+  .tv-logo{width:32px;height:32px;border-radius:6px;background:#2c2c2e;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .tv-info{flex:1}
+  .tv-name{font-size:14px;font-weight:500}
+  .tv-epg{font-size:11px;color:#888;margin-top:2px}
+  .tv-now{font-size:10px;color:#3b82f6}
+  .tv-play{width:36px;height:36px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:default}
+  .tv-icon{width:32px;height:32px;border-radius:50%;background:#2c2c2e}
+
+  .badge{background:#3b82f6;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;margin-left:4px}
+  .note{background:#1a1a2e;border-left:3px solid #3b82f6;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#aaa}
+  .note strong{color:#3b82f6}
+  .arrow{color:#555;font-size:24px;margin:20px 0;text-align:center}
+
+  .split-view{display:flex;gap:16px;background:#1c1c1e;border-radius:12px;padding:16px;margin:12px 0;align-items:center}
+  .split-left{flex:1;font-size:13px}
+  .split-right{width:200px;height:120px;background:#2c2c2e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#555;font-size:11px}
+
+  .tv-os-box{background:#1c1c1e;border-radius:16px;padding:20px;margin:12px 0;max-width:500px}
+  .tv-os-focus{display:flex;gap:16px;padding:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:10px}
+  .tv-os-focus .tv-logo{width:48px;height:48px;font-size:28px}
+
+  .arrow-flow{display:flex;align-items:center;gap:16px;margin:16px 0;padding:12px;background:#1a1a1e;border-radius:10px;font-size:13px}
+  .arrow-flow .icon{font-size:24px}
+  .arrow-flow .arrow-sym{color:#555}
+</style>
+</head>
+<body>
+
+<h1>📱 Streaming-Hub auf iOS</h1>
+<p class="sub">Wie sich Bedienung und Erscheinungsbild ändern – und warum die App trotzdem Sinn ergibt.</p>
+
+<!-- ─── DESKTOP VS IOS ─── -->
+<h2>Desktop vs. iOS – der fundamentale Unterschied</h2>
+
+<div class="device-group">
+  <!-- DESKTOP -->
+  <div class="device">
+    <div class="device-label">💻 Desktop (aktuell)</div>
+    <div style="background:#1c1c1e;border-radius:12px;padding:16px">
+      <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto">
+        <div style="padding:6px 12px;background:#3b82f6;border-radius:6px;font-size:11px">Netflix</div>
+        <div style="padding:6px 12px;background:#2c2c2e;border-radius:6px;font-size:11px">YouTube</div>
+        <div style="padding:6px 12px;background:#2c2c2e;border-radius:6px;font-size:11px">ARD</div>
+      </div>
+      <div style="background:#2c2c2e;border-radius:8px;height:180px;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#666">
+        <div style="font-size:32px;margin-bottom:8px">🖥️</div>
+        <div style="font-size:13px">Netflix.com im Webview</div>
+        <div style="font-size:11px;color:#555">Widevine-DRM, alles in einer App</div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#666">
+        ← Seitenleiste mit Diensten → <span style="color:#3b82f6">Aktuelles Webview</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- iOS -->
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>🔋 94%</span>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:22px;font-weight:700">Streaming-Hub</span>
+        <span style="font-size:18px;cursor:default">⚙️</span>
+      </div>
+
+      <!-- Search -->
+      <div style="background:#2c2c2e;border-radius:10px;padding:8px 12px;margin-bottom:12px;color:#555;font-size:13px">
+        🔍 Sender oder Titel suchen…
+      </div>
+
+      <!-- Streaming Services Grid -->
+      <div style="font-size:12px;color:#888;margin-bottom:4px">Streaming-Dienste</div>
+      <div class="services-grid">
+        <div class="svc"><div class="svc-icon">▶️</div><div class="svc-label">Netflix</div><div class="svc-sub">öffnet App</div></div>
+        <div class="svc"><div class="svc-icon">📺</div><div class="svc-label">YouTube</div><div class="svc-sub">öffnet App</div></div>
+        <div class="svc"><div class="svc-icon">🎬</div><div class="svc-label">Prime</div><div class="svc-sub">öffnet App</div></div>
+        <div class="svc"><div class="svc-icon">🎮</div><div class="svc-label">Twitch</div><div class="svc-sub">öffnet App</div></div>
+        <div class="svc"><div class="svc-icon">🎵</div><div class="svc-label">Spotify</div><div class="svc-sub">öffnet App</div></div>
+        <div class="svc" style="border:1px dashed #444"><div class="svc-icon">+</div><div class="svc-label">Hinzufügen</div><div class="svc-sub"></div></div>
+      </div>
+
+      <!-- TV Now Playing -->
+      <div style="background:#2c2c2e;border-radius:12px;padding:12px;margin-bottom:8px">
+        <div style="font-size:11px;color:#888;margin-bottom:6px">📺 Läuft gerade</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:48px;height:48px;border-radius:8px;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:24px">📡</div>
+          <div style="flex:1">
+            <div style="font-weight:600">Das Erste</div>
+            <div style="font-size:12px;color:#aaa">Tagesschau <span style="color:#666">· 20:00–20:15</span></div>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <span style="background:#3b82f6;border-radius:4px;padding:1px 6px;font-size:9px">LIVE</span>
+              <span style="background:#222;border-radius:4px;padding:1px 6px;font-size:9px">PiP</span>
+            </div>
+          </div>
+          <div style="width:36px;height:36px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center">▶</div>
+        </div>
+      </div>
+
+      <!-- TV Channel List -->
+      <div style="font-size:12px;color:#888;margin-bottom:4px">TV-Sender</div>
+      <div class="tv-list" style="height:140px;overflow:hidden">
+        <div class="tv-item">
+          <div class="tv-logo">📡</div>
+          <div class="tv-info">
+            <div class="tv-name">Das Erste</div>
+            <div class="tv-epg"><span class="tv-now">● Tagesschau</span> · 20:00–20:15</div>
+          </div>
+          <div class="tv-play">▶</div>
+        </div>
+        <div class="tv-item">
+          <div class="tv-logo">📡</div>
+          <div class="tv-info">
+            <div class="tv-name">ZDF</div>
+            <div class="tv-epg"><span class="tv-now">● heute journal</span> · 21:45–22:15</div>
+          </div>
+          <div class="tv-play">▶</div>
+        </div>
+        <div class="tv-item">
+          <div class="tv-logo">📡</div>
+          <div class="tv-info">
+            <div class="tv-name">RTL</div>
+            <div class="tv-epg"><span class="tv-now">● Wer wird Millionär?</span> · 20:15–21:15</div>
+          </div>
+          <div class="tv-play">▶</div>
+        </div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar">
+        <div class="tab active"><div class="tab-icon">🏠</div>Start</div>
+        <div class="tab"><div class="tab-icon">📺</div>TV</div>
+        <div class="tab"><div class="tab-icon">🕐</div>Verlauf</div>
+        <div class="tab"><div class="tab-icon">⚙️</div>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── WAS SICH ÄNDERT ─── -->
+<h2>🧩 Was sich konkret ändert</h2>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;font-size:14px">
+  <div style="background:#1c1c1e;border-radius:12px;padding:16px">
+    <h3 style="font-size:15px;color:#f55;margin-bottom:8px">❌ Desktop-exklusiv</h3>
+    <ul style="list-style:none;color:#aaa">
+      <li style="padding:4px 0">• Netflix/YouTube/Prime im Webview</li>
+      <li style="padding:4px 0">• Widevine-DRM (Castlabs-Electron)</li>
+      <li style="padding:4px 0">• Spotify in eingebettetem Webview</li>
+      <li style="padding:4px 0">• Alles in einem Fenster</li>
+      <li style="padding:4px 0">• Eigenes PiP-Fenster (pip.html)</li>
+    </ul>
+  </div>
+  <div style="background:#1c1c1e;border-radius:12px;padding:16px">
+    <h3 style="font-size:15px;color:#3b82f6;margin-bottom:8px">✅ iOS-native Features</h3>
+    <ul style="list-style:none;color:#aaa">
+      <li style="padding:4px 0">• Streaming-Dienste öffnen <strong>native App</strong></li>
+      <li style="padding:4px 0">• TV-Sender via <strong>AVPlayer</strong> (HLS, Hardware-dekodiert)</li>
+      <li style="padding:4px 0">• <strong>Natives PiP</strong> (AVPictureInPictureController)</li>
+      <li style="padding:4px 0">• Hintergrundwiedergabe (Control Center)</li>
+      <li style="padding:4px 0">• AirPlay, Siri Shortcuts, Widgets</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ─── WORKFLOW-VERGLEICH ─── -->
+<h2>🔄 Workflow-Vergleich</h2>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:13px">
+  <div style="background:#1c1c1e;border-radius:12px;padding:16px">
+    <div style="color:#888;margin-bottom:8px">💻 Desktop</div>
+    <div class="arrow-flow">
+      <span class="icon">📱</span> Netflix-Icon klicken
+      <span class="arrow-sym">→</span>
+      <span class="icon">🖥️</span> Netflix im Webview
+    </div>
+    <div class="arrow-flow">
+      <span class="icon">📡</span> TV-Sender klicken
+      <span class="arrow-sym">→</span>
+      <span class="icon">🖥️</span> HLS.js in tv.html
+    </div>
+    <div class="arrow-flow">
+      <span class="icon">🏠</span> Startseite
+      <span class="arrow-sym">→</span>
+      <span class="icon">🔄</span> Alle Dienste in einem Fenster
+    </div>
+  </div>
+  <div style="background:#1c1c1e;border-radius:12px;padding:16px">
+    <div style="color:#888;margin-bottom:8px">📱 iOS</div>
+    <div class="arrow-flow">
+      <span class="icon">📱</span> Netflix-Icon tippen
+      <span class="arrow-sym">→</span>
+      <span class="icon">🎬</span> Netflix-App wird geöffnet <span style="color:#3b82f6">(↻ per URL-Scheme)</span>
+    </div>
+    <div class="arrow-flow">
+      <span class="icon">📡</span> TV-Sender tippen
+      <span class="arrow-sym">→</span>
+      <span class="icon">🎥</span> AVPlayer startet HLS-Stream <span style="color:#3b82f6">(in der App)</span>
+    </div>
+    <div class="arrow-flow">
+      <span class="icon">🏠</span> Startseite
+      <span class="arrow-sym">→</span>
+      <span class="icon">📤</span> Weiterleitung zu Drittanbieter-Apps
+    </div>
+  </div>
+</div>
+
+<!-- ─── APPLE TV ─── -->
+<h2>📺 AppleTV – die Sonderrolle</h2>
+
+<div class="tv-os-box">
+  <p style="font-size:13px;color:#aaa;margin-bottom:12px">
+    Anders als iOS kann <strong>tvOS keine anderen Apps per URL-Scheme öffnen</strong>.
+    Das macht AppleTV zum Spezialfall:
+  </p>
+  <div class="tv-os-focus" style="margin-bottom:12px">
+    <div class="tv-logo">📡</div>
+    <div style="flex:1">
+      <div style="font-weight:600;margin-bottom:4px">TV-Sender (nativ)</div>
+      <div style="font-size:12px;color:#aaa">AVPlayer + EPG + PiP = <strong>volle Funktionalität</strong></div>
+      <div style="font-size:11px;color:#666;margin-top:4px">Das Erste · ZDF · RTL · Sat.1 · ProSieben · arte …</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:center;background:#2c2c2e;border-radius:10px;padding:12px;font-size:13px">
+    <div style="text-align:center;flex:1;padding:8px;background:#2a1a2a;border-radius:8px">
+      <div style="font-size:24px;margin-bottom:4px">🎬</div>
+      <div style="font-weight:500">Netflix</div>
+      <div style="font-size:10px;color:#666;margin-top:4px">❌ kann App nicht öffnen</div>
+    </div>
+    <div style="color:#555;font-size:18px">→</div>
+    <div style="flex:1;padding:8px;background:#1a2a2a;border-radius:8px;text-align:center">
+      <div style="font-size:24px;margin-bottom:4px">🌐</div>
+      <div style="font-weight:500">Webview (eingeschränkt)</div>
+      <div style="font-size:10px;color:#666;margin-top:4px">⚠️ ohne Widevine – nur Free-TV</div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:12px">
+    <strong>Lösungsansatz:</strong> AppleTV könnte Mediatheken (ARD, ZDF, arte) als <strong>native HLS-Streams</strong> abspielen (gleicher AVPlayer wie TV-Sender). Für Netflix/YouTube bleibt nur eine eingeschränkte Webview oder eine reine <strong>Fernbedienungs-Funktion</strong> (per AirPlay vom iPhone aus starten).
+  </div>
+</div>
+
+<!-- ─── NO-NONSENSE-BEWERTUNG ─── -->
+<h2>✅ Unterm Strich</h2>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;font-size:13px">
+  <div style="background:#1c1c1e;border-radius:12px;padding:16px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">📱</div>
+    <div style="font-weight:600;margin-bottom:4px">iOS (iPhone)</div>
+    <div style="color:#3b82f6">⭐⭐⭐⭐⭐</div>
+    <div style="color:#aaa;margin-top:8px;font-size:12px">
+      TV-Sender nativ abspielbar.<br>
+      Streaming-Dienste per URL-Scheme.<br>
+      <strong>Eine echte Ergänzung.</strong>
+    </div>
+  </div>
+  <div style="background:#1c1c1e;border-radius:12px;padding:16px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">📺</div>
+    <div style="font-weight:600;margin-bottom:4px">AppleTV</div>
+    <div style="color:#888">⭐⭐⭐☆☆</div>
+    <div style="color:#aaa;margin-top:8px;font-size:12px">
+      TV-Sender + Mediatheken top.<br>
+      Kein App-Wechsel möglich.<br>
+      <strong>Nur als TV-Player + EPG sinnvoll.</strong>
+    </div>
+  </div>
+  <div style="background:#1c1c1e;border-radius:12px;padding:16px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">💻</div>
+    <div style="font-weight:600;margin-bottom:4px">Desktop</div>
+    <div style="color:#3b82f6">⭐⭐⭐⭐⭐</div>
+    <div style="color:#aaa;margin-top:8px;font-size:12px">
+      Alles in einer App.<br>
+      Widevine + Webview.<br>
+      <strong>Die volle Erfahrung wie gehabt.</strong>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Kernerkenntnis:</strong> Die iOS-App ist kein 1:1-Port. Sie ist eine <strong>andere App mit gemeinsamen Daten</strong>.
+  Desktop bleibt der "Alles-in-Einem"-Player. iOS wird zum <strong>TV-Player + Streaming-Launcher + EPG-Browser</strong>.
+  Der gemeinsame Nenner ist <code>typed-core</code>: Senderlisten, EPG, Verlauf, Konfiguration.
+</div>
+
+</body>
+</html>

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.28 (2026-06-09)
+- New: `packages/typed-core` – TypeScript-Package mit Datenmodellen + Logik aus renderer.js
+- New: `format.ts`, `epg.ts`, `tv.ts` – Datenlogik-Module mit 33 Unit-Tests (vitest)
+- New: `npm run build:renderer` – esbuild-Bundler für renderer.js mit typed-core-Imports
+- Change: `index.html` lädt jetzt `dist/renderer.js` (gebündelt) statt `logger.js` + `renderer.js`
+- Change: Duplizierte Funktionen (`escapeHtml`, `parseEpgTime`, `buildEpgIndex`, etc.) aus renderer.js entfernt, stattdessen typed-core-Importe
+- Change: npm Workspace `packages/typed-core` im Root eingetragen
+- Change: `prestart`/`predev` baut automatisch typed-core + renderer
+
 ## 0.4.27 (2026-06-08)
 - Fix: Streaming-Player (Netflix/YouTube) pausieren bei Wechsel zu TV – via `executeJavaScript` werden alle `video/audio`-Elemente gestoppt
 - Code-Review: Event-Listener, webview-Referenzen, CSS-Regeln – keine weiteren Querfehler gefunden

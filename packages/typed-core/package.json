@@ -1,0 +1,32 @@
+{
+  "name": "@streaming-hub/typed-core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./schemas.json": {
+      "types": "./dist/schemas.json",
+      "import": "./dist/schemas.json",
+      "require": "./dist/schemas.json"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:schemas": "ts-json-schema-generator --path 'src/**/*.ts' --type '*' --out dist/schemas.json",
+    "build:all": "npm run build && npm run build:schemas",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.8",
+    "ts-json-schema-generator": "^2.4",
+    "vitest": "^3.1",
+    "@types/node": "^22"
+  }
+}

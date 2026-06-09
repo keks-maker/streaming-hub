@@ -1,24 +1,33 @@
 {
   "name": "streaming-hub",
-  "version": "0.4.27",
+  "private": true,
+  "workspaces": [
+    "packages/typed-core"
+  ],
+  "version": "0.4.28",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "prestart": "npm run build:all",
     "dev": "electron . --dev",
+    "predev": "npm run build:all",
     "build": "electron-builder --linux AppImage",
     "build:dir": "electron-builder --linux dir",
     "build:linux": "electron-builder --linux AppImage",
     "build:mac": "electron-builder --mac zip",
     "build:win": "electron-builder --win portable",
-    "build:all": "electron-builder --linux AppImage --mac zip --win portable",
+    "build:dist": "electron-builder --linux AppImage --mac zip --win portable",
     "postinstall": "node node_modules/electron/install.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.js\"",
     "format:check": "prettier --check \"**/*.js\"",
     "audit": "npm audit",
-    "outdated": "npm outdated"
+    "outdated": "npm outdated",
+    "build:typed-core": "npm run build:all --workspace packages/typed-core",
+    "build:renderer": "node scripts/build-renderer.js",
+    "build:all": "npm run build:typed-core && npm run build:renderer"
   },
   "build": {
     "appId": "com.streaming-hub.app",
@@ -67,6 +76,7 @@
     "@eslint/js": "^10.0.1",
     "electron": "github:castlabs/electron-releases#v42.0.0+wvcus",
     "electron-builder": "^26.15.2",
+    "esbuild": "^0.28.0",
     "eslint": "^10.4.1",
     "prettier": "^3.8.3"
   },
