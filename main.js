@@ -362,12 +362,12 @@ ipcMain.handle('apply-update', async (_e, version) => {
         if (!msg.error) {
           setTimeout(() => {
             const { exec } = require('child_process');
-            // Shell-basierter Restart: & + exit des Shells = vollständig gelöst
+            // DISPLAY + sofort app.exit(0) – kein GPU-Konflikt durch Parallelinstanz
             exec(
-              `ELECTRON_DISABLE_SANDBOX=1 "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
-              { cwd: __dirname },
-              () => app.quit()
+              `ELECTRON_DISABLE_SANDBOX=1 DISPLAY="${process.env.DISPLAY || ''}" "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
+              { cwd: __dirname }
             );
+            app.exit(0);
           }, 500);
         }
       }

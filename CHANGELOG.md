@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.68 (2026-06-09)
+- Fix: Restart crashte – GPU-Konflikt durch parallele Instanzen (app.exit statt app.quit)
+- Fix: DISPLAY env explizit übergeben
+- New: EPG für alle Sender in Channel-Liste (v.0.4.67)
+
 ## 0.4.67 (2026-06-09)
 - New: EPG-Informationen für ALLE Sender in der Channel-Liste (nicht nur aktiver)
 - Change: Item-Höhe auf 62px angepasst (Platz für EPG-Zeile)
