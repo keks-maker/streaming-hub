@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.47 (2026-06-09)
+- Fix: Zurück-Button z-index 51 (über Sidebar), Polling alle 2s statt Event-basiert
+
 ## 0.4.46 (2026-06-09)
 - Fix: Zurück-Button – canGoBack() synchron, did-navigate-in-page (YouTube SPA), dezenter Glow
 

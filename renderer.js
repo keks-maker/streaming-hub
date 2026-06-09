@@ -1758,6 +1758,7 @@ function updateBackButton() {
     backTrigger.classList.remove('visible');
   }
 }
+setInterval(updateBackButton, 2000);
 backTrigger.addEventListener('click', () => {
   if (webviewReady) {
     try {
