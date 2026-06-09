@@ -12,6 +12,7 @@ export const BUILTIN_SERVICES: StreamService[] = [
   { id: 'ard',        name: 'ARD',         url: 'https://www.ardmediathek.de',   icon: 'icons/ard.svg',          iosAppScheme: 'ardmediathek://' },
   { id: 'zdf',        name: 'ZDF',         url: 'https://www.zdf.de',            icon: 'icons/zdf.svg',          iosAppScheme: 'zdf://' },
   { id: 'arte',       name: 'ARTE',        url: 'https://www.arte.tv',           icon: 'icons/arte.svg',         iosAppScheme: 'arte://' },
+  { id: 'magentatv',   name: 'MagentaTV',   url: 'https://web.magentatv.de',       icon: 'icons/magentatv.svg',     group: 'streaming' as const },
 ];
 
 /**

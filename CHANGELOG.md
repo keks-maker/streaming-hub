@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.53 (2026-06-09)
+- New: TV-Modus-Umschalter in Einstellungen (FreeTV / MagentaTV)
+- New: MagentaTV-Modus – TV-Button öffnet web.magentatv.de im Webview
+- Change: MagentaTV als Service registriert (unter Streaming)
+- Change: Sidebar + Pfeiltasten deaktiviert im MagentaTV-Modus
+
 ## 0.4.52 (2026-06-09)
 - Revert: Zurück-Button komplett entfernt (v0.4.48–51) – als Gitea Issue #12 dokumentiert
 

@@ -39,6 +39,8 @@ let tvEpgIndex = null; // Map<normId, epgEntry[]> für schnelle EPG-Lookups
 let tvChOverrides = {}; // {sourceId: {chId: {name?,url?,tvgId?,tvgLogo?}}} – ungespeicherte Änderungen
 let tvChDirty = false;
 
+let tvMode = localStorage.getItem('tvMode') || 'free';
+
 const overlayBar = document.getElementById('overlayBar');
 const nav = document.getElementById('overlayNav');
 let tvBtn = null;
@@ -297,7 +299,7 @@ function goToStartPage() {
       logger.warn('loadURL failed');
     }
   }
-  if (tvSources.length && !tvSidebarOpen) openTvSidebar();
+  if (tvSources.length && !tvSidebarOpen && tvMode === 'free') openTvSidebar();
 }
 
 function navigateTo(svc) {
@@ -494,6 +496,22 @@ function saveTvSource() {
 // ── TV Sidebar ──
 
 function toggleTvSidebar() {
+  if (tvMode === 'magenta') {
+    const svc = services.find(s => s.id === 'magentatv');
+    if (svc) {
+      navigateTo(svc);
+      return;
+    }
+    webview.loadURL('https://web.magentatv.de');
+    currentProvider = 'magentatv';
+    lastMediaTitle = '';
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    switchWebview(false);
+    welcomeScreen.style.display = 'none';
+    overlayBar.classList.remove('always-visible');
+    if (tvSidebarOpen) closeTvSidebar();
+    return;
+  }
   if (tvSidebarOpen) {
     closeTvSidebar();
   } else {
@@ -1728,6 +1746,7 @@ tvInputEpgUrl.addEventListener('keydown', e => {
 });
 
 tvSidebarTrigger.addEventListener('mouseenter', () => {
+  if (tvMode === 'magenta') return;
   if (!tvSidebarOpen) openTvSidebar();
 });
 
@@ -1883,6 +1902,7 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
   }
 
   if ((key === 'ArrowUp' || key === 'ArrowDown') && currentProvider === '__tv__') {
+    if (tvMode === 'magenta') return false;
     switchTvChannel(key === 'ArrowUp' ? -1 : 1);
     return true;
   }
@@ -2060,8 +2080,17 @@ function openSettings() {
   settingsStatus.textContent = '';
   renderSettingsServices();
   settingsAddForm.style.display = 'none';
+  document.querySelector('input[name="tvMode"][value="' + tvMode + '"]').checked = true;
   settingsOverlay.classList.add('open');
 }
+
+document.querySelectorAll('input[name="tvMode"]').forEach(r => {
+  r.addEventListener('change', () => {
+    tvMode = r.value;
+    localStorage.setItem('tvMode', tvMode);
+    if (tvMode === 'magenta') closeTvSidebar();
+  });
+});
 
 function closeSettings() {
   settingsOverlay.classList.remove('open');
@@ -2137,7 +2166,7 @@ window.electronAPI.getTvSources().then(sources => {
   tvSources = sources;
   tvSelectedSourceIds = sources.map(s => s.id);
   loadEpgData();
-  if (tvSources.length) openTvSidebar();
+  if (tvSources.length && tvMode === 'free') openTvSidebar();
 });
 
 window.electronAPI.onTvSourcesChanged(sources => {

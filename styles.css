@@ -513,6 +513,22 @@ body {
   cursor: default;
   pointer-events: none;
 }
+.tv-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px 0;
+}
+.tv-mode-label input[type='radio'] {
+  accent-color: var(--accent);
+}
+.tv-mode-label:has(input:checked) {
+  color: var(--text);
+}
+
 .settings-status {
   font-size: 12px;
   color: var(--text-dim);
