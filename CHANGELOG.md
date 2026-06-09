@@ -1,8 +1,7 @@
 # Changelog
 
-## 0.4.45 (2026-06-09)
-- Fix: Zurück-Button – canGoBack() synchron (kein Promise) + did-navigate-in-page für SPA (YouTube)
-- Change: Zurück-Button jetzt dezent sichtbar (0.04er Purple-Glow) statt komplett unsichtbar
+## 0.4.46 (2026-06-09)
+- Fix: Zurück-Button – canGoBack() synchron, did-navigate-in-page (YouTube SPA), dezenter Glow
 
 ## 0.4.44 (2026-06-09)
 - New: Zurück-Button als Hover-Fläche links oben (←-Pfeil, nur sichtbar bei canGoBack)
