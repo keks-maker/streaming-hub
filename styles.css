@@ -1571,6 +1571,7 @@ body {
 }
 .back-trigger.visible {
   display: flex;
+  background: rgba(167,139,250,0.04);
 }
 .back-trigger:hover {
   width: 36px;

@@ -1533,6 +1533,10 @@ webview.addEventListener('did-navigate', () => {
   updateBackButton();
 });
 
+webview.addEventListener('did-navigate-in-page', () => {
+  updateBackButton();
+});
+
 webview.addEventListener('permissionrequest', e => {
   if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {
     e.request.allow();
@@ -1749,9 +1753,7 @@ function updateBackButton() {
     return;
   }
   try {
-    webview.canGoBack().then(can => {
-      backTrigger.classList.toggle('visible', can);
-    });
+    backTrigger.classList.toggle('visible', webview.canGoBack());
   } catch (_e) {
     backTrigger.classList.remove('visible');
   }
