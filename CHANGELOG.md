@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.69 (2026-06-09)
+- Fix: Restart – execSync + nohup statt exec (exec war asynchron, app.exit kam zu früh)
+- Lokal getestet: Parent stirbt, Kind (electron) lebt weiter ✅
+
 ## 0.4.68 (2026-06-09)
 - Fix: Restart crashte – GPU-Konflikt durch parallele Instanzen (app.exit statt app.quit)
 - Fix: DISPLAY env explizit übergeben

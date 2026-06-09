@@ -361,10 +361,9 @@ ipcMain.handle('apply-update', async (_e, version) => {
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => {
-            const { exec } = require('child_process');
-            // DISPLAY + sofort app.exit(0) – kein GPU-Konflikt durch Parallelinstanz
-            exec(
-              `ELECTRON_DISABLE_SANDBOX=1 DISPLAY="${process.env.DISPLAY || ''}" "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
+            const { execSync } = require('child_process');
+            execSync(
+              `nohup env ELECTRON_DISABLE_SANDBOX=1 DISPLAY="${process.env.DISPLAY || ''}" "${process.execPath}" "${__dirname}" >/dev/null 2>&1 &`,
               { cwd: __dirname }
             );
             app.exit(0);
