@@ -94,3 +94,50 @@ export function searchChannels(
     }))
     .filter((g) => g.channels.length > 0);
 }
+
+/**
+ * Result of parseM3UFull: grouped + flat channels, plus EPG URLs.
+ */
+export interface M3UFullResult {
+  groups: TvChannelGroup[];
+  channels: TvChannel[];
+  epgUrls: string[];
+}
+
+/**
+ * Parsed M3U with EPG URL extraction in addition to channel groups.
+ * Also returns a flat channels array for Desktop compatibility.
+ */
+export function parseM3UFull(
+  m3uContent: string,
+  sourceId: string,
+): M3UFullResult {
+  const groups = parseM3U(m3uContent, sourceId);
+  const epgUrls = extractEpgUrls(m3uContent);
+  const channels = flattenM3U(groups);
+  return { groups, channels, epgUrls };
+}
+
+function extractEpgUrls(content: string): string[] {
+  const urls: string[] = [];
+  const lines = content.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const tvgUrlMatch = trimmed.match(/x-tvg-url="([^"]+)"/i);
+    if (tvgUrlMatch && !urls.includes(tvgUrlMatch[1]!)) {
+      urls.push(tvgUrlMatch[1]!);
+    }
+    const sourceMatch = trimmed.match(/^(?:#URLTV-SOURCE|#EPG-URL)\s*:\s*(\S+)/i);
+    if (sourceMatch && !urls.includes(sourceMatch[1]!)) {
+      urls.push(sourceMatch[1]!);
+    }
+  }
+  return urls;
+}
+
+/**
+ * Flattens grouped channels from parseM3U into a single array.
+ */
+export function flattenM3U(groups: TvChannelGroup[]): TvChannel[] {
+  return groups.flatMap(g => g.channels);
+}

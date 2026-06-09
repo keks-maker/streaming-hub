@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.34 (2026-06-09)
+- New: typed-core `parseM3UFull()` – M3U-Parser mit EPG-URL-Extraktion + Flat-Channels
+- New: typed-core `flattenM3U()` – Channel-Gruppen → flaches Array
+- New: `npm run dev:watch` – esbuild watch + Electron Dev-Start (live rebuild)
+- New: `npm run watch` – eigenständiger esbuild watch mode
+- Note: main.js `parseM3U` bleibt vorerst (ID-Gen unterschiedlich, Risk-Averse Migration)
+
+## 0.4.33 (2026-06-09)
+
 ## 0.4.33 (2026-06-09)
 - New: typed-core `mediathek.ts` – `buildSearchUrl()`, `parseSearchResponse()` für MediathekViewWeb-API
 - New: Typen `MediathekSource`, `MediathekEntry`, `MediathekSearchResult` für ARD/ZDF/arte

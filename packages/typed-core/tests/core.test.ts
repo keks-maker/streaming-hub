@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { TvChannel } from '../src/types.js';
 import { compareVersions, checkForUpdate, parseTagsFromLsRemote } from '../src/updater.js';
-import { parseM3U, searchChannels } from '../src/tvsources.js';
+import { parseM3U, parseM3UFull, flattenM3U, searchChannels } from '../src/tvsources.js';
 import { addHistoryEntry, searchHistory } from '../src/history.js';
 import { mergeConfig, validateConfig } from '../src/config.js';
 import { loadServices } from '../src/services.js';
@@ -57,6 +57,34 @@ it('parseM3U', () => {
   const pub = groups.find((g) => g.label === 'Öffentlich-Rechtlich')!;
   expect(pub.channels.length).toBe(2);
   expect(pub.channels[0]!.name).toBe('Das Erste');
+});
+
+it('parseM3UFull', () => {
+  const result = parseM3UFull(SAMPLE_M3U, 'test');
+  expect(result.groups.length).toBe(2);
+  expect(result.channels.length).toBe(3);
+  expect(result.epgUrls.length).toBe(0);
+  expect(result.channels[0]!.sourceId).toBe('test');
+});
+
+it('parseM3UFull – EPG URL extraction', () => {
+  const m3uWithEpg = `#EXTM3U x-tvg-url="https://epg.example.com/guide.xml"
+#EXTINF:-1 group-title="ARD",Das Erste
+https://example.com/ard.m3u8
+#URLTV-SOURCE:https://epg.example.com/guide2.xml
+#EXTINF:-1 group-title="ARD",ZDF
+https://example.com/zdf.m3u8`;
+  const result = parseM3UFull(m3uWithEpg, 'test');
+  expect(result.epgUrls).toContain('https://epg.example.com/guide.xml');
+  expect(result.epgUrls).toContain('https://epg.example.com/guide2.xml');
+  expect(result.channels.length).toBe(2);
+});
+
+it('flattenM3U', () => {
+  const groups = parseM3U(SAMPLE_M3U, 'test');
+  const flat = flattenM3U(groups);
+  expect(flat.length).toBe(3);
+  expect(flat[0]!.name).toBe('Das Erste');
 });
 
 it('searchChannels', () => {

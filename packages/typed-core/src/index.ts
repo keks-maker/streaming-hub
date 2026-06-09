@@ -14,6 +14,10 @@ export type {
   MediathekSearchResult,
 } from './types.js';
 
+export type {
+  M3UFullResult,
+} from './tvsources.js';
+
 export {
   BUILTIN_SERVICES,
   loadServices,
@@ -21,6 +25,8 @@ export {
 
 export {
   parseM3U,
+  parseM3UFull,
+  flattenM3U,
   searchChannels,
 } from './tvsources.js';
 

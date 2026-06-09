@@ -4,7 +4,7 @@
   "workspaces": [
     "packages/typed-core"
   ],
-  "version": "0.4.33",
+  "version": "0.4.34",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {
@@ -27,7 +27,9 @@
     "outdated": "npm outdated",
     "build:typed-core": "npm run build:all --workspace packages/typed-core",
     "build:renderer": "node scripts/build-renderer.js",
-    "build:all": "npm run build:typed-core && npm run build:renderer"
+    "build:all": "npm run build:typed-core && npm run build:renderer",
+    "watch": "node scripts/watch-renderer.js",
+    "dev:watch": "npm run build:all && (node scripts/watch-renderer.js &) && electron . --dev"
   },
   "build": {
     "appId": "com.streaming-hub.app",
