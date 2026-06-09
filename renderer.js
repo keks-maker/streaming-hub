@@ -1152,7 +1152,23 @@ async function selectTvChannel(ch, options = {}) {
       };
       if (!options.suppressChannelList) {
         const channelList = buildChannelList(ch, tvChannels, tvSources);
-        msg.channelList = channelList.channels;
+        const enrichedChannels = (channelList.channels || []).map(c => {
+          const fullCh = tvChannels.find(tc => tc.id === c.id);
+          const normId = (fullCh?.tvgId || c.name || '').replace(/@[^@]*/g, '').toLowerCase().trim();
+          const epgs = tvEpgIndex ? tvEpgIndex.get(normId) : undefined;
+          let epgTitle = '';
+          if (epgs) {
+            const now = new Date();
+            const current = epgs.find(e => {
+              const start = parseEpgTime(e.start);
+              const stop = parseEpgTime(e.stop);
+              return start <= now && stop >= now;
+            });
+            if (current) epgTitle = decodeEntities(current.title);
+          }
+          return { ...c, epg: epgTitle };
+        });
+        msg.channelList = enrichedChannels;
         msg.channelIndex = channelList.currentIndex;
       }
       tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ",'*')");

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.55 (2026-06-09)
+- Change: TV-Kanal-Overlay vom Bildschirmzentrum an den rechten Rand verschoben
+- Change: Slide-In-Animation von rechts (translateX + Fade)
+- New: EPG-Informationen im aktiven Kanal des Overlays (Sendungstitel unter Sendernamen)
+- Change: Schriftgrößen für TV-Lesbarkeit optimiert (32px Sender, 20px EPG)
+- Fix: Lange Sendernamen (z.B. MDR Thüringen) werden nicht mehr abgeschnitten (max-width: 520px)
+
 ## 0.4.54 (2026-06-09)
 - Change: MagentaTV nutzt Safari-User-Agent (umgeht HDCP-Warnung)
 

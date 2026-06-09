@@ -141,36 +141,57 @@
     }
     @keyframes spin { to { transform:translate(-50%,-50%) rotate(360deg); } }
 
-    /* Channel list overlay */
+    /* Channel list overlay (right edge with slide-in) */
     .tv-channel-list {
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      position: fixed; top: 110px; right: 24px; left: auto;
+      bottom: auto;
       z-index: 25; display: none;
       background: rgba(0,0,0,0.82); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px; padding: 8px;
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px; padding: 10px;
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
       overflow: hidden;
-      min-width: 420px;
+      min-width: 420px; max-width: 520px;
+      opacity: 0;
+      transform: translateX(50px);
+      transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
     }
-    .tv-channel-list.visible { display: block; }
+    .tv-channel-list.visible {
+      display: block;
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
     .tv-channel-list-inner {
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .tv-channel-item {
       display: flex; align-items: center; gap: 16px;
-      padding: 10px 20px; margin: 3px 0;
-      border-radius: 12px;
+      padding: 8px 20px; margin: 4px 0;
+      border-radius: 14px;
       color: rgba(255,255,255,0.35);
-      white-space: nowrap; overflow: hidden;
-      min-height: 60px; box-sizing: border-box;
-      font-size: 40px; font-weight: 500;
+      overflow: hidden;
+      min-height: 64px; box-sizing: border-box;
+      font-size: 32px; font-weight: 500;
     }
     .tv-channel-item img {
-      width: 44px; height: 44px; border-radius: 8px;
+      width: 48px; height: 48px; border-radius: 10px;
       object-fit: contain; flex-shrink: 0;
       background: rgba(255,255,255,0.06);
     }
-    .tv-channel-item span {
-      overflow: hidden; text-overflow: ellipsis;
+    .tv-channel-info {
+      display: flex; flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .tv-channel-name {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .tv-channel-epg {
+      font-size: 20px; font-weight: 400;
+      color: rgba(167,139,250,0.85);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-top: 2px;
     }
     .tv-channel-item.active {
       background: rgba(167,139,250,0.2);
@@ -311,9 +332,13 @@
         if (!channels || !channels.length) { container.classList.remove('visible'); return; }
 
         inner.innerHTML = channels.map(function(ch, i) {
-          return '<div class="tv-channel-item' + (i === currentIdx ? ' active' : '') + '">'
+          var isActive = i === currentIdx;
+          return '<div class="tv-channel-item' + (isActive ? ' active' : '') + '">'
             + (ch.logo ? '<img src="' + esc(ch.logo) + '" alt="" loading="lazy">' : '')
-            + '<span>' + esc(ch.name) + '</span></div>';
+            + '<div class="tv-channel-info">'
+            + '<span class="tv-channel-name">' + esc(ch.name) + '</span>'
+            + (isActive && ch.epg ? '<span class="tv-channel-epg">' + esc(ch.epg) + '</span>' : '')
+            + '</div></div>';
         }).join('');
 
         container.classList.add('visible');
