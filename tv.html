@@ -257,6 +257,7 @@
       let stallTimer = null;
       let lastStallTime = 0;
       let hlsLoaded = false;
+      let channelGen = 0;
       let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null;
 
       // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
@@ -318,7 +319,7 @@
         var itemHeight = 66;
         var visibleCount = 4;
         var containerHeight = visibleCount * itemHeight;
-        container.style.height = containerHeight + 'px';
+        container.style.height = (containerHeight + 18) + 'px';
 
         var half = (visibleCount - 1) / 2;
         var targetScroll = currentIdx * itemHeight - half * itemHeight;
@@ -344,10 +345,16 @@
 
       // ── Reusable channel setup ──
       function setupChannel(url, name, logo, epg, start, end, next) {
+        channelGen++;
+        var gen = channelGen;
+        var savedVolume = video.volume;
+        var savedMuted = video.muted;
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
         video.pause();
         video.removeAttribute('src');
         video.load();
+        video.volume = savedVolume;
+        video.muted = savedMuted;
         loadingEl.style.display = 'block';
         errorDiv.style.display = 'none';
         audioTracks = [];
@@ -464,6 +471,7 @@
                 setAudioTracks(data.audioTracks);
               }
               video.play().catch(function() {
+                if (gen !== channelGen) return;
                 video.muted = true;
                 video.play().catch(function() {});
               });

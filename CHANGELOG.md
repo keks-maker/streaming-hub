@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.37 (2026-06-09)
+- Fix: TV-Overlay – letztes Item abgeschnitten (Container-Höhe +18px für border-box)
+- Fix: Ton stumm bei schnellem Kanalwechsel (Volume/Mute-Zustand bleibt erhalten)
+
 ## 0.4.36 (2026-06-09)
 - Change: TV-Kanal-Overlay zeigt max. 4 Sender (vorher 7), ausgewählter Sender zentriert
 
