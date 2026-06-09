@@ -349,7 +349,8 @@
 
         var firstItem = inner.firstElementChild;
         var itemHeight = firstItem ? firstItem.offsetHeight + parseFloat(getComputedStyle(firstItem).marginTop) + parseFloat(getComputedStyle(firstItem).marginBottom) : 66;
-        var visibleCount = 4;
+        var maxAvailHeight = window.innerHeight * 0.67 - 18;
+        var visibleCount = Math.min(channels.length, Math.max(4, Math.floor(maxAvailHeight / itemHeight)));
         var containerHeight = visibleCount * itemHeight;
         container.style.height = (containerHeight + 18) + 'px';
 

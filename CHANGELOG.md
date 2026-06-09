@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.59 (2026-06-09)
+- Fix: Channel-List füllt jetzt dynamisch 2/3 Viewport-Höhe (vorher 4 Items hardcodiert)
+- Fix: Restart nach Update mit detached:true – wird nicht mehr vom Parent abgewürgt
+
 ## 0.4.58 (2026-06-09)
 - Change: Alle TV-Overlays auf einheitlichen Stil umgestellt (rgba 0.6, blur 12px, radius 12px)
 - Change: TV-Kanal-Overlay Höhe auf 2/3 Viewport vergrößert
