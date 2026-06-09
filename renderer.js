@@ -1744,31 +1744,12 @@ tvSidebar.addEventListener('mouseleave', e => {
 
 overlayBack.addEventListener('click', () => {
   try {
-    webview.executeJavaScript('history.back()');
-  } catch (e) {
-    try {
-      webview.goBack();
-    } catch (e2) {
-      logger.warn('Zurück fehlgeschlagen');
-    }
-  }
+    webview.send('go-back');
+  } catch (_e) {}
 });
 setInterval(() => {
-  if (!webviewReady || currentProvider === '__tv__' || currentProvider === '') {
-    overlayBack.classList.remove('visible');
-    return;
-  }
-  try {
-    webview
-      .executeJavaScript('history.length > 1')
-      .then(hasHistory => {
-        overlayBack.classList.toggle('visible', hasHistory);
-      })
-      .catch(() => overlayBack.classList.remove('visible'));
-  } catch (_e) {
-    overlayBack.classList.remove('visible');
-  }
-}, 2000);
+  overlayBack.classList.toggle('visible', webviewReady && currentProvider !== '__tv__' && currentProvider !== '');
+}, 1000);
 
 tvSearchInput.addEventListener('input', () => {
   tvSearchFilter = tvSearchInput.value;

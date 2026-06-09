@@ -126,3 +126,8 @@ window.addEventListener('message', e => {
     ipcRenderer.sendToHost('tv-channel', e.data);
   }
 });
+
+// Navigation commands from host
+ipcRenderer.on('go-back', () => {
+  window.history.back();
+});
