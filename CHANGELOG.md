@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.35 (2026-06-09)
+- Change: `renderer.js` – `loadTvChannels` nutzt jetzt `applyChannelOverrides` + `applySortOrder` aus typed-core
+- Change: `renderer.js` – `renderTvChannels` nutzt `filterChannels`, `groupChannels`, `separateFavorites` aus typed-core
+- Fix: Logo-Overrides im Channel-Editor werden jetzt korrekt aufgelöst (Schlüssel `tvgLogo` statt `logo`)
+- Change: ~35 Zeilen duplizierte Logik aus renderer.js entfernt
+
 ## 0.4.34 (2026-06-09)
 - New: typed-core `parseM3UFull()` – M3U-Parser mit EPG-URL-Extraktion + Flat-Channels
 - New: typed-core `flattenM3U()` – Channel-Gruppen → flaches Array

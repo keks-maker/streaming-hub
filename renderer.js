@@ -11,6 +11,11 @@ const {
   getMediathekForChannel,
   isFavorite,
   buildChannelList,
+  filterChannels,
+  groupChannels,
+  separateFavorites,
+  applyChannelOverrides,
+  applySortOrder,
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 
@@ -559,36 +564,13 @@ function loadTvChannels(forceReload) {
   });
 
   Promise.all(parsePromises).then(() => {
-    // Apply channel overrides (user-edited name/url/tvgId)
+    // Apply channel overrides + sort order via typed-core
     tvChannels = [];
     tvSources.forEach(source => {
       let srcChannels = sourceChannelMap[source.id] || [];
-      const srcOverrides = source.channelOverrides || {};
-      const baseUrl = source.baseUrl || '';
-      srcChannels = srcChannels.map(ch => {
-        const ov = srcOverrides[ch.id];
-        if (!ov) return ch;
-        // Relative Logo-URL in Override auflösen
-        const resolved = { ...ch, ...ov };
-        if (
-          ov.logo &&
-          !ov.logo.startsWith('http://') &&
-          !ov.logo.startsWith('https://') &&
-          !ov.logo.startsWith('file://') &&
-          baseUrl
-        ) {
-          resolved.logo = baseUrl + ov.logo;
-        }
-        return resolved;
-      });
+      srcChannels = applyChannelOverrides(srcChannels, source);
       if (source.sortOrder && source.sortOrder.length) {
-        const ordered = [];
-        const unordered = [];
-        source.sortOrder.forEach(id => {
-          const idx = srcChannels.findIndex(c => c.id === id);
-          if (idx !== -1) ordered.push(srcChannels.splice(idx, 1)[0]);
-        });
-        srcChannels = ordered.concat(srcChannels);
+        srcChannels = applySortOrder(srcChannels, source.sortOrder);
       }
       tvChannels = tvChannels.concat(srcChannels);
     });
@@ -792,29 +774,16 @@ function renderTvChannels() {
     return;
   }
 
-  const filter = tvSearchFilter.toLowerCase().trim();
-
-  // Filter channels by selected sources and search
-  let filtered = tvChannels.filter(ch => tvSelectedSourceIds.includes(ch.sourceId));
-  if (filter) {
-    filtered = filtered.filter(ch => ch.name.toLowerCase().includes(filter) || ch.group.toLowerCase().includes(filter));
-  }
+  const filtered = filterChannels(tvChannels, tvSelectedSourceIds, tvSearchFilter);
 
   if (!filtered.length) {
     tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Keine Sender gefunden.</div>';
     return;
   }
 
-  // Separate favorites from the rest
-  const favoriteChannels = filtered.filter(ch => isFavorite(ch, tvSources));
-  const regularChannels = filtered.filter(ch => !isFavorite(ch, tvSources));
-
-  // Group regular channels
-  const groups = {};
-  regularChannels.forEach(ch => {
-    if (!groups[ch.group]) groups[ch.group] = [];
-    groups[ch.group].push(ch);
-  });
+  // Separate favorites + group channels via typed-core
+  const { favorites: favoriteChannels, regular: regularChannels } = separateFavorites(filtered, tvSources);
+  const groups = groupChannels(regularChannels);
 
   const groupNames = Object.keys(groups).sort((a, b) => a.localeCompare(b));
 
