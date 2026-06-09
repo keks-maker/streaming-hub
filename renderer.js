@@ -114,7 +114,6 @@ const historyClear = document.getElementById('historyClear');
 // TV DOM references
 const tvSidebar = document.getElementById('tvSidebar');
 const tvSidebarTrigger = document.getElementById('tvSidebarTrigger');
-const overlayBack = document.getElementById('overlayBack');
 
 const tvSidebarManage = document.getElementById('tvSidebarManage');
 const tvSidebarEpgRefresh = document.getElementById('tvSidebarEpgRefresh');
@@ -1410,6 +1409,7 @@ function toggleHistory() {
 
 // TV channel navigation via webview ipc-message (from tv.html → preload-content bridge)
 webview.addEventListener('ipc-message', e => {
+  if (e.channel === 'sidebar-close' && tvSidebarOpen) closeTvSidebar();
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
@@ -1530,8 +1530,6 @@ webview.addEventListener('did-navigate', () => {
   }
 });
 
-webview.addEventListener('did-navigate-in-page', () => {});
-
 webview.addEventListener('permissionrequest', e => {
   if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {
     e.request.allow();
@@ -1625,6 +1623,7 @@ tvView.addEventListener('permissionrequest', e => {
 
 // TV channel navigation from tv.html in tvView
 tvView.addEventListener('ipc-message', e => {
+  if (e.channel === 'sidebar-close' && tvSidebarOpen) closeTvSidebar();
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
@@ -1731,25 +1730,24 @@ tvInputEpgUrl.addEventListener('keydown', e => {
 tvSidebarTrigger.addEventListener('mouseenter', () => {
   if (!tvSidebarOpen) openTvSidebar();
 });
-tvSidebarTrigger.addEventListener('mouseleave', e => {
-  if (!e.relatedTarget || !tvSidebar.contains(e.relatedTarget)) {
-    closeTvSidebar();
-  }
-});
-tvSidebar.addEventListener('mouseleave', e => {
-  if (!e.relatedTarget || !tvSidebarTrigger.contains(e.relatedTarget)) {
-    closeTvSidebar();
-  }
-});
 
-overlayBack.addEventListener('click', () => {
-  try {
-    webview.send('go-back');
-  } catch (_e) {}
-});
+let tvSidebarAwaySince = null;
 setInterval(() => {
-  overlayBack.classList.toggle('visible', webviewReady && currentProvider !== '__tv__' && currentProvider !== '');
-}, 1000);
+  if (!tvSidebarOpen) {
+    tvSidebarAwaySince = null;
+    return;
+  }
+  if (tvSidebar.matches(':hover') || tvSidebarTrigger.matches(':hover')) {
+    tvSidebarAwaySince = null;
+    return;
+  }
+  const now = Date.now();
+  if (!tvSidebarAwaySince) tvSidebarAwaySince = now;
+  else if (now - tvSidebarAwaySince > 2000) {
+    closeTvSidebar();
+    tvSidebarAwaySince = null;
+  }
+}, 400);
 
 tvSearchInput.addEventListener('input', () => {
   tvSearchFilter = tvSearchInput.value;
@@ -1893,13 +1891,6 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.altKey && e.key === 'ArrowLeft' && webviewReady && currentProvider !== '') {
-    e.preventDefault();
-    try {
-      webview.executeJavaScript('history.back()');
-    } catch (_e) {}
-    return;
-  }
   // Skip when typing in inputs (except Escape which is handled by webview forward)
   if (e.target.tagName === 'INPUT') {
     if (e.key === 'Escape') {
