@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.38 (2026-06-09)
+- Fix: TV-Overlay – itemHeight jetzt live gemessen (offsetHeight + Margins) statt Hardcode 66px
+
 ## 0.4.37 (2026-06-09)
 - Fix: TV-Overlay – letztes Item abgeschnitten (Container-Höhe +18px für border-box)
 - Fix: Ton stumm bei schnellem Kanalwechsel (Volume/Mute-Zustand bleibt erhalten)

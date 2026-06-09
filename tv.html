@@ -316,7 +316,8 @@
             + '<span>' + esc(ch.name) + '</span></div>';
         }).join('');
 
-        var itemHeight = 66;
+        var firstItem = inner.firstElementChild;
+        var itemHeight = firstItem ? firstItem.offsetHeight + parseFloat(getComputedStyle(firstItem).marginTop) + parseFloat(getComputedStyle(firstItem).marginBottom) : 66;
         var visibleCount = 4;
         var containerHeight = visibleCount * itemHeight;
         container.style.height = (containerHeight + 18) + 'px';
