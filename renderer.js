@@ -1,10 +1,16 @@
 // v0.3.7. – Kanalwechsel per postMessage (kein Vollbild-Ende) + Reihenfolge = Sidebar
 const {
-  escapeHtml, decodeEntities, normalizeUrl, formatTimestamp,
-  parseEpgTime, formatEpgTime, buildEpgIndex, getEpgChannelList, findCurrentEpg,
-  getMediathekForChannel, normalizeTvId, isFavorite,
-  filterChannels, groupChannels, separateFavorites,
-  buildChannelList, getNextChannelId, applyChannelOverrides, applySortOrder,
+  escapeHtml,
+  decodeEntities,
+  normalizeUrl,
+  formatTimestamp,
+  parseEpgTime,
+  formatEpgTime,
+  buildEpgIndex,
+  getEpgChannelList,
+  getMediathekForChannel,
+  isFavorite,
+  buildChannelList,
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 
@@ -51,7 +57,9 @@ function switchWebview(useTv) {
     // TV-Stream stoppen via about:blank (räumt HLS.js + Video in der IIFE auf)
     try {
       tvView.loadURL('about:blank');
-    } catch (_e) { /* tvView noch nicht geladen */ }
+    } catch (_e) {
+      /* tvView noch nicht geladen */
+    }
     tvView.style.opacity = '0';
     tvView.style.pointerEvents = 'none';
     contentView.style.opacity = '';
@@ -186,16 +194,18 @@ function getIconSrc(svc) {
 
 function renderNav() {
   nav.innerHTML = '';
-  const styleEl = document.getElementById('dynamic-service-styles') || (() => {
-    const s = document.createElement('style');
-    s.id = 'dynamic-service-styles';
-    document.head.appendChild(s);
-    return s;
-  })();
+  const styleEl =
+    document.getElementById('dynamic-service-styles') ||
+    (() => {
+      const s = document.createElement('style');
+      s.id = 'dynamic-service-styles';
+      document.head.appendChild(s);
+      return s;
+    })();
   let css = '';
 
   const groups = [
-    { key: 'livetv',    label: 'LiveTV' },
+    { key: 'livetv', label: 'LiveTV' },
     { key: 'streaming', label: 'Streaming' },
     { key: 'mediathek', label: 'Mediatheken' },
   ];
@@ -214,7 +224,7 @@ function renderNav() {
       btn.innerHTML = `<span class="nav-icon nav-tv-icon">
         <img src="assets/icons/tv-icon.png" alt="TV" draggable="false">
       </span>`;
-      btn.addEventListener('mousedown', (e) => {
+      btn.addEventListener('mousedown', e => {
         e.preventDefault();
         toggleTvSidebar();
       });
@@ -243,7 +253,7 @@ function renderNav() {
           <img src="${getIconSrc(svc)}" alt="${svc.name}" loading="lazy">
         </span>`;
 
-      btn.addEventListener('mousedown', (e) => {
+      btn.addEventListener('mousedown', e => {
         e.preventDefault();
         navigateTo(svc);
       });
@@ -276,7 +286,11 @@ function goToStartPage() {
   welcomeScreen.style.display = '';
   overlayBar.classList.add('always-visible');
   if (webviewReady) {
-    try { webview.loadURL('about:blank'); } catch (e) { logger.warn('loadURL failed'); }
+    try {
+      webview.loadURL('about:blank');
+    } catch (e) {
+      logger.warn('loadURL failed');
+    }
   }
   if (tvSources.length && !tvSidebarOpen) openTvSidebar();
 }
@@ -292,7 +306,11 @@ function navigateTo(svc) {
   overlayBar.classList.remove('always-visible');
   const targetUrl = normalizeUrl(svc.url);
   if (webviewReady) {
-    try { webview.loadURL(targetUrl); } catch (e) { logger.warn('loadURL failed:', targetUrl, e); }
+    try {
+      webview.loadURL(targetUrl);
+    } catch (e) {
+      logger.warn('loadURL failed:', targetUrl, e);
+    }
   } else {
     pendingNav = targetUrl;
   }
@@ -375,13 +393,13 @@ settingsAddDienstBtn.addEventListener('click', () => {
   }
 });
 
-settingsInputName.addEventListener('keydown', (e) => {
+settingsInputName.addEventListener('keydown', e => {
   if (e.key === 'Enter') settingsInputUrl.focus();
 });
-settingsInputUrl.addEventListener('keydown', (e) => {
+settingsInputUrl.addEventListener('keydown', e => {
   if (e.key === 'Enter') settingsInputIcon.focus();
 });
-settingsInputIcon.addEventListener('keydown', (e) => {
+settingsInputIcon.addEventListener('keydown', e => {
   if (e.key === 'Enter') settingsAddSave.click();
 });
 
@@ -514,7 +532,8 @@ function loadTvChannels(forceReload) {
   tvChannels = [];
 
   if (!tvSources.length) {
-    tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>';
+    tvSidebarChannels.innerHTML =
+      '<div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>';
     tvSidebarStatus.textContent = 'Keine Quellen';
     return;
   }
@@ -524,7 +543,8 @@ function loadTvChannels(forceReload) {
   const sourceChannelMap = {}; // sourceId → channels[]
 
   tvSources.forEach(source => {
-    const p = window.electronAPI.fetchAndParseM3U(source.url)
+    const p = window.electronAPI
+      .fetchAndParseM3U(source.url)
       .then(result => {
         const tagged = result.channels.map(ch => ({ ...ch, sourceId: source.id }));
         sourceChannelMap[source.id] = tagged;
@@ -550,7 +570,13 @@ function loadTvChannels(forceReload) {
         if (!ov) return ch;
         // Relative Logo-URL in Override auflösen
         const resolved = { ...ch, ...ov };
-        if (ov.logo && !ov.logo.startsWith('http://') && !ov.logo.startsWith('https://') && !ov.logo.startsWith('file://') && baseUrl) {
+        if (
+          ov.logo &&
+          !ov.logo.startsWith('http://') &&
+          !ov.logo.startsWith('https://') &&
+          !ov.logo.startsWith('file://') &&
+          baseUrl
+        ) {
           resolved.logo = baseUrl + ov.logo;
         }
         return resolved;
@@ -577,8 +603,9 @@ function updateEpgStatus() {
     tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG: ' + tvEpgIndex.size + ' Kanäle';
   } else {
     const hasEpgConfig = tvSources.some(s => s.epgUrl);
-    tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ')
-      + (hasEpgConfig ? ' | <span class="tv-epg-loading">EPG lädt…</span>' : ' | Keine EPG-URL');
+    tvSidebarStatus.innerHTML =
+      tvSources.map(s => s.name).join(', ') +
+      (hasEpgConfig ? ' | <span class="tv-epg-loading">EPG lädt…</span>' : ' | Keine EPG-URL');
   }
 }
 
@@ -589,13 +616,12 @@ function loadEpgData() {
     return;
   }
   if (tvSidebarOpen) updateEpgStatus();
-  Promise.all(urls.map(url =>
-    window.electronAPI.fetchEPG(url).catch(() => [])
-  )).then(results => {
+  Promise.all(urls.map(url => window.electronAPI.fetchEPG(url).catch(() => []))).then(results => {
     tvEpgData = results.flat();
     tvEpgIndex = buildEpgIndex(tvEpgData);
     if (tvSidebarOpen) {
-      tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG geladen ✓</span>';
+      tvSidebarStatus.innerHTML =
+        tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG geladen ✓</span>';
       setTimeout(() => updateEpgStatus(), 2000);
       renderTvChannels();
     }
@@ -660,22 +686,24 @@ function refreshEpg() {
   }
 
   if (tvSidebarOpen) {
-    tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span class="tv-epg-loading">EPG lädt…</span>';
+    tvSidebarStatus.innerHTML =
+      tvSources.map(s => s.name).join(', ') + ' | <span class="tv-epg-loading">EPG lädt…</span>';
   }
-  Promise.all(epgUrls.map(url =>
-    window.electronAPI.fetchEPG(url).catch(() => [])
-  )).then(results => {
-    tvEpgData = results.flat();
-    tvEpgIndex = buildEpgIndex(tvEpgData);
-    if (tvSidebarOpen) {
-      tvSidebarStatus.innerHTML = tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG aktualisiert ✓</span>';
-      setTimeout(() => updateEpgStatus(), 2000);
-    }
-    renderTvChannels();
-  }).finally(() => {
-    tvEpgRefreshing = false;
-    tvSidebarEpgRefresh.classList.remove('refreshing');
-  });
+  Promise.all(epgUrls.map(url => window.electronAPI.fetchEPG(url).catch(() => [])))
+    .then(results => {
+      tvEpgData = results.flat();
+      tvEpgIndex = buildEpgIndex(tvEpgData);
+      if (tvSidebarOpen) {
+        tvSidebarStatus.innerHTML =
+          tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG aktualisiert ✓</span>';
+        setTimeout(() => updateEpgStatus(), 2000);
+      }
+      renderTvChannels();
+    })
+    .finally(() => {
+      tvEpgRefreshing = false;
+      tvSidebarEpgRefresh.classList.remove('refreshing');
+    });
 }
 
 function renderTvChannelItem(ch, showFav) {
@@ -684,7 +712,11 @@ function renderTvChannelItem(ch, showFav) {
   item.dataset.channelId = ch.id;
 
   const now = new Date();
-  const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+  const normId = id =>
+    id
+      .replace(/@[^.@]*/g, '')
+      .toLowerCase()
+      .trim();
   const chNorm = normId(ch.tvgId);
   let currentEpg = null;
   const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
@@ -714,7 +746,7 @@ function renderTvChannelItem(ch, showFav) {
     <span class="tv-channel-drag" draggable="true">⠿</span>
   `;
 
-  item.addEventListener('click', (e) => {
+  item.addEventListener('click', e => {
     if (e.target.closest('.tv-channel-drag')) return;
     if (e.target.closest('.tv-channel-fav')) {
       e.stopPropagation();
@@ -725,7 +757,7 @@ function renderTvChannelItem(ch, showFav) {
   });
 
   const dragHandle = item.querySelector('.tv-channel-drag');
-  dragHandle.addEventListener('dragstart', (e) => {
+  dragHandle.addEventListener('dragstart', e => {
     e.dataTransfer.setData('text/plain', ch.id);
     item.classList.add('dragging');
   });
@@ -733,14 +765,14 @@ function renderTvChannelItem(ch, showFav) {
     item.classList.remove('dragging');
     document.querySelectorAll('.tv-channel-item.drag-over').forEach(el => el.classList.remove('drag-over'));
   });
-  item.addEventListener('dragover', (e) => {
+  item.addEventListener('dragover', e => {
     e.preventDefault();
     item.classList.add('drag-over');
   });
   item.addEventListener('dragleave', () => {
     item.classList.remove('drag-over');
   });
-  item.addEventListener('drop', (e) => {
+  item.addEventListener('drop', e => {
     e.preventDefault();
     item.classList.remove('drag-over');
     const draggedId = e.dataTransfer.getData('text/plain');
@@ -765,10 +797,7 @@ function renderTvChannels() {
   // Filter channels by selected sources and search
   let filtered = tvChannels.filter(ch => tvSelectedSourceIds.includes(ch.sourceId));
   if (filter) {
-    filtered = filtered.filter(ch =>
-      ch.name.toLowerCase().includes(filter) ||
-      ch.group.toLowerCase().includes(filter)
-    );
+    filtered = filtered.filter(ch => ch.name.toLowerCase().includes(filter) || ch.group.toLowerCase().includes(filter));
   }
 
   if (!filtered.length) {
@@ -811,14 +840,18 @@ function renderTvChannels() {
     const header = document.createElement('div');
     header.className = 'tv-channel-group-header';
     if (tvCollapsedGroups[groupName]) header.classList.add('collapsed');
-    const totalInGroup = tvChannels.filter(c => c.group === groupName && tvSelectedSourceIds.includes(c.sourceId)).length;
+    const totalInGroup = tvChannels.filter(
+      c => c.group === groupName && tvSelectedSourceIds.includes(c.sourceId),
+    ).length;
     const showCount = groups[groupName].length;
     const countStr = showCount < totalInGroup ? `${showCount}/${totalInGroup}` : String(totalInGroup);
     header.innerHTML = `<span class="tv-channel-group-arrow">▼</span> ${escapeHtml(groupName)} (${countStr})`;
     header.addEventListener('click', () => {
       header.classList.toggle('collapsed');
       tvCollapsedGroups[groupName] = header.classList.contains('collapsed');
-      try { localStorage.setItem('tv-collapsed-groups', JSON.stringify(tvCollapsedGroups)); } catch {}
+      try {
+        localStorage.setItem('tv-collapsed-groups', JSON.stringify(tvCollapsedGroups));
+      } catch {}
     });
     groupEl.appendChild(header);
 
@@ -867,10 +900,11 @@ function renderTvChEditor() {
   const filter = tvChSearch.value.toLowerCase().trim();
   let items = tvChEditCache;
   if (filter) {
-    items = items.filter(({ ch }) =>
-      ch.name.toLowerCase().includes(filter) ||
-      ch.tvgId.toLowerCase().includes(filter) ||
-      ch.url.toLowerCase().includes(filter)
+    items = items.filter(
+      ({ ch }) =>
+        ch.name.toLowerCase().includes(filter) ||
+        ch.tvgId.toLowerCase().includes(filter) ||
+        ch.url.toLowerCase().includes(filter),
     );
   }
   tvChList.innerHTML = '';
@@ -879,10 +913,14 @@ function renderTvChEditor() {
     const effName = ov.name != null ? ov.name : ch.name;
     const effUrl = ov.url != null ? ov.url : ch.url;
     const effTvgId = ov.tvgId != null ? ov.tvgId : ch.tvgId;
-    const effLogo = ov.tvgLogo != null ? ov.tvgLogo : (ch.logo || '');
+    const effLogo = ov.tvgLogo != null ? ov.tvgLogo : ch.logo || '';
 
     // EPG-Status
-    const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+    const normId = id =>
+      id
+        .replace(/@[^.@]*/g, '')
+        .toLowerCase()
+        .trim();
     const epgFound = tvEpgIndex && tvEpgIndex.has(normId(effTvgId));
     const epgIcon = epgFound ? '✓' : '✗';
     const epgColor = epgFound ? '#22c55e' : '#ef4444';
@@ -933,7 +971,7 @@ function renderTvChEditor() {
         item.className = 'tv-ch-combo-item';
         item.textContent = epg.channelId;
         item.title = epg.sampleTitle;
-        item.addEventListener('mousedown', (e) => {
+        item.addEventListener('mousedown', e => {
           e.preventDefault();
           tvgInp.value = epg.channelId;
           comboDrop.classList.remove('open');
@@ -1077,15 +1115,24 @@ async function selectTvChannel(ch, options = {}) {
 
   // Find current + next EPG entry (via Index)
   const now = new Date();
-  const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+  const normId = id =>
+    id
+      .replace(/@[^.@]*/g, '')
+      .toLowerCase()
+      .trim();
   const chNorm = normId(ch.tvgId);
-  let epgTitle = '', epgStart = '', epgEnd = '', epgNext = '';
+  let epgTitle = '',
+    epgStart = '',
+    epgEnd = '',
+    epgNext = '';
   const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
-  const currentIdx = epgList ? epgList.findIndex(e => {
-    const start = parseEpgTime(e.start);
-    const stop = parseEpgTime(e.stop);
-    return start <= now && stop >= now;
-  }) : -1;
+  const currentIdx = epgList
+    ? epgList.findIndex(e => {
+        const start = parseEpgTime(e.start);
+        const stop = parseEpgTime(e.stop);
+        return start <= now && stop >= now;
+      })
+    : -1;
   if (currentIdx !== -1) {
     const cur = epgList[currentIdx];
     epgTitle = decodeEntities(cur.title);
@@ -1115,19 +1162,35 @@ async function selectTvChannel(ch, options = {}) {
         msg.channelList = channelList.channels;
         msg.channelIndex = channelList.currentIndex;
       }
-      tvView.executeJavaScript("window.postMessage(" + JSON.stringify(msg) + ",'*')");
-    } catch (e) { logger.warn('postMessage to tv.html failed:', e); }
+      tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ",'*')");
+    } catch (e) {
+      logger.warn('postMessage to tv.html failed:', e);
+    }
   } else {
     const appPath = await window.electronAPI.getAppPath();
-    const playerUrl = 'file://' + appPath + '/tv.html?channel=' + encodeURIComponent(ch.url)
-      + '&name=' + encodeURIComponent(ch.name)
-      + '&logo=' + encodeURIComponent(ch.logo || '')
-      + '&epg=' + encodeURIComponent(epgTitle)
-      + '&epgStart=' + encodeURIComponent(epgStart)
-      + '&epgEnd=' + encodeURIComponent(epgEnd)
-      + '&epgNext=' + encodeURIComponent(epgNext);
+    const playerUrl =
+      'file://' +
+      appPath +
+      '/tv.html?channel=' +
+      encodeURIComponent(ch.url) +
+      '&name=' +
+      encodeURIComponent(ch.name) +
+      '&logo=' +
+      encodeURIComponent(ch.logo || '') +
+      '&epg=' +
+      encodeURIComponent(epgTitle) +
+      '&epgStart=' +
+      encodeURIComponent(epgStart) +
+      '&epgEnd=' +
+      encodeURIComponent(epgEnd) +
+      '&epgNext=' +
+      encodeURIComponent(epgNext);
     if (tvViewReady) {
-      try { tvView.loadURL(playerUrl); } catch (e) { logger.warn('loadURL failed:', e); }
+      try {
+        tvView.loadURL(playerUrl);
+      } catch (e) {
+        logger.warn('loadURL failed:', e);
+      }
     } else {
       pendingNav = playerUrl;
     }
@@ -1176,15 +1239,19 @@ function renderEpg() {
   rulerStart.setMinutes(0, 0, 0);
   const rulerEnd = new Date(windowEnd);
   while (rulerStart < rulerEnd) {
-    const left = (rulerStart.getTime() - windowStart.getTime()) / totalMs * 100;
-    rulerHtml += `<div class="epg-time-marker" style="left:${left}%">${String(rulerStart.getHours()).padStart(2,'0')}:00</div>`;
+    const left = ((rulerStart.getTime() - windowStart.getTime()) / totalMs) * 100;
+    rulerHtml += `<div class="epg-time-marker" style="left:${left}%">${String(rulerStart.getHours()).padStart(2, '0')}:00</div>`;
     rulerStart.setHours(rulerStart.getHours() + 1);
   }
 
   let rowsHtml = '';
 
   for (const ch of favChannels) {
-    const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+    const normId = id =>
+      id
+        .replace(/@[^.@]*/g, '')
+        .toLowerCase()
+        .trim();
     const chNorm = normId(ch.tvgId);
     const epgList = (tvEpgIndex && tvEpgIndex.get(chNorm)) || [];
 
@@ -1200,8 +1267,8 @@ function renderEpg() {
       const stopMs = parseEpgTime(prog.stop).getTime();
       const clampedStart = Math.max(startMs, windowStart.getTime());
       const clampedStop = Math.min(stopMs, windowEnd.getTime());
-      const left = (clampedStart - windowStart.getTime()) / totalMs * 100;
-      const width = (clampedStop - clampedStart) / totalMs * 100;
+      const left = ((clampedStart - windowStart.getTime()) / totalMs) * 100;
+      const width = ((clampedStop - clampedStart) / totalMs) * 100;
       const isCurrent = startMs <= now && stopMs >= now;
       const isPast = stopMs <= now;
 
@@ -1219,7 +1286,7 @@ function renderEpg() {
       </div>`;
     }
 
-    const nowLeft = (now - windowStart.getTime()) / totalMs * 100;
+    const nowLeft = ((now - windowStart.getTime()) / totalMs) * 100;
 
     rowsHtml += `<div class="epg-row" data-channel-id="${ch.id}">
       <div class="epg-channel-col">
@@ -1238,7 +1305,8 @@ function renderEpg() {
   epgRangeLabel.textContent = `${windowStart.toLocaleTimeString('de-DE', fmtOpt)} – ${windowEnd.toLocaleTimeString('de-DE', fmtOpt)} (${epgSlotHours}h)`;
 
   if (!favChannels.length) {
-    epgBody.innerHTML = '<div class="epg-loading">Keine Favoriten vorhanden.<br>Markiere Sender in der TV-Seitenleiste als Favorit.</div>';
+    epgBody.innerHTML =
+      '<div class="epg-loading">Keine Favoriten vorhanden.<br>Markiere Sender in der TV-Seitenleiste als Favorit.</div>';
     return;
   }
 
@@ -1268,7 +1336,8 @@ function showEpgDetail(data) {
   // Watch button
   const watchBtn = document.createElement('button');
   watchBtn.className = 'epg-action-btn epg-watch-btn';
-  watchBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Sender öffnen';
+  watchBtn.innerHTML =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Sender öffnen';
   watchBtn.addEventListener('click', () => {
     closeEpgDetail();
     closeEpgView();
@@ -1370,7 +1439,7 @@ function toggleHistory() {
 }
 
 // TV channel navigation via webview ipc-message (from tv.html → preload-content bridge)
-webview.addEventListener('ipc-message', (e) => {
+webview.addEventListener('ipc-message', e => {
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
@@ -1383,15 +1452,24 @@ function sendEpgUpdate() {
   const ch = tvChannels.find(c => c.id === tvActiveChannelId);
   if (!ch) return;
   const now = new Date();
-  const normId = (id) => id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+  const normId = id =>
+    id
+      .replace(/@[^.@]*/g, '')
+      .toLowerCase()
+      .trim();
   const chNorm = normId(ch.tvgId);
-  let epgTitle = '', epgStart = '', epgEnd = '', epgNext = '';
+  let epgTitle = '',
+    epgStart = '',
+    epgEnd = '',
+    epgNext = '';
   const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
-  const currentIdx = epgList ? epgList.findIndex(e => {
-    const s = parseEpgTime(e.start);
-    const t = parseEpgTime(e.stop);
-    return s <= now && t >= now;
-  }) : -1;
+  const currentIdx = epgList
+    ? epgList.findIndex(e => {
+        const s = parseEpgTime(e.start);
+        const t = parseEpgTime(e.stop);
+        return s <= now && t >= now;
+      })
+    : -1;
   if (currentIdx !== -1) {
     const cur = epgList[currentIdx];
     epgTitle = decodeEntities(cur.title);
@@ -1409,8 +1487,10 @@ function sendEpgUpdate() {
     epgNext: epgNext,
   };
   try {
-    webview.executeJavaScript("window.postMessage(" + JSON.stringify(data) + ",'*')");
-  } catch (err) { logger.warn('sendEpgUpdate failed:', err); }
+    webview.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
+  } catch (err) {
+    logger.warn('sendEpgUpdate failed:', err);
+  }
 }
 
 // Webview events
@@ -1437,25 +1517,35 @@ webview.addEventListener('destroyed', () => {
 
 webview.addEventListener('did-finish-load', () => {
   hideError();
-  webview.insertCSS(`
+  webview
+    .insertCSS(
+      `
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
     ::-webkit-scrollbar-corner { background: transparent; }
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
-  `).catch(() => {});
+  `,
+    )
+    .catch(() => {});
   scheduleMediaCheck();
   // Send channel list when tv.html finishes loading
   if (tvActiveChannelId && webview.getURL().includes('tv.html')) {
     const ch = tvChannels.find(c => c.id === tvActiveChannelId);
     if (ch) {
       const cl = buildChannelList(ch, tvChannels, tvSources);
-      webview.executeJavaScript("window.postMessage(" + JSON.stringify({
-        type: 'channel-list',
-        channels: cl.channels,
-        currentIndex: cl.currentIndex,
-      }) + ",'*')").catch(() => {});
+      webview
+        .executeJavaScript(
+          'window.postMessage(' +
+            JSON.stringify({
+              type: 'channel-list',
+              channels: cl.channels,
+              currentIndex: cl.currentIndex,
+            }) +
+            ",'*')",
+        )
+        .catch(() => {});
     }
   }
 });
@@ -1470,7 +1560,7 @@ webview.addEventListener('did-navigate', () => {
   }
 });
 
-webview.addEventListener('permissionrequest', (e) => {
+webview.addEventListener('permissionrequest', e => {
   if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {
     e.request.allow();
   } else {
@@ -1480,7 +1570,7 @@ webview.addEventListener('permissionrequest', (e) => {
 
 // ── Webview Error Recovery (contentView) ──
 
-webview.addEventListener('did-fail-load', (e) => {
+webview.addEventListener('did-fail-load', e => {
   // Ignore cancelled navigations (e.g. from about:blank)
   if (e.errorCode === -3) return;
   logger.warn('contentView did-fail-load:', e.errorCode, e.errorDescription, e.validatedURL);
@@ -1521,29 +1611,39 @@ tvView.addEventListener('destroyed', () => {
 
 tvView.addEventListener('did-finish-load', () => {
   hideError();
-  tvView.insertCSS(`
+  tvView
+    .insertCSS(
+      `
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
     ::-webkit-scrollbar-corner { background: transparent; }
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
-  `).catch(() => {});
+  `,
+    )
+    .catch(() => {});
   // Send channel list when tv.html finishes loading
   if (tvActiveChannelId && tvView.getURL().includes('tv.html')) {
     const ch = tvChannels.find(c => c.id === tvActiveChannelId);
     if (ch) {
       const cl = buildChannelList(ch, tvChannels, tvSources);
-      tvView.executeJavaScript("window.postMessage(" + JSON.stringify({
-        type: 'channel-list',
-        channels: cl.channels,
-        currentIndex: cl.currentIndex,
-      }) + ",'*')").catch(() => {});
+      tvView
+        .executeJavaScript(
+          'window.postMessage(' +
+            JSON.stringify({
+              type: 'channel-list',
+              channels: cl.channels,
+              currentIndex: cl.currentIndex,
+            }) +
+            ",'*')",
+        )
+        .catch(() => {});
     }
   }
 });
 
-tvView.addEventListener('permissionrequest', (e) => {
+tvView.addEventListener('permissionrequest', e => {
   if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {
     e.request.allow();
   } else {
@@ -1552,7 +1652,7 @@ tvView.addEventListener('permissionrequest', (e) => {
 });
 
 // TV channel navigation from tv.html in tvView
-tvView.addEventListener('ipc-message', (e) => {
+tvView.addEventListener('ipc-message', e => {
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
@@ -1562,7 +1662,7 @@ tvView.addEventListener('ipc-message', (e) => {
 
 // ── tvView Error Recovery ──
 
-tvView.addEventListener('did-fail-load', (e) => {
+tvView.addEventListener('did-fail-load', e => {
   if (e.errorCode === -3) return;
   logger.warn('tvView did-fail-load:', e.errorCode, e.errorDescription, e.validatedURL);
   showError('TV-Seite konnte nicht geladen werden.\n' + e.errorDescription, e.validatedURL);
@@ -1582,8 +1682,9 @@ let lastMediaTitle = '';
 function pollMediaTitle() {
   const svc = getCurrentSvc();
   if (!svc) return;
-  webview.executeJavaScript('navigator.mediaSession?.metadata?.title || ""')
-    .then((title) => {
+  webview
+    .executeJavaScript('navigator.mediaSession?.metadata?.title || ""')
+    .then(title => {
       if (title && title !== lastMediaTitle) {
         lastMediaTitle = title;
         window.electronAPI.saveHistoryEntry({ title, serviceKey: svc.id, serviceName: svc.name });
@@ -1616,14 +1717,14 @@ pipBtn.addEventListener('click', () => {
   window.electronAPI.togglePip(url);
 });
 
-window.electronAPI.onPipState((state) => {
+window.electronAPI.onPipState(state => {
   pipActive = state;
   pipBtn.classList.toggle('active', state);
 });
 
 historyBtn.addEventListener('click', toggleHistory);
 historyClose.addEventListener('click', closeHistory);
-historyOverlay.addEventListener('click', (e) => {
+historyOverlay.addEventListener('click', e => {
   if (e.target === historyOverlay) closeHistory();
 });
 historyClear.addEventListener('click', () => {
@@ -1634,7 +1735,7 @@ historyClear.addEventListener('click', () => {
 tvSidebarManage.addEventListener('click', openTvModal);
 tvSidebarEpgRefresh.addEventListener('click', refreshEpg);
 tvModalClose.addEventListener('click', closeTvModal);
-tvModalOverlay.addEventListener('click', (e) => {
+tvModalOverlay.addEventListener('click', e => {
   if (e.target === tvModalOverlay) closeTvModal();
 });
 tvModalSave.addEventListener('click', saveTvSource);
@@ -1645,13 +1746,13 @@ tvFileBtn.addEventListener('click', () => {
   });
 });
 
-tvInputName.addEventListener('keydown', (e) => {
+tvInputName.addEventListener('keydown', e => {
   if (e.key === 'Enter') tvInputUrl.focus();
 });
-tvInputUrl.addEventListener('keydown', (e) => {
+tvInputUrl.addEventListener('keydown', e => {
   if (e.key === 'Enter') tvInputEpgUrl.focus();
 });
-tvInputEpgUrl.addEventListener('keydown', (e) => {
+tvInputEpgUrl.addEventListener('keydown', e => {
   if (e.key === 'Enter') saveTvSource();
 });
 
@@ -1664,7 +1765,7 @@ tvSearchInput.addEventListener('input', () => {
   renderTvChannels();
 });
 
-tvSearchInput.addEventListener('keydown', (e) => {
+tvSearchInput.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     tvSearchInput.value = '';
     tvSearchFilter = '';
@@ -1676,12 +1777,12 @@ tvSearchInput.addEventListener('keydown', (e) => {
 // TV Channel Editor
 tvSidebarEdit.addEventListener('click', openTvChEditor);
 tvChModalClose.addEventListener('click', closeTvChEditor);
-tvChModalOverlay.addEventListener('click', (e) => {
+tvChModalOverlay.addEventListener('click', e => {
   if (e.target === tvChModalOverlay) closeTvChEditor();
 });
 tvChModalSave.addEventListener('click', saveTvChEditor);
 tvChSearch.addEventListener('input', renderTvChEditor);
-tvChSearch.addEventListener('keydown', (e) => {
+tvChSearch.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     tvChSearch.value = '';
     renderTvChEditor();
@@ -1690,11 +1791,14 @@ tvChSearch.addEventListener('keydown', (e) => {
 });
 
 // Close sidebar when clicking outside (not on start page)
-document.addEventListener('click', (e) => {
-  if (tvSidebarOpen && currentProvider !== '' &&
-      !tvSidebar.contains(e.target) &&
-      !tvBtn.contains(e.target) &&
-      !tvSidebarTrigger.contains(e.target)) {
+document.addEventListener('click', e => {
+  if (
+    tvSidebarOpen &&
+    currentProvider !== '' &&
+    !tvSidebar.contains(e.target) &&
+    !tvBtn.contains(e.target) &&
+    !tvSidebarTrigger.contains(e.target)
+  ) {
     closeTvSidebar();
   }
 });
@@ -1707,7 +1811,7 @@ epgRefreshBtn.addEventListener('click', () => {
   renderEpg();
 });
 epgDetailClose.addEventListener('click', closeEpgDetail);
-epgDetailBackdrop.addEventListener('click', (e) => {
+epgDetailBackdrop.addEventListener('click', e => {
   if (e.target === epgDetailBackdrop) closeEpgDetail();
 });
 
@@ -1797,7 +1901,7 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
   return false;
 }
 
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', e => {
   // Skip when typing in inputs (except Escape which is handled by webview forward)
   if (e.target.tagName === 'INPUT') {
     if (e.key === 'Escape') {
@@ -1820,12 +1924,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Forwarded shortcuts from webview (via main process)
-const cleanupShortcuts = window.electronAPI.onWebviewKeydown((data) => {
+const cleanupShortcuts = window.electronAPI.onWebviewKeydown(data => {
   handleKeyShortcut(data.key, data.ctrlKey, data.shiftKey, data.metaKey);
 });
 
 // Global media keys → webview Media Session
-window.electronAPI.onMediaKey((action) => {
+window.electronAPI.onMediaKey(action => {
   const cmds = {
     playpause: 'navigator.mediaSession.playPause()',
     nexttrack: 'navigator.mediaSession.nextTrack()',
@@ -1839,7 +1943,7 @@ window.electronAPI.onMediaKey((action) => {
 });
 
 // Version anzeigen
-window.electronAPI.getAppVersion().then((v) => {
+window.electronAPI.getAppVersion().then(v => {
   document.getElementById('versionTag').textContent = 'v' + v;
 });
 
@@ -1903,7 +2007,7 @@ function hideUpdateOverlay() {
   updateOverlay.classList.remove('open');
 }
 
-const cleanupUpdateStatus = window.electronAPI.onUpdateStatus((status) => {
+const cleanupUpdateStatus = window.electronAPI.onUpdateStatus(status => {
   if (status.type === 'available') {
     updateAvailableVersion = status.version;
     setUpdateState('available');
@@ -1976,7 +2080,7 @@ function closeSettings() {
 
 settingsBtn.addEventListener('click', openSettings);
 settingsClose.addEventListener('click', closeSettings);
-settingsOverlay.addEventListener('click', (e) => {
+settingsOverlay.addEventListener('click', e => {
   if (e.target === settingsOverlay) closeSettings();
 });
 
@@ -1989,7 +2093,9 @@ backupBtn.addEventListener('click', async () => {
   } else {
     settingsStatus.textContent = 'Abgebrochen';
   }
-  setTimeout(() => { backupBtn.disabled = false; }, 2000);
+  setTimeout(() => {
+    backupBtn.disabled = false;
+  }, 2000);
 });
 
 restoreBtn.addEventListener('click', async () => {
@@ -2004,17 +2110,19 @@ restoreBtn.addEventListener('click', async () => {
   } else {
     settingsStatus.textContent = 'Abgebrochen';
   }
-  setTimeout(() => { restoreBtn.disabled = false; }, 3000);
+  setTimeout(() => {
+    restoreBtn.disabled = false;
+  }, 3000);
 });
 
 // Services laden
-window.electronAPI.getServices().then((svcs) => {
+window.electronAPI.getServices().then(svcs => {
   services = svcs;
   renderNav();
   tvBtn = document.getElementById('tvBtn');
 });
 
-window.electronAPI.onServicesChanged((svcs) => {
+window.electronAPI.onServicesChanged(svcs => {
   services = svcs;
   renderNav();
   tvBtn = document.getElementById('tvBtn');
@@ -2036,21 +2144,26 @@ window.electronAPI.onServicesChanged((svcs) => {
 overlayLocation.addEventListener('click', goToStartPage);
 
 // TV Sources laden
-window.electronAPI.getTvSources().then((sources) => {
+window.electronAPI.getTvSources().then(sources => {
   tvSources = sources;
   tvSelectedSourceIds = sources.map(s => s.id);
   loadEpgData();
   if (tvSources.length) openTvSidebar();
 });
 
-window.electronAPI.onTvSourcesChanged((sources) => {
+window.electronAPI.onTvSourcesChanged(sources => {
   // Nur bei strukturellen Änderungen (neue/entfernte Quelle, URL-, EPG- oder Override-Änderung) neu laden,
   // nicht bei reinen sortOrder/favorites-Änderungen (Drag&Drop)
-  const structuralChange = sources.length !== tvSources.length
-    || sources.some(s => {
+  const structuralChange =
+    sources.length !== tvSources.length ||
+    sources.some(s => {
       const old = tvSources.find(t => t.id === s.id);
-      return !old || old.url !== s.url || old.epgUrl !== s.epgUrl
-        || JSON.stringify(old.channelOverrides) !== JSON.stringify(s.channelOverrides);
+      return (
+        !old ||
+        old.url !== s.url ||
+        old.epgUrl !== s.epgUrl ||
+        JSON.stringify(old.channelOverrides) !== JSON.stringify(s.channelOverrides)
+      );
     });
   tvSources = sources;
   tvSelectedSourceIds = tvSelectedSourceIds.filter(id => sources.some(s => s.id === id));

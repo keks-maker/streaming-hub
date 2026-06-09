@@ -25,7 +25,7 @@ Der Desktop wird **nicht** nach TypeScript migriert. typed-core extrahiert nur d
 
 ## Desktop-Repo (Streaming-Hub) – Aktueller Stand
 
-- **Version**: v0.4.27
+- **Version**: v0.4.30
 - **Branch**: master
 - **Remote**: http://192.168.4.105:3000/kekskarlo/Streaming-Hub.git
 - **Lokaler Pfad**: `/home/keks/Dokumente/opencode/Streaming-Hub`
@@ -141,11 +141,13 @@ Liegt unter `packages/typed-core/` im Desktop-Repo.
 1. ~~**typed-core aufsetzen** (Build-Pipeline, Tests, Workspace)~~ ✅
 2. ~~**typed-core: Datenlogik aus renderer.js extrahieren**~~ ✅
 3. ~~**renderer.js: Bundler einrichten (esbuild)**~~ ✅
-4. ~~**v0.4.28: Release**~~ ✅
-5. **iOS/tvOS buildbar machen** – Xcode-Projekt generieren, erste Build-Fehler beheben
-3. **iOS/tvOS buildbar machen** – Xcode-Projekt generieren, erste Build-Fehler beheben
-4. **Mediatheken-API anbinden** – Echte API-Parser für ARD/ZDF/arte implementieren
-5. **Desktop-Code-Review-System** – Review-Checkliste als Skill festhalten
+4. ~~**v0.4.28–30: Releases + Bugfixes**~~ ✅
+5. **CI/CD-Pipeline aktualisieren** – typed-core-Build + Tests in `.gitea/workflows/build.yaml` einbauen
+6. **main.js auf typed-core migrieren** – duplizierte Logik (`parseM3U`, `parseEPG`, `loadServices`) durch typed-core-Importe ersetzen
+7. **Mediatheken-API anbinden** – ARD/ZDF/arte HLS-Endpunkte recherchieren, Parsing in typed-core, Swift-Seite vorbereiten
+8. **iOS/tvOS buildbar machen** – Xcode-Projekt via `xcodegen` generieren (benötigt macOS)
+9. **Desktop: renderer.js weiter entkoppeln** – `switchTvChannel`, `reorderChannel`, `renderEpg` enthalten noch inline Datenlogik
+10. **Desktop-Dev-Mode** – esbuild watch mode statt Neubau bei jedem Start
 
 ## Ansprechpartner / Quellen
 

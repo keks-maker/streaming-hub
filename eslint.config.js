@@ -29,11 +29,41 @@ export default [
       '.serena/',
       'Weiterentwicklung/',
       'tv.html',
+      'packages/',
+      'scripts/',
+      'assets/',
     ],
+  },
+  // ── Preload content (webview browser context) ──
+  {
+    files: ['preload-content.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        document: 'readable',
+        window: 'readable',
+        console: 'readable',
+        navigator: 'readable',
+        HTMLElement: 'readable',
+        HTMLVideoElement: 'readable',
+        Event: 'readable',
+        MutationObserver: 'readable',
+        require: 'readable',
+        process: 'readable',
+        addEventListener: 'readable',
+        removeEventListener: 'readable',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }],
+      'no-undef': 'error',
+      'no-redeclare': 'off',
+    },
   },
   // ── Main process (Node.js) ──
   {
-    files: ['main.js', 'preload.js', 'preload-content.js', 'updater.js', 'logger.js'],
+    files: ['main.js', 'preload.js', 'updater.js', 'logger.js', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -106,6 +136,11 @@ export default [
         tvEpgIndex: 'writable',
         Hls: 'readable',
         logger: 'readable',
+        // esbuild resolves these at build time
+        require: 'readable',
+        module: 'readable',
+        process: 'readable',
+        __dirname: 'readable',
       },
     },
     rules: {

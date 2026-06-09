@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.31 (2026-06-09)
+- New: CI/CD-Pipeline – `test-typed-core` Job (Build + 33 Tests) in `.gitea/workflows/build.yaml`
+- Change: ESLint Config aufgeräumt (`packages/`, `scripts/` ignoriert, `preload-content.js` eigene Browser-Konfig)
+- Fix: Prettier-Formatierung auf allen JS-Dateien
+- Fix: `renderer.js` – unbenutzte typed-core-Imports entfernt
+
 ## 0.4.30 (2026-06-09)
 - Fix: User-Agent auf tatsächliche Chrome-Version (148) aktualisiert – Template per `process.versions.chrome` im Preload, kein Hardcode mehr
 - Change: `preload.js` exposed `chromeVersion` für dynamische UA-Generierung

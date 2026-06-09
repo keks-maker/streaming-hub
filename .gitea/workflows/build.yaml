@@ -1,5 +1,4 @@
-# v0.4.23 – Gitea Actions CI/CD Pipeline
-# Voraussetzung: Gitea Actions Runner ist am Server registriert
+# v0.4.30 – Gitea Actions CI/CD Pipeline mit typed-core Build + Tests
 name: CI/CD
 
 on:
@@ -32,11 +31,32 @@ jobs:
       - name: Prettier Check
         run: npm run format:check
 
+  test-typed-core:
+    name: Test typed-core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build typed-core
+        run: npm run build:typed-core
+
+      - name: Run typed-core tests
+        run: npm test --workspace packages/typed-core
+
   build:
     name: Build AppImage
-    needs: lint
+    needs: [lint, test-typed-core]
     runs-on: ubuntu-latest
-    # Nur auf Tags builden (Releases)
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout
@@ -60,6 +80,9 @@ jobs:
 
       - name: Install npm dependencies
         run: npm ci
+
+      - name: Build typed-core + renderer
+        run: npm run build:all
 
       - name: Build AppImage
         run: npm run build

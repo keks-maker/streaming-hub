@@ -46,7 +46,11 @@ function findChromeWidevine() {
     }
     if (fs.existsSync(basePath)) {
       const entries = fs.readdirSync(basePath, { withFileTypes: true });
-      const dirs = entries.filter(e => e.isDirectory()).map(e => e.name).sort().reverse();
+      const dirs = entries
+        .filter(e => e.isDirectory())
+        .map(e => e.name)
+        .sort()
+        .reverse();
       for (const dir of dirs) {
         const versionPath = path.join(basePath, dir);
         const versionManifest = path.join(versionPath, 'manifest.json');
@@ -78,8 +82,9 @@ if (chromeWidevine) {
 // für DRM, aber das System-Widevine aus Chrome kann ohne Sandbox-Zugriff lahmlegen.
 // --no-sandbox ist ein Security-Tradeoff – nur setzen wenn nötig.
 if (chromeWidevine) {
-  const isCastlabs = process.env.ELECTRON_CUSTOM_VERSION?.includes('castlabs')
-    || (process.execPath || '').toLowerCase().includes('castlabs');
+  const isCastlabs =
+    process.env.ELECTRON_CUSTOM_VERSION?.includes('castlabs') ||
+    (process.execPath || '').toLowerCase().includes('castlabs');
   if (!isCastlabs) {
     app.commandLine.appendSwitch('no-sandbox');
     if (process.platform === 'linux') {
@@ -116,15 +121,17 @@ function loadTvSources() {
     const raw = fs.readFileSync(tvSourcesPath, 'utf-8');
     return JSON.parse(raw);
   } catch {
-    const defaults = [{
-      id: 'deutsche-oeffentlich-rechtliche',
-      name: 'Deutsche Öffentlich-Rechtliche',
-      url: 'https://iptv-org.github.io/iptv/countries/de.m3u',
-      type: 'url',
-      color: '#a78bfa',
-      epgUrl: 'https://iptv-epg.org/files/epg-de.xml',
-      sortOrder: [],
-    }];
+    const defaults = [
+      {
+        id: 'deutsche-oeffentlich-rechtliche',
+        name: 'Deutsche Öffentlich-Rechtliche',
+        url: 'https://iptv-org.github.io/iptv/countries/de.m3u',
+        type: 'url',
+        color: '#a78bfa',
+        epgUrl: 'https://iptv-epg.org/files/epg-de.xml',
+        sortOrder: [],
+      },
+    ];
     saveTvSources(defaults);
     return defaults;
   }
@@ -175,7 +182,7 @@ function parseM3U(content) {
       if (match) {
         const attrs = match[1];
         const displayName = match[2] ? match[2].trim() : '';
-        const extract = (name) => {
+        const extract = name => {
           const re = new RegExp(`${name}="([^"]*)"`);
           const m = attrs.match(re);
           return m ? m[1] : null;
@@ -249,7 +256,8 @@ function cmpVersions(a, b) {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const va = pa[i] || 0, vb = pb[i] || 0;
+    const va = pa[i] || 0,
+      vb = pb[i] || 0;
     if (va !== vb) return va - vb;
   }
   return 0;
@@ -283,7 +291,7 @@ function startUpdater() {
           return { hasUpdate: false, error: e.message };
         }
       },
-      download: async (version) => {
+      download: async version => {
         try {
           const release = await giteaApi('releases/latest');
           const asset = release.assets?.find(a => a.name.endsWith('.AppImage'));
@@ -309,14 +317,17 @@ function startUpdater() {
             if (done) break;
             ws.write(value);
             received += value.length;
-            if (total) mainWindow?.webContents.send('update-status', { type: 'progress', percent: (received / total) * 100 });
+            if (total)
+              mainWindow?.webContents.send('update-status', { type: 'progress', percent: (received / total) * 100 });
           }
           ws.end();
           await new Promise(r => ws.on('finish', r));
           fs.chmodSync(tmpDest, 0o755);
 
           if (currentAppImage !== finalDest) {
-            try { fs.unlinkSync(finalDest); } catch (e) {}
+            try {
+              fs.unlinkSync(finalDest);
+            } catch (e) {}
           }
           fs.renameSync(tmpDest, finalDest);
           return finalDest;
@@ -329,7 +340,9 @@ function startUpdater() {
     const updaterPath = path.join(__dirname, 'updater.js');
     if (fs.existsSync(updaterPath)) {
       updaterProcess = fork(updaterPath, [__dirname]);
-      updaterProcess.on('exit', () => { updaterProcess = null; });
+      updaterProcess.on('exit', () => {
+        updaterProcess = null;
+      });
     }
   }
 }
@@ -340,9 +353,9 @@ ipcMain.handle('check-for-update', async () => {
     return autoUpdater.check();
   }
   if (!updaterProcess) return { hasUpdate: false, error: 'kein update-prozess' };
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const timer = setTimeout(() => resolve({ hasUpdate: false, error: 'timeout' }), 20000);
-    const onMsg = (msg) => {
+    const onMsg = msg => {
       if (msg.type !== 'result') return;
       clearTimeout(timer);
       updaterProcess.removeListener('message', onMsg);
@@ -361,10 +374,15 @@ ipcMain.handle('apply-update', async (_e, version) => {
       // Remove old AppImage if replaced by a differently-named version
       const oldAppImage = process.env.APPIMAGE;
       if (oldAppImage && oldAppImage !== newAppImage) {
-        try { fs.unlinkSync(oldAppImage); } catch (e) {}
+        try {
+          fs.unlinkSync(oldAppImage);
+        } catch (e) {}
       }
       mainWindow?.webContents.send('update-status', { type: 'downloaded' });
-      setTimeout(() => { app.relaunch({ execPath: newAppImage }); app.quit(); }, 2000);
+      setTimeout(() => {
+        app.relaunch({ execPath: newAppImage });
+        app.quit();
+      }, 2000);
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
@@ -373,9 +391,9 @@ ipcMain.handle('apply-update', async (_e, version) => {
   const proc = fork(path.join(__dirname, 'updater.js'), [__dirname], {
     stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
   });
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 180000);
-    const onMsg = (msg) => {
+    const onMsg = msg => {
       if (msg.type === 'progress') {
         mainWindow?.webContents.send('update-status', { type: 'progress', step: msg.step, percent: msg.percent });
       } else if (msg.type === 'applied') {
@@ -383,7 +401,10 @@ ipcMain.handle('apply-update', async (_e, version) => {
         proc.removeListener('message', onMsg);
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
-          setTimeout(() => { app.relaunch(); app.quit(); }, 500);
+          setTimeout(() => {
+            app.relaunch();
+            app.quit();
+          }, 500);
         }
       }
     };
@@ -428,7 +449,9 @@ function createWindow() {
       globalShortcut.register(key, () => {
         mainWindow?.webContents.send('media-key', action);
       });
-    } catch (_) { /* key not available on this platform */ }
+    } catch (_) {
+      /* key not available on this platform */
+    }
   }
 }
 
@@ -456,7 +479,7 @@ ipcMain.on('toggle-pip', (_e, url) => {
 
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   const pipW = Math.min(480, Math.round(width * 0.3));
-  const pipH = Math.min(320, Math.round(pipW * 9 / 16) + 32);
+  const pipH = Math.min(320, Math.round((pipW * 9) / 16) + 32);
 
   pipWindow = new BrowserWindow({
     width: pipW,
@@ -506,7 +529,9 @@ ipcMain.on('webview-keydown', (_e, data) => {
 ipcMain.handle('get-app-version', () => {
   try {
     const raw = execSync('git describe --tags --abbrev=0', {
-      cwd: __dirname, encoding: 'utf-8', timeout: 5000,
+      cwd: __dirname,
+      encoding: 'utf-8',
+      timeout: 5000,
     }).trim();
     return raw.replace(/^v/i, '');
   } catch (e) {
@@ -522,7 +547,10 @@ ipcMain.handle('get-services', () => loadServices());
 
 ipcMain.handle('add-service', (_e, service) => {
   const services = loadServices();
-  service.id = service.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  service.id = service.name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
   if (services.find(s => s.id === service.id)) {
     service.id = service.id + '-' + Date.now();
   }
@@ -577,7 +605,10 @@ ipcMain.handle('add-tv-source', (_e, source) => {
     return existing;
   }
   // Neue Quelle – stabile ID aus dem Namen generieren
-  source.id = source.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  source.id = source.name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
   if (sources.find(s => s.id === source.id)) {
     source.id = source.id + '-' + Date.now();
   }
@@ -633,9 +664,10 @@ ipcMain.handle('fetch-and-parse-m3u', async (_e, urlOrPath) => {
     // Resolve relative URLs for logos
     const channels = result.channels.map(ch => ({
       ...ch,
-      logo: ch.logo && !ch.logo.startsWith('http://') && !ch.logo.startsWith('https://') && !ch.logo.startsWith('file://')
-        ? baseUrl + ch.logo
-        : ch.logo,
+      logo:
+        ch.logo && !ch.logo.startsWith('http://') && !ch.logo.startsWith('https://') && !ch.logo.startsWith('file://')
+          ? baseUrl + ch.logo
+          : ch.logo,
     }));
     return { channels, epgUrls: result.epgUrls, baseUrl };
   } catch (err) {
@@ -674,8 +706,14 @@ ipcMain.handle('restore-settings', async () => {
     const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
     const data = JSON.parse(raw);
     if (!data.services && !data.tvsources) throw new Error('ungültiges Backup-Format');
-    if (data.services) { saveServices(data.services); broadcastServices(); }
-    if (data.tvsources) { saveTvSources(data.tvsources); broadcastTvSources(); }
+    if (data.services) {
+      saveServices(data.services);
+      broadcastServices();
+    }
+    if (data.tvsources) {
+      saveTvSources(data.tvsources);
+      broadcastTvSources();
+    }
     if (data.history) saveHistory(data.history);
     return { success: true };
   } catch (e) {

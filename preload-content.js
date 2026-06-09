@@ -61,7 +61,16 @@ script.textContent = `
           { brand: 'Not;A=Brand', version: '99' },
         ],
         mobile: false,
-        platform: '${(function(){ switch(process.platform){case'darwin':return'macOS';case'win32':return'Windows';default:return'Linux'}})()}',
+        platform: '${(function () {
+          switch (process.platform) {
+            case 'darwin':
+              return 'macOS';
+            case 'win32':
+              return 'Windows';
+            default:
+              return 'Linux';
+          }
+        })()}',
         getHighEntropyValues: function() { return Promise.resolve({}); },
         toJSON: function() { return { brands: this.brands, mobile: this.mobile, platform: this.platform }; },
       };
@@ -90,7 +99,7 @@ if (document.documentElement) {
 }
 
 // Forward keyboard shortcuts to main window (via main process)
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', e => {
   if (
     e.key === 'Escape' ||
     e.key === 'F11' ||
@@ -112,7 +121,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Bridge: page postMessage → host renderer (for tv-player channel commands)
-window.addEventListener('message', (e) => {
+window.addEventListener('message', e => {
   if (e.data && e.data.source === 'tv-player') {
     ipcRenderer.sendToHost('tv-channel', e.data);
   }

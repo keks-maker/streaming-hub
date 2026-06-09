@@ -38,14 +38,17 @@ function restoreUserFiles() {
     }
   }
   // Backup-Verzeichnis aufräumen
-  try { fs.rmSync(backupDir, { recursive: true, force: true }); } catch (e) {}
+  try {
+    fs.rmSync(backupDir, { recursive: true, force: true });
+  } catch (e) {}
 }
 
 function cmpVersions(a, b) {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const va = pa[i] || 0, vb = pb[i] || 0;
+    const va = pa[i] || 0,
+      vb = pb[i] || 0;
     if (va !== vb) return va - vb;
   }
   return 0;
@@ -54,7 +57,10 @@ function cmpVersions(a, b) {
 function getCurrentVersion() {
   try {
     const raw = execSync('git describe --tags --abbrev=0', {
-      cwd: appDir, encoding: 'utf-8', timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: appDir,
+      encoding: 'utf-8',
+      timeout: 10000,
+      stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
     return raw.replace(/^v/i, '');
   } catch (e) {
@@ -62,12 +68,15 @@ function getCurrentVersion() {
   }
 }
 
-process.on('message', (msg) => {
+process.on('message', msg => {
   if (msg.type === 'check') {
     try {
       const currentVersion = getCurrentVersion() || msg.currentVersion;
       const out = execSync('git ls-remote --tags origin', {
-        cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: appDir,
+        encoding: 'utf-8',
+        timeout: 15000,
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
       const tags = new Set();
       for (const line of out.split('\n')) {
@@ -88,7 +97,10 @@ process.on('message', (msg) => {
     try {
       process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 5 });
       execSync('git fetch --tags --force origin', {
-        cwd: appDir, encoding: 'utf-8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: appDir,
+        encoding: 'utf-8',
+        timeout: 60000,
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       // User-Daten sichern (services.json, tvsources.json, history.json)
@@ -100,18 +112,29 @@ process.on('message', (msg) => {
       let stashed = false;
       try {
         const status = execSync('git status --porcelain', {
-          cwd: appDir, encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'],
+          cwd: appDir,
+          encoding: 'utf-8',
+          timeout: 5000,
+          stdio: ['pipe', 'pipe', 'pipe'],
         });
         if (status.trim()) {
           execSync('git stash push --include-untracked -m "streaming-hub-update"', {
-            cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+            cwd: appDir,
+            encoding: 'utf-8',
+            timeout: 15000,
+            stdio: ['pipe', 'pipe', 'pipe'],
           });
           stashed = true;
         }
-      } catch (e) { /* stash error – continue */ }
+      } catch (e) {
+        /* stash error – continue */
+      }
 
       execSync(`git checkout --force v${msg.version}`, {
-        cwd: appDir, encoding: 'utf-8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: appDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       // User-Daten nach dem Checkout wiederherstellen (überschreibt ggf. neuere committed Versionen mit User-Daten)
@@ -121,17 +144,27 @@ process.on('message', (msg) => {
       if (stashed) {
         try {
           execSync('git stash pop', {
-            cwd: appDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'],
+            cwd: appDir,
+            encoding: 'utf-8',
+            timeout: 15000,
+            stdio: ['pipe', 'pipe', 'pipe'],
           });
         } catch (e) {
           // Konflikte möglich – Stash bleibt erhalten, User kann manuell lösen
-          process.send({ type: 'progress', step: '⚠ Lokale Änderungen konnten nicht automatisch übernommen werden (Konflikte). Stash bleibt erhalten: git stash pop', percent: 50 });
+          process.send({
+            type: 'progress',
+            step: '⚠ Lokale Änderungen konnten nicht automatisch übernommen werden (Konflikte). Stash bleibt erhalten: git stash pop',
+            percent: 50,
+          });
         }
       }
 
       process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
       execSync('npm install --ignore-scripts', {
-        cwd: appDir, encoding: 'utf-8', timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: appDir,
+        encoding: 'utf-8',
+        timeout: 180000,
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
       process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
       process.send({ type: 'applied' });
