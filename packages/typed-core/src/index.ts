@@ -9,6 +9,9 @@ export type {
   AppConfig,
   CustomSource,
   ChannelListItem,
+  MediathekSource,
+  MediathekEntry,
+  MediathekSearchResult,
 } from './types.js';
 
 export {
@@ -69,3 +72,9 @@ export {
   applySortOrder,
   mediathekChannelMap,
 } from './tv.js';
+
+export {
+  DEFAULT_MEDIATHEK_SOURCES,
+  buildSearchUrl,
+  parseSearchResponse,
+} from './mediathek.js';

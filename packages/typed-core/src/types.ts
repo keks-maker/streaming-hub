@@ -96,3 +96,44 @@ export interface ChannelListItem {
   name: string;
   logo: string;
 }
+
+// ─── Mediathek ──────────────────────────────────────────────────
+
+export interface MediathekSource {
+  /** Key des Anbieters (ard, zdf, arte) */
+  provider: string;
+  /** Such-Query (optional, vorausgefüllt) */
+  query?: string;
+  /** API-Basis-URL (hier: mediathekviewweb.de) */
+  apiUrl: string;
+}
+
+export interface MediathekEntry {
+  id: string;
+  title: string;
+  description: string;
+  /** Direkte Video-URL (mp4 oder HLS m3u8) */
+  videoUrl: string;
+  /** Original-Mediathek-URL */
+  websiteUrl: string;
+  /** Kanal / Sender */
+  creator: string;
+  /** Kategorie */
+  category: string;
+  /** Dauer in Sekunden */
+  duration: number;
+  /** Video-Dateigröße in Bytes (optional) */
+  fileSize?: number;
+  /** MP4 oder HLS */
+  videoType: string;
+  /** Veröffentlichungsdatum (ISO 8601) */
+  pubDate: string;
+}
+
+export interface MediathekSearchResult {
+  query: string;
+  /** Gefilterte Einträge (optional, nur gefüllt wenn channelFilter gesetzt) */
+  filtered: MediathekEntry[];
+  /** Alle Einträge der API (unfiltered) */
+  allHits: MediathekEntry[];
+}

@@ -8,6 +8,7 @@ import { loadServices } from '../src/services.js';
 import { escapeHtml, decodeEntities, normalizeUrl, formatTimestamp } from '../src/format.js';
 import { parseEpgTime, formatEpgTime, buildEpgIndex, getEpgChannelList, findCurrentEpg } from '../src/epg.js';
 import { getMediathekForChannel, normalizeTvId, isFavorite, filterChannels, groupChannels, separateFavorites, buildChannelList, getNextChannelId, applyChannelOverrides, applySortOrder } from '../src/tv.js';
+import { DEFAULT_MEDIATHEK_SOURCES, buildSearchUrl, parseSearchResponse } from '../src/mediathek.js';
 
 // ─── Updater ─────────────────────────────────────────────────
 
@@ -291,4 +292,72 @@ it('applySortOrder', () => {
   ];
   const result = applySortOrder(channels, ['a', 'b', 'c']);
   expect(result.map(c => c.id)).toEqual(['a', 'b', 'c']);
+});
+
+// ─── Mediathek ───────────────────────────────────────────────
+
+const SAMPLE_RSS = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title><![CDATA[MVW - tagesschau | Zukünftige]]></title>
+<item>
+<title><![CDATA[tagesschau 09:00 Uhr]]></title>
+<description><![CDATA[Nachrichten]]></description>
+<link>https://example.com/video.mp4</link>
+<guid isPermaLink="false">abc123</guid>
+<category><![CDATA[tagesschau]]></category>
+<dc:creator><![CDATA[ARD]]></dc:creator>
+<pubDate>Tue, 09 Jun 2026 07:00:00 GMT</pubDate>
+<enclosure url="https://example.com/video.mp4" length="34603008" type="video/mp4"/>
+<duration>172</duration>
+<websiteUrl>https://www.ardmediathek.de/video/abc</websiteUrl>
+</item>
+<item>
+<title><![CDATA[heute journal]]></title>
+<description><![CDATA[Nachrichten aus Deutschland]]></description>
+<link>https://example.com/zdf.m3u8</link>
+<guid isPermaLink="false">def456</guid>
+<category><![CDATA[nachrichten]]></category>
+<dc:creator><![CDATA[ZDF]]></dc:creator>
+<pubDate>Mon, 08 Jun 2026 21:45:00 GMT</pubDate>
+<enclosure url="https://example.com/zdf.m3u8" length="50000000" type="application/x-mpegURL"/>
+<duration>1055</duration>
+<websiteUrl>https://www.zdf.de/sendung/heute-journal</websiteUrl>
+</item>
+</channel>
+</rss>`;
+
+it('buildSearchUrl', () => {
+  const url = buildSearchUrl(DEFAULT_MEDIATHEK_SOURCES[0]!, 'tagesschau', { channel: 'ARD' });
+  expect(url).toContain('mediathekviewweb.de/feed');
+  expect(url).toContain('query=tagesschau');
+  expect(url).toContain('channel=ARD');
+});
+
+it('parseSearchResponse – all entries', () => {
+  const result = parseSearchResponse(SAMPLE_RSS);
+  expect(result.allHits.length).toBe(2);
+  expect(result.allHits[0]!.title).toBe('tagesschau 09:00 Uhr');
+  expect(result.allHits[0]!.creator).toBe('ARD');
+  expect(result.allHits[0]!.duration).toBe(172);
+  expect(result.allHits[0]!.videoType).toBe('video/mp4');
+});
+
+it('parseSearchResponse – HLS detection', () => {
+  const result = parseSearchResponse(SAMPLE_RSS);
+  const zdf = result.allHits[1]!;
+  expect(zdf.videoType).toBe('application/x-mpegURL');
+  expect(zdf.duration).toBe(1055);
+  expect(zdf.websiteUrl).toContain('zdf.de');
+});
+
+it('parseSearchResponse – channel filter', () => {
+  expect(parseSearchResponse(SAMPLE_RSS, 'ARD').filtered.length).toBe(1);
+  expect(parseSearchResponse(SAMPLE_RSS, 'ZDF').filtered.length).toBe(1);
+  expect(parseSearchResponse(SAMPLE_RSS, 'RTL').filtered.length).toBe(0);
+});
+
+it('DEFAULT_MEDIATHEK_SOURCES', () => {
+  expect(DEFAULT_MEDIATHEK_SOURCES.length).toBe(3);
+  expect(DEFAULT_MEDIATHEK_SOURCES.map(s => s.provider)).toEqual(['ard', 'zdf', 'arte']);
 });

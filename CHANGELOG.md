@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.33 (2026-06-09)
+- New: typed-core `mediathek.ts` – `buildSearchUrl()`, `parseSearchResponse()` für MediathekViewWeb-API
+- New: Typen `MediathekSource`, `MediathekEntry`, `MediathekSearchResult` für ARD/ZDF/arte
+- New: 5 Tests für Mediathek-Modul (38 total)
+
 ## 0.4.32 (2026-06-09)
 - Change: `main.js` nutzt typed-core – `cmpVersions` → `compareVersions`, `cleanChannelName`, `parseEPG` → `parseXMLTV`
 - New: typed-core `format.ts` + `cleanChannelName()`, `epg.ts` + `parseXMLTV()`
