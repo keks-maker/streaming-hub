@@ -5,6 +5,7 @@ let pipCb = null;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
+  chromeVersion: process.versions.chrome,
   togglePip: (url) => ipcRenderer.send('toggle-pip', url),
   onMediaKey: (cb) => {
     const handler = (_e, action) => cb(action);

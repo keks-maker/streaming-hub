@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.30 (2026-06-09)
+- Fix: User-Agent auf tatsächliche Chrome-Version (148) aktualisiert – Template per `process.versions.chrome` im Preload, kein Hardcode mehr
+- Change: `preload.js` exposed `chromeVersion` für dynamische UA-Generierung
+
 ## 0.4.29 (2026-06-09)
 - Fix: `renderer.js` – übersehener `buildTvChannelList()`-Aufruf im `did-finish-load` von contentView auf `buildChannelList()` umgestellt
 
