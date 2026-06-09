@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.54 (2026-06-09)
+- Change: MagentaTV nutzt Safari-User-Agent (umgeht HDCP-Warnung)
+
 ## 0.4.53 (2026-06-09)
 - New: TV-Modus-Umschalter in Einstellungen (FreeTV / MagentaTV)
 - New: MagentaTV-Modus – TV-Button öffnet web.magentatv.de im Webview

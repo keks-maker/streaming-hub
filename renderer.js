@@ -165,6 +165,9 @@ const uaMap = {
   win32: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVer} Safari/537.36`,
 };
 const chromeUA = uaMap[window.electronAPI.platform] || uaMap.linux;
+const safariUA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+let currentUA = chromeUA;
 
 // Generate welcome-screen background logos
 const bg = document.getElementById('welcomeBg');
@@ -286,6 +289,7 @@ function createGroupLabel(text) {
 }
 
 function goToStartPage() {
+  currentUA = chromeUA;
   currentProvider = '';
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -303,6 +307,7 @@ function goToStartPage() {
 }
 
 function navigateTo(svc) {
+  currentUA = svc.id === 'magentatv' ? safariUA : chromeUA;
   currentProvider = svc.id;
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -497,6 +502,7 @@ function saveTvSource() {
 
 function toggleTvSidebar() {
   if (tvMode === 'magenta') {
+    currentUA = safariUA;
     const svc = services.find(s => s.id === 'magentatv');
     if (svc) {
       navigateTo(svc);
@@ -1488,7 +1494,7 @@ webview.addEventListener('did-attach', () => {
   if (webview.session) {
     const filter = { urls: ['*://*/*'] };
     webview.session.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
-      details.requestHeaders['User-Agent'] = chromeUA;
+      details.requestHeaders['User-Agent'] = currentUA;
       callback({ requestHeaders: details.requestHeaders });
     });
   }
@@ -1582,7 +1588,7 @@ tvView.addEventListener('did-attach', () => {
   if (tvView.session) {
     const filter = { urls: ['*://*/*'] };
     tvView.session.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
-      details.requestHeaders['User-Agent'] = chromeUA;
+      details.requestHeaders['User-Agent'] = currentUA;
       callback({ requestHeaders: details.requestHeaders });
     });
   }
