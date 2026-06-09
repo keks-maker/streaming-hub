@@ -316,11 +316,11 @@
         }).join('');
 
         var itemHeight = 66;
-        var visibleCount = 7;
+        var visibleCount = 4;
         var containerHeight = visibleCount * itemHeight;
         container.style.height = containerHeight + 'px';
 
-        var half = Math.floor(visibleCount / 2);
+        var half = (visibleCount - 1) / 2;
         var targetScroll = currentIdx * itemHeight - half * itemHeight;
         var maxScroll = Math.max(0, channels.length * itemHeight - containerHeight);
         var clamped = Math.max(0, Math.min(targetScroll, maxScroll));

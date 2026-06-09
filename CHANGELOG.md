@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.36 (2026-06-09)
+- Change: TV-Kanal-Overlay zeigt max. 4 Sender (vorher 7), ausgewählter Sender zentriert
+
 ## 0.4.35 (2026-06-09)
 - Change: `renderer.js` – `loadTvChannels` nutzt jetzt `applyChannelOverrides` + `applySortOrder` aus typed-core
 - Change: `renderer.js` – `renderTvChannels` nutzt `filterChannels`, `groupChannels`, `separateFavorites` aus typed-core
