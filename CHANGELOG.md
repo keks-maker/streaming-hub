@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.64 (2026-06-09)
+- Fix: .tv-controls EXAKT wie Original (kein pointer-events nirgendwo)
+- Fix: video.addEventListener('mousemove', showOverlay) als Fallback
+- Change: Channel-List z-index 25→15 (kein Overlap mit controls)
+
 ## 0.4.63 (2026-06-09)
 - Fix: .tv-top + .tv-controls auf Original-Positionierung zurückgesetzt (full-width, gradient)
 - Fix: .tv-epg-bar wieder mit eigenem background (wie vor v0.4.58)

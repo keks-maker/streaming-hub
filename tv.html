@@ -47,14 +47,9 @@
       padding:12px 20px 16px;
       background:linear-gradient(0deg,rgba(0,0,0,0.88) 0%,transparent 100%);
       z-index:10;
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .3s ease;
+      opacity:0; transition:opacity .3s ease;
     }
-    .tv-controls.visible {
-      opacity:1;
-      pointer-events:auto;
-    }
+    .tv-controls.visible { opacity:1; }
 
     .tv-controls-top {
       display:flex; align-items:center; gap:16px;
@@ -152,7 +147,7 @@
     /* Channel list overlay (right sidebar with slide-in) */
     .tv-channel-list {
       position: fixed; top: 80px; right: 4px; left: auto;
-      z-index: 25; display: none;
+      z-index: 15; display: none;
       background: rgba(0,0,0,0.7);
       border-radius: 12px; padding: 6px;
       overflow: hidden;
@@ -588,6 +583,7 @@
 
       document.addEventListener('mousemove', showOverlay);
       document.addEventListener('keydown', showOverlay);
+      video.addEventListener('mousemove', showOverlay);
 
       // ── Play/Pause ──
       function togglePlay() {
