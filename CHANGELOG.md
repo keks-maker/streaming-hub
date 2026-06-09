@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.63 (2026-06-09)
+- Fix: .tv-top + .tv-controls auf Original-Positionierung zurückgesetzt (full-width, gradient)
+- Fix: .tv-epg-bar wieder mit eigenem background (wie vor v0.4.58)
+- Change: pointer-events:none wenn unsichtbar, auto wenn sichtbar (für controls)
+- Behält: Channel-List Sidebar, EPG im Overlay, dynamische Höhe
+
 ## 0.4.62 (2026-06-09)
 - Fix: backdrop-filter aus allen Overlays entfernt (blockierte Maus-Events in Electron)
 - Fix: Restart mit Shell-exec + & statt spawn (garantierte Detach)
