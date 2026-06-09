@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.56 (2026-06-09)
+- Change: TV-Kanal-Overlay auf Sidebar-Format umgestellt (schmaler, rechter Rand 4px)
+- Change: Transparenz an EPG-Bar angeglichen (rgba 0.6, backdrop-filter 12px)
+- Change: Slide-In von weiter rechts (translateX 120px)
+- Change: Items kompakter (28px/18px Schrift, 40px Logos)
+- Fix: TypeScript moduleResolution node→node16 (Build-Kompatibilität)
+
 ## 0.4.55 (2026-06-09)
 - Change: TV-Kanal-Overlay vom Bildschirmzentrum an den rechten Rand verschoben
 - Change: Slide-In-Animation von rechts (translateX + Fade)

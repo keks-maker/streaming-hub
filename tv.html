@@ -141,19 +141,19 @@
     }
     @keyframes spin { to { transform:translate(-50%,-50%) rotate(360deg); } }
 
-    /* Channel list overlay (right edge with slide-in) */
+    /* Channel list overlay (right sidebar with slide-in) */
     .tv-channel-list {
-      position: fixed; top: 110px; right: 24px; left: auto;
-      bottom: auto;
+      position: fixed; top: 100px; right: 4px; left: auto;
       z-index: 25; display: none;
-      background: rgba(0,0,0,0.82); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px; padding: 10px;
-      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      background: rgba(0,0,0,0.6);
+      border-radius: 12px; padding: 6px;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       overflow: hidden;
-      min-width: 420px; max-width: 520px;
+      min-width: 300px; max-width: 360px;
+      max-height: calc(100vh - 160px);
       opacity: 0;
-      transform: translateX(50px);
-      transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform: translateX(120px);
+      transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
       pointer-events: none;
     }
     .tv-channel-list.visible {
@@ -166,16 +166,16 @@
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .tv-channel-item {
-      display: flex; align-items: center; gap: 16px;
-      padding: 8px 20px; margin: 4px 0;
-      border-radius: 14px;
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 14px; margin: 2px 0;
+      border-radius: 10px;
       color: rgba(255,255,255,0.35);
       overflow: hidden;
-      min-height: 64px; box-sizing: border-box;
-      font-size: 32px; font-weight: 500;
+      min-height: 54px; box-sizing: border-box;
+      font-size: 28px; font-weight: 500;
     }
     .tv-channel-item img {
-      width: 48px; height: 48px; border-radius: 10px;
+      width: 40px; height: 40px; border-radius: 8px;
       object-fit: contain; flex-shrink: 0;
       background: rgba(255,255,255,0.06);
     }
@@ -188,13 +188,13 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .tv-channel-epg {
-      font-size: 20px; font-weight: 400;
-      color: rgba(167,139,250,0.85);
+      font-size: 18px; font-weight: 400;
+      color: rgba(167,139,250,0.8);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      margin-top: 2px;
+      margin-top: 1px;
     }
     .tv-channel-item.active {
-      background: rgba(167,139,250,0.2);
+      background: rgba(167,139,250,0.15);
       color: #fff; font-weight: 700;
     }
   </style>
