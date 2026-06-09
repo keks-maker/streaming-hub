@@ -1743,11 +1743,14 @@ tvSidebar.addEventListener('mouseleave', e => {
 });
 
 overlayBack.addEventListener('click', () => {
-  if (!webviewReady) return;
   try {
     webview.executeJavaScript('history.back()');
   } catch (e) {
-    logger.warn('history.back failed', e);
+    try {
+      webview.goBack();
+    } catch (e2) {
+      logger.warn('Zurück fehlgeschlagen');
+    }
   }
 });
 setInterval(() => {

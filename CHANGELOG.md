@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.50 (2026-06-09)
+- Fix: Zurück-Button größer (18px), Hover-Feedback, goBack-Fallback, webviewReady-Check entfernt
+
 ## 0.4.48 (2026-06-09)
 - New: Zurück-Button ← in TopBar (neben Startseite, via executeJavaScript history.back)
 - New: Tastenkürzel Alt+← zum Zurücknavigieren
