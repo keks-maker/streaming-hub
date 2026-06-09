@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.40 (2026-06-09)
+- Fix: TV-Sidebar schließt jetzt automatisch bei mouseleave (400ms Delay)
+
 ## 0.4.39 (2026-06-09)
 - Fix: TV-Overlay erstes Rendering – Container vor Messung sichtbar (offsetHeight=0 bei display:none)
 

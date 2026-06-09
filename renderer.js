@@ -1729,6 +1729,21 @@ tvSidebarTrigger.addEventListener('mouseenter', () => {
   if (!tvSidebarOpen) openTvSidebar();
 });
 
+let tvSidebarTimer = null;
+function scheduleSidebarClose() {
+  clearTimeout(tvSidebarTimer);
+  tvSidebarTimer = setTimeout(() => {
+    if (tvSidebarOpen) closeTvSidebar();
+  }, 400);
+}
+tvSidebar.addEventListener('mouseenter', () => clearTimeout(tvSidebarTimer));
+tvSidebar.addEventListener('mouseleave', scheduleSidebarClose);
+tvSidebarTrigger.addEventListener('mouseleave', e => {
+  if (!e.relatedTarget || !tvSidebar.contains(e.relatedTarget)) {
+    scheduleSidebarClose();
+  }
+});
+
 tvSearchInput.addEventListener('input', () => {
   tvSearchFilter = tvSearchInput.value;
   renderTvChannels();
