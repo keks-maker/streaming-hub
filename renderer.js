@@ -114,7 +114,7 @@ const historyClear = document.getElementById('historyClear');
 // TV DOM references
 const tvSidebar = document.getElementById('tvSidebar');
 const tvSidebarTrigger = document.getElementById('tvSidebarTrigger');
-const backTrigger = document.getElementById('backTrigger');
+const overlayBack = document.getElementById('overlayBack');
 
 const tvSidebarManage = document.getElementById('tvSidebarManage');
 const tvSidebarEpgRefresh = document.getElementById('tvSidebarEpgRefresh');
@@ -321,7 +321,6 @@ function navigateTo(svc) {
     pendingNav = targetUrl;
   }
   if (tvSidebarOpen) closeTvSidebar();
-  updateBackButton();
 }
 
 function getCurrentSvc() {
@@ -1519,7 +1518,6 @@ webview.addEventListener('did-finish-load', () => {
         .catch(() => {});
     }
   }
-  updateBackButton();
 });
 
 webview.addEventListener('did-navigate', () => {
@@ -1530,12 +1528,9 @@ webview.addEventListener('did-navigate', () => {
       break;
     }
   }
-  updateBackButton();
 });
 
-webview.addEventListener('did-navigate-in-page', () => {
-  updateBackButton();
-});
+webview.addEventListener('did-navigate-in-page', () => {});
 
 webview.addEventListener('permissionrequest', e => {
   if (e.permission === 'media' || e.permission === 'mediaKeySystemAccess') {
@@ -1747,27 +1742,30 @@ tvSidebar.addEventListener('mouseleave', e => {
   }
 });
 
-function updateBackButton() {
+overlayBack.addEventListener('click', () => {
+  if (!webviewReady) return;
+  try {
+    webview.executeJavaScript('history.back()');
+  } catch (e) {
+    logger.warn('history.back failed', e);
+  }
+});
+setInterval(() => {
   if (!webviewReady || currentProvider === '__tv__' || currentProvider === '') {
-    backTrigger.classList.remove('visible');
+    overlayBack.classList.remove('visible');
     return;
   }
   try {
-    backTrigger.classList.toggle('visible', webview.canGoBack());
+    webview
+      .executeJavaScript('history.length > 1')
+      .then(hasHistory => {
+        overlayBack.classList.toggle('visible', hasHistory);
+      })
+      .catch(() => overlayBack.classList.remove('visible'));
   } catch (_e) {
-    backTrigger.classList.remove('visible');
+    overlayBack.classList.remove('visible');
   }
-}
-setInterval(updateBackButton, 2000);
-backTrigger.addEventListener('click', () => {
-  if (webviewReady) {
-    try {
-      webview.goBack();
-    } catch (e) {
-      logger.warn('goBack failed', e);
-    }
-  }
-});
+}, 2000);
 
 tvSearchInput.addEventListener('input', () => {
   tvSearchFilter = tvSearchInput.value;
@@ -1911,6 +1909,13 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.altKey && e.key === 'ArrowLeft' && webviewReady && currentProvider !== '') {
+    e.preventDefault();
+    try {
+      webview.executeJavaScript('history.back()');
+    } catch (_e) {}
+    return;
+  }
   // Skip when typing in inputs (except Escape which is handled by webview forward)
   if (e.target.tagName === 'INPUT') {
     if (e.key === 'Escape') {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.48 (2026-06-09)
+- New: Zurück-Button ← in TopBar (neben Startseite, via executeJavaScript history.back)
+- New: Tastenkürzel Alt+← zum Zurücknavigieren
+- Fix: Back-Button-Implementierung komplett überarbeitet (executeJavaScript statt webview API)
+
 ## 0.4.47 (2026-06-09)
 - Fix: Zurück-Button z-index 51 (über Sidebar), Polling alle 2s statt Event-basiert
 
