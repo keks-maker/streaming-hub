@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.42 (2026-06-09)
+- Change: Overlay-Bar immer 64px (kein Height-Übergang), Nav/Buttons faden per opacity – "Startseite" wandert nicht mehr
+- Fix: TV-Sidebar schließt nach 2s ohne Mauskontakt (Polling via :hover statt Event-Propagation)
+
 ## 0.4.41 (2026-06-09)
 - Fix: TV-Sidebar schließt bei Klick im Webview (preload-content.js forwarded 'sidebar-close' IPC)
 
