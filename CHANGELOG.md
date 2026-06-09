@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.39 (2026-06-09)
+- Fix: TV-Overlay erstes Rendering – Container vor Messung sichtbar (offsetHeight=0 bei display:none)
+
 ## 0.4.38 (2026-06-09)
 - Fix: TV-Overlay – itemHeight jetzt live gemessen (offsetHeight + Margins) statt Hardcode 66px
 

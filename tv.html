@@ -316,6 +316,9 @@
             + '<span>' + esc(ch.name) + '</span></div>';
         }).join('');
 
+        container.classList.add('visible');
+        inner.offsetHeight;
+
         var firstItem = inner.firstElementChild;
         var itemHeight = firstItem ? firstItem.offsetHeight + parseFloat(getComputedStyle(firstItem).marginTop) + parseFloat(getComputedStyle(firstItem).marginBottom) : 66;
         var visibleCount = 4;
@@ -328,7 +331,6 @@
         var clamped = Math.max(0, Math.min(targetScroll, maxScroll));
         inner.style.transform = 'translateY(' + (-clamped) + 'px)';
 
-        container.classList.add('visible');
         resetChannelListTimer();
       }
 
