@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.72 (2026-06-10)
+- Chore: Test-Release – identischer Restart-Code wie v0.4.71 (setsid + sleep)
+
 ## 0.4.71 (2026-06-10)
 - Fix: Restart – 1s sleep nach setsid vor app.exit (Session braucht Zeit zum Initialisieren)
 
