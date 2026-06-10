@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.82 (2026-06-10)
+- Chore: Test-Release – Original-Restart aus v0.4.81 aktiv
+
 ## 0.4.81 (2026-06-10)
 - Revert: Update-Restart auf Original zurückgesetzt (app.relaunch + app.quit)
 - Entfernt: Alle execSync/gtk-launch/kill-9 Experimente
