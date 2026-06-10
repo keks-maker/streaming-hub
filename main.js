@@ -321,11 +321,8 @@ ipcMain.handle('apply-update', async (_e, version) => {
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => {
-            const { execSync } = require('child_process');
-            execSync('gtk-launch streaming-hub 2>/dev/null');
-            // Warten bis neue Instanz läuft, dann alte mit SIGKILL töten
-            execSync('sleep 1');
-            execSync(`kill -9 ${process.pid} 2>/dev/null || true`);
+            app.relaunch();
+            app.quit();
           }, 500);
         }
       }

@@ -4,7 +4,7 @@
   "workspaces": [
     "packages/typed-core"
   ],
-  "version": "0.4.80",
+  "version": "0.4.81",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {

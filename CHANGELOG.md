@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.81 (2026-06-10)
+- Revert: Update-Restart auf Original zurückgesetzt (app.relaunch + app.quit)
+- Entfernt: Alle execSync/gtk-launch/kill-9 Experimente
+
 ## 0.4.80 (2026-06-10)
 - Chore: Test-Release – kill -9 aus v0.4.79 aktiv
 
