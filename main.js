@@ -1,5 +1,5 @@
 // v0.3.6.
-const { compareVersions, cleanChannelName, parseXMLTV } = require('@streaming-hub/typed-core');
+const { compareVersions, cleanChannelName, parseXMLTV, parseM3UFull } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog } = require('electron');
 const fs = require('fs');
@@ -147,60 +147,20 @@ function broadcastTvSources() {
   mainWindow?.webContents.send('tv-sources-changed', sources);
 }
 
-function parseM3U(content) {
-  const channels = [];
-  const lines = content.split('\n');
-  let currentExtinf = null;
-  const epgUrls = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Check for x-tvg-url in #EXTM3U line or standalone
-    const tvgUrlMatch = trimmed.match(/x-tvg-url="([^"]+)"/i);
-    if (tvgUrlMatch && !epgUrls.includes(tvgUrlMatch[1])) {
-      epgUrls.push(tvgUrlMatch[1]);
-    }
-    // Check for #URLTV-SOURCE or similar EPG source tags
-    const sourceMatch = trimmed.match(/^(?:#URLTV-SOURCE|#EPG-URL)\s*:\s*(\S+)/i);
-    if (sourceMatch && !epgUrls.includes(sourceMatch[1])) {
-      epgUrls.push(sourceMatch[1]);
-    }
-
-    if (trimmed.startsWith('#EXTM3U')) continue;
-
-    if (trimmed.startsWith('#EXTINF:')) {
-      const match = trimmed.match(/#EXTINF:-?\d+\s+(.*?)(?:,(.*))?$/);
-      if (match) {
-        const attrs = match[1];
-        const displayName = match[2] ? match[2].trim() : '';
-        const extract = name => {
-          const re = new RegExp(`${name}="([^"]*)"`);
-          const m = attrs.match(re);
-          return m ? m[1] : null;
-        };
-        const tvgId = extract('tvg-id');
-        const tvgName = extract('tvg-name');
-        const tvgLogo = extract('tvg-logo');
-        const groupTitle = extract('group-title') || 'Unsortiert';
-
-        const cleanDisplay = cleanChannelName(displayName);
-        const cleanTvgName = tvgName ? cleanChannelName(tvgName) : '';
-        currentExtinf = {
-          id: tvgId || cleanDisplay || 'channel-' + Math.random().toString(36).slice(2, 8),
-          name: cleanTvgName || cleanDisplay || 'Unbekannter Sender',
-          logo: tvgLogo || null,
-          group: groupTitle,
-          tvgId: tvgId || '',
-        };
-      }
-    } else if (trimmed && !trimmed.startsWith('#') && currentExtinf) {
-      channels.push({ ...currentExtinf, url: trimmed });
-      currentExtinf = null;
-    }
-  }
-  return { channels, epgUrls };
+function parseM3U(content, sourceId) {
+  const result = parseM3UFull(content, sourceId || 'tv');
+  const channels = result.channels.map(ch => {
+    const cleanName = cleanChannelName(ch.name);
+    return {
+      id: ch.tvgId || cleanName || 'channel-' + Math.random().toString(36).slice(2, 8),
+      name: cleanName || 'Unbekannter Sender',
+      logo: ch.logo || null,
+      group: ch.group,
+      tvgId: ch.tvgId || '',
+      url: ch.url,
+    };
+  });
+  return { channels, epgUrls: result.epgUrls };
 }
 
 function loadHistory() {

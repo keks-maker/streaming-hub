@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.75 (2026-06-10)
+- Change: parseM3U in main.js durch typed-core parseM3UFull ersetzt (55→14 Zeilen)
+- Fix: ID-Erzeugung + Name-Cleaning bleiben kompatibel (nichts bricht)
+- Chore: typed-core Build aktualisiert
+
 ## 0.4.74 (2026-06-10)
 - Chore: Test-Release – Restart mit gtk-launch v0.4.73 aktiv
 
