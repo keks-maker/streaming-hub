@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.76 (2026-06-10)
+- Fix: Restart – process.exit statt app.exit (app.exit beendete alte Instanz nicht zuverlässig)
+
 ## 0.4.75 (2026-06-10)
 - Change: parseM3U in main.js durch typed-core parseM3UFull ersetzt (55→14 Zeilen)
 - Fix: ID-Erzeugung + Name-Cleaning bleiben kompatibel (nichts bricht)
