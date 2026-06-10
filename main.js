@@ -323,9 +323,9 @@ ipcMain.handle('apply-update', async (_e, version) => {
           setTimeout(() => {
             const { execSync } = require('child_process');
             execSync('gtk-launch streaming-hub 2>/dev/null');
-            // Kurze Pause damit neue Instanz starten kann, dann alten Prozess hart beenden
-            execSync('sleep 0.5');
-            process.exit(0);
+            // Warten bis neue Instanz läuft, dann alte mit SIGKILL töten
+            execSync('sleep 1');
+            execSync(`kill -9 ${process.pid} 2>/dev/null || true`);
           }, 500);
         }
       }
