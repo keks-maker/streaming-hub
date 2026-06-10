@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.80 (2026-06-10)
+- Chore: Test-Release – kill -9 aus v0.4.79 aktiv
+
 ## 0.4.79 (2026-06-10)
 - Chore: Test-Release – kill -9 aus v0.4.78 aktiv
 
