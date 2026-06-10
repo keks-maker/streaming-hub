@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.77 (2026-06-10)
+- Chore: Test-Release – process.exit aus v0.4.76 aktiv
+
 ## 0.4.76 (2026-06-10)
 - Fix: Restart – process.exit statt app.exit (app.exit beendete alte Instanz nicht zuverlässig)
 
