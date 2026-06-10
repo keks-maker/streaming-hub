@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.79 (2026-06-10)
+- Chore: Test-Release – kill -9 aus v0.4.78 aktiv
+
 ## 0.4.78 (2026-06-10)
 - Fix: Restart – kill -9 $PID statt process.exit (Electron blockierte alle exit-Varianten)
 - Change: gtk-launch → 1s sleep → SIGKILL auf eigenen Prozess
