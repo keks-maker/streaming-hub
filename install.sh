@@ -1,5 +1,5 @@
 #!/bin/bash
-# v0.3.6.
+# v0.3.7.
 #
 # Streaming Hub Installer
 # =======================
@@ -23,10 +23,19 @@ error() { echo -e "${RED}✗${NC} $*"; exit 1; }
 header(){ echo -e "${CYAN}==${NC} $* ${CYAN}==${NC}"; }
 
 # ------------------------------------------------------------------
-# Root-Check: nur im Home-Verzeichnis installieren
+# Sudo / Root-Erkennung
 # ------------------------------------------------------------------
-if [ "$(id -u)" = "0" ]; then
-  error "Bitte nicht als root ausführen. Installation erfolgt im Benutzerverzeichnis."
+SUDO_CMD=""
+if [ "$(id -u)" != "0" ]; then
+  if command -v sudo &>/dev/null; then
+    SUDO_CMD="sudo"
+  elif command -v doas &>/dev/null; then
+    SUDO_CMD="doas"
+  else
+    # Weder root noch sudo/doas – die Paketinstallation wird später fehlschlagen,
+    # aber wir lassen es erstmal laufen (der User kann abbrechen).
+    warn "Weder root noch sudo/doas gefunden – Paketinstallation wird vermutlich fehlschlagen."
+  fi
 fi
 
 header "Streaming Hub Installer"
@@ -50,25 +59,46 @@ UPDATE_CMD=""
 
 if command -v apt &>/dev/null; then
   PKG_MANAGER="apt"
-  UPDATE_CMD="apt update -y"
-  INSTALL_CMD="apt install -y"
+  UPDATE_CMD="$SUDO_CMD apt update -y"
+  INSTALL_CMD="$SUDO_CMD apt install -y"
 elif command -v dnf &>/dev/null; then
   PKG_MANAGER="dnf"
-  UPDATE_CMD="dnf check-update -y || true"
-  INSTALL_CMD="dnf install -y"
+  UPDATE_CMD="$SUDO_CMD dnf check-update -y || true"
+  INSTALL_CMD="$SUDO_CMD dnf install -y"
 elif command -v pacman &>/dev/null; then
   PKG_MANAGER="pacman"
-  UPDATE_CMD="pacman -Sy --noconfirm"
-  INSTALL_CMD="pacman -S --noconfirm"
+  UPDATE_CMD="$SUDO_CMD pacman -Sy --noconfirm"
+  INSTALL_CMD="$SUDO_CMD pacman -S --noconfirm"
 elif command -v zypper &>/dev/null; then
   PKG_MANAGER="zypper"
-  UPDATE_CMD="zypper refresh"
-  INSTALL_CMD="zypper install -y"
+  UPDATE_CMD="$SUDO_CMD zypper refresh"
+  INSTALL_CMD="$SUDO_CMD zypper install -y"
 else
   error "Kein unterstützter Paketmanager gefunden (apt, dnf, pacman, zypper)."
 fi
 
 info "Paketmanager: $PKG_MANAGER"
+
+# ------------------------------------------------------------------
+# curl installieren (für NodeSource-Setup)
+# ------------------------------------------------------------------
+if ! command -v curl &>/dev/null; then
+  info "Installiere curl …"
+  $UPDATE_CMD
+  $INSTALL_CMD curl
+fi
+
+# ------------------------------------------------------------------
+# ca-certificates installieren (für HTTPS-Curls auf Minimal-Systemen)
+# ------------------------------------------------------------------
+# Prüfe ob HTTPS-curl funktioniert – nur bei Bedarf nachinstallieren
+if ! curl -fsSL --connect-timeout 5 "https://github.com" >/dev/null 2>&1; then
+  info "Installiere ca-certificates für HTTPS …"
+  case $PKG_MANAGER in
+    apt|dnf) $INSTALL_CMD ca-certificates ;;
+    # pacman/zypper haben ca-certificates in der Basisinstallation
+  esac
+fi
 
 # ------------------------------------------------------------------
 # git installieren
@@ -94,12 +124,12 @@ fi
 install_nodejs() {
   case $PKG_MANAGER in
     apt)
-      curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-      apt install -y nodejs
+      curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO_CMD bash -
+      $SUDO_CMD apt install -y nodejs
       ;;
     dnf)
-      curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
-      dnf install -y nodejs
+      curl -fsSL https://rpm.nodesource.com/setup_22.x | $SUDO_CMD bash -
+      $SUDO_CMD dnf install -y nodejs
       ;;
     pacman)
       $INSTALL_CMD nodejs npm
@@ -186,6 +216,7 @@ if [ ! -f "$DIST_DIR/electron" ] && [ ! -f "$DIST_DIR/electron.exe" ] && [ ! -d 
   info "Lade Electron-Binary (Castlabs) …"
 
   # @electron/get ist durch npm install bereits vorhanden
+  echo "[install] Starte Download von Castlabs Electron …"
   ZIP_PATH=$(node -e "
     const { downloadArtifact } = require('@electron/get');
     downloadArtifact({
@@ -195,16 +226,20 @@ if [ ! -f "$DIST_DIR/electron" ] && [ ! -f "$DIST_DIR/electron.exe" ] && [ ! -d 
       platform: 'linux',
       arch: 'x64'
     }).then(p => console.log(p));
-  " 2>/dev/null) || true
+  ") || true
 
   if [ -n "$ZIP_PATH" ] && [ -f "$ZIP_PATH" ]; then
     info "Extrahiere Electron-Binary …"
     unzip -qo "$ZIP_PATH" -d "$DIST_DIR"
     printf "electron" > "$PATH_FILE"
     chmod +x "$DIST_DIR/electron" 2>/dev/null || true
-    info "Electron-Binary bereit"
+    info "Electron-Binary bereit ($ZIP_PATH)"
   else
-    error "Electron-Binary konnte nicht geladen werden."
+    error "Electron-Binary konnte nicht geladen werden.
+  Siehe Fehlerausgabe oben. Mögliche Ursachen:
+  - Keine Internetverbindung
+  - Castlabs-Mirror nicht erreichbar (https://github.com/castlabs/electron-releases)
+  - ca-certificates fehlen (wurden oben installiert, ggf. neue Session starten)"
   fi
 fi
 
