@@ -40,16 +40,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 ## Installation
 
 ```bash
-cd /pfad/zum/Streaming-Hub
-npm install
-```
-
-## Starten
-
-```bash
-./start.sh
-# oder
-npm start
+curl -fsSL http://192.168.4.105:3000/kekskarlo/Streaming-Hub/raw/branch/master/install.sh | bash
 ```
 
 ## Projektstruktur
