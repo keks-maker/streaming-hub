@@ -833,6 +833,8 @@
               // (liveMaxLatencyDurationCount: 30 snapbackt bei 2s-Segmenten bereits nach 60s.)
               subtitleTrackController: null,
             });
+            hlsInstance = hls;
+            hls.on(Hls.Events.DESTROYING, function() { if (hlsInstance === hls) hlsInstance = null; });
             hls.on(Hls.Events.LEVEL_LOADED, function(_event, data) {
               if (gen !== channelGen) return;
               updatePdtFromLevelDetails(data.details);
