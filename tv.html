@@ -135,6 +135,59 @@
     }
     .tv-spacer { flex:1; }
 
+    /* DVR scrub bar (timeshift) */
+    .tv-scrub-bar {
+      position: relative;
+      height: 18px; margin: 10px 8px 2px;
+      display: none;
+    }
+    .tv-scrub-bar.visible { display: block; }
+    .tv-scrub-track {
+      position: absolute; left: 0; right: 0; top: 8px; height: 6px;
+      background: rgba(255,255,255,0.15); border-radius: 3px;
+      cursor: pointer;
+    }
+    .tv-scrub-track:hover .tv-scrub-viewport { box-shadow: 0 0 0 1px rgba(255,255,255,0.2); }
+    .tv-scrub-viewport {
+      position: absolute; top: 0; height: 100%;
+      background: rgba(255,255,255,0.1); border-radius: 3px;
+    }
+    .tv-scrub-seekable {
+      position: absolute; top: 0; height: 100%;
+      background: rgba(167,139,250,0.35); border-radius: 3px;
+    }
+    .tv-scrub-played {
+      position: absolute; top: 0; height: 100%;
+      background: linear-gradient(to right, #7c3aed, #a78bfa);
+      border-radius: 3px;
+    }
+    .tv-scrub-drag {
+      position: absolute; top: -5px; width: 4px; height: 16px;
+      background: #fff; border-radius: 2px; transform: translateX(-50%);
+    }
+    .tv-scrub-marker {
+      position: absolute; top: 2px;
+      width: 12px; height: 12px; margin-left: -6px;
+      border-radius: 50%;
+      background: #f59e0b;
+      border: 2px solid #1e1e2a;
+      cursor: pointer;
+      z-index: 2;
+      transition: transform .15s;
+    }
+    .tv-scrub-marker:hover { transform: scale(1.5); }
+    .tv-scrub-marker .tv-scrub-tooltip {
+      visibility: hidden; opacity: 0;
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #1e1e2a; border: 1px solid rgba(255,255,255,0.15);
+      color: #f0f0f5; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+      white-space: nowrap; transition: opacity .15s; z-index: 5;
+      pointer-events: none;
+    }
+    .tv-scrub-marker:hover .tv-scrub-tooltip { visibility: visible; opacity: 1; }
+    .tv-live-badge { margin-left: 10px; display: none; }
+    .tv-live-badge.visible { display: inline-flex; }
+
     /* Error */
     .tv-error {
       position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
@@ -222,13 +275,28 @@
 
   <div class="tv-controls" id="tvControls">
     <div class="tv-epg-bar" id="tvEpgBar"></div>
+    <div class="tv-scrub-bar" id="tvScrubBar">
+      <div class="tv-scrub-track" id="tvScrubTrack">
+        <div class="tv-scrub-viewport" id="tvScrubViewport"></div>
+        <div class="tv-scrub-seekable" id="tvScrubSeekable"></div>
+        <div class="tv-scrub-played" id="tvScrubPlayed"></div>
+        <div class="tv-scrub-drag" id="tvScrubDrag"></div>
+      </div>
+      <div id="tvScrubMarkers"></div>
+    </div>
     <div class="tv-controls-top">
       <input class="tv-progress" id="tvProgress" type="range" min="0" max="100" value="0">
     </div>
     <div class="tv-controls-bottom">
+      <button class="tv-btn" id="tvRewindBtn" title="10s zurück (Pfeil links)" style="display:none">
+        <svg viewBox="0 0 24 24"><polyline points="11,19 2,12 11,5"/><polyline points="22,19 13,12 22,5"/></svg>
+      </button>
       <button class="tv-btn" id="tvPlayBtn" title="Play/Pause (Leertaste)">
         <svg viewBox="0 0 24 24" id="playIcon"><polygon points="6,4 20,12 6,20"/></svg>
         <svg viewBox="0 0 24 24" id="pauseIcon" style="display:none"><rect x="5" y="4" width="4" height="16"/><rect x="15" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="tv-btn" id="tvForwardBtn" title="10s vor (Pfeil rechts)" style="display:none">
+        <svg viewBox="0 0 24 24"><polyline points="13,19 22,12 13,5"/><polyline points="2,19 11,12 2,5"/></svg>
       </button>
       <span class="tv-time" id="tvTime">00:00 / 00:00</span>
       <div class="tv-spacer"></div>
@@ -244,6 +312,10 @@
         <button class="tv-btn" id="tvAudioBtn" title="Audiospur">🔊</button>
         <div class="tv-audio-dropdown" id="tvAudioDropdown"></div>
       </div>
+      <button class="tv-btn" id="tvLiveBtn" title="Zur Live-Kante (L)" style="display:none">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <span class="tv-live-badge" id="tvLiveBadge" style="display:none;color:#10b981;font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #10b981;border-radius:6px;">LIVE</span>
       <button class="tv-btn" id="tvFullscreenBtn" title="Vollbild (F)">
         <svg viewBox="0 0 24 24"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
       </button>
@@ -278,6 +350,18 @@
       const audioBtn = document.getElementById('tvAudioBtn');
       const audioDropdown = document.getElementById('tvAudioDropdown');
       const epgBar = document.getElementById('tvEpgBar');
+      // ——— DVR / Timeshift elements ———
+      const scrubBar = document.getElementById('tvScrubBar');
+      const scrubTrack = document.getElementById('tvScrubTrack');
+      const scrubViewport = document.getElementById('tvScrubViewport');
+      const scrubSeekable = document.getElementById('tvScrubSeekable');
+      const scrubPlayed = document.getElementById('tvScrubPlayed');
+      const scrubDrag = document.getElementById('tvScrubDrag');
+      const scrubMarkersEl = document.getElementById('tvScrubMarkers');
+      const liveBtn = document.getElementById('tvLiveBtn');
+      const liveBadge = document.getElementById('tvLiveBadge');
+      const rewindBtn = document.getElementById('tvRewindBtn');
+      const forwardBtn = document.getElementById('tvForwardBtn');
 
       let hideOverlayTimer = null;
       let isPlaying = false;
@@ -291,6 +375,24 @@
       let hlsLoaded = false;
       let channelGen = 0;
       let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null;
+
+      // ── DVR / Timeshift state ──
+      // Fengster: [windowStart, windowEnd] in Sekunden relative zur video-Zeitachse
+      // seekable: [seekableStart, seekableEnd] (Sekunden)
+      let dvrState = {
+        enabled: false,
+        windowStart: 0,
+        windowEnd: 0,
+        seekableStart: 0,
+        seekableEnd: 0,
+        pdtOffsetSec: null,   // wall-clock offset: windowStart (abs ms epoch) = Date.now()/1000 - seekableEnd + pdtAnchor
+        isLive: true,
+        markers: [],           // [{startMs, stopMs, title}]
+        dragging: false,
+      };
+      let epgEntries = [];    // raw EPG for current channel (from host)
+      let epgMarkersStale = true;
+      const DVR_MIN_SEEKABLE = 900; // seconds; scrub-UI enabler (Orchestrator decision)
 
       // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
       function loadHlsJs(cb) {
@@ -321,6 +423,18 @@
 
       // ── EPG-Polling: Host um aktuelle EPG-Daten bitten ──
       var epgPollTimer = null;
+      // parseEpgTime (XMLTV "20260908143000 +0200" → Date) — lokal, entspricht typed-core epg.ts
+      function parseEpgTime(timeStr) {
+        var m = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{2})(\d{2})/);
+        if (m) {
+          var utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+          var tzOffset = (+m[7]) * 60 + (+m[8]);
+          return new Date(utc - tzOffset * 60000);
+        }
+        var m2 = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+        if (!m2) return new Date(0);
+        return new Date(Date.UTC(+m2[1], +m2[2] - 1, +m2[3], +m2[4], +m2[5], +m2[6]));
+      }
       function startEpgPolling() {
         stopEpgPolling();
         epgPollTimer = setInterval(function() {
@@ -330,6 +444,230 @@
       function stopEpgPolling() {
         if (epgPollTimer) { clearInterval(epgPollTimer); epgPollTimer = null; }
       }
+
+      // ═════════ DVR / Timeshift ═════════
+      // Fensterbreite immer aus dem Stream lesen (Orchestrator-Decision 1+2).
+      // Aktivierung ab DVR_MIN_SEEKABLE seekable Sekunden; ohne DVR exakt heutiges Verhalten.
+
+      function resetDvrState() {
+        dvrState.enabled = false;
+        dvrState.windowStart = 0;
+        dvrState.windowEnd = 0;
+        dvrState.seekableStart = 0;
+        dvrState.seekableEnd = 0;
+        dvrState.pdtOffsetSec = null;
+        dvrState.isLive = true;
+        dvrState.markers = [];
+        dvrState.dragging = false;
+        epgEntries = [];
+        epgMarkersStale = true;
+        scrubBar.classList.remove('visible');
+        liveBtn.style.display = 'none';
+        liveBadge.style.display = 'none';
+        rewindBtn.style.display = 'none';
+        forwardBtn.style.display = 'none';
+        scrubMarkersEl.innerHTML = '';
+      }
+
+      function updateDvrFromVideoSeekable() {
+        var seekable = video.seekable;
+        if (!seekable || !seekable.length) return;
+        var s0 = seekable.start(0);
+        var s1 = seekable.end(seekable.length - 1);
+        var span = s1 - s0;
+        if (span >= DVR_MIN_SEEKABLE) {
+          if (!dvrState.enabled) {
+            dvrState.enabled = true;
+            scrubBar.classList.add('visible');
+            liveBtn.style.display = '';
+            rewindBtn.style.display = '';
+            forwardBtn.style.display = '';
+            updateLiveUi();
+          }
+          dvrState.seekableStart = s0;
+          dvrState.seekableEnd = s1;
+          dvrState.windowStart = s0;
+          dvrState.windowEnd = s1;
+          epgMarkersStale = true;
+          renderScrub();
+        } else if (dvrState.enabled && span < DVR_MIN_SEEKABLE) {
+          // stream lost DVR capability
+          resetDvrState();
+        }
+      }
+
+      function updateLiveUi() {
+        liveBtn.style.display = dvrState.enabled ? '' : 'none';
+        liveBadge.style.display = dvrState.enabled && dvrState.isLive ? '' : 'none';
+      }
+
+      // Wall-clock anchors: PROGRAM-DATE-TIME mapping, benutzt
+      // pdt = [ { mediaSec, wallMs } ] vom LevelDetails (hls.js) oder estimated aus host now
+      var pdtAnchor = null; // { mediaSec, wallSec }
+      function updatePdtFromLevelDetails(details) {
+        if (details && details.fragments && details.fragments.length) {
+          // first fragment with programDateTime
+          for (var i = 0; i < details.fragments.length; i++) {
+            var f = details.fragments[i];
+            if (f.programDateTime) {
+              pdtAnchor = {
+                mediaSec: f.start,
+                wallSec: new Date(f.programDateTime).getTime() / 1000,
+              };
+              break;
+            }
+          }
+        }
+      }
+
+      function mediaSecToWallSec(mediaSec) {
+        if (pdtAnchor == null) return null;
+        return pdtAnchor.wallSec + (mediaSec - pdtAnchor.mediaSec);
+      }
+
+      // Marker aus epgEntries berechnen, sobald Fenster + PDT bekannt
+      function recomputeDvrMarkers() {
+        if (!dvrState.enabled || pdtAnchor == null || !epgEntries.length) { dvrState.markers = []; renderScrubMarkers(); return; }
+        var winStartWall = mediaSecToWallSec(dvrState.windowStart) * 1000;
+        var winEndWall = mediaSecToWallSec(dvrState.windowEnd) * 1000;
+        if (!isFinite(winStartWall) || !isFinite(winEndWall)) { dvrState.markers = []; renderScrubMarkers(); return; }
+        var out = [];
+        for (var i = 0; i < epgEntries.length; i++) {
+          var e = epgEntries[i];
+          var sMs = parseEpgTime(e.start).getTime();
+          var eMs = parseEpgTime(e.stop).getTime();
+          if (!sMs || !eMs) continue;
+          if (sMs < winEndWall && eMs > winStartWall) {
+            out.push({ title: e.title, startMs: Math.max(sMs, winStartWall), stopMs: eMs, origStartMs: sMs });
+          }
+      }
+        dvrState.markers = out;
+        renderScrubMarkers();
+      }
+
+      function renderScrubMarkers() {
+        scrubMarkersEl.innerHTML = '';
+        if (!dvrState.enabled) return;
+        var span = dvrState.windowEnd - dvrState.windowStart;
+        if (span <= 0) return;
+        for (var i = 0; i < dvrState.markers.length; i++) {
+          var m = dvrState.markers[i];
+          var pct = ((m.startMs - mediaSecToWallSec(dvrState.windowStart) * 1000) / (mediaSecToWallSec(dvrState.windowEnd) * 1000 - mediaSecToWallSec(dvrState.windowStart) * 1000)) * 100;
+          if (!isFinite(pct)) continue;
+          pct = Math.max(0, Math.min(100, pct));
+          var el = document.createElement('div');
+          el.className = 'tv-scrub-marker';
+          el.style.left = pct + '%';
+          var tip = document.createElement('div');
+          tip.className = 'tv-scrub-tooltip';
+          var sd = new Date(m.origStartMs);
+          tip.textContent = m.title + ' · ' + ('0' + sd.getHours()).slice(-2) + ':' + ('0' + sd.getMinutes()).slice(-2);
+          el.appendChild(tip);
+          (function(mm) {
+            el.addEventListener('click', function(ev) {
+              ev.stopPropagation();
+              seekToWallMs(mm.origStartMs);
+            });
+          })(m);
+          scrubMarkersEl.appendChild(el);
+        }
+      }
+
+      function seekToWallMs(wallMs) {
+        if (!dvrState.enabled || pdtAnchor == null) return;
+        var winStartWallMs = mediaSecToWallSec(dvrState.windowStart) * 1000;
+        var winEndWallMs = mediaSecToWallSec(dvrState.windowEnd) * 1000;
+        var clamped = Math.max(winStartWallMs, Math.min(winEndWallMs, wallMs));
+        var mediaSec = pdtAnchor.mediaSec + (clamped / 1000 - pdtAnchor.wallSec);
+        trySeek(mediaSec);
+      }
+
+      function trySeek(mediaSec) {
+        if (!isFinite(mediaSec)) return;
+        mediaSec = Math.max(dvrState.seekableStart, Math.min(dvrState.seekableEnd - 2, mediaSec));
+        dvrState.isLive = mediaSec >= dvrState.seekableEnd - 30; // within 30s of edge = live
+        video.currentTime = mediaSec;
+        updateLiveUi();
+        renderScrub();
+      }
+
+      function goLive() {
+        if (!dvrState.enabled) return;
+        dvrState.isLive = true;
+        // hls.js: seek to live edge = seekable end
+        video.currentTime = dvrState.seekableEnd;
+        updateLiveUi();
+        renderScrub();
+      }
+
+      function renderScrub() {
+        if (!dvrState.enabled) return;
+        var span = dvrState.windowEnd - dvrState.windowStart;
+        if (span <= 0) return;
+        // viewport: full track represents the DVR window
+        scrubViewport.style.left = '0%';
+        scrubViewport.style.width = '100%';
+        // seekable region
+        var seekStartPct = ((dvrState.seekableStart - dvrState.windowStart) / span) * 100;
+        var seekEndPct = ((dvrState.seekableEnd - dvrState.windowStart) / span) * 100;
+        scrubSeekable.style.left = seekStartPct + '%';
+        scrubSeekable.style.width = (seekEndPct - seekStartPct) + '%';
+        // played / drag position
+        var pos = video.currentTime;
+        var posPct = ((pos - dvrState.windowStart) / span) * 100;
+        posPct = Math.max(0, Math.min(100, posPct));
+        scrubPlayed.style.left = '0%';
+        scrubPlayed.style.width = posPct + '%';
+        scrubDrag.style.left = posPct + '%';
+        // marker layout stale?
+        if (epgMarkersStale) { epgMarkersStale = false; recomputeDvrMarkers(); }
+      }
+
+      // Klick/ Drag auf Track
+      scrubTrack.addEventListener('click', function(ev) {
+        if (!dvrState.enabled || dvrState.dragging) return;
+        var rect = scrubTrack.getBoundingClientRect();
+        var pct = (ev.clientX - rect.left) / rect.width;
+        var mediaSec = dvrState.windowStart + pct * (dvrState.windowEnd - dvrState.windowStart);
+        trySeek(mediaSec);
+      });
+      scrubTrack.addEventListener('mousedown', function(ev) {
+        dvrState.dragging = true;
+        var moveHandler = function(ev2) {
+          var rect = scrubTrack.getBoundingClientRect();
+          var pct = (ev2.clientX - rect.left) / rect.width;
+          var mediaSec = dvrState.windowStart + pct * (dvrState.windowEnd - dvrState.windowStart);
+          scrubDrag.style.left = Math.max(0, Math.min(100, pct)) + '%';
+          trySeek(mediaSec);
+        };
+        var upHandler = function() {
+          dvrState.dragging = false;
+          document.removeEventListener('mousemove', moveHandler);
+          document.removeEventListener('mouseup', upHandler);
+        };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', upHandler);
+      });
+      liveBtn.addEventListener('click', function(ev) { ev.stopPropagation(); goLive(); });
+      rewindBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        if (dvrState.enabled) trySeek(video.currentTime - 10);
+      });
+      forwardBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        if (dvrState.enabled && !dvrState.isLive) trySeek(video.currentTime + 10);
+      });
+
+      // Zeit-Update: Scrub + Rest-Zeit live ajustieren
+      setInterval(function() {
+        if (dvrState.enabled && !dvrState.dragging) {
+          // isLive check: currentTime within 30s of seekable end
+          var wasLive = dvrState.isLive;
+          dvrState.isLive = video.currentTime >= dvrState.seekableEnd - 30;
+          if (wasLive !== dvrState.isLive) updateLiveUi();
+          renderScrub();
+        }
+      }, 250);
 
       // ── Channel list overlay ──
       function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -400,6 +738,9 @@
         audioTracks = [];
         audioDropdown.innerHTML = '';
         audioWrap.style.display = 'none';
+
+        // DVR reset on channel switch (Orchestrator-Decision 4: kein Positions-Persisting)
+        resetDvrState();
 
         const channelName = name || 'TV';
         const channelLogo = logo;
@@ -483,8 +824,23 @@
               enableWorker: false,
               maxBufferLength: 15,
               liveSyncDurationCount: 3,
-              liveMaxLatencyDurationCount: 6,
+              // Snapback steuern: beim Rückspulen darf hls.js NICHT zur Live-Kante zurückspringen,
+              // deshalb liveMaxLatencyDurationCount großzügig; aktive Seek-Backs behandeln wir via
+              // browser currentTime + hls.startLoad (-1) Recovery, hls.js "fängt" Stats nicht ein.
+              liveMaxLatencyDurationCount: 30,
               subtitleTrackController: null,
+            });
+            hls.on(Hls.Events.LEVEL_LOADED, function(_event, data) {
+              if (gen !== channelGen) return;
+              updatePdtFromLevelDetails(data.details);
+              // DVR sentinel: jedes LEVEL_LOADED-Event prüfen; window/seekable via video.seekable poll
+              updateDvrFromVideoSeekable();
+              recomputeDvrMarkers();
+            });
+            hls.on(Hls.Events.LEVEL_UPDATED, function(_event, data) {
+              if (gen !== channelGen) return;
+              updatePdtFromLevelDetails(data.details);
+              updateDvrFromVideoSeekable();
             });
             hls.loadSource(decodedUrl);
             hls.attachMedia(video);
@@ -569,6 +925,14 @@
           }
         } else if (e.data && e.data.type === 'epg-update') {
           updateEpgBar(e.data.epg, e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+          if (e.data.epgEntries && Array.isArray(e.data.epgEntries)) {
+            epgEntries = e.data.epgEntries;
+            epgMarkersStale = true;
+            recomputeDvrMarkers();
+          } else if (e.data.epgEntries === null) {
+            epgEntries = [];
+            recomputeDvrMarkers();
+          }
         }
       });
 
@@ -626,11 +990,31 @@
           timeEl.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration - video.currentTime);
         }
       });
+      // DVR: seekable aktualisieren + Zeitanzeige relativ zum Fenster (Timeshift)
+      video.addEventListener('timeupdate', function() {
+        if (dvrState.enabled) {
+          updateDvrFromVideoSeekable();
+          var behind = dvrState.seekableEnd - video.currentTime;
+          timeEl.textContent = formatTime(Math.max(0, behind)) + ' hinter Live' + (dvrState.isLive ? ' · LIVE' : ' · TIMESCHIFT');
+          if (epgMarkersStale) recomputeDvrMarkers();
+        }
+      });
+      video.addEventListener('seeking', function() {
+        if (dvrState.enabled) {
+          var target = video.currentTime;
+          if (target < dvrState.seekableEnd - 30) {
+            dvrState.isLive = false;
+          } else {
+            dvrState.isLive = true;
+          }
+          updateLiveUi();
+        }
+      });
       video.addEventListener('timeupdate', function() { lastStallTime = Date.now(); });
       video.addEventListener('pause', function() { if (stallTimer) { clearInterval(stallTimer); stallTimer = null; } });
 
       progress.addEventListener('input', function() {
-        if (video.duration && isFinite(video.duration)) {
+        if (!dvrState.enabled && video.duration && isFinite(video.duration)) {
           video.currentTime = (progress.value / 100) * video.duration;
         }
       });
@@ -671,8 +1055,10 @@
           case 'F': e.preventDefault(); fullscreenBtn.click(); break;
           case 'm':
           case 'M': e.preventDefault(); muteBtn.click(); break;
-          case 'ArrowLeft': e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 10); break;
-          case 'ArrowRight': e.preventDefault(); video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
+          case 'ArrowLeft': e.preventDefault(); if (dvrState.enabled) trySeek(video.currentTime - 10); else video.currentTime = Math.max(0, video.currentTime - 10); break;
+          case 'ArrowRight': e.preventDefault(); if (dvrState.enabled) { if (!dvrState.isLive) trySeek(video.currentTime + 10); } else video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
+          case 'l':
+          case 'L': if (dvrState.enabled) { e.preventDefault(); goLive(); } break;
           case '=':
           case '+': e.preventDefault(); video.volume = Math.min(1, video.volume + 0.1); break;
           case '-':
