@@ -66,6 +66,13 @@ export {
 } from './epg.js';
 
 export {
+  computeEpgMarkers,
+  absoluteTimeToWindowOffsetSec,
+  windowOffsetSecToAbsoluteTime,
+  type EpgMarker,
+} from './epgWindow.js';
+
+export {
   getMediathekForChannel,
   normalizeTvId,
   isFavorite,
