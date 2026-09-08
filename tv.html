@@ -377,22 +377,21 @@
       let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null;
 
       // ── DVR / Timeshift state ──
-      // Fengster: [windowStart, windowEnd] in Sekunden relative zur video-Zeitachse
-      // seekable: [seekableStart, seekableEnd] (Sekunden)
+      // DVR-Fenster: [windowStart, windowEnd] in MEDIA-Sekunden (aus der Sliding-
+      // Playlist via hls.js LevelDetails — NICHT aus video.seekable: seekable[0]
+      // beginnt bei 0 und wächst mit der Session, das ist NICHT das DVR-Fenster).
+      // pdtAnchor: { mediaSec, wallSec } = Anker MEDIA-Zeitachse ↔ Wall-Clock (UTC).
       let dvrState = {
         enabled: false,
-        windowStart: 0,
-        windowEnd: 0,
-        seekableStart: 0,
-        seekableEnd: 0,
-        pdtOffsetSec: null,   // wall-clock offset: windowStart (abs ms epoch) = Date.now()/1000 - seekableEnd + pdtAnchor
+        windowStart: 0,   // media seconds — ältester Fragmentstart im DVR-Fenster
+        windowEnd: 0,     // media seconds — Live-Kante (Edge)
         isLive: true,
-        markers: [],           // [{startMs, stopMs, title}]
+        markers: [],      // [{startMs, stopMs, title, origStartMs}]
         dragging: false,
       };
       let epgEntries = [];    // raw EPG for current channel (from host)
       let epgMarkersStale = true;
-      const DVR_MIN_SEEKABLE = 900; // seconds; scrub-UI enabler (Orchestrator decision)
+      const DVR_MIN_SEEKABLE = 900; // Sekunden Playlist-Fenster; Scrub-UI enabler (Orchestrator decision)
 
       // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
       function loadHlsJs(cb) {
@@ -446,16 +445,15 @@
       }
 
       // ═════════ DVR / Timeshift ═════════
-      // Fensterbreite immer aus dem Stream lesen (Orchestrator-Decision 1+2).
-      // Aktivierung ab DVR_MIN_SEEKABLE seekable Sekunden; ohne DVR exakt heutiges Verhalten.
+      // Fensterbreite immer aus dem Stream lesen (Orchestrator-Decision 1+2):
+      // hls.js LevelDetails (fragmentStart … edge) = echtes DVR-Fenster der
+      // Sliding-Playlist, senderabhängig (Das Erste 7200s, NDR 3600s, …).
+      // Aktivierung ab DVR_MIN_SEEKABLE; ohne DVR-Fenster exakt heutiges Verhalten.
 
       function resetDvrState() {
         dvrState.enabled = false;
         dvrState.windowStart = 0;
         dvrState.windowEnd = 0;
-        dvrState.seekableStart = 0;
-        dvrState.seekableEnd = 0;
-        dvrState.pdtOffsetSec = null;
         dvrState.isLive = true;
         dvrState.markers = [];
         dvrState.dragging = false;
@@ -469,12 +467,14 @@
         scrubMarkersEl.innerHTML = '';
       }
 
-      function updateDvrFromVideoSeekable() {
-        var seekable = video.seekable;
-        if (!seekable || !seekable.length) return;
-        var s0 = seekable.start(0);
-        var s1 = seekable.end(seekable.length - 1);
-        var span = s1 - s0;
+      // Aus LevelDetails (LEVEL_LOADED/LEVEL_UPDATED): DVR-Fenster lesen.
+      // details.fragmentStart = ältester Fragmentstart, details.edge = Live-Kante.
+      function updateDvrFromLevelDetails(details) {
+        if (!details || !details.live) return;
+        var fragStart = details.fragmentStart;
+        var edge = details.edge;
+        if (!isFinite(fragStart) || !isFinite(edge) || edge - fragStart <= 0) return;
+        var span = edge - fragStart;
         if (span >= DVR_MIN_SEEKABLE) {
           if (!dvrState.enabled) {
             dvrState.enabled = true;
@@ -484,14 +484,11 @@
             forwardBtn.style.display = '';
             updateLiveUi();
           }
-          dvrState.seekableStart = s0;
-          dvrState.seekableEnd = s1;
-          dvrState.windowStart = s0;
-          dvrState.windowEnd = s1;
+          dvrState.windowStart = fragStart;
+          dvrState.windowEnd = edge;
           epgMarkersStale = true;
-          renderScrub();
-        } else if (dvrState.enabled && span < DVR_MIN_SEEKABLE) {
-          // stream lost DVR capability
+        } else if (dvrState.enabled) {
+          // Stream hat DVR-Fenster verloren
           resetDvrState();
         }
       }
@@ -501,12 +498,11 @@
         liveBadge.style.display = dvrState.enabled && dvrState.isLive ? '' : 'none';
       }
 
-      // Wall-clock anchors: PROGRAM-DATE-TIME mapping, benutzt
-      // pdt = [ { mediaSec, wallMs } ] vom LevelDetails (hls.js) oder estimated aus host now
+      // Wall-clock anchor: PROGRAM-DATE-TIME-Mapping MEDIA-Zeitachse ↔ UTC.
+      // Wird bei jedem Playlist-Update auf den frühesten PDT-Fragment gesetzt.
       var pdtAnchor = null; // { mediaSec, wallSec }
       function updatePdtFromLevelDetails(details) {
         if (details && details.fragments && details.fragments.length) {
-          // first fragment with programDateTime
           for (var i = 0; i < details.fragments.length; i++) {
             var f = details.fragments[i];
             if (f.programDateTime) {
@@ -540,7 +536,7 @@
           if (sMs < winEndWall && eMs > winStartWall) {
             out.push({ title: e.title, startMs: Math.max(sMs, winStartWall), stopMs: eMs, origStartMs: sMs });
           }
-      }
+        }
         dvrState.markers = out;
         renderScrubMarkers();
       }
@@ -584,18 +580,25 @@
 
       function trySeek(mediaSec) {
         if (!isFinite(mediaSec)) return;
-        mediaSec = Math.max(dvrState.seekableStart, Math.min(dvrState.seekableEnd - 2, mediaSec));
-        dvrState.isLive = mediaSec >= dvrState.seekableEnd - 30; // within 30s of edge = live
+        var edge = hlsInstance ? hlsInstance.liveSyncPosition : dvrState.windowEnd;
+        if (!isFinite(edge)) edge = dvrState.windowEnd;
+        // An der Live-Kante nur bis zum letzten intakten Fragment (Target Duration Puffer)
+        mediaSec = Math.max(dvrState.windowStart, Math.min(edge - 4, mediaSec));
+        dvrState.isLive = mediaSec >= edge - 30; // within 30s of edge = live
         video.currentTime = mediaSec;
         updateLiveUi();
         renderScrub();
       }
 
       function goLive() {
-        if (!dvrState.enabled) return;
+        if (!dvrState.enabled || !hlsInstance) return;
         dvrState.isLive = true;
-        // hls.js: seek to live edge = seekable end
-        video.currentTime = dvrState.seekableEnd;
+        // Sauber an die Live-Kante: hls.js berechnet liveSyncPosition (Edge minus
+        // Ziel-Latenz) und setzt currentTime selbst, wenn currentTime dort liegt.
+        var target = hlsInstance.liveSyncPosition;
+        if (!isFinite(target)) target = dvrState.windowEnd - 4;
+        video.currentTime = target;
+        if (video.paused) video.play();
         updateLiveUi();
         renderScrub();
       }
@@ -604,22 +607,17 @@
         if (!dvrState.enabled) return;
         var span = dvrState.windowEnd - dvrState.windowStart;
         if (span <= 0) return;
-        // viewport: full track represents the DVR window
+        // Track = DVR-Fenster [windowStart, windowEnd] (Media-Sekunden)
         scrubViewport.style.left = '0%';
         scrubViewport.style.width = '100%';
-        // seekable region
-        var seekStartPct = ((dvrState.seekableStart - dvrState.windowStart) / span) * 100;
-        var seekEndPct = ((dvrState.seekableEnd - dvrState.windowStart) / span) * 100;
-        scrubSeekable.style.left = seekStartPct + '%';
-        scrubSeekable.style.width = (seekEndPct - seekStartPct) + '%';
-        // played / drag position
+        // Zeiger = aktuelle Wiedergabeposition
         var pos = video.currentTime;
         var posPct = ((pos - dvrState.windowStart) / span) * 100;
         posPct = Math.max(0, Math.min(100, posPct));
         scrubPlayed.style.left = '0%';
         scrubPlayed.style.width = posPct + '%';
         scrubDrag.style.left = posPct + '%';
-        // marker layout stale?
+        // Marker layout stale?
         if (epgMarkersStale) { epgMarkersStale = false; recomputeDvrMarkers(); }
       }
 
@@ -661,9 +659,11 @@
       // Zeit-Update: Scrub + Rest-Zeit live ajustieren
       setInterval(function() {
         if (dvrState.enabled && !dvrState.dragging) {
-          // isLive check: currentTime within 30s of seekable end
+          // DVR-Fenster zwischen den hls.js-Playlist-Events auffrischen
+          if (hlsInstance && hlsInstance.latestLevelDetails) updateDvrFromLevelDetails(hlsInstance.latestLevelDetails);
+          // isLive check: currentTime within 30s of live edge
           var wasLive = dvrState.isLive;
-          dvrState.isLive = video.currentTime >= dvrState.seekableEnd - 30;
+          dvrState.isLive = video.currentTime >= dvrState.windowEnd - 30;
           if (wasLive !== dvrState.isLive) updateLiveUi();
           renderScrub();
         }
@@ -810,6 +810,7 @@
 
         try {
           var initHls = function() {
+            pdtAnchor = null; // PDT-Anker ist kanalspezifisch
             if (typeof Hls === 'undefined' || !Hls.isSupported()) {
               video.src = decodedUrl;
               video.addEventListener('loadedmetadata', function() {
@@ -835,14 +836,14 @@
             hls.on(Hls.Events.LEVEL_LOADED, function(_event, data) {
               if (gen !== channelGen) return;
               updatePdtFromLevelDetails(data.details);
-              // DVR sentinel: jedes LEVEL_LOADED-Event prüfen; window/seekable via video.seekable poll
-              updateDvrFromVideoSeekable();
+              // DVR sentinel: DVR-Fenster aus der Sliding-Playlist lesen
+              updateDvrFromLevelDetails(data.details);
               recomputeDvrMarkers();
             });
             hls.on(Hls.Events.LEVEL_UPDATED, function(_event, data) {
               if (gen !== channelGen) return;
               updatePdtFromLevelDetails(data.details);
-              updateDvrFromVideoSeekable();
+              updateDvrFromLevelDetails(data.details);
             });
             hls.loadSource(decodedUrl);
             hls.attachMedia(video);
@@ -992,23 +993,21 @@
           timeEl.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration - video.currentTime);
         }
       });
-      // DVR: seekable aktualisieren + Zeitanzeige relativ zum Fenster (Timeshift)
+      // DVR: DVR-Fenster auffrischen + Zeitanzeige relativ zur Live-Kante (Timeshift)
       video.addEventListener('timeupdate', function() {
         if (dvrState.enabled) {
-          updateDvrFromVideoSeekable();
-          var behind = dvrState.seekableEnd - video.currentTime;
-          timeEl.textContent = formatTime(Math.max(0, behind)) + ' hinter Live' + (dvrState.isLive ? ' · LIVE' : ' · TIMESCHIFT');
+          var wasLive = dvrState.isLive;
+          dvrState.isLive = video.currentTime >= dvrState.windowEnd - 30;
+          if (wasLive !== dvrState.isLive) updateLiveUi();
+          var behind = Math.max(0, dvrState.windowEnd - video.currentTime);
+          timeEl.textContent = formatTime(behind) + ' hinter Live' + (dvrState.isLive ? ' · LIVE' : ' · TIMESCHIFT');
           if (epgMarkersStale) recomputeDvrMarkers();
         }
       });
       video.addEventListener('seeking', function() {
         if (dvrState.enabled) {
           var target = video.currentTime;
-          if (target < dvrState.seekableEnd - 30) {
-            dvrState.isLive = false;
-          } else {
-            dvrState.isLive = true;
-          }
+          dvrState.isLive = target >= dvrState.windowEnd - 30;
           updateLiveUi();
         }
       });
