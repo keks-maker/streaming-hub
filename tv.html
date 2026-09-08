@@ -824,10 +824,12 @@
               enableWorker: false,
               maxBufferLength: 15,
               liveSyncDurationCount: 3,
-              // Snapback steuern: beim Rückspulen darf hls.js NICHT zur Live-Kante zurückspringen,
-              // deshalb liveMaxLatencyDurationCount großzügig; aktive Seek-Backs behandeln wir via
-              // browser currentTime + hls.startLoad (-1) Recovery, hls.js "fängt" Stats nicht ein.
-              liveMaxLatencyDurationCount: 30,
+              // Snapback: liveMaxLatencyDurationCount bewusst NICHT gesetzt.
+              // hls.js-Default ist Infinity => der stream-controller sucht nie selbst
+              // zur Live-Kante zurück ("Playback: ... is located too far from the
+              // end of live sliding playlist"), egal wie weit hinten wir stehen.
+              // Rückkehr zur Live-Kante nur explizit via goLive() (Orchestrator-Decision 3).
+              // (liveMaxLatencyDurationCount: 30 snapbackt bei 2s-Segmenten bereits nach 60s.)
               subtitleTrackController: null,
             });
             hls.on(Hls.Events.LEVEL_LOADED, function(_event, data) {
