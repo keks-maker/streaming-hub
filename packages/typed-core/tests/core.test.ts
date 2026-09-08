@@ -153,8 +153,8 @@ it('formatTimestamp', () => {
 
 it('parseEpgTime – with timezone', () => {
   const d = parseEpgTime('20260609143000 +0200');
-  expect(d.getHours()).toBe(14);
-  expect(d.getMinutes()).toBe(30);
+  expect(d.getUTCHours()).toBe(12);
+  expect(d.getUTCMinutes()).toBe(30);
 });
 
 it('parseEpgTime – without timezone (UTC)', () => {
@@ -168,7 +168,9 @@ it('parseEpgTime – invalid', () => {
 });
 
 it('formatEpgTime', () => {
-  expect(formatEpgTime('20260609143000 +0200')).toBe('14:30');
+  expect(formatEpgTime('20260609143000 +0200')).toBe(
+    String(new Date(Date.parse('2026-06-09T12:30:00Z')).getHours()).padStart(2, '0') + ':30',
+  );
   expect(formatEpgTime('')).toBe('');
 });
 
