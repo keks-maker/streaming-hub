@@ -1495,6 +1495,16 @@ function sendEpgUpdate() {
     epgStart: epgStart,
     epgEnd: epgEnd,
     epgNext: epgNext,
+    // Raw EPG für DVR-Marker (Sendungen rund um das DVR-Fenster streamen zu)
+    epgEntries: epgList
+      ? epgList
+          .filter(e => {
+            const s = parseEpgTime(e.start).getTime();
+            const t = parseEpgTime(e.stop).getTime();
+            return t > now.getTime() - 3 * 3600 * 1000 && s < now.getTime() + 2 * 3600 * 1000;
+          })
+          .map(e => ({ title: decodeEntities(e.title), start: e.start, stop: e.stop }))
+      : [],
   };
   try {
     webview.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
