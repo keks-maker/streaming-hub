@@ -24,6 +24,27 @@ export function isFavorite(ch: TvChannel, sources: TvSource[]): boolean {
   return !!(source?.favorites?.includes(ch.id));
 }
 
+// ─── Zapping-Reihenfolge (W3) ──────────────────────────────────
+//
+// ArrowUp/Down zappt konsistent über ALLE Sender des aktiven Quellservices
+// (Favoriten sind kein eigenes Zapping-Universum mehr). Die Reihenfolge ist
+// immer die Sidebar-/sortOrder-Reihenfolge:
+//   erst Favoriten (in Listenreihenfolge), dann Rest (in Listenreihenfolge).
+// Der aktive Sender ist damit immer Teil der Reihenfolge – Zapping startet
+// dort, wo man gerade ist, statt still zu versagen.
+export function buildZapOrder(channels: TvChannel[], sources: TvSource[]): string[] {
+  const favIds = new Set<string>();
+  for (const ch of channels) {
+    if (isFavorite(ch, sources)) favIds.add(ch.id);
+  }
+  const favorites: string[] = [];
+  const regular: string[] = [];
+  for (const ch of channels) {
+    (favIds.has(ch.id) ? favorites : regular).push(ch.id);
+  }
+  return [...favorites, ...regular];
+}
+
 export function filterChannels(
   channels: TvChannel[],
   sourceIds: string[],
@@ -75,9 +96,16 @@ export function buildChannelList(
   sources: TvSource[],
 ): { channels: ChannelListItem[]; currentIndex: number } {
   const sourceId = currentChannel.sourceId;
-  const sorted = allChannels
-    .filter(c => c.sourceId === sourceId && isFavorite(c, sources))
-    .map(c => ({ id: c.id, name: c.name, logo: c.logo ?? '' }));
+  // W3: On-Screen-Senderliste folgt derselben Reihenfolge wie das Zapping –
+  // alle Sender des Quellservices, Favoriten zuerst (Sidebar-Reihenfolge).
+  const sourceChannels = allChannels.filter(c => c.sourceId === sourceId);
+  const order = buildZapOrder(sourceChannels, sources);
+  const byId = new Map(sourceChannels.map(c => [c.id, c]));
+  const sorted: ChannelListItem[] = [];
+  for (const id of order) {
+    const c = byId.get(id);
+    if (c) sorted.push({ id: c.id, name: c.name, logo: c.logo ?? '' });
+  }
   return {
     channels: sorted,
     currentIndex: sorted.findIndex(c => c.id === currentChannel.id),
@@ -95,8 +123,10 @@ export function getNextChannelId(
   const sourceId = current.sourceId;
   if (!sourceId) return null;
   const sourceChannels = channels.filter(ch => ch.sourceId === sourceId);
-  const favOrder = sourceChannels.filter(ch => isFavorite(ch, sources)).map(ch => ch.id);
-  const order = favOrder.length ? favOrder : sourceChannels.map(ch => ch.id);
+  // W3: immer über ALLE Sender des Quellservices zapfen (Favoriten zuerst,
+  // Reihenfolge wie Sidebar) – nie still versagen, wenn der aktive Sender
+  // kein Favorit ist.
+  const order = buildZapOrder(sourceChannels, sources);
   const idx = order.indexOf(currentId);
   if (idx === -1) return null;
   return order[(idx + dir + order.length) % order.length] ?? null;

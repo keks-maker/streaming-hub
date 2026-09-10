@@ -375,6 +375,11 @@
       let hlsLoaded = false;
       let channelGen = 0;
       let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null;
+      // ── W2: Fehlerdialog bei nie startendem Stream ──
+      let loadWatchdogTimer = null;   // bewaffnet sich sofort beim Kanalstart (nicht erst nach 'playing')
+      let gotPlaybackSignal = false;  // irgendein Lebenszeichen (manifest/canplay/playing)
+      let hlsRecoverCount = 0;        // begrenzte hls.js-Recovery statt endlosem startLoad()
+      const STREAM_LOAD_TIMEOUT_MS = 25000; // QA-Empfehlung 20–30s
 
       // ── DVR / Timeshift state ──
       // DVR-Fenster: [windowStart, windowEnd] in MEDIA-Sekunden (aus der Sliding-
@@ -735,9 +740,14 @@
         video.muted = savedMuted;
         loadingEl.style.display = 'block';
         errorDiv.style.display = 'none';
+        errorDiv.style.whiteSpace = '';
         audioTracks = [];
         audioDropdown.innerHTML = '';
         audioWrap.style.display = 'none';
+
+        // W2: Load-Watchdog sofort scharf schalten (vorher: erst nach 'playing',
+        // wodurch tote Streams endlos im Ladezustand hingen)
+        armLoadWatchdog();
 
         // DVR reset on channel switch (Orchestrator-Decision 4: kein Positions-Persisting)
         resetDvrState();
@@ -764,6 +774,7 @@
         }
 
         if (!url) {
+          disarmLoadWatchdog(); // W2: sofortige Meldung genügt, kein Watchdog nötig
           showError('Keine Stream-URL');
           loadingEl.style.display = 'none';
           return;
@@ -779,6 +790,7 @@
 
         prevCanplay = function() {
           loadingEl.style.display = 'none';
+          signalPlayback(); // W2: Lebenszeichen entwaffnet den Load-Watchdog
           showOverlay();
         };
         prevWaiting = function() {
@@ -787,6 +799,7 @@
         };
         prevPlaying = function() {
           loadingEl.style.display = 'none';
+          signalPlayback(); // W2
           if (stallTimer) clearInterval(stallTimer);
           lastStallTime = Date.now();
           stallTimer = setInterval(function() {
@@ -800,7 +813,10 @@
         };
         prevError = function() {
           loadingEl.style.display = 'none';
-          showError('Stream-Wiedergabe fehlgeschlagen');
+          disarmLoadWatchdog();
+          // W2: fatale Native-Player-Fehler gehören zum persistenten Dialog
+          // (statt der 6s-Meldung, die den User allein lässt)
+          showFatalError('Stream-Wiedergabe fehlgeschlagen');
         };
 
         video.addEventListener('canplay', prevCanplay);
@@ -877,6 +893,9 @@
                 video.play().catch(function() {});
               });
             });
+            // W2: Kein Reset des Recovery-Zählers bei MANIFEST_LOADED –
+            // signalPlayback() (canplay/playing) ist der einzige legitime Reset,
+            // sonst würden sich Manifest-OK/Segmente-tot-Zyklen endlos retryen.
             hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, function() {
               if (hlsInstance) {
                 var t = hlsInstance.audioTracks || hlsInstance.allAudioTracks || [];
@@ -884,7 +903,18 @@
               }
             });
             hls.on(Hls.Events.ERROR, function(_event, data) {
+              if (gen !== channelGen) return;
               if (data.fatal) {
+                // W2: fatale hls.js-Fehler zählen strike-weise. Nach 4 Strikes ohne
+                // erfolgreiches Lebenszeichen (canplay/playing setzt zurück) wird
+                // nicht mehr endlos gestartet, sondern der persistente Dialog gezeigt.
+                hlsRecoverCount++;
+                if (hlsRecoverCount > 3) {
+                  disarmLoadWatchdog();
+                  loadingEl.style.display = 'none';
+                  showFatalError('Stream nicht erreichbar (' + (data.details || data.type) + ')');
+                  return;
+                }
                 switch (data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR:
                     hls.startLoad();
@@ -893,7 +923,9 @@
                     hls.recoverMediaError();
                     break;
                   default:
-                    video.src = decodedUrl;
+                    disarmLoadWatchdog();
+                    loadingEl.style.display = 'none';
+                    showFatalError('Stream-Fehler (' + (data.details || data.type) + ')');
                     break;
                 }
               }
@@ -1070,10 +1102,57 @@
       });
 
       // ── Error ──
+      // W2: Persistenter Fehlerdialog für tote Streams – bleibt sichtbar bis zur
+      // nächsten Kanalwahl (statt nach 6s zu verschwinden), nennt den Sender und
+      // weist auf den Senderwechsel hin (Pfeiltasten / Senderliste).
+      function showFatalError(msg) {
+        errorDiv.innerHTML =
+          '<div style="font-size:24px;font-weight:600;margin-bottom:8px">' + msg + '</div>' +
+          '<div style="font-size:15px;opacity:.85">Sender: ' + (channelNameEl.textContent || 'TV') +
+          ' · Pfeiltasten ↑/↓ oder Senderliste (T) zum Wechseln</div>';
+        errorDiv.style.whiteSpace = 'normal';
+        errorDiv.style.display = 'block';
+        clearTimeout(hideOverlayTimer);
+        topOverlay.classList.add('visible');
+        controls.classList.add('visible');
+      }
+
       function showError(msg) {
         errorDiv.textContent = msg;
+        errorDiv.style.whiteSpace = '';
         errorDiv.style.display = 'block';
         setTimeout(function() { errorDiv.style.display = 'none'; }, 6000);
+      }
+
+      // ── W2: Load-Watchdog ──
+      // Bewaffnet sich SOFORT beim Kanalstart. Meldet nach STREAM_LOAD_TIMEOUT_MS
+      // einen Fehler, solange kein Lebenszeichen (Canplay/Playing) kam.
+      function armLoadWatchdog() {
+        disarmLoadWatchdog();
+        gotPlaybackSignal = false;
+        hlsRecoverCount = 0;
+        loadWatchdogTimer = setTimeout(function() {
+          loadWatchdogTimer = null;
+          if (gotPlaybackSignal) return;
+          // W2: hls.js stoppen, damit keine startLoad()-Retruns mehr laufen
+          if (hlsInstance) { try { hlsInstance.destroy(); } catch (e) {} hlsInstance = null; }
+          loadingEl.style.display = 'none';
+          showFatalError('Sender nicht erreichbar – Stream startet nicht');
+        }, STREAM_LOAD_TIMEOUT_MS);
+      }
+
+      function disarmLoadWatchdog() {
+        if (loadWatchdogTimer) { clearTimeout(loadWatchdogTimer); loadWatchdogTimer = null; }
+      }
+
+      function signalPlayback() {
+        if (!gotPlaybackSignal) {
+          gotPlaybackSignal = true;
+          disarmLoadWatchdog();
+        }
+        // W2: jedes echte Lebenszeichen setzt die Recovery-Fehlerbilanz zurück –
+        // erfolgreich wiederhergestellte Streamaussetzer zählen nicht weiter.
+        hlsRecoverCount = 0;
       }
 
       // ── Audio track handling ──

@@ -11,6 +11,7 @@ const {
   getMediathekForChannel,
   isFavorite,
   buildChannelList,
+  getNextChannelId,
   filterChannels,
   groupChannels,
   separateFavorites,
@@ -1207,15 +1208,12 @@ async function selectTvChannel(ch, options = {}) {
 }
 
 function switchTvChannel(dir) {
-  if (!tvActiveChannelId || !tvChannels.length) return;
-  const sourceId = tvChannels.find(c => c.id === tvActiveChannelId)?.sourceId;
-  if (!sourceId) return;
-  const sourceChannels = tvChannels.filter(ch => ch.sourceId === sourceId);
-  const favOrder = sourceChannels.filter(ch => isFavorite(ch, tvSources)).map(ch => ch.id);
-  const order = favOrder.length ? favOrder : sourceChannels.map(ch => ch.id);
-  const idx = order.indexOf(tvActiveChannelId);
-  if (idx === -1) return;
-  const nextId = order[(idx + dir + order.length) % order.length];
+  if (!tvActiveChannelId) return;
+  // W3: kanonische Zapping-Reihenfolge via typed-core — zappt über ALLE
+  // Sender des aktiven Quellservices (Favoriten zuerst, Sidebar-Reihenfolge).
+  // Vorher: stiller Abbruch (return), wenn der aktive Sender kein Favorit war.
+  const nextId = getNextChannelId(tvActiveChannelId, tvChannels, tvSources, dir);
+  if (!nextId) return;
   const nextCh = tvChannels.find(c => c.id === nextId);
   if (nextCh) selectTvChannel(nextCh);
 }
