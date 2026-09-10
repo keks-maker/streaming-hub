@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (feature/tv-error-zapping)
+- Fix (W2): Fehlerdialog bei nie startendem Stream – Load-Watchdog bewaffnet sich sofort beim Kanalstart (vorher erst nach `playing`), fatale hls.js-NETWORK_ERRORS werden nicht mehr endlos per `startLoad()` retryt (max. 4 Strikes, Reset nur bei echtem Lebenszeichen); nach 25s bzw. bei Strikes erscheint das persistente Fehler-Overlay mit Sendername + „Pfeiltasten ↑/↓ oder Senderliste (T) zum Wechseln" statt endlosem Ladezustand
+- Fix (W3): Zapping (Pfeiltasten ↑/↓) bricht nicht mehr still ab, wenn der aktive Sender kein Favorit ist – kanonische Zapping-Reihenfolge via typed-core `buildZapOrder`/`getNextChannelId`: alle Sender des aktiven Quellservices, Favoriten zuerst (Sidebar-Reihenfolge); On-Screen-Senderliste (`buildChannelList`) folgt derselben Reihenfolge
+- Test: 5 neue/angepasste Unit-Tests in typed-core (buildZapOrder, getNextChannelId-W3, buildChannelList-W3), 54/54 grün; Bundle-Smoke-Tests (renderer lädt, Key-Pipeline), W3-Vollverdrahtungstest (Zap-Sequenz ab Nicht-Favorit per Sidebar-Click + Keydown) und W2-CDP-QA (Szenarien toter Host / conn-refused / echter Stream via Fixture-HLS-Server) unter scripts/
+
 ## 0.4.82 (2026-06-10)
 - Chore: Test-Release – Original-Restart aus v0.4.81 aktiv
 

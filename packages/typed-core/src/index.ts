@@ -76,6 +76,7 @@ export {
   getMediathekForChannel,
   normalizeTvId,
   isFavorite,
+  buildZapOrder,
   filterChannels,
   groupChannels,
   separateFavorites,
