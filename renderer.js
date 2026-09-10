@@ -17,6 +17,7 @@ const {
   separateFavorites,
   applyChannelOverrides,
   applySortOrder,
+  selectEpgWindowEntries,
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 
@@ -1150,6 +1151,7 @@ async function selectTvChannel(ch, options = {}) {
         epgStart: epgStart,
         epgEnd: epgEnd,
         epgNext: epgNext,
+        dvr: dvrBarMode(),
       };
       if (!options.suppressChannelList) {
         const channelList = buildChannelList(ch, tvChannels, tvSources);
@@ -1173,6 +1175,9 @@ async function selectTvChannel(ch, options = {}) {
         msg.channelIndex = channelList.currentIndex;
       }
       tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ",'*')");
+      // U2: EPG-Rohdaten sofort hinterher schieben, damit die DVR-Marker nicht
+      // auf den ersten 30s-Poll warten müssen.
+      pushEpgToTvView();
     } catch (e) {
       logger.warn('postMessage to tv.html failed:', e);
     }
@@ -1493,21 +1498,83 @@ function sendEpgUpdate() {
     epgStart: epgStart,
     epgEnd: epgEnd,
     epgNext: epgNext,
-    // Raw EPG für DVR-Marker (Sendungen rund um das DVR-Fenster streamen zu)
-    epgEntries: epgList
-      ? epgList
-          .filter(e => {
-            const s = parseEpgTime(e.start).getTime();
-            const t = parseEpgTime(e.stop).getTime();
-            return t > now.getTime() - 3 * 3600 * 1000 && s < now.getTime() + 2 * 3600 * 1000;
-          })
-          .map(e => ({ title: decodeEntities(e.title), start: e.start, stop: e.stop }))
-      : [],
+    dvr: dvrBarMode,
+    // Raw EPG für DVR-Marker (Sendungen rund um das DVR-Fenster streamen zu) —
+    // U2: Selection via typed-core (selectEpgWindowEntries, unit-getestet)
+    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(
+      e => ({ title: decodeEntities(e.title), start: e.start, stop: e.stop }),
+    ),
   };
   try {
     webview.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
   } catch (err) {
     logger.warn('sendEpgUpdate failed:', err);
+  }
+}
+
+// U1: DVR-Scrub-Bar-Modus ('auto' = Player entscheidet am DVR-Fenster,
+// 'on' = Host zwingt die DVR-Bar an, 'off' = Legacy-Balken wie v0.4.82).
+// Normalisiert auf erlaubte Werte — defensiv gegen kaputte Builds.
+function dvrBarMode() {
+  switch (window.__streamingHubDvrBarMode) {
+    case 'on':
+    case 'off':
+      return window.__streamingHubDvrBarMode;
+    default:
+      return 'auto';
+  }
+}
+
+// U2: EPG-Rohdaten aktiv an tv.html pushen — beim Kanalwechsel (statt nur auf
+// den 30s-Poll des Players zu warten). Der Player rendert die DVR-Marker,
+// sobald EPG + DVR-Fenster vorliegen; nicht an weitere Events gekoppelt.
+function pushEpgToTvView() {
+  if (!tvActiveChannelId) return;
+  const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+  if (!ch) return;
+  const normId = id =>
+    id
+      .replace(/@[^.@]*/g, '')
+      .toLowerCase()
+      .trim();
+  const chNorm = normId(ch.tvgId);
+  const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
+  const now = new Date();
+  let epgTitle = '',
+    epgStart = '',
+    epgEnd = '',
+    epgNext = '';
+  const currentIdx = epgList
+    ? epgList.findIndex(e => {
+        const s = parseEpgTime(e.start);
+        const t = parseEpgTime(e.stop);
+        return s <= now && t >= now;
+      })
+    : -1;
+  if (currentIdx !== -1) {
+    const cur = epgList[currentIdx];
+    epgTitle = decodeEntities(cur.title);
+    epgStart = formatEpgTime(cur.start);
+    epgEnd = formatEpgTime(cur.stop);
+    if (currentIdx + 1 < epgList.length) {
+      epgNext = decodeEntities(epgList[currentIdx + 1].title);
+    }
+  }
+  const data = {
+    type: 'epg-update',
+    epg: epgTitle,
+    epgStart: epgStart,
+    epgEnd: epgEnd,
+    epgNext: epgNext,
+    dvr: dvrBarMode(),
+    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(
+      e => ({ title: decodeEntities(e.title), start: e.start, stop: e.stop }),
+    ),
+  };
+  try {
+    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
+  } catch (err) {
+    logger.warn('pushEpgToTvView failed:', err);
   }
 }
 
@@ -1657,6 +1724,9 @@ tvView.addEventListener('did-finish-load', () => {
             ",'*')",
         )
         .catch(() => {});
+      // U2: Auch beim ersten TV-Seiten-Load EPG sofort pushen (die URL-Params
+      // tragen nur Titel/Zeiten, keine Roh-EPG-Einträge für die DVR-Marker).
+      pushEpgToTvView();
     }
   }
 });

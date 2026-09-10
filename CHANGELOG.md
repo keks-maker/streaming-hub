@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (feature/tv-scrubbar-polish)
+- Fix (U1): DVR-Modus zeigt genau EINEN Fortschrittsbalken — die DVR-Scrub-Bar (Marker, LIVE-Button, ±10s) ist die einzige Bar; der Legacy-Player-Progress-Balken wird im DVR-Modus ausgeblendet (html.tv-dvr-mode → .tv-progress display:none). Nicht-DVR-Sender behalten exakt das alte Verhalten; Host kann pro Sender via `dvr: 'on'|'off'` im switch-channel/epg-update-Signal erzwingen.
+- Fix (U2): EPG-Sendungs-Marker erscheinen sofort nach dem Kanalwechsel statt nach Minuten — Host pusht Roh-EPG aktiv bei Kanalwechsel und beim ersten TV-Seiten-Load (pushEpgToTvView) statt nur auf den 30s-Poll zu warten; EPG-Fenster-Selection in typed-core `selectEpgWindowEntries` ausgelagert (unit-getestet). Gemessen (E2E, Electron/CDP): Marker ~0,5 s nach Ladebeginn (Anforderung ≤ 10 s).
+- Fix (U3): Tooltip-Flicker behoben — der 250ms-Fenster-Ticker baute die Marker-Elemente periodisch per innerHTML neu (gehovertes DOM wurde zerstört → mouseenter/leave im Millisekundentakt). Marker-DOM wird jetzt in-place synchronisiert (style.left/Tooltip-Text), Rebuilds nur bei geänderter Marker-Menge und nie unter aktivem Hover (pointerover/-out-Guard + Drag-Schutz); Marker-Layer hat pointer-events:none, Marker reaktivieren sie.
+- Test: 4 neue Unit-Tests (selectEpgWindowEntries) → 58/58 grün; neuer CDP-E2E scripts/test-u-scrubbar.cjs (ffmpeg-HLS-Fixtures mit PROGRAM-DATE-TIME + CORS-Fileserver + Electron unter Xvfb): DVR-Kanal → genau 1 sichtbare Bar, Marker ≤ 10 s, Tooltip-DOM-Identität über 2 s Hover stabil, Nicht-DVR-Kanal unverändert.
+
 ## 0.4.83 (2026-09-10)
 - Feature: TV-Player DVR-Timeshift – Rückspulen im DVR-Fenster des Live-Streams (Scrub-Bar, ±10s-Skip, Taste L = Live-Kante), wirksam für alle Sender mit DVR-Fenster (Das Erste, ARD/MDR/NDR/WDR/SWR/hr/rbb, One, tagesschau24, phoenix u. a.)
 - Feature: EPG-Sendungs-Marker in der Scrub-Bar – Klick springt an den Sendungsbeginn, Tooltip mit Titel + Startzeit

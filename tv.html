@@ -31,6 +31,11 @@
     }
     .tv-top-logo { width:40px; height:40px; border-radius:8px; object-fit:contain; }
     .tv-top-name { font-size:28px; font-weight:600; color:#f0f0f5; }
+    /* U1: Im DVR-Modus ist die DVR-Scrub-Bar die einzige sichtbare Bar —
+       der Legacy-Player-Progress-Balken wird per html.tv-dvr-mode ausgeblendet. */
+    html.tv-dvr-mode .tv-progress {
+      display: none;
+    }
     .tv-epg-bar {
       text-align:center; padding:8px 16px; margin:0 0 8px;
       font-size:56px; color:#e2e8f0;
@@ -174,6 +179,9 @@
       cursor: pointer;
       z-index: 2;
       transition: transform .15s;
+      /* U3: Container-Ebene hat pointer-events:none (Hit-Testing-Isolation
+         vom laufenden In-place-Update); Marker reaktivieren sie explizit. */
+      pointer-events: auto;
     }
     .tv-scrub-marker:hover { transform: scale(1.5); }
     .tv-scrub-marker .tv-scrub-tooltip {
@@ -282,7 +290,11 @@
         <div class="tv-scrub-played" id="tvScrubPlayed"></div>
         <div class="tv-scrub-drag" id="tvScrubDrag"></div>
       </div>
-      <div id="tvScrubMarkers"></div>
+      <!-- U3: Marker-Container ist eine eigene absolute Ebene mit
+           pointer-events:none; die Marker selbst reaktivieren pointer-events.
+           So kann der Ticker style.left in-place aktualisieren, ohne Hit-Testing
+           oder Hover zu stören. -->
+      <div id="tvScrubMarkers" style="position:absolute; left:0; right:0; top:0; height:100%; pointer-events:none;"></div>
     </div>
     <div class="tv-controls-top">
       <input class="tv-progress" id="tvProgress" type="range" min="0" max="100" value="0">
@@ -397,6 +409,17 @@
       let epgEntries = [];    // raw EPG for current channel (from host)
       let epgMarkersStale = true;
       const DVR_MIN_SEEKABLE = 900; // Sekunden Playlist-Fenster; Scrub-UI enabler (Orchestrator decision)
+      // U1: Bar-Exklusivität. dvrBarMode ('auto' | 'on' | 'off') kommt vom Host
+      // (renderer.js dvrBarMode()); 'off' zwingt die Legacy-Bar. Default 'auto':
+      // DVR an => DVR-Bar, Legacy-Bar aus (display:none via html.tv-dvr-mode);
+      // kein DVR => exakt das alte Verhalten.
+      let dvrBarMode = 'auto';
+      // U3: Hover-Schutzfenster — nach dem letzten echten pointerleave auf
+      // .tv-scrub-marker bleibt der Marker-Rebuild bis Ablauf eingefroren,
+      // damit auch echte Rebuilds (Marker-Menge hat sich geändert) den Tooltip
+      // nicht im Millisekundentakt zerstören. Ebenso während aktivem Drag.
+      var markerHoverGuardUntil = 0;
+      var pointerOverMarker = false;
 
       // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
       function loadHlsJs(cb) {
@@ -408,6 +431,33 @@
         s.onerror = function() { audioBtn.textContent += '|hlsErr'; };
         s.src = dir + 'node_modules/hls.js/dist/hls.min.js';
         document.head.appendChild(s);
+      }
+
+      // ── U1: Bar-Exklusivität im DVR-Modus ──
+      function applyDvrBarMode() {
+        if (dvrBarMode === 'on') {
+          // Host zwingt die DVR-Bar an (auch ohne DVR-Fenster: leere Bar mit
+          // LIVE-Button als Kapazitäts-Reserve für spätere Features).
+          dvrState.enabled = true;
+          document.documentElement.classList.add('tv-dvr-mode');
+          scrubBar.classList.add('visible');
+          liveBtn.style.display = '';
+          rewindBtn.style.display = '';
+          forwardBtn.style.display = '';
+          updateLiveUi();
+          epgMarkersStale = true;
+          return;
+        }
+        if (dvrBarMode === 'off') {
+          // Host zwingt die Legacy-Bar: DVR-UI komplett aus, Legacy-Bar bleibt
+          // sichtbar (html.tv-dvr-mode wird nie gesetzt).
+          resetDvrState();
+          document.documentElement.classList.remove('tv-dvr-mode');
+          return;
+        }
+        // 'auto': Legacy-Bar nur im DVR-Modus verstecken (U1), sonst unverändert.
+        if (dvrState.enabled) document.documentElement.classList.add('tv-dvr-mode');
+        else document.documentElement.classList.remove('tv-dvr-mode');
       }
 
       // ── EPG update (ohne Rest des Channels zu berühren) ──
@@ -470,6 +520,8 @@
         rewindBtn.style.display = 'none';
         forwardBtn.style.display = 'none';
         scrubMarkersEl.innerHTML = '';
+        // U1: Legacy-Bar wieder sichtbar lassen (Klasse nur im DVR-Modus aktiv)
+        document.documentElement.classList.remove('tv-dvr-mode');
       }
 
       // Aus LevelDetails (LEVEL_LOADED/LEVEL_UPDATED): DVR-Fenster lesen.
@@ -488,12 +540,15 @@
             rewindBtn.style.display = '';
             forwardBtn.style.display = '';
             updateLiveUi();
+            // U1: DVR-Modus aktiv → Legacy-Balken ausblenden (Klasse steuert CSS)
+            applyDvrBarMode();
           }
           dvrState.windowStart = fragStart;
           dvrState.windowEnd = edge;
           epgMarkersStale = true;
-        } else if (dvrState.enabled) {
-          // Stream hat DVR-Fenster verloren
+        } else if (dvrState.enabled && dvrBarMode !== 'on') {
+          // Stream hat DVR-Fenster verloren. U1: bei erzwungenem 'on'-Modus
+          // bleibt die Bar trotzdem an (Host-Entscheidung hat Vorrang).
           resetDvrState();
         }
       }
@@ -546,32 +601,67 @@
         renderScrubMarkers();
       }
 
-      function renderScrubMarkers() {
-        scrubMarkersEl.innerHTML = '';
-        if (!dvrState.enabled) return;
-        var span = dvrState.windowEnd - dvrState.windowStart;
-        if (span <= 0) return;
-        for (var i = 0; i < dvrState.markers.length; i++) {
-          var m = dvrState.markers[i];
-          var pct = ((m.startMs - mediaSecToWallSec(dvrState.windowStart) * 1000) / (mediaSecToWallSec(dvrState.windowEnd) * 1000 - mediaSecToWallSec(dvrState.windowStart) * 1000)) * 100;
-          if (!isFinite(pct)) continue;
-          pct = Math.max(0, Math.min(100, pct));
-          var el = document.createElement('div');
-          el.className = 'tv-scrub-marker';
-          el.style.left = pct + '%';
-          var tip = document.createElement('div');
-          tip.className = 'tv-scrub-tooltip';
-          var sd = new Date(m.origStartMs);
-          tip.textContent = m.title + ' · ' + ('0' + sd.getHours()).slice(-2) + ':' + ('0' + sd.getMinutes()).slice(-2);
-          el.appendChild(tip);
-          (function(mm) {
-            el.addEventListener('click', function(ev) {
-              ev.stopPropagation();
-              seekToWallMs(mm.origStartMs);
-            });
-          })(m);
-          scrubMarkersEl.appendChild(el);
+      // ── U3: Marker-DOM in-place synchronisieren ──
+      // Baut die Marker-Elemente NICHT periodisch neu (das zerstörte gehovertes
+      // DOM und flackerte den Tooltip im Millisekundentakt), sondern hält die
+      // Kind-Elemente stabil und aktualisiert nur Position/Tooltip in-place.
+      function markerTooltipText(m) {
+        var sd = new Date(m.origStartMs);
+        return m.title + ' · ' + ('0' + sd.getHours()).slice(-2) + ':' + ('0' + sd.getMinutes()).slice(-2);
+      }
+
+      function syncDvrMarkers() {
+        if (!dvrState.enabled) {
+          if (scrubMarkersEl.firstChild) scrubMarkersEl.innerHTML = '';
+          return;
         }
+        var winStartWallMs = mediaSecToWallSec(dvrState.windowStart) * 1000;
+        var winEndWallMs = mediaSecToWallSec(dvrState.windowEnd) * 1000;
+        var spanWallMs = winEndWallMs - winStartWallMs;
+        if (!isFinite(spanWallMs) || spanWallMs <= 0) {
+          if (scrubMarkersEl.firstChild) scrubMarkersEl.innerHTML = '';
+          return;
+        }
+        var markers = dvrState.markers || [];
+        // Rebuild nur, wenn die Marker-MENGE sich geändert hat UND kein
+        // Hover-Schutzfenster aktiv ist (U3: gehovertes Element nicht zerstören).
+        if (scrubMarkersEl.childElementCount !== markers.length && Date.now() >= markerHoverGuardUntil) {
+          scrubMarkersEl.innerHTML = '';
+          for (var j = 0; j < markers.length; j++) {
+            var el0 = document.createElement('div');
+            el0.className = 'tv-scrub-marker';
+            var tip0 = document.createElement('div');
+            tip0.className = 'tv-scrub-tooltip';
+            el0.appendChild(tip0);
+            (function(markerRef) {
+              el0.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                seekToWallMs(markerRef.origStartMs);
+              });
+            })(markers[j]);
+            scrubMarkersEl.appendChild(el0);
+          }
+        }
+        // In-place: Position + Tooltip-Text der bestehenden Elemente aktualisieren.
+        var children = scrubMarkersEl.children;
+        for (var i = 0; i < children.length; i++) {
+          var m = markers[i];
+          var el = children[i];
+          if (!m) { el.style.display = 'none'; continue; }
+          var pct = ((m.startMs - winStartWallMs) / spanWallMs) * 100;
+          if (!isFinite(pct)) { el.style.display = 'none'; continue; }
+          pct = Math.max(0, Math.min(100, pct));
+          el.style.display = '';
+          el.style.left = pct + '%';
+          el.dataset.origStartMs = String(m.origStartMs);
+          var tip = el.firstChild;
+          var text = markerTooltipText(m);
+          if (tip && tip.textContent !== text) tip.textContent = text;
+        }
+      }
+
+      function renderScrubMarkers() {
+        syncDvrMarkers();
       }
 
       function seekToWallMs(wallMs) {
@@ -624,6 +714,9 @@
         scrubDrag.style.left = posPct + '%';
         // Marker layout stale?
         if (epgMarkersStale) { epgMarkersStale = false; recomputeDvrMarkers(); }
+        // U3: Marker-Positionen in-place ans gleitende DVR-Fenster anpassen
+        // (kein Rebuild — DOM-Identität/Hover bleibt stabil).
+        else syncDvrMarkers();
       }
 
       // Klick/ Drag auf Track
@@ -636,6 +729,9 @@
       });
       scrubTrack.addEventListener('mousedown', function(ev) {
         dvrState.dragging = true;
+        // U3: während aktivem Drag keine Marker-Rebuilds (DOM darf nicht unter
+        // der Maus weggeräumt werden); Freigabe im upHandler.
+        markerHoverGuardUntil = Date.now() + 60000;
         var moveHandler = function(ev2) {
           var rect = scrubTrack.getBoundingClientRect();
           var pct = (ev2.clientX - rect.left) / rect.width;
@@ -645,11 +741,30 @@
         };
         var upHandler = function() {
           dvrState.dragging = false;
+          markerHoverGuardUntil = pointerOverMarker ? Date.now() + 60000 : 0;
           document.removeEventListener('mousemove', moveHandler);
           document.removeEventListener('mouseup', upHandler);
         };
         document.addEventListener('mousemove', moveHandler);
         document.addEventListener('mouseup', upHandler);
+      });
+      // U3: Hover-Schutzfenster. pointerover/-out bubbeln vom Marker durch den
+      // pointer-events:none-Container (der Listener überlebt Marker-Rebuilds).
+      // Solange der Schutz aktiv ist, friert syncDvrMarkers Rebuilds ein;
+      // Positions-/Tooltip-Updates laufen in-place weiter.
+      scrubMarkersEl.addEventListener('pointerover', function(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.tv-scrub-marker')) {
+          pointerOverMarker = true;
+          markerHoverGuardUntil = Date.now() + 60000;
+        }
+      });
+      scrubMarkersEl.addEventListener('pointerout', function(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.tv-scrub-marker')) {
+          pointerOverMarker = false;
+          // Kurzer Übergangs-Tail (Tooltip-Fade .15s), dann sind Rebuilds
+          // wieder freigegeben — neue Marker verzögern sich nicht merklich.
+          markerHoverGuardUntil = Date.now() + 300;
+        }
       });
       liveBtn.addEventListener('click', function(ev) { ev.stopPropagation(); goLive(); });
       rewindBtn.addEventListener('click', function(ev) {
@@ -751,6 +866,9 @@
 
         // DVR reset on channel switch (Orchestrator-Decision 4: kein Positions-Persisting)
         resetDvrState();
+        // U1: Bar-Modus pro Kanal zurücksetzen; Host darf ihn via
+        // switch-channel/epg-update überschreiben (dvr: 'on'|'off'|'auto').
+        dvrBarMode = 'auto';
 
         const channelName = name || 'TV';
         const channelLogo = logo;
@@ -952,6 +1070,10 @@
         if (e.data && e.data.type === 'switch-channel') {
           setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
             e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+          if (e.data.dvr === 'on' || e.data.dvr === 'off') {
+            dvrBarMode = e.data.dvr;
+            applyDvrBarMode();
+          }
           if (e.data.channelList && e.data.channelIndex !== undefined) {
             showChannelList(e.data.channelList, e.data.channelIndex);
           }
@@ -962,6 +1084,8 @@
           }
         } else if (e.data && e.data.type === 'epg-update') {
           updateEpgBar(e.data.epg, e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+          // U2: Roh-EPG sofort übernehmen und Marker rendern — der Push passiert
+          // beim Kanalwechsel/did-finish-load, nicht erst nach 30s-Poll.
           if (e.data.epgEntries && Array.isArray(e.data.epgEntries)) {
             epgEntries = e.data.epgEntries;
             epgMarkersStale = true;
@@ -969,6 +1093,11 @@
           } else if (e.data.epgEntries === null) {
             epgEntries = [];
             recomputeDvrMarkers();
+          }
+          // U1: Bar-Modus-Signal vom Host ('on'|'off'|'auto') anwenden
+          if (e.data.dvr === 'on' || e.data.dvr === 'off') {
+            dvrBarMode = e.data.dvr;
+            applyDvrBarMode();
           }
         }
       });

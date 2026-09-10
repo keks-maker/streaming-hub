@@ -67,6 +67,7 @@ export {
 
 export {
   computeEpgMarkers,
+  selectEpgWindowEntries,
   absoluteTimeToWindowOffsetSec,
   windowOffsetSecToAbsoluteTime,
   type EpgMarker,

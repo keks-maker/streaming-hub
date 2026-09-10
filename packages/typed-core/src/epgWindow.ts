@@ -45,6 +45,33 @@ export function computeEpgMarkers(
 }
 
 /**
+ * Selects the EPG entries relevant for the DVR marker bar around a wall-clock
+ * point in time: everything from `beforeMs` before `nowMs` until `afterMs`
+ * after it. Pure — used by the host to build the epg-update payload and
+ * unit-tested in isolation.
+ *
+ * @param entries EPG entries for ONE channel.
+ * @param nowMs   reference wall-clock time (ms epoch), usually Date.now().
+ * @param beforeMs how far into the past to include (in ms).
+ * @param afterMs  how far into the future to include (in ms).
+ */
+export function selectEpgWindowEntries(
+  entries: EpgEntry[],
+  nowMs: number,
+  beforeMs: number,
+  afterMs: number,
+): EpgEntry[] {
+  if (!entries || !entries.length) return [];
+  const from = nowMs - beforeMs;
+  const to = nowMs + afterMs;
+  return entries.filter(e => {
+    const s = parseEpgTime(e.start).getTime();
+    const t = parseEpgTime(e.stop).getTime();
+    return t > from && s < to;
+  });
+}
+
+/**
  * Maps absolute wall-clock time (ms epoch) to position in DVR window (seconds from window start).
  * Returns null if the time is outside the window.
  */
