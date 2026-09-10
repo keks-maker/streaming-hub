@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.83 (2026-09-10)
+- Feature: TV-Player DVR-Timeshift – Rückspulen im DVR-Fenster des Live-Streams (Scrub-Bar, ±10s-Skip, Taste L = Live-Kante), wirksam für alle Sender mit DVR-Fenster (Das Erste, ARD/MDR/NDR/WDR/SWR/hr/rbb, One, tagesschau24, phoenix u. a.)
+- Feature: EPG-Sendungs-Marker in der Scrub-Bar – Klick springt an den Sendungsbeginn, Tooltip mit Titel + Startzeit
+- Fix: 21 kaputte/dead ARD-Familien-Stream-URLs via channelOverrides ersetzt (u. a. MDR Thüringen), alle DVR-Fenster live verifiziert
+- Fix: Updater – tvsources.json wird beim Update jetzt per 3-way-Merge zusammengeführt (User-Favoriten/Sortierungen/eigene Overrides bleiben, Release-URL-Fixes kommen durch; vorher wurden Release-Fixes stillschweigend zurückgerollt)
+- Fix: Tippfehler im Timeshift-Label (· TIMESHIFT) und Audio-Button-Label ohne Sprach-Klammer
+- Technical: typed-core epgWindow.ts (DVR-Fenster↔EPG-Mapping) + Unit-Tests; Updater-Merge-Logik mit 18 Unit-Tests (npm run test:updater)
+
 ## 0.4.82 (2026-06-10)
 - Chore: Test-Release – Original-Restart aus v0.4.81 aktiv
 
