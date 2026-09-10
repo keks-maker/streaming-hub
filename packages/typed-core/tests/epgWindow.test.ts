@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   absoluteTimeToWindowOffsetSec,
   computeEpgMarkers,
+  selectEpgWindowEntries,
   windowOffsetSecToAbsoluteTime,
 } from '../src/epgWindow.js';
 import { parseEpgTime } from '../src/epg.js';
@@ -138,5 +139,67 @@ describe('windowOffsetSecToAbsoluteTime', () => {
     const we = base + 7200 * 1000;
     expect(windowOffsetSecToAbsoluteTime(-1, ws, we)).toBeNull();
     expect(windowOffsetSecToAbsoluteTime(7500, ws, we)).toBeNull();
+  });
+});
+
+// ─── U2: selectEpgWindowEntries (EPG-Fenster-Filter für DVR-Marker-Payload) ──
+describe('selectEpgWindowEntries', () => {
+  // Festes Referenzdatum (UTC): 2026-09-10 12:00:00Z
+  const now = Date.parse('2026-09-10T12:00:00Z');
+  const before = 3 * 3600 * 1000; // 3 h zurück (wie renderer.js sendEpgUpdate)
+  const after = 2 * 3600 * 1000; // 2 h vor (wie renderer.js sendEpgUpdate)
+  // XMLTV-String in UTC: '20260910143000 +0000'
+  const X = (utcIso: string) => {
+    const d = new Date(utcIso);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return (
+      `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}` +
+      `${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())} +0000`
+    );
+  };
+  const entry = (title: string, startIso: string, stopIso: string) => ({
+    channelId: 'ch1',
+    title,
+    start: X(startIso),
+    stop: X(stopIso),
+  });
+
+  it('behält Sendungen, die das Fenster schneiden (Vergangenheit/Gegenwart/Zukunft)', () => {
+    const entries = [
+      entry('Alt', '2026-09-10T05:00:00Z', '2026-09-10T06:00:00Z'), // endet 6 h her → raus
+      entry('Vorher', '2026-09-10T08:30:00Z', '2026-09-10T10:30:00Z'), // endet 1,5 h her → rein
+      entry('Aktuell', '2026-09-10T10:30:00Z', '2026-09-10T13:00:00Z'), // läuft → rein
+      entry('Danach', '2026-09-10T13:00:00Z', '2026-09-10T14:00:00Z'), // startet < 2 h → rein
+      entry('Später', '2026-09-10T15:00:00Z', '2026-09-10T16:00:00Z'), // startet in 3 h → raus
+    ];
+    const out = selectEpgWindowEntries(entries, now, before, after);
+    expect(out.map(e => e.title)).toEqual(['Vorher', 'Aktuell', 'Danach']);
+  });
+
+  it('Randfälle: genau endend vor beforeMs fällt raus, genau startend bei now fällt rein', () => {
+    const entries = [
+      // endet exakt now - beforeMs → NICHT > from → raus (Same-Shape wie bisheriger Code)
+      entry('KanteRaus', '2026-09-10T07:00:00Z', '2026-09-10T09:00:00Z'),
+      // startet exakt jetzt → s < to → rein
+      entry('KanteRein', '2026-09-10T12:00:00Z', '2026-09-10T12:30:00Z'),
+    ];
+    const out = selectEpgWindowEntries(entries, now, before, after);
+    expect(out.map(e => e.title)).toEqual(['KanteRein']);
+  });
+
+  it('leere Eingabe → leeres Ergebnis', () => {
+    expect(selectEpgWindowEntries([], now, before, after)).toEqual([]);
+  });
+
+  it('trace of the old inline renderer filter: same selection shape as sendEpgUpdate before extraction', () => {
+    // Der Filter wurde 1:1 aus renderer.js sendEpgUpdate extrahiert:
+    //   t > now - 3h && s < now + 2h  – dieser Test pinnt die Verhaltensform.
+    const entries = [
+      entry('A', '2026-09-10T09:00:00Z', '2026-09-10T11:00:00Z'),
+      entry('B', '2026-09-10T13:30:00Z', '2026-09-10T14:30:00Z'),
+    ];
+    const out = selectEpgWindowEntries(entries, now, before, after);
+    expect(out).toHaveLength(2);
+    expect(out[0]!.start).toBe(X('2026-09-10T09:00:00Z'));
   });
 });
