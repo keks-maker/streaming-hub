@@ -198,8 +198,8 @@ test('Zweiter Start nach erfolgreichem Merge: idempotent, nichts ändert sich', 
 
 // ── Kein Update ─────────────────────────────────────────────────────────────
 
-test('Normaler Start ohne Update: keine Änderung, State wird geschrieben', () => {
-  const appDir = makeApp({ vOldSources: BASE_82, deviceSources: DEVICE_82, vNewSources: NEW_SOURCES, installedVersion: '0.4.83' });
+test('Normaler Start ohne Update (State aktuell): keine Änderung', () => {
+  const appDir = makeApp({ vOldSources: BASE_82, deviceSources: DEVICE_82, vNewSources: NEW_SOURCES, installedVersion: '0.4.83', stateVersion: '0.4.83' });
   const before = fs.readFileSync(path.join(appDir, 'tvsources.json'), 'utf-8');
 
   const r = reconcilePostUpdate(appDir, '0.4.83');
@@ -208,10 +208,41 @@ test('Normaler Start ohne Update: keine Änderung, State wird geschrieben', () =
   assert.equal(JSON.parse(fs.readFileSync(path.join(appDir, '.update-state.json'), 'utf-8')).lastVersion, '0.4.83');
 });
 
-test('Erster Start überhaupt (kein State): noop ohne Fehler', () => {
-  const appDir = makeApp({ vOldSources: BASE_82, deviceSources: DEVICE_82, vNewSources: NEW_SOURCES, installedVersion: '0.4.83' });
+// ── Legacy-Sprung OHNE State-File (0.4.82-Gerät startet erstmals die 0.4.83) ──
+
+test('Legacy-Sprung ohne State: base aus höchstem Vorgänger-Tag, Legacy-Overwrite wird repariert', () => {
+  // Kein stateVersion → erstlauf der 0.4.83 auf einem 0.4.82-Gerät ohne State.
+  const appDir = makeApp({
+    vOldSources: BASE_82,
+    deviceSources: DEVICE_82,
+    vNewSources: NEW_SOURCES,
+    installedVersion: '0.4.83',
+  });
+  // Legacy-Apply hat den Geräte-Stand (USER-Daten!) wiederhergestellt und das Backup gelöscht:
+  writeJson(path.join(appDir, 'tvsources.json'), DEVICE_82);
+
   const r = reconcilePostUpdate(appDir, '0.4.83');
-  assert.equal(r.merged, false);
+  assert.equal(r.merged, true, r.reason);
+
+  const now = JSON.parse(fs.readFileSync(path.join(appDir, 'tvsources.json'), 'utf-8'));
+  // Release-Fix da, User-Daten da:
+  assert.deepEqual(now[0].channelOverrides['MDRFernsehen.de@Thuringen'].url, 'https://mdr-neu.example/master.m3u8');
+  assert.deepEqual(now[0].favorites, DEVICE_82[0].favorites);
+  // State wird ab jetzt geführt:
+  assert.equal(JSON.parse(fs.readFileSync(path.join(appDir, '.update-state.json'), 'utf-8')).lastVersion, '0.4.83');
+});
+
+test('Frische Installation ohne State: Merge liefert exakt den committeten Stand (ergebnisidentisch)', () => {
+  const appDir = makeApp({
+    vOldSources: BASE_82,
+    vNewSources: NEW_SOURCES,
+    installedVersion: '0.4.83',
+  });
+  const before = fs.readFileSync(path.join(appDir, 'tvsources.json'), 'utf-8');
+
+  const r = reconcilePostUpdate(appDir, '0.4.83');
+  assert.equal(r.merged, true, r.reason);
+  assert.equal(fs.readFileSync(path.join(appDir, 'tvsources.json'), 'utf-8'), before, 'Datei unverändert');
 });
 
 // ── Fehlerfälle: NIE Datenverlust, Retry beim nächsten Start ────────────────
