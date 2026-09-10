@@ -6,7 +6,7 @@
 - Fix: 21 kaputte/dead ARD-Familien-Stream-URLs via channelOverrides ersetzt (u. a. MDR Thüringen), alle DVR-Fenster live verifiziert
 - Fix: Updater – tvsources.json wird beim Update jetzt per 3-way-Merge zusammengeführt (User-Favoriten/Sortierungen/eigene Overrides bleiben, Release-URL-Fixes kommen durch; vorher wurden Release-Fixes stillschweigend zurückgerollt)
 - Fix: Tippfehler im Timeshift-Label (· TIMESHIFT) und Audio-Button-Label ohne Sprach-Klammer
-- Technical: typed-core epgWindow.ts (DVR-Fenster↔EPG-Mapping) + Unit-Tests; Updater-Merge-Logik mit 18 Unit-Tests (npm run test:updater)
+- Technical: typed-core epgWindow.ts (DVR-Fenster↔EPG-Mapping) + Unit-Tests; Updater-Merge-Logik mit 26 Unit-Tests (npm run test:updater); Nach-Update-Reconciliation beim App-Start (holt den tvsources-Merge nach, wenn ein älterer Updater beim vorherigen Update noch blind überschrieben hat)
 
 ## 0.4.82 (2026-06-10)
 - Chore: Test-Release – Original-Restart aus v0.4.81 aktiv
