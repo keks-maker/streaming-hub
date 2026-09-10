@@ -1002,7 +1002,7 @@
           dvrState.isLive = video.currentTime >= dvrState.windowEnd - 30;
           if (wasLive !== dvrState.isLive) updateLiveUi();
           var behind = Math.max(0, dvrState.windowEnd - video.currentTime);
-          timeEl.textContent = formatTime(behind) + ' hinter Live' + (dvrState.isLive ? ' · LIVE' : ' · TIMESCHIFT');
+          timeEl.textContent = formatTime(behind) + ' hinter Live' + (dvrState.isLive ? ' · LIVE' : ' · TIMESHIFT');
           if (epgMarkersStale) recomputeDvrMarkers();
         }
       });
@@ -1117,7 +1117,9 @@
           var isActive = activeIdx === i || (!hasReal && i === 0);
           var item = document.createElement('div');
           item.className = 'tv-audio-item' + (isActive ? ' active' : '');
-          item.textContent = t.name || 'Track ' + (i + 1);
+          var trackLabel = t.name || 'Track ' + (i + 1);
+          item.textContent = trackLabel;
+          item.dataset.label = trackLabel;
           if (t.lang) item.textContent += ' (' + t.lang + ')';
           item.dataset.index = i;
           item.addEventListener('click', function(e) {
@@ -1125,7 +1127,7 @@
             if (hlsInstance && hasReal) hlsInstance.audioTrack = i;
             else if (hasReal && video.audioTracks) Array.from(video.audioTracks).forEach(function(at, ai) { at.enabled = ai === i; });
             audioDropdown.querySelectorAll('.tv-audio-item').forEach(function(el) { el.classList.remove('active'); });
-            item.classList.add('active'); audioBtn.textContent = '🔊 ' + item.textContent; audioDropdown.classList.remove('open');
+            item.classList.add('active'); audioBtn.textContent = '🔊 ' + (item.dataset.label || item.textContent.replace(/\s*\([^)]*\)\s*$/, '').trim()); audioDropdown.classList.remove('open');
           });
           audioDropdown.appendChild(item);
         });
