@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { fork, execSync } = require('child_process');
+const { mergeTvsources } = require('./lib/tvsources-merge.js');
 
 let mainWindow;
 let pipWindow = null;
@@ -16,6 +17,59 @@ const tvSourcesPath = path.join(__dirname, 'tvsources.json');
 // Updater
 let updaterProcess = null;
 let autoUpdater = null;
+
+/**
+ * Nach einem Update nachholen, was ein alter Updater (v0.4.82 und älter) oder ein
+ * abgebrochener Apply hinterlassen hat:
+ *  - Liegt noch ein Update-Backup bereit, wurde tvsources.json beim Apply mit dem
+ *    ALTEN Geräte-Stand überschrieben (Legacy-Overwrite) → 3-way-Merge jetzt
+ *    nachholen (Release-URL-Fixes wiederherstellen, User-Daten bewahren).
+ *  - Der Merge läuft auch, wenn die Backup-Kopie der neuen committeten Version
+ *    entspricht (derzeit überflüssig, aber harmlos und idempotent).
+ * Fehler werden geloggt und blockieren den App-Start nicht; die Backup-Kopie bleibt
+ * in dem Fall liegen (kein Datenverlust), damit der Merge beim nächsten Start erneut
+ * versucht werden kann.
+ */
+function reconcilePostUpdate() {
+  const backupDir = path.join(__dirname, '.update-backup');
+  const backupTvsources = path.join(backupDir, 'tvsources.json');
+  const backupServices = path.join(backupDir, 'services.json');
+  const backupHistory = path.join(backupDir, 'history.json');
+  const hasAnyBackup =
+    fs.existsSync(backupTvsources) || fs.existsSync(backupServices) || fs.existsSync(backupHistory);
+  if (!hasAnyBackup) return;
+
+  logger.info('Update-Backup gefunden – tvsources.json 3-way-Merge wird nachgeholt');
+  if (fs.existsSync(backupTvsources)) {
+    try {
+      const base = JSON.parse(execSync('git show HEAD:tvsources.json', {
+        cwd: __dirname,
+        encoding: 'utf-8',
+        timeout: 10000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }));
+      const oldDevice = JSON.parse(fs.readFileSync(backupTvsources, 'utf-8'));
+      const neuCommitted = JSON.parse(fs.readFileSync(tvSourcesPath, 'utf-8'));
+      const result = mergeTvsources(base, oldDevice, neuCommitted);
+      if (result.ok) {
+        fs.writeFileSync(tvSourcesPath, JSON.stringify(result.value, null, 2) + '\n', 'utf-8');
+        logger.info('tvsources.json 3-way-Merge nach Update abgeschlossen');
+      } else {
+        logger.warn('tvsources.json Merge nicht möglich:', result.reason);
+      }
+    } catch (e) {
+      logger.error('tvsources.json Nach-Merge fehlgeschlagen (Backup bleibt erhalten):', e.message);
+      return; // Backup nicht löschen – nächster Start versucht es erneut
+    }
+  }
+
+  // services.json/history.json: Legacy-Verhalten (Geräte-Stand gewinnt) ist ok –
+  // hier wurde nichts durch den Overwrite verloren.
+  try {
+    fs.rmSync(backupDir, { recursive: true, force: true });
+  } catch (e) {}
+  logger.info('Update-Backup aufgeräumt');
+}
 
 function findChromeWidevine() {
   const platform = process.platform;
@@ -375,6 +429,7 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  reconcilePostUpdate();
   try {
     await components.whenReady();
     logger.info('Widevine CDM status:', components.status());

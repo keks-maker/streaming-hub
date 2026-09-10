@@ -67,6 +67,65 @@ function writeMergedTvsources(sources) {
   fs.writeFileSync(path.join(appDir, 'tvsources.json'), JSON.stringify(sources, null, 2) + '\n', 'utf-8');
 }
 
+// JSON-Dateien nach dem Merge sichern: Falls der anschließende `git stash pop`
+// zeilenbasierte Konflikt-Marker in eine dieser Dateien schreibt (bis v0.4.82
+// unmöglich, weil restore dort exakt den Stash-Inhalt reproduzierte), werden sie
+// aus dieser Kopie wiederhergestellt.
+function snapshotMergedJson() {
+  const snapDir = path.join(backupDir, '.merged-snapshot');
+  try {
+    fs.mkdirSync(snapDir, { recursive: true });
+    for (const f of userFiles) {
+      const src = path.join(appDir, f);
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(snapDir, f));
+    }
+  } catch (e) {
+    logger.error('Snapshot der gemergten Dateien fehlgeschlagen:', e.message);
+  }
+}
+
+function restoreMergedJsonSnapshot() {
+  const snapDir = path.join(backupDir, '.merged-snapshot');
+  try {
+    if (!fs.existsSync(snapDir)) return;
+    for (const f of userFiles) {
+      const snap = path.join(snapDir, f);
+      if (!fs.existsSync(snap)) continue;
+      try {
+        JSON.parse(fs.readFileSync(snap, 'utf-8')); // nur gültige Snapshots verwenden
+        fs.copyFileSync(snap, path.join(appDir, f));
+      } catch (e) {
+        logger.error(`Snapshot für ${f} ungültig, überspringe:`, e.message);
+      }
+    }
+    fs.rmSync(snapDir, { recursive: true, force: true });
+  } catch (e) {
+    logger.error('Snapshot-Wiederherstellung fehlgeschlagen:', e.message);
+  }
+}
+
+/**
+ * Prüft JSON-Dateien auf Git-Konflikt-Marker (nach stash pop) und repariert sie
+ * aus dem Snapshot der gemergten Dateien.
+ */
+function repairConflictMarkersIfAny() {
+  let found = false;
+  for (const f of userFiles) {
+    const dest = path.join(appDir, f);
+    if (!fs.existsSync(dest)) continue;
+    const content = fs.readFileSync(dest, 'utf-8');
+    if (content.startsWith('<<<<<<<') || content.includes('\n<<<<<<<')) {
+      found = true;
+      logger.error(`Konflikt-Marker in ${f} nach stash pop erkannt`);
+    }
+  }
+  if (found) {
+    restoreMergedJsonSnapshot();
+    return true;
+  }
+  return false;
+}
+
 /**
  * User-Dateien nach dem Checkout wiederherstellen.
  * tvsources.json: 3-way-Merge (User-Daten + Release-Fixes, siehe lib/tvsources-merge.js).
@@ -124,11 +183,8 @@ function restoreUserFiles(onWarning) {
     }
   }
 
-  // Backup-Verzeichnis aufräumen
-  try {
-    fs.rmSync(backupDir, { recursive: true, force: true });
-  } catch (e) {}
-
+  // Hinweis: Backup-Verzeichnis wird erst am Ende von 'apply' aufgeräumt,
+  // damit der Konflikt-Marker-Snapshot den stash pop überlebt.
   if (onWarning) onWarning(warn);
 }
 
@@ -210,6 +266,9 @@ process.on('message', msg => {
         }
       });
 
+      // Gemergten JSON-Stand sichern, bevor der zeilenbasierte stash pop laufen kann
+      snapshotMergedJson();
+
       // Stash anwenden (falls vorhanden und nicht durch restore überschrieben)
       if (stashed) {
         try {
@@ -223,6 +282,21 @@ process.on('message', msg => {
           });
         }
       }
+
+      // stash pop kann zeilenbasierte Konflikt-Marker in die JSON-Dateien schreiben →
+      // gemergten Stand wiederherstellen (nur falls Marker vorhanden sind)
+      if (repairConflictMarkersIfAny()) {
+        process.send({
+          type: 'progress',
+          step: '⚠ Konflikt-Marker durch lokale Änderungen erkannt – gemergte Dateien wiederhergestellt',
+          percent: 50,
+        });
+      }
+
+      // Aufgeräumt wird erst jetzt: Backup + Snapshot haben ihren Zweck erfüllt
+      try {
+        fs.rmSync(backupDir, { recursive: true, force: true });
+      } catch (e) {}
 
       process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
       execSync('npm install --ignore-scripts', {
