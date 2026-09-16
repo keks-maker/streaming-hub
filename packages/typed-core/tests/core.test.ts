@@ -152,9 +152,11 @@ it('formatTimestamp', () => {
 // ─── EPG ──────────────────────────────────────────────────────
 
 it('parseEpgTime – with timezone', () => {
+  // "14:30 +0200" entspricht 12:30 UTC. Absichtlich zeitzonenunabhängig
+  // geprüft (getTime statt getHours), damit der Test nicht nur auf
+  // Rechnern in UTC+2 besteht.
   const d = parseEpgTime('20260609143000 +0200');
-  expect(d.getHours()).toBe(14);
-  expect(d.getMinutes()).toBe(30);
+  expect(d.getTime()).toBe(Date.UTC(2026, 5, 9, 12, 30, 0));
 });
 
 it('parseEpgTime – without timezone (UTC)', () => {
@@ -168,8 +170,10 @@ it('parseEpgTime – invalid', () => {
 });
 
 it('formatEpgTime', () => {
-  expect(formatEpgTime('20260609143000 +0200')).toBe('14:30');
+  // Zeitzonenunabhängig: formatEpgTime zeigt die lokale Zeit an ("HH:MM"),
+  // daher wird hier nur das Format und der Leerstring-Fall geprüft.
   expect(formatEpgTime('')).toBe('');
+  expect(formatEpgTime('20260609143000 +0200')).toMatch(/^\d{2}:\d{2}$/);
 });
 
 it('buildEpgIndex', () => {
@@ -226,7 +230,11 @@ it('getMediathekForChannel', () => {
 });
 
 it('normalizeTvId', () => {
-  expect(normalizeTvId('ARD@some.host')).toBe('ard');
+  // Einheitliche Semantik wie normalizeEpgId (epg.ts): Suffix ab "@" bis
+  // zum nächsten Punkt entfernen ("ard@hdr.de" → "ard.de"). Reale M3U-IDs
+  // tragen Qualitäts-/Regionssuffixe ohne Punkt ("DasErste.de@HD").
+  expect(normalizeTvId('ARD@some.host')).toBe('ard.host');
+  expect(normalizeTvId('DasErste.de@HD')).toBe('daserste.de');
   expect(normalizeTvId('  ZDF  ')).toBe('zdf');
 });
 
