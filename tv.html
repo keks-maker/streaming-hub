@@ -31,6 +31,11 @@
     }
     .tv-top-logo { width:40px; height:40px; border-radius:8px; object-fit:contain; }
     .tv-top-name { font-size:28px; font-weight:600; color:#f0f0f5; }
+    /* U1: Im DVR-Modus ist die DVR-Scrub-Bar die einzige sichtbare Bar —
+       der Legacy-Player-Progress-Balken wird per html.tv-dvr-mode ausgeblendet. */
+    html.tv-dvr-mode .tv-progress {
+      display: none;
+    }
     .tv-epg-bar {
       text-align:center; padding:8px 16px; margin:0 0 8px;
       font-size:56px; color:#e2e8f0;
@@ -135,6 +140,62 @@
     }
     .tv-spacer { flex:1; }
 
+    /* DVR scrub bar (timeshift) */
+    .tv-scrub-bar {
+      position: relative;
+      height: 18px; margin: 10px 8px 2px;
+      display: none;
+    }
+    .tv-scrub-bar.visible { display: block; }
+    .tv-scrub-track {
+      position: absolute; left: 0; right: 0; top: 8px; height: 6px;
+      background: rgba(255,255,255,0.15); border-radius: 3px;
+      cursor: pointer;
+    }
+    .tv-scrub-track:hover .tv-scrub-viewport { box-shadow: 0 0 0 1px rgba(255,255,255,0.2); }
+    .tv-scrub-viewport {
+      position: absolute; top: 0; height: 100%;
+      background: rgba(255,255,255,0.1); border-radius: 3px;
+    }
+    .tv-scrub-seekable {
+      position: absolute; top: 0; height: 100%;
+      background: rgba(167,139,250,0.35); border-radius: 3px;
+    }
+    .tv-scrub-played {
+      position: absolute; top: 0; height: 100%;
+      background: linear-gradient(to right, #7c3aed, #a78bfa);
+      border-radius: 3px;
+    }
+    .tv-scrub-drag {
+      position: absolute; top: -5px; width: 4px; height: 16px;
+      background: #fff; border-radius: 2px; transform: translateX(-50%);
+    }
+    .tv-scrub-marker {
+      position: absolute; top: 2px;
+      width: 12px; height: 12px; margin-left: -6px;
+      border-radius: 50%;
+      background: #f59e0b;
+      border: 2px solid #1e1e2a;
+      cursor: pointer;
+      z-index: 2;
+      transition: transform .15s;
+      /* U3: Container-Ebene hat pointer-events:none (Hit-Testing-Isolation
+         vom laufenden In-place-Update); Marker reaktivieren sie explizit. */
+      pointer-events: auto;
+    }
+    .tv-scrub-marker:hover { transform: scale(1.5); }
+    .tv-scrub-marker .tv-scrub-tooltip {
+      visibility: hidden; opacity: 0;
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #1e1e2a; border: 1px solid rgba(255,255,255,0.15);
+      color: #f0f0f5; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+      white-space: nowrap; transition: opacity .15s; z-index: 5;
+      pointer-events: none;
+    }
+    .tv-scrub-marker:hover .tv-scrub-tooltip { visibility: visible; opacity: 1; }
+    .tv-live-badge { margin-left: 10px; display: none; }
+    .tv-live-badge.visible { display: inline-flex; }
+
     /* Error */
     .tv-error {
       position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
@@ -222,13 +283,32 @@
 
   <div class="tv-controls" id="tvControls">
     <div class="tv-epg-bar" id="tvEpgBar"></div>
+    <div class="tv-scrub-bar" id="tvScrubBar">
+      <div class="tv-scrub-track" id="tvScrubTrack">
+        <div class="tv-scrub-viewport" id="tvScrubViewport"></div>
+        <div class="tv-scrub-seekable" id="tvScrubSeekable"></div>
+        <div class="tv-scrub-played" id="tvScrubPlayed"></div>
+        <div class="tv-scrub-drag" id="tvScrubDrag"></div>
+      </div>
+      <!-- U3: Marker-Container ist eine eigene absolute Ebene mit
+           pointer-events:none; die Marker selbst reaktivieren pointer-events.
+           So kann der Ticker style.left in-place aktualisieren, ohne Hit-Testing
+           oder Hover zu stören. -->
+      <div id="tvScrubMarkers" style="position:absolute; left:0; right:0; top:0; height:100%; pointer-events:none;"></div>
+    </div>
     <div class="tv-controls-top">
       <input class="tv-progress" id="tvProgress" type="range" min="0" max="100" value="0">
     </div>
     <div class="tv-controls-bottom">
+      <button class="tv-btn" id="tvRewindBtn" title="10s zurück (Pfeil links)" style="display:none">
+        <svg viewBox="0 0 24 24"><polyline points="11,19 2,12 11,5"/><polyline points="22,19 13,12 22,5"/></svg>
+      </button>
       <button class="tv-btn" id="tvPlayBtn" title="Play/Pause (Leertaste)">
         <svg viewBox="0 0 24 24" id="playIcon"><polygon points="6,4 20,12 6,20"/></svg>
         <svg viewBox="0 0 24 24" id="pauseIcon" style="display:none"><rect x="5" y="4" width="4" height="16"/><rect x="15" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="tv-btn" id="tvForwardBtn" title="10s vor (Pfeil rechts)" style="display:none">
+        <svg viewBox="0 0 24 24"><polyline points="13,19 22,12 13,5"/><polyline points="2,19 11,12 2,5"/></svg>
       </button>
       <span class="tv-time" id="tvTime">00:00 / 00:00</span>
       <div class="tv-spacer"></div>
@@ -244,6 +324,10 @@
         <button class="tv-btn" id="tvAudioBtn" title="Audiospur">🔊</button>
         <div class="tv-audio-dropdown" id="tvAudioDropdown"></div>
       </div>
+      <button class="tv-btn" id="tvLiveBtn" title="Zur Live-Kante (L)" style="display:none">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <span class="tv-live-badge" id="tvLiveBadge" style="display:none;color:#10b981;font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #10b981;border-radius:6px;">LIVE</span>
       <button class="tv-btn" id="tvFullscreenBtn" title="Vollbild (F)">
         <svg viewBox="0 0 24 24"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
       </button>
@@ -278,6 +362,18 @@
       const audioBtn = document.getElementById('tvAudioBtn');
       const audioDropdown = document.getElementById('tvAudioDropdown');
       const epgBar = document.getElementById('tvEpgBar');
+      // ——— DVR / Timeshift elements ———
+      const scrubBar = document.getElementById('tvScrubBar');
+      const scrubTrack = document.getElementById('tvScrubTrack');
+      const scrubViewport = document.getElementById('tvScrubViewport');
+      const scrubSeekable = document.getElementById('tvScrubSeekable');
+      const scrubPlayed = document.getElementById('tvScrubPlayed');
+      const scrubDrag = document.getElementById('tvScrubDrag');
+      const scrubMarkersEl = document.getElementById('tvScrubMarkers');
+      const liveBtn = document.getElementById('tvLiveBtn');
+      const liveBadge = document.getElementById('tvLiveBadge');
+      const rewindBtn = document.getElementById('tvRewindBtn');
+      const forwardBtn = document.getElementById('tvForwardBtn');
 
       let hideOverlayTimer = null;
       let isPlaying = false;
@@ -291,6 +387,39 @@
       let hlsLoaded = false;
       let channelGen = 0;
       let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null, prevLoadedMetadata = null;
+      // ── W2: Fehlerdialog bei nie startendem Stream ──
+      let loadWatchdogTimer = null;   // bewaffnet sich sofort beim Kanalstart (nicht erst nach 'playing')
+      let gotPlaybackSignal = false;  // irgendein Lebenszeichen (manifest/canplay/playing)
+      let hlsRecoverCount = 0;        // begrenzte hls.js-Recovery statt endlosem startLoad()
+      const STREAM_LOAD_TIMEOUT_MS = 25000; // QA-Empfehlung 20–30s
+
+      // ── DVR / Timeshift state ──
+      // DVR-Fenster: [windowStart, windowEnd] in MEDIA-Sekunden (aus der Sliding-
+      // Playlist via hls.js LevelDetails — NICHT aus video.seekable: seekable[0]
+      // beginnt bei 0 und wächst mit der Session, das ist NICHT das DVR-Fenster).
+      // pdtAnchor: { mediaSec, wallSec } = Anker MEDIA-Zeitachse ↔ Wall-Clock (UTC).
+      let dvrState = {
+        enabled: false,
+        windowStart: 0,   // media seconds — ältester Fragmentstart im DVR-Fenster
+        windowEnd: 0,     // media seconds — Live-Kante (Edge)
+        isLive: true,
+        markers: [],      // [{startMs, stopMs, title, origStartMs}]
+        dragging: false,
+      };
+      let epgEntries = [];    // raw EPG for current channel (from host)
+      let epgMarkersStale = true;
+      const DVR_MIN_SEEKABLE = 900; // Sekunden Playlist-Fenster; Scrub-UI enabler (Orchestrator decision)
+      // U1: Bar-Exklusivität. dvrBarMode ('auto' | 'on' | 'off') kommt vom Host
+      // (renderer.js dvrBarMode()); 'off' zwingt die Legacy-Bar. Default 'auto':
+      // DVR an => DVR-Bar, Legacy-Bar aus (display:none via html.tv-dvr-mode);
+      // kein DVR => exakt das alte Verhalten.
+      let dvrBarMode = 'auto';
+      // U3: Hover-Schutzfenster — nach dem letzten echten pointerleave auf
+      // .tv-scrub-marker bleibt der Marker-Rebuild bis Ablauf eingefroren,
+      // damit auch echte Rebuilds (Marker-Menge hat sich geändert) den Tooltip
+      // nicht im Millisekundentakt zerstören. Ebenso während aktivem Drag.
+      var markerHoverGuardUntil = 0;
+      var pointerOverMarker = false;
 
       // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
       function loadHlsJs(cb) {
@@ -306,6 +435,33 @@
         };
         s.src = dir + 'node_modules/hls.js/dist/hls.min.js';
         document.head.appendChild(s);
+      }
+
+      // ── U1: Bar-Exklusivität im DVR-Modus ──
+      function applyDvrBarMode() {
+        if (dvrBarMode === 'on') {
+          // Host zwingt die DVR-Bar an (auch ohne DVR-Fenster: leere Bar mit
+          // LIVE-Button als Kapazitäts-Reserve für spätere Features).
+          dvrState.enabled = true;
+          document.documentElement.classList.add('tv-dvr-mode');
+          scrubBar.classList.add('visible');
+          liveBtn.style.display = '';
+          rewindBtn.style.display = '';
+          forwardBtn.style.display = '';
+          updateLiveUi();
+          epgMarkersStale = true;
+          return;
+        }
+        if (dvrBarMode === 'off') {
+          // Host zwingt die Legacy-Bar: DVR-UI komplett aus, Legacy-Bar bleibt
+          // sichtbar (html.tv-dvr-mode wird nie gesetzt).
+          resetDvrState();
+          document.documentElement.classList.remove('tv-dvr-mode');
+          return;
+        }
+        // 'auto': Legacy-Bar nur im DVR-Modus verstecken (U1), sonst unverändert.
+        if (dvrState.enabled) document.documentElement.classList.add('tv-dvr-mode');
+        else document.documentElement.classList.remove('tv-dvr-mode');
       }
 
       // ── EPG update (ohne Rest des Channels zu berühren) ──
@@ -326,6 +482,18 @@
 
       // ── EPG-Polling: Host um aktuelle EPG-Daten bitten ──
       var epgPollTimer = null;
+      // parseEpgTime (XMLTV "20260908143000 +0200" → Date) — lokal, entspricht typed-core epg.ts
+      function parseEpgTime(timeStr) {
+        var m = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{2})(\d{2})/);
+        if (m) {
+          var utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+          var tzOffset = (+m[7]) * 60 + (+m[8]);
+          return new Date(utc - tzOffset * 60000);
+        }
+        var m2 = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+        if (!m2) return new Date(0);
+        return new Date(Date.UTC(+m2[1], +m2[2] - 1, +m2[3], +m2[4], +m2[5], +m2[6]));
+      }
       function startEpgPolling() {
         stopEpgPolling();
         epgPollTimer = setInterval(function() {
@@ -335,6 +503,296 @@
       function stopEpgPolling() {
         if (epgPollTimer) { clearInterval(epgPollTimer); epgPollTimer = null; }
       }
+
+      // ═════════ DVR / Timeshift ═════════
+      // Fensterbreite immer aus dem Stream lesen (Orchestrator-Decision 1+2):
+      // hls.js LevelDetails (fragmentStart … edge) = echtes DVR-Fenster der
+      // Sliding-Playlist, senderabhängig (Das Erste 7200s, NDR 3600s, …).
+      // Aktivierung ab DVR_MIN_SEEKABLE; ohne DVR-Fenster exakt heutiges Verhalten.
+
+      function resetDvrState() {
+        dvrState.enabled = false;
+        dvrState.windowStart = 0;
+        dvrState.windowEnd = 0;
+        dvrState.isLive = true;
+        dvrState.markers = [];
+        dvrState.dragging = false;
+        epgEntries = [];
+        epgMarkersStale = true;
+        scrubBar.classList.remove('visible');
+        liveBtn.style.display = 'none';
+        liveBadge.style.display = 'none';
+        rewindBtn.style.display = 'none';
+        forwardBtn.style.display = 'none';
+        scrubMarkersEl.innerHTML = '';
+        // U1: Legacy-Bar wieder sichtbar lassen (Klasse nur im DVR-Modus aktiv)
+        document.documentElement.classList.remove('tv-dvr-mode');
+      }
+
+      // Aus LevelDetails (LEVEL_LOADED/LEVEL_UPDATED): DVR-Fenster lesen.
+      // details.fragmentStart = ältester Fragmentstart, details.edge = Live-Kante.
+      function updateDvrFromLevelDetails(details) {
+        if (!details || !details.live) return;
+        var fragStart = details.fragmentStart;
+        var edge = details.edge;
+        if (!isFinite(fragStart) || !isFinite(edge) || edge - fragStart <= 0) return;
+        var span = edge - fragStart;
+        if (span >= DVR_MIN_SEEKABLE) {
+          if (!dvrState.enabled) {
+            dvrState.enabled = true;
+            scrubBar.classList.add('visible');
+            liveBtn.style.display = '';
+            rewindBtn.style.display = '';
+            forwardBtn.style.display = '';
+            updateLiveUi();
+            // U1: DVR-Modus aktiv → Legacy-Balken ausblenden (Klasse steuert CSS)
+            applyDvrBarMode();
+          }
+          dvrState.windowStart = fragStart;
+          dvrState.windowEnd = edge;
+          epgMarkersStale = true;
+        } else if (dvrState.enabled && dvrBarMode !== 'on') {
+          // Stream hat DVR-Fenster verloren. U1: bei erzwungenem 'on'-Modus
+          // bleibt die Bar trotzdem an (Host-Entscheidung hat Vorrang).
+          resetDvrState();
+        }
+      }
+
+      function updateLiveUi() {
+        liveBtn.style.display = dvrState.enabled ? '' : 'none';
+        liveBadge.style.display = dvrState.enabled && dvrState.isLive ? '' : 'none';
+      }
+
+      // Wall-clock anchor: PROGRAM-DATE-TIME-Mapping MEDIA-Zeitachse ↔ UTC.
+      // Wird bei jedem Playlist-Update auf den frühesten PDT-Fragment gesetzt.
+      var pdtAnchor = null; // { mediaSec, wallSec }
+      function updatePdtFromLevelDetails(details) {
+        if (details && details.fragments && details.fragments.length) {
+          for (var i = 0; i < details.fragments.length; i++) {
+            var f = details.fragments[i];
+            if (f.programDateTime) {
+              pdtAnchor = {
+                mediaSec: f.start,
+                wallSec: new Date(f.programDateTime).getTime() / 1000,
+              };
+              break;
+            }
+          }
+        }
+      }
+
+      function mediaSecToWallSec(mediaSec) {
+        if (pdtAnchor == null) return null;
+        return pdtAnchor.wallSec + (mediaSec - pdtAnchor.mediaSec);
+      }
+
+      // Marker aus epgEntries berechnen, sobald Fenster + PDT bekannt
+      function recomputeDvrMarkers() {
+        if (!dvrState.enabled || pdtAnchor == null || !epgEntries.length) { dvrState.markers = []; renderScrubMarkers(); return; }
+        var winStartWall = mediaSecToWallSec(dvrState.windowStart) * 1000;
+        var winEndWall = mediaSecToWallSec(dvrState.windowEnd) * 1000;
+        if (!isFinite(winStartWall) || !isFinite(winEndWall)) { dvrState.markers = []; renderScrubMarkers(); return; }
+        var out = [];
+        for (var i = 0; i < epgEntries.length; i++) {
+          var e = epgEntries[i];
+          var sMs = parseEpgTime(e.start).getTime();
+          var eMs = parseEpgTime(e.stop).getTime();
+          if (!sMs || !eMs) continue;
+          if (sMs < winEndWall && eMs > winStartWall) {
+            out.push({ title: e.title, startMs: Math.max(sMs, winStartWall), stopMs: eMs, origStartMs: sMs });
+          }
+        }
+        dvrState.markers = out;
+        renderScrubMarkers();
+      }
+
+      // ── U3: Marker-DOM in-place synchronisieren ──
+      // Baut die Marker-Elemente NICHT periodisch neu (das zerstörte gehovertes
+      // DOM und flackerte den Tooltip im Millisekundentakt), sondern hält die
+      // Kind-Elemente stabil und aktualisiert nur Position/Tooltip in-place.
+      function markerTooltipText(m) {
+        var sd = new Date(m.origStartMs);
+        return m.title + ' · ' + ('0' + sd.getHours()).slice(-2) + ':' + ('0' + sd.getMinutes()).slice(-2);
+      }
+
+      function syncDvrMarkers() {
+        if (!dvrState.enabled) {
+          if (scrubMarkersEl.firstChild) scrubMarkersEl.innerHTML = '';
+          return;
+        }
+        var winStartWallMs = mediaSecToWallSec(dvrState.windowStart) * 1000;
+        var winEndWallMs = mediaSecToWallSec(dvrState.windowEnd) * 1000;
+        var spanWallMs = winEndWallMs - winStartWallMs;
+        if (!isFinite(spanWallMs) || spanWallMs <= 0) {
+          if (scrubMarkersEl.firstChild) scrubMarkersEl.innerHTML = '';
+          return;
+        }
+        var markers = dvrState.markers || [];
+        // Rebuild nur, wenn die Marker-MENGE sich geändert hat UND kein
+        // Hover-Schutzfenster aktiv ist (U3: gehovertes Element nicht zerstören).
+        if (scrubMarkersEl.childElementCount !== markers.length && Date.now() >= markerHoverGuardUntil) {
+          scrubMarkersEl.innerHTML = '';
+          for (var j = 0; j < markers.length; j++) {
+            var el0 = document.createElement('div');
+            el0.className = 'tv-scrub-marker';
+            var tip0 = document.createElement('div');
+            tip0.className = 'tv-scrub-tooltip';
+            el0.appendChild(tip0);
+            (function(markerRef) {
+              el0.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                seekToWallMs(markerRef.origStartMs);
+              });
+            })(markers[j]);
+            scrubMarkersEl.appendChild(el0);
+          }
+        }
+        // In-place: Position + Tooltip-Text der bestehenden Elemente aktualisieren.
+        var children = scrubMarkersEl.children;
+        for (var i = 0; i < children.length; i++) {
+          var m = markers[i];
+          var el = children[i];
+          if (!m) { el.style.display = 'none'; continue; }
+          var pct = ((m.startMs - winStartWallMs) / spanWallMs) * 100;
+          if (!isFinite(pct)) { el.style.display = 'none'; continue; }
+          pct = Math.max(0, Math.min(100, pct));
+          el.style.display = '';
+          el.style.left = pct + '%';
+          el.dataset.origStartMs = String(m.origStartMs);
+          var tip = el.firstChild;
+          var text = markerTooltipText(m);
+          if (tip && tip.textContent !== text) tip.textContent = text;
+        }
+      }
+
+      function renderScrubMarkers() {
+        syncDvrMarkers();
+      }
+
+      function seekToWallMs(wallMs) {
+        if (!dvrState.enabled || pdtAnchor == null) return;
+        var winStartWallMs = mediaSecToWallSec(dvrState.windowStart) * 1000;
+        var winEndWallMs = mediaSecToWallSec(dvrState.windowEnd) * 1000;
+        var clamped = Math.max(winStartWallMs, Math.min(winEndWallMs, wallMs));
+        var mediaSec = pdtAnchor.mediaSec + (clamped / 1000 - pdtAnchor.wallSec);
+        trySeek(mediaSec);
+      }
+
+      function trySeek(mediaSec) {
+        if (!isFinite(mediaSec)) return;
+        var edge = hlsInstance ? hlsInstance.liveSyncPosition : dvrState.windowEnd;
+        if (!isFinite(edge)) edge = dvrState.windowEnd;
+        // An der Live-Kante nur bis zum letzten intakten Fragment (Target Duration Puffer)
+        mediaSec = Math.max(dvrState.windowStart, Math.min(edge - 4, mediaSec));
+        dvrState.isLive = mediaSec >= edge - 30; // within 30s of edge = live
+        video.currentTime = mediaSec;
+        updateLiveUi();
+        renderScrub();
+      }
+
+      function goLive() {
+        if (!dvrState.enabled || !hlsInstance) return;
+        dvrState.isLive = true;
+        // Sauber an die Live-Kante: hls.js berechnet liveSyncPosition (Edge minus
+        // Ziel-Latenz) und setzt currentTime selbst, wenn currentTime dort liegt.
+        var target = hlsInstance.liveSyncPosition;
+        if (!isFinite(target)) target = dvrState.windowEnd - 4;
+        video.currentTime = target;
+        if (video.paused) video.play();
+        updateLiveUi();
+        renderScrub();
+      }
+
+      function renderScrub() {
+        if (!dvrState.enabled) return;
+        var span = dvrState.windowEnd - dvrState.windowStart;
+        if (span <= 0) return;
+        // Track = DVR-Fenster [windowStart, windowEnd] (Media-Sekunden)
+        scrubViewport.style.left = '0%';
+        scrubViewport.style.width = '100%';
+        // Zeiger = aktuelle Wiedergabeposition
+        var pos = video.currentTime;
+        var posPct = ((pos - dvrState.windowStart) / span) * 100;
+        posPct = Math.max(0, Math.min(100, posPct));
+        scrubPlayed.style.left = '0%';
+        scrubPlayed.style.width = posPct + '%';
+        scrubDrag.style.left = posPct + '%';
+        // Marker layout stale?
+        if (epgMarkersStale) { epgMarkersStale = false; recomputeDvrMarkers(); }
+        // U3: Marker-Positionen in-place ans gleitende DVR-Fenster anpassen
+        // (kein Rebuild — DOM-Identität/Hover bleibt stabil).
+        else syncDvrMarkers();
+      }
+
+      // Klick/ Drag auf Track
+      scrubTrack.addEventListener('click', function(ev) {
+        if (!dvrState.enabled || dvrState.dragging) return;
+        var rect = scrubTrack.getBoundingClientRect();
+        var pct = (ev.clientX - rect.left) / rect.width;
+        var mediaSec = dvrState.windowStart + pct * (dvrState.windowEnd - dvrState.windowStart);
+        trySeek(mediaSec);
+      });
+      scrubTrack.addEventListener('mousedown', function(ev) {
+        dvrState.dragging = true;
+        // U3: während aktivem Drag keine Marker-Rebuilds (DOM darf nicht unter
+        // der Maus weggeräumt werden); Freigabe im upHandler.
+        markerHoverGuardUntil = Date.now() + 60000;
+        var moveHandler = function(ev2) {
+          var rect = scrubTrack.getBoundingClientRect();
+          var pct = (ev2.clientX - rect.left) / rect.width;
+          var mediaSec = dvrState.windowStart + pct * (dvrState.windowEnd - dvrState.windowStart);
+          scrubDrag.style.left = Math.max(0, Math.min(100, pct)) + '%';
+          trySeek(mediaSec);
+        };
+        var upHandler = function() {
+          dvrState.dragging = false;
+          markerHoverGuardUntil = pointerOverMarker ? Date.now() + 60000 : 0;
+          document.removeEventListener('mousemove', moveHandler);
+          document.removeEventListener('mouseup', upHandler);
+        };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', upHandler);
+      });
+      // U3: Hover-Schutzfenster. pointerover/-out bubbeln vom Marker durch den
+      // pointer-events:none-Container (der Listener überlebt Marker-Rebuilds).
+      // Solange der Schutz aktiv ist, friert syncDvrMarkers Rebuilds ein;
+      // Positions-/Tooltip-Updates laufen in-place weiter.
+      scrubMarkersEl.addEventListener('pointerover', function(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.tv-scrub-marker')) {
+          pointerOverMarker = true;
+          markerHoverGuardUntil = Date.now() + 60000;
+        }
+      });
+      scrubMarkersEl.addEventListener('pointerout', function(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.tv-scrub-marker')) {
+          pointerOverMarker = false;
+          // Kurzer Übergangs-Tail (Tooltip-Fade .15s), dann sind Rebuilds
+          // wieder freigegeben — neue Marker verzögern sich nicht merklich.
+          markerHoverGuardUntil = Date.now() + 300;
+        }
+      });
+      liveBtn.addEventListener('click', function(ev) { ev.stopPropagation(); goLive(); });
+      rewindBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        if (dvrState.enabled) trySeek(video.currentTime - 10);
+      });
+      forwardBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        if (dvrState.enabled && !dvrState.isLive) trySeek(video.currentTime + 10);
+      });
+
+      // Zeit-Update: Scrub + Rest-Zeit live ajustieren
+      setInterval(function() {
+        if (dvrState.enabled && !dvrState.dragging) {
+          // DVR-Fenster zwischen den hls.js-Playlist-Events auffrischen
+          if (hlsInstance && hlsInstance.latestLevelDetails) updateDvrFromLevelDetails(hlsInstance.latestLevelDetails);
+          // isLive check: currentTime within 30s of live edge
+          var wasLive = dvrState.isLive;
+          dvrState.isLive = video.currentTime >= dvrState.windowEnd - 30;
+          if (wasLive !== dvrState.isLive) updateLiveUi();
+          renderScrub();
+        }
+      }, 250);
 
       // ── Channel list overlay ──
       function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -402,9 +860,20 @@
         video.muted = savedMuted;
         loadingEl.style.display = 'block';
         errorDiv.style.display = 'none';
+        errorDiv.style.whiteSpace = '';
         audioTracks = [];
         audioDropdown.innerHTML = '';
         audioWrap.style.display = 'none';
+
+        // W2: Load-Watchdog sofort scharf schalten (vorher: erst nach 'playing',
+        // wodurch tote Streams endlos im Ladezustand hingen)
+        armLoadWatchdog();
+
+        // DVR reset on channel switch (Orchestrator-Decision 4: kein Positions-Persisting)
+        resetDvrState();
+        // U1: Bar-Modus pro Kanal zurücksetzen; Host darf ihn via
+        // switch-channel/epg-update überschreiben (dvr: 'on'|'off'|'auto').
+        dvrBarMode = 'auto';
 
         const channelName = name || 'TV';
         const channelLogo = logo;
@@ -428,6 +897,7 @@
         }
 
         if (!url) {
+          disarmLoadWatchdog(); // W2: sofortige Meldung genügt, kein Watchdog nötig
           showError('Keine Stream-URL');
           loadingEl.style.display = 'none';
           return;
@@ -444,6 +914,7 @@
 
         prevCanplay = function() {
           loadingEl.style.display = 'none';
+          signalPlayback(); // W2: Lebenszeichen entwaffnet den Load-Watchdog
           showOverlay();
         };
         prevWaiting = function() {
@@ -452,6 +923,7 @@
         };
         prevPlaying = function() {
           loadingEl.style.display = 'none';
+          signalPlayback(); // W2
           if (stallTimer) clearInterval(stallTimer);
           lastStallTime = Date.now();
           stallTimer = setInterval(function() {
@@ -465,7 +937,10 @@
         };
         prevError = function() {
           loadingEl.style.display = 'none';
-          showError('Stream-Wiedergabe fehlgeschlagen');
+          disarmLoadWatchdog();
+          // W2: fatale Native-Player-Fehler gehören zum persistenten Dialog
+          // (statt der 6s-Meldung, die den User allein lässt)
+          showFatalError('Stream-Wiedergabe fehlgeschlagen');
         };
 
         video.addEventListener('canplay', prevCanplay);
@@ -475,6 +950,7 @@
 
         try {
           var initHls = function() {
+            pdtAnchor = null; // PDT-Anker ist kanalspezifisch
             if (typeof Hls === 'undefined' || !Hls.isSupported()) {
               video.src = decodedUrl;
               // Listener merken und bei Kanalwechsel entfernen (sonst akkumulieren sie)
@@ -491,8 +967,27 @@
               enableWorker: false,
               maxBufferLength: 15,
               liveSyncDurationCount: 3,
-              liveMaxLatencyDurationCount: 6,
+              // Snapback: liveMaxLatencyDurationCount bewusst NICHT gesetzt.
+              // hls.js-Default ist Infinity => der stream-controller sucht nie selbst
+              // zur Live-Kante zurück ("Playback: ... is located too far from the
+              // end of live sliding playlist"), egal wie weit hinten wir stehen.
+              // Rückkehr zur Live-Kante nur explizit via goLive() (Orchestrator-Decision 3).
+              // (liveMaxLatencyDurationCount: 30 snapbackt bei 2s-Segmenten bereits nach 60s.)
               subtitleTrackController: null,
+            });
+            hlsInstance = hls;
+            hls.on(Hls.Events.DESTROYING, function() { if (hlsInstance === hls) hlsInstance = null; });
+            hls.on(Hls.Events.LEVEL_LOADED, function(_event, data) {
+              if (gen !== channelGen) return;
+              updatePdtFromLevelDetails(data.details);
+              // DVR sentinel: DVR-Fenster aus der Sliding-Playlist lesen
+              updateDvrFromLevelDetails(data.details);
+              recomputeDvrMarkers();
+            });
+            hls.on(Hls.Events.LEVEL_UPDATED, function(_event, data) {
+              if (gen !== channelGen) return;
+              updatePdtFromLevelDetails(data.details);
+              updateDvrFromLevelDetails(data.details);
             });
             hls.loadSource(decodedUrl);
             hls.attachMedia(video);
@@ -524,6 +1019,9 @@
                 video.play().catch(function() {});
               });
             });
+            // W2: Kein Reset des Recovery-Zählers bei MANIFEST_LOADED –
+            // signalPlayback() (canplay/playing) ist der einzige legitime Reset,
+            // sonst würden sich Manifest-OK/Segmente-tot-Zyklen endlos retryen.
             hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, function() {
               if (hlsInstance) {
                 var t = hlsInstance.audioTracks || hlsInstance.allAudioTracks || [];
@@ -531,7 +1029,18 @@
               }
             });
             hls.on(Hls.Events.ERROR, function(_event, data) {
+              if (gen !== channelGen) return;
               if (data.fatal) {
+                // W2: fatale hls.js-Fehler zählen strike-weise. Nach 4 Strikes ohne
+                // erfolgreiches Lebenszeichen (canplay/playing setzt zurück) wird
+                // nicht mehr endlos gestartet, sondern der persistente Dialog gezeigt.
+                hlsRecoverCount++;
+                if (hlsRecoverCount > 3) {
+                  disarmLoadWatchdog();
+                  loadingEl.style.display = 'none';
+                  showFatalError('Stream nicht erreichbar (' + (data.details || data.type) + ')');
+                  return;
+                }
                 switch (data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR:
                     hls.startLoad();
@@ -540,7 +1049,9 @@
                     hls.recoverMediaError();
                     break;
                   default:
-                    video.src = decodedUrl;
+                    disarmLoadWatchdog();
+                    loadingEl.style.display = 'none';
+                    showFatalError('Stream-Fehler (' + (data.details || data.type) + ')');
                     break;
                 }
               }
@@ -567,6 +1078,10 @@
         if (e.data && e.data.type === 'switch-channel') {
           setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
             e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+          if (e.data.dvr === 'on' || e.data.dvr === 'off') {
+            dvrBarMode = e.data.dvr;
+            applyDvrBarMode();
+          }
           if (e.data.channelList && e.data.channelIndex !== undefined) {
             showChannelList(e.data.channelList, e.data.channelIndex);
           }
@@ -577,6 +1092,21 @@
           }
         } else if (e.data && e.data.type === 'epg-update') {
           updateEpgBar(e.data.epg, e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+          // U2: Roh-EPG sofort übernehmen und Marker rendern — der Push passiert
+          // beim Kanalwechsel/did-finish-load, nicht erst nach 30s-Poll.
+          if (e.data.epgEntries && Array.isArray(e.data.epgEntries)) {
+            epgEntries = e.data.epgEntries;
+            epgMarkersStale = true;
+            recomputeDvrMarkers();
+          } else if (e.data.epgEntries === null) {
+            epgEntries = [];
+            recomputeDvrMarkers();
+          }
+          // U1: Bar-Modus-Signal vom Host ('on'|'off'|'auto') anwenden
+          if (e.data.dvr === 'on' || e.data.dvr === 'off') {
+            dvrBarMode = e.data.dvr;
+            applyDvrBarMode();
+          }
         }
       });
 
@@ -634,11 +1164,29 @@
           timeEl.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration - video.currentTime);
         }
       });
+      // DVR: DVR-Fenster auffrischen + Zeitanzeige relativ zur Live-Kante (Timeshift)
+      video.addEventListener('timeupdate', function() {
+        if (dvrState.enabled) {
+          var wasLive = dvrState.isLive;
+          dvrState.isLive = video.currentTime >= dvrState.windowEnd - 30;
+          if (wasLive !== dvrState.isLive) updateLiveUi();
+          var behind = Math.max(0, dvrState.windowEnd - video.currentTime);
+          timeEl.textContent = formatTime(behind) + ' hinter Live' + (dvrState.isLive ? ' · LIVE' : ' · TIMESHIFT');
+          if (epgMarkersStale) recomputeDvrMarkers();
+        }
+      });
+      video.addEventListener('seeking', function() {
+        if (dvrState.enabled) {
+          var target = video.currentTime;
+          dvrState.isLive = target >= dvrState.windowEnd - 30;
+          updateLiveUi();
+        }
+      });
       video.addEventListener('timeupdate', function() { lastStallTime = Date.now(); });
       video.addEventListener('pause', function() { if (stallTimer) { clearInterval(stallTimer); stallTimer = null; } });
 
       progress.addEventListener('input', function() {
-        if (video.duration && isFinite(video.duration)) {
+        if (!dvrState.enabled && video.duration && isFinite(video.duration)) {
           video.currentTime = (progress.value / 100) * video.duration;
         }
       });
@@ -679,8 +1227,10 @@
           case 'F': e.preventDefault(); fullscreenBtn.click(); break;
           case 'm':
           case 'M': e.preventDefault(); muteBtn.click(); break;
-          case 'ArrowLeft': e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 10); break;
-          case 'ArrowRight': e.preventDefault(); video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
+          case 'ArrowLeft': e.preventDefault(); if (dvrState.enabled) trySeek(video.currentTime - 10); else video.currentTime = Math.max(0, video.currentTime - 10); break;
+          case 'ArrowRight': e.preventDefault(); if (dvrState.enabled) { if (!dvrState.isLive) trySeek(video.currentTime + 10); } else video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
+          case 'l':
+          case 'L': if (dvrState.enabled) { e.preventDefault(); goLive(); } break;
           case '=':
           case '+': e.preventDefault(); video.volume = Math.min(1, video.volume + 0.1); break;
           case '-':
@@ -689,10 +1239,57 @@
       });
 
       // ── Error ──
+      // W2: Persistenter Fehlerdialog für tote Streams – bleibt sichtbar bis zur
+      // nächsten Kanalwahl (statt nach 6s zu verschwinden), nennt den Sender und
+      // weist auf den Senderwechsel hin (Pfeiltasten / Senderliste).
+      function showFatalError(msg) {
+        errorDiv.innerHTML =
+          '<div style="font-size:24px;font-weight:600;margin-bottom:8px">' + msg + '</div>' +
+          '<div style="font-size:15px;opacity:.85">Sender: ' + (channelNameEl.textContent || 'TV') +
+          ' · Pfeiltasten ↑/↓ oder Senderliste (T) zum Wechseln</div>';
+        errorDiv.style.whiteSpace = 'normal';
+        errorDiv.style.display = 'block';
+        clearTimeout(hideOverlayTimer);
+        topOverlay.classList.add('visible');
+        controls.classList.add('visible');
+      }
+
       function showError(msg) {
         errorDiv.textContent = msg;
+        errorDiv.style.whiteSpace = '';
         errorDiv.style.display = 'block';
         setTimeout(function() { errorDiv.style.display = 'none'; }, 6000);
+      }
+
+      // ── W2: Load-Watchdog ──
+      // Bewaffnet sich SOFORT beim Kanalstart. Meldet nach STREAM_LOAD_TIMEOUT_MS
+      // einen Fehler, solange kein Lebenszeichen (Canplay/Playing) kam.
+      function armLoadWatchdog() {
+        disarmLoadWatchdog();
+        gotPlaybackSignal = false;
+        hlsRecoverCount = 0;
+        loadWatchdogTimer = setTimeout(function() {
+          loadWatchdogTimer = null;
+          if (gotPlaybackSignal) return;
+          // W2: hls.js stoppen, damit keine startLoad()-Retruns mehr laufen
+          if (hlsInstance) { try { hlsInstance.destroy(); } catch (e) {} hlsInstance = null; }
+          loadingEl.style.display = 'none';
+          showFatalError('Sender nicht erreichbar – Stream startet nicht');
+        }, STREAM_LOAD_TIMEOUT_MS);
+      }
+
+      function disarmLoadWatchdog() {
+        if (loadWatchdogTimer) { clearTimeout(loadWatchdogTimer); loadWatchdogTimer = null; }
+      }
+
+      function signalPlayback() {
+        if (!gotPlaybackSignal) {
+          gotPlaybackSignal = true;
+          disarmLoadWatchdog();
+        }
+        // W2: jedes echte Lebenszeichen setzt die Recovery-Fehlerbilanz zurück –
+        // erfolgreich wiederhergestellte Streamaussetzer zählen nicht weiter.
+        hlsRecoverCount = 0;
       }
 
       // ── Audio track handling ──
@@ -736,7 +1333,9 @@
           var isActive = activeIdx === i || (!hasReal && i === 0);
           var item = document.createElement('div');
           item.className = 'tv-audio-item' + (isActive ? ' active' : '');
-          item.textContent = t.name || 'Track ' + (i + 1);
+          var trackLabel = t.name || 'Track ' + (i + 1);
+          item.textContent = trackLabel;
+          item.dataset.label = trackLabel;
           if (t.lang) item.textContent += ' (' + t.lang + ')';
           item.dataset.index = i;
           item.addEventListener('click', function(e) {
@@ -744,7 +1343,7 @@
             if (hlsInstance && hasReal) hlsInstance.audioTrack = i;
             else if (hasReal && video.audioTracks) Array.from(video.audioTracks).forEach(function(at, ai) { at.enabled = ai === i; });
             audioDropdown.querySelectorAll('.tv-audio-item').forEach(function(el) { el.classList.remove('active'); });
-            item.classList.add('active'); audioBtn.textContent = '🔊 ' + item.textContent; audioDropdown.classList.remove('open');
+            item.classList.add('active'); audioBtn.textContent = '🔊 ' + (item.dataset.label || item.textContent.replace(/\s*\([^)]*\)\s*$/, '').trim()); audioDropdown.classList.remove('open');
           });
           audioDropdown.appendChild(item);
         });

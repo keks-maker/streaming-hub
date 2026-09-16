@@ -294,11 +294,73 @@
       "3sat.de@HD": {
         "url": "https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/veryhigh/master.m3u8"
       },
+      "SWRFernsehenBadenWurttemberg.de@SD": {
+        "url": "https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8"
+      },
+      "SWRFernsehenRheinlandPfalz.de@SD": {
+        "url": "https://swrrpd-hls.akamaized.net/hls/live/2018676/swrrpd/master.m3u8"
+      },
+      "tagesschau24.de@SD": {
+        "url": "https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8"
+      },
+      "NDRFernsehen.de@Hamburg": {
+        "url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_hh/master.m3u8"
+      },
+      "NDRFernsehen.de@MecklenburgVorpommern": {
+        "url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_mv/master.m3u8"
+      },
+      "NDRFernsehen.de@Niedersachsen": {
+        "url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"
+      },
+      "NDRFernsehen.de@SchleswigHolstein": {
+        "url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_sh/master.m3u8"
+      },
+      "BRFernsehen.de@Nord": {
+        "url": "https://mcdn.br.de/br/fs/bfs_nord/hls/de/master.m3u8"
+      },
+      "BRFernsehen.de@Sud": {
+        "url": "https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8"
+      },
       "ARDalpha.de@SD": {
-        "tvgId": "ARD-alpha.de"
+        "tvgId": "ARD-alpha.de",
+        "url": "https://mcdn.br.de/br/fs/ard_alpha/hls/de/master.m3u8"
       },
       "ARDalpha.de@HD": {
-        "tvgId": "ARD-alpha.de"
+        "tvgId": "ARD-alpha.de",
+        "url": "https://mcdn.br.de/br/fs/ard_alpha/hls/de/master.m3u8"
+      },
+      "WDRFernsehen.de@Koln": {
+        "url": "https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8"
+      },
+      "WDRFernsehen.de@Aachen": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018019/wdrlz_aachen/index.m3u8"
+      },
+      "WDRFernsehen.de@Bielefeld": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018026/wdrlz_bielefeld/index.m3u8"
+      },
+      "WDRFernsehen.de@Bonn": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018021/wdrlz_bonn/index.m3u8"
+      },
+      "WDRFernsehen.de@Dortmund": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018022/wdrlz_dortmund/index.m3u8"
+      },
+      "WDRFernsehen.de@Duisburg": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018024/wdrlz_duisburg/index.m3u8"
+      },
+      "WDRFernsehen.de@Dusseldorf": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018023/wdrlz_duesseldorf/index.m3u8"
+      },
+      "WDRFernsehen.de@Essen": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018027/wdrlz_essen/index.m3u8"
+      },
+      "WDRFernsehen.de@Munster": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018025/wdrlz_muensterland/index.m3u8"
+      },
+      "WDRFernsehen.de@Siegen": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018020/wdrlz_siegen/index.m3u8"
+      },
+      "WDRFernsehen.de@Wuppertal": {
+        "url": "https://wdrlokalzeit.akamaized.net/hls/live/2018028/wdrlz_wuppertal/index.m3u8"
       },
       "One.de@HD": {
         "url": "https://mcdn-one.ard.de/ardone/hls/master.m3u8"
@@ -309,8 +371,24 @@
       "phoenix.de@HD": {
         "url": "https://zdf-hls-19.akamaized.net/hls/live/2016502/de/veryhigh/master.m3u8"
       },
+      "MDRFernsehen.de@Sachsen": {
+        "url": "https://mdrtvsnhls.akamaized.net/hls/live/2016928/mdrtvsn/master.m3u8"
+      },
+      "MDRFernsehen.de@SachsenAnhalt": {
+        "url": "https://mdrtvsahls.akamaized.net/hls/live/2016879/mdrtvsa/master.m3u8"
+      },
       "MDRFernsehen.de@Thuringen": {
+        "url": "https://mdrtvthhls.akamaized.net/hls/live/2016880/mdrtvth/master.m3u8",
         "tvgId": "MDRThuringen.de"
+      },
+      "hrfernsehen.de@SD": {
+        "url": "https://hr-live.ard-mcdn.de/hr/live/hls/de/master.m3u8"
+      },
+      "hrfernsehen.de@HD": {
+        "url": "https://hr-live.ard-mcdn.de/hr/live/hls/de/master.m3u8"
+      },
+      "rbbFernsehen.de@Berlin": {
+        "url": "https://rbb-hls-berlin.akamaized.net/hls/live/2017824/rbb_berlin/master.m3u8"
       },
       "DasErste.de@HD": {
         "url": "https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8"

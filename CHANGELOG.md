@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.84 (2026-09-10)
+- W2/W3 (PR #34) + U1–U3 (PR #35) gemeinsam ausgerollet — Details siehe Einträge der Feature-Branches unten (in dieser Version enthalten).
+- Fix (U1): DVR-Modus zeigt genau EINEN Fortschrittsbalken — die DVR-Scrub-Bar (Marker, LIVE-Button, ±10s) ist die einzige Bar; der Legacy-Player-Progress-Balken wird im DVR-Modus ausgeblendet (html.tv-dvr-mode → .tv-progress display:none). Nicht-DVR-Sender behalten exakt das alte Verhalten; Host kann pro Sender via `dvr: 'on'|'off'` im switch-channel/epg-update-Signal erzwingen.
+- Fix (U2): EPG-Sendungs-Marker erscheinen sofort nach dem Kanalwechsel statt nach Minuten — Host pusht Roh-EPG aktiv bei Kanalwechsel und beim ersten TV-Seiten-Load (pushEpgToTvView) statt nur auf den 30s-Poll zu warten; EPG-Fenster-Selection in typed-core `selectEpgWindowEntries` ausgelagert (unit-getestet). Gemessen (E2E, Electron/CDP): Marker ~0,5 s nach Ladebeginn (Anforderung ≤ 10 s).
+- Fix (U3): Tooltip-Flicker behoben — der 250ms-Fenster-Ticker baute die Marker-Elemente periodisch per innerHTML neu (gehovertes DOM wurde zerstört → mouseenter/leave im Millisekundentakt). Marker-DOM wird jetzt in-place synchronisiert (style.left/Tooltip-Text), Rebuilds nur bei geänderter Marker-Menge und nie unter aktivem Hover (pointerover/-out-Guard + Drag-Schutz); Marker-Layer hat pointer-events:none, Marker reaktivieren sie.
+- Test: 4 neue Unit-Tests (selectEpgWindowEntries) → 58/58 grün; neuer CDP-E2E scripts/test-u-scrubbar.cjs (ffmpeg-HLS-Fixtures mit PROGRAM-DATE-TIME + CORS-Fileserver + Electron unter Xvfb): DVR-Kanal → genau 1 sichtbare Bar, Marker ≤ 10 s, Tooltip-DOM-Identität über 2 s Hover stabil, Nicht-DVR-Kanal unverändert.
+
+## 0.4.83 (2026-09-10)
+- Feature: TV-Player DVR-Timeshift – Rückspulen im DVR-Fenster des Live-Streams (Scrub-Bar, ±10s-Skip, Taste L = Live-Kante), wirksam für alle Sender mit DVR-Fenster (Das Erste, ARD/MDR/NDR/WDR/SWR/hr/rbb, One, tagesschau24, phoenix u. a.)
+- Feature: EPG-Sendungs-Marker in der Scrub-Bar – Klick springt an den Sendungsbeginn, Tooltip mit Titel + Startzeit
+- Fix: 21 kaputte/dead ARD-Familien-Stream-URLs via channelOverrides ersetzt (u. a. MDR Thüringen), alle DVR-Fenster live verifiziert
+- Fix: Updater – tvsources.json wird beim Update jetzt per 3-way-Merge zusammengeführt (User-Favoriten/Sortierungen/eigene Overrides bleiben, Release-URL-Fixes kommen durch; vorher wurden Release-Fixes stillschweigend zurückgerollt)
+- Fix: Tippfehler im Timeshift-Label (· TIMESHIFT) und Audio-Button-Label ohne Sprach-Klammer
+- Technical: typed-core epgWindow.ts (DVR-Fenster↔EPG-Mapping) + Unit-Tests; Updater-Merge-Logik mit 26 Unit-Tests (npm run test:updater); Nach-Update-Reconciliation beim App-Start (holt den tvsources-Merge nach, wenn ein älterer Updater beim vorherigen Update noch blind überschrieben hat)
+## Unreleased (feature/tv-error-zapping, in 0.4.84 enthalten)
+- Fix (W2): Fehlerdialog bei nie startendem Stream – Load-Watchdog bewaffnet sich sofort beim Kanalstart (vorher erst nach `playing`), fatale hls.js-NETWORK_ERRORS werden nicht mehr endlos per `startLoad()` retryt (max. 4 Strikes, Reset nur bei echtem Lebenszeichen); nach 25s bzw. bei Strikes erscheint das persistente Fehler-Overlay mit Sendername + „Pfeiltasten ↑/↓ oder Senderliste (T) zum Wechseln" statt endlosem Ladezustand
+- Fix (W3): Zapping (Pfeiltasten ↑/↓) bricht nicht mehr still ab, wenn der aktive Sender kein Favorit ist – kanonische Zapping-Reihenfolge via typed-core `buildZapOrder`/`getNextChannelId`: alle Sender des aktiven Quellservices, Favoriten zuerst (Sidebar-Reihenfolge); On-Screen-Senderliste (`buildChannelList`) folgt derselben Reihenfolge
+- Test: 5 neue/angepasste Unit-Tests in typed-core (buildZapOrder, getNextChannelId-W3, buildChannelList-W3), 54/54 grün; Bundle-Smoke-Tests (renderer lädt, Key-Pipeline), W3-Vollverdrahtungstest (Zap-Sequenz ab Nicht-Favorit per Sidebar-Click + Keydown) und W2-CDP-QA (Szenarien toter Host / conn-refused / echter Stream via Fixture-HLS-Server) unter scripts/
+
 ## 0.4.82 (2026-06-10)
 - Chore: Test-Release – Original-Restart aus v0.4.81 aktiv
 

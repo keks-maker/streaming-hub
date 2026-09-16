@@ -66,9 +66,18 @@ export {
 } from './epg.js';
 
 export {
+  computeEpgMarkers,
+  selectEpgWindowEntries,
+  absoluteTimeToWindowOffsetSec,
+  windowOffsetSecToAbsoluteTime,
+  type EpgMarker,
+} from './epgWindow.js';
+
+export {
   getMediathekForChannel,
   normalizeTvId,
   isFavorite,
+  buildZapOrder,
   filterChannels,
   groupChannels,
   separateFavorites,

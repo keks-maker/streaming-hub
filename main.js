@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { fork, execSync } = require('child_process');
+const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 
 let mainWindow;
 let pipWindow = null;
@@ -375,6 +376,11 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  try {
+    reconcilePostUpdate(__dirname, app.getVersion());
+  } catch (e) {
+    logger.error('Nach-Update-Reconciliation fehlgeschlagen (Start läuft weiter):', e.message);
+  }
   try {
     await components.whenReady();
     logger.info('Widevine CDM status:', components.status());

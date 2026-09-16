@@ -7,7 +7,7 @@ import { mergeConfig, validateConfig } from '../src/config.js';
 import { loadServices } from '../src/services.js';
 import { escapeHtml, decodeEntities, normalizeUrl, formatTimestamp } from '../src/format.js';
 import { parseEpgTime, formatEpgTime, buildEpgIndex, getEpgChannelList, findCurrentEpg } from '../src/epg.js';
-import { getMediathekForChannel, normalizeTvId, isFavorite, filterChannels, groupChannels, separateFavorites, buildChannelList, getNextChannelId, applyChannelOverrides, applySortOrder } from '../src/tv.js';
+import { getMediathekForChannel, normalizeTvId, isFavorite, buildZapOrder, filterChannels, groupChannels, separateFavorites, buildChannelList, getNextChannelId, applyChannelOverrides, applySortOrder } from '../src/tv.js';
 import { DEFAULT_MEDIATHEK_SOURCES, buildSearchUrl, parseSearchResponse } from '../src/mediathek.js';
 
 // ─── Updater ─────────────────────────────────────────────────
@@ -170,8 +170,6 @@ it('parseEpgTime – invalid', () => {
 });
 
 it('formatEpgTime', () => {
-  // Zeitzonenunabhängig: formatEpgTime zeigt die lokale Zeit an ("HH:MM"),
-  // daher wird hier nur das Format und der Leerstring-Fall geprüft.
   expect(formatEpgTime('')).toBe('');
   expect(formatEpgTime('20260609143000 +0200')).toMatch(/^\d{2}:\d{2}$/);
 });
@@ -288,8 +286,10 @@ it('buildChannelList', () => {
     { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
   ];
+  // W3: Liste enthaelt ALLE Sender des Quellservices, Favorit zuerst;
+  // aktiver Sender (ch1, Favorit) steht an Index 0.
   const result = buildChannelList(channels[0]!, channels, sources);
-  expect(result.channels.length).toBe(1);
+  expect(result.channels.map(c => c.id)).toEqual(['ch1', 'ch2']);
   expect(result.currentIndex).toBe(0);
 });
 
@@ -304,13 +304,47 @@ it('getNextChannelId', () => {
   expect(getNextChannelId('ch2', channels, sources, -1)).toBe('ch1');
 });
 
-it('getNextChannelId – favors favorites', () => {
+it('getNextChannelId – zappt über alle Sender, Favoriten zuerst (W3)', () => {
   const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['ch2'] }];
   const channels = [
     { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch3', name: 'RTL', url: 'x', group: 'G', sourceId: 'src1' },
   ];
-  expect(getNextChannelId('ch2', channels, sources, 1)).toBe('ch2');
+  // Reihenfolge: Favoriten zuerst (ch2), dann Rest in Listenreihenfolge (ch1, ch3)
+  expect(getNextChannelId('ch2', channels, sources, 1)).toBe('ch1');
+  expect(getNextChannelId('ch1', channels, sources, 1)).toBe('ch3');
+  expect(getNextChannelId('ch3', channels, sources, 1)).toBe('ch2'); // Wrap-around
+  expect(getNextChannelId('ch2', channels, sources, -1)).toBe('ch3');
+});
+
+it('buildZapOrder – Favoriten zuerst, Rest in Listenreihenfolge', () => {
+  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['c', 'a'] }];
+  const channels = [
+    { id: 'a', name: 'A', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'b', name: 'B', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'c', name: 'C', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'd', name: 'D', url: 'x', group: 'G', sourceId: 'src1' },
+  ];
+  // Konsistent mit separateFavorites/Sidebar: Favoriten in LISTENreihenfolge
+  // (a vor c, nicht in favorites-Array-Reihenfolge), dann Rest.
+  expect(buildZapOrder(channels, sources)).toEqual(['a', 'c', 'b', 'd']);
+  // Leere Favoriten => unverändert die Listenreihenfolge
+  const noFav: typeof sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0 }];
+  expect(buildZapOrder(channels, noFav)).toEqual(['a', 'b', 'c', 'd']);
+});
+
+it('buildChannelList – enthält alle Sender des Quellservices (W3)', () => {
+  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['ch2'] }];
+  const channels = [
+    { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch3', name: 'RTL', url: 'x', group: 'G', sourceId: 'src1' },
+  ];
+  // Aktiver Sender ist KEIN Favorit => Liste + Index trotzdem korrekt
+  const result = buildChannelList(channels[0]!, channels, sources);
+  expect(result.channels.map(c => c.id)).toEqual(['ch2', 'ch1', 'ch3']);
+  expect(result.currentIndex).toBe(1);
 });
 
 it('applyChannelOverrides', () => {
