@@ -1581,8 +1581,8 @@ webview.addEventListener('permissionrequest', e => {
 // ── Webview Error Recovery (contentView) ──
 
 webview.addEventListener('did-fail-load', e => {
-  // Ignore cancelled navigations (e.g. from about:blank)
   if (e.errorCode === -3) return;
+  if (!e.isMainFrame) return;
   logger.warn('contentView did-fail-load:', e.errorCode, e.errorDescription, e.validatedURL);
   showError('Seite konnte nicht geladen werden.\n' + e.errorDescription, e.validatedURL);
 });
@@ -1675,6 +1675,7 @@ tvView.addEventListener('ipc-message', e => {
 
 tvView.addEventListener('did-fail-load', e => {
   if (e.errorCode === -3) return;
+  if (!e.isMainFrame) return;
   logger.warn('tvView did-fail-load:', e.errorCode, e.errorDescription, e.validatedURL);
   showError('TV-Seite konnte nicht geladen werden.\n' + e.errorDescription, e.validatedURL);
 });
