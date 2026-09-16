@@ -1,4 +1,4 @@
-<!-- v0.3.9. – EPG-Update per Polling alle 30s + EPG-Schrift vergrößert -->
+<!-- v0.3.10. – EPG-Titel escaped, hls.js-Fallback repariert, Listener-Leak behoben -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -290,7 +290,7 @@
       let lastStallTime = 0;
       let hlsLoaded = false;
       let channelGen = 0;
-      let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null;
+      let prevCanplay = null, prevWaiting = null, prevPlaying = null, prevError = null, prevLoadedMetadata = null;
 
       // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
       function loadHlsJs(cb) {
@@ -299,7 +299,11 @@
         var dir = base.substring(0, base.lastIndexOf('/') + 1);
         var s = document.createElement('script');
         s.onload = function() { hlsLoaded = true; if (cb) cb(); };
-        s.onerror = function() { audioBtn.textContent += '|hlsErr'; };
+        s.onerror = function() {
+          console.warn('hls.js konnte nicht geladen werden – Fallback auf native Wiedergabe');
+          hlsLoaded = true; // verhindert Endlos-Retries
+          if (cb) cb(); // initHls greift dann auf native Wiedergabe zurück
+        };
         s.src = dir + 'node_modules/hls.js/dist/hls.min.js';
         document.head.appendChild(s);
       }
@@ -307,12 +311,13 @@
       // ── EPG update (ohne Rest des Channels zu berühren) ──
       function updateEpgBar(epg, start, end, next) {
         if (epg) {
-          epgBar.innerHTML = '<span class="epg-time">' + (start || '') + '</span>'
+          // esc(): Sendungstitel können "<", "&" etc. enthalten – niemals roh in innerHTML
+          epgBar.innerHTML = '<span class="epg-time">' + esc(start || '') + '</span>'
             + '<span class="epg-sep">–</span>'
-            + '<span class="epg-time">' + (end || '') + '</span>'
+            + '<span class="epg-time">' + esc(end || '') + '</span>'
             + '<span class="epg-sep">·</span>'
-            + '<span class="epg-title">' + epg + '</span>'
-            + (next ? '<span class="epg-sep">|</span><span class="epg-next">' + next + '</span>' : '');
+            + '<span class="epg-title">' + esc(epg) + '</span>'
+            + (next ? '<span class="epg-sep">|</span><span class="epg-next">' + esc(next) + '</span>' : '');
           epgBar.style.display = 'block';
         } else {
           epgBar.style.display = 'none';
@@ -434,6 +439,7 @@
         if (prevWaiting) video.removeEventListener('waiting', prevWaiting);
         if (prevPlaying) video.removeEventListener('playing', prevPlaying);
         if (prevError) video.removeEventListener('error', prevError);
+        if (prevLoadedMetadata) video.removeEventListener('loadedmetadata', prevLoadedMetadata);
         if (stallTimer) { clearInterval(stallTimer); stallTimer = null; }
 
         prevCanplay = function() {
@@ -471,12 +477,14 @@
           var initHls = function() {
             if (typeof Hls === 'undefined' || !Hls.isSupported()) {
               video.src = decodedUrl;
-              video.addEventListener('loadedmetadata', function() {
+              // Listener merken und bei Kanalwechsel entfernen (sonst akkumulieren sie)
+              prevLoadedMetadata = function() {
                 var nt = video.audioTracks;
                 if (nt && nt.length) {
                   setAudioTracks(Array.from(nt).map(function(t, i) { return { name: t.label || 'Track ' + (i+1), lang: t.language, id: i }; }));
                 } else { renderAudioTracks(); }
-              });
+              };
+              video.addEventListener('loadedmetadata', prevLoadedMetadata);
               return;
             }
             const hls = new Hls({

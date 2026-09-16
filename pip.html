@@ -48,6 +48,8 @@ const webview = document.getElementById('pipView');
 const video = document.getElementById('pipVideo');
 
 window.addEventListener('message', (e) => {
+  // Guard: Messages ohne Payload (z. B. von anderen Frames) nicht verarbeiten
+  if (!e.data) return;
   if (e.data.type === 'load-url') {
     video.style.display = 'none';
     webview.style.display = 'block';

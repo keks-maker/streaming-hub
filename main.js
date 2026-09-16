@@ -520,7 +520,10 @@ ipcMain.handle('add-tv-source', (_e, source) => {
     existing.name = source.name || existing.name;
     existing.epgUrl = source.epgUrl || existing.epgUrl;
     existing.sortOrder = source.sortOrder || existing.sortOrder || [];
-    // favorites und channelOverrides bleiben unangetastet
+    // Fix: Merge auch persistieren + broadcasten – vorher gingen die
+    // aktualisierten Felder beim Neustart verloren.
+    saveTvSources(sources);
+    broadcastTvSources();
     return existing;
   }
   // Neue Quelle – stabile ID aus dem Namen generieren

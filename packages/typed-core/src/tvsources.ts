@@ -1,4 +1,4 @@
-import type { TvSource, TvChannel, TvChannelGroup } from './types.js';
+import type { TvChannel, TvChannelGroup } from './types.js';
 
 function simpleHash(str: string): string {
   let hash = 0;
@@ -38,7 +38,14 @@ export function parseM3U(
       const groupMatch = trimmed.match(/group-title="([^"]*)"/);
       currentGroup = groupMatch?.[1] ?? 'Unsortiert';
 
-      const nameMatch = trimmed.match(/,([^,]+)$/);
+      // Name = alles nach dem ersten Komma außerhalb der key="value"-Attribute.
+      // Die alte Regex (/,([^,]+)$/) nahm alles nach dem LETZTEN Komma und
+      // brach damit bei Sendernamen mit Komma ("Das Erste, HD") oder Kommas
+      // in Attribut-Werten (group-title="Nachrichten, Dokus").
+      // Fallback auf die alte Regex für nicht standardkonforme Zeilen.
+      const nameMatch =
+        trimmed.match(/^#EXTINF:\s*-?\d+(?:\.\d+)?(?:\s+[\w.-]+="[^"]*")*\s*,\s*(.+)$/i) ??
+        trimmed.match(/,([^,]+)$/);
       currentName = nameMatch?.[1]?.trim() ?? '';
       continue;
     }
@@ -123,7 +130,8 @@ function extractEpgUrls(content: string): string[] {
   const lines = content.split('\n');
   for (const line of lines) {
     const trimmed = line.trim();
-    const tvgUrlMatch = trimmed.match(/x-tvg-url="([^"]+)"/i);
+    // Übliche Varianten: x-tvg-url (Standard) und url-tvg (verbreitetes Pendant)
+    const tvgUrlMatch = trimmed.match(/(?:x-tvg-url|url-tvg)="([^"]+)"/i);
     if (tvgUrlMatch && !urls.includes(tvgUrlMatch[1]!)) {
       urls.push(tvgUrlMatch[1]!);
     }

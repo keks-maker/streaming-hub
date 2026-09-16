@@ -23,6 +23,10 @@ struct TvChannel: Codable, Identifiable {
     let logo: String?
     let url: String
     let group: String
+    // Optional passend zu types.ts – sonst schlägt das Decoding fehl,
+    // wenn die Felder in den Daten fehlen.
+    let tvgId: String?
+    let sourceId: String?
     let epgId: String?
 }
 

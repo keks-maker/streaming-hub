@@ -1,10 +1,10 @@
-// v0.4.20 – robuster Update-Prozess: User-Daten sichern, stash verbessert
+// v0.4.21 – Versionsvalidierung + appDir-Fallback
 const logger = require('./logger.js');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const appDir = process.argv[2];
+const appDir = process.argv[2] || process.cwd();
 
 // User-Dateien, die vor dem Checkout gesichert werden müssen
 const userFiles = ['services.json', 'tvsources.json', 'history.json'];
@@ -95,6 +95,12 @@ process.on('message', msg => {
     }
   } else if (msg.type === 'apply') {
     try {
+      // Defense-in-Depth: Version strikt validieren, bevor sie in
+      // Shell-Befehle interpoliert wird (kommt via IPC vom Renderer).
+      if (!/^\d+\.\d+\.\d+$/.test(String(msg.version || ''))) {
+        throw new Error('ungültige Versionsnummer: ' + msg.version);
+      }
+
       process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 5 });
       execSync('git fetch --tags --force origin', {
         cwd: appDir,
