@@ -1,4 +1,4 @@
-// v0.3.8. – Zurück-Navigation (Ansichts-Historie) + Kanalwechsel per postMessage
+// v0.3.9. – Fix: Zurück innerhalb eines Dienstes (did-navigate-in-page-Tracking) + TV-Zustand mit Kanal-ID
 const {
   escapeHtml,
   decodeEntities,
@@ -291,15 +291,18 @@ function createGroupLabel(text) {
 }
 
 // ── Zurück-Navigation (Ansichts-Historie) ──
-// Jeder Ansichtswechsel (Service, TV, Startseite) legt den vorherigen
-// Zustand auf einen Stack. "Zurück" stellt ihn wiederher – inklusive der
-// letzten URL des Dienstes, sodass man exakt dorthin zurückkehrt, wo man war.
+// Jeder Ansichtswechsel UND jede Navigation innerhalb eines Dienstes legt den
+// vorherigen Zustand auf einen Stack. "Zurück" stellt ihn wiederher – inklusive
+// der zuletzt besuchten URL, sodass man exakt dorthin zurückkehrt, wo man war.
 let navStack = []; // { kind: 'start' | 'service' | 'tv', id?, url? }
 let restoringNav = false;
-let lastUrlByService = {}; // serviceId → zuletzt geladene URL
+let lastUrlByService = {}; // serviceId → zuletzt geladene/besuchte URL (auch SPA-intern)
 
 function currentNavState() {
-  if (currentProvider === '__tv__') return { kind: 'tv' };
+  if (currentProvider === '__tv__') {
+    // Kanal-ID mitspeichern, damit "Zurück" exakt den letzten Sender öffnet
+    return { kind: 'tv', id: tvActiveChannelId || null };
+  }
   if (!currentProvider) return { kind: 'start' };
   return { kind: 'service', id: currentProvider, url: lastUrlByService[currentProvider] || null };
 }
@@ -326,14 +329,17 @@ function goBack() {
   try {
     if (target.kind === 'service') {
       const svc = services.find(s => s.id === target.id);
-      if (svc) {
-        // Letzte URL des Dienstes wiederherstellen statt nur der Basis-URL
-        navigateTo({ ...svc, url: target.url || svc.url });
+      // Zuletzt besuchte URL wiederherstellen (auch SPA-intern); Fallbacks:
+      // Stack-URL → lastUrlByService → Basis-URL des Dienstes.
+      const url = target.url || lastUrlByService[target.id] || (svc ? normalizeUrl(svc.url) : '');
+      if (url) {
+        navigateTo({ id: target.id, url });
       } else {
         goToStartPage();
       }
     } else if (target.kind === 'tv') {
-      const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+      // Zuletzt aktiven Sender wiederherstellen (per gespeicherter Kanal-ID)
+      const ch = tvChannels.find(c => c.id === target.id) || tvChannels.find(c => c.id === tvActiveChannelId);
       if (ch) {
         selectTvChannel(ch, { suppressChannelList: true });
       } else {
@@ -1625,12 +1631,30 @@ webview.addEventListener('did-finish-load', () => {
 
 webview.addEventListener('did-navigate', () => {
   const url = webview.getURL();
+  // Letzte URL des aktiven Dienstes tracken (Basis für die Zurück-Historie)
+  if (currentProvider && currentProvider !== '__tv__' && url && url !== 'about:blank') {
+    lastUrlByService[currentProvider] = url;
+  }
   for (const svc of services) {
     if (url.includes(svc.id) || url.startsWith(svc.url)) {
       currentProvider = svc.id;
       break;
     }
   }
+});
+
+// Navigation INNERHALB eines Dienstes tracken (SPAs wie Netflix/YouTube/Prime
+// feuern nur did-navigate-in-page). Ohne diesen Handler enthielt der Stack
+// nur Ansichtswechsel, und "Zurück" sprang immer auf die Startseite.
+webview.addEventListener('did-navigate-in-page', e => {
+  if (restoringNav) return;
+  if (!currentProvider || currentProvider === '__tv__') return;
+  const url = (e && e.url) || webview.getURL();
+  if (!url || url === 'about:blank') return;
+  // Vorherigen Zustand (mit der alten URL) auf den Stack legen –
+  // lastUrlByService wird erst danach aktualisiert.
+  pushNavState();
+  lastUrlByService[currentProvider] = url;
 });
 
 webview.addEventListener('permissionrequest', e => {
