@@ -11,6 +11,7 @@ const {
   getMediathekForChannel,
   isFavorite,
   buildChannelList,
+  getNextChannelId,
   filterChannels,
   groupChannels,
   separateFavorites,
@@ -719,7 +720,7 @@ function renderTvChannelItem(ch, showFav) {
 
   const now = new Date();
   const normId = id =>
-    id
+    (id || '')
       .replace(/@[^.@]*/g, '')
       .toLowerCase()
       .trim();
@@ -896,7 +897,7 @@ function renderTvChEditor() {
     items = items.filter(
       ({ ch }) =>
         ch.name.toLowerCase().includes(filter) ||
-        ch.tvgId.toLowerCase().includes(filter) ||
+        (ch.tvgId || '').toLowerCase().includes(filter) ||
         ch.url.toLowerCase().includes(filter),
     );
   }
@@ -910,7 +911,7 @@ function renderTvChEditor() {
 
     // EPG-Status
     const normId = id =>
-      id
+      (id || '')
         .replace(/@[^.@]*/g, '')
         .toLowerCase()
         .trim();
@@ -1109,7 +1110,7 @@ async function selectTvChannel(ch, options = {}) {
   // Find current + next EPG entry (via Index)
   const now = new Date();
   const normId = id =>
-    id
+    (id || '')
       .replace(/@[^.@]*/g, '')
       .toLowerCase()
       .trim();
@@ -1154,7 +1155,9 @@ async function selectTvChannel(ch, options = {}) {
         const channelList = buildChannelList(ch, tvChannels, tvSources);
         const enrichedChannels = (channelList.channels || []).map(c => {
           const fullCh = tvChannels.find(tc => tc.id === c.id);
-          const normId = (fullCh?.tvgId || c.name || '').replace(/@[^@]*/g, '').toLowerCase().trim();
+          // Wichtig: gleiche Normalisierung wie im EPG-Index (@[^.@]*),
+          // sonst schlägt die EPG-Vorschau für IDs wie "ard@hdr.de" fehl.
+          const normId = (fullCh?.tvgId || c.name || '').replace(/@[^.@]*/g, '').toLowerCase().trim();
           const epgs = tvEpgIndex ? tvEpgIndex.get(normId) : undefined;
           let epgTitle = '';
           if (epgs) {
@@ -1208,14 +1211,9 @@ async function selectTvChannel(ch, options = {}) {
 
 function switchTvChannel(dir) {
   if (!tvActiveChannelId || !tvChannels.length) return;
-  const sourceId = tvChannels.find(c => c.id === tvActiveChannelId)?.sourceId;
-  if (!sourceId) return;
-  const sourceChannels = tvChannels.filter(ch => ch.sourceId === sourceId);
-  const favOrder = sourceChannels.filter(ch => isFavorite(ch, tvSources)).map(ch => ch.id);
-  const order = favOrder.length ? favOrder : sourceChannels.map(ch => ch.id);
-  const idx = order.indexOf(tvActiveChannelId);
-  if (idx === -1) return;
-  const nextId = order[(idx + dir + order.length) % order.length];
+  // Nutzt getNextChannelId aus typed-core statt duplizierter Logik
+  const nextId = getNextChannelId(tvActiveChannelId, tvChannels, tvSources, dir);
+  if (!nextId) return;
   const nextCh = tvChannels.find(c => c.id === nextId);
   if (nextCh) selectTvChannel(nextCh);
 }
@@ -1257,7 +1255,7 @@ function renderEpg() {
 
   for (const ch of favChannels) {
     const normId = id =>
-      id
+      (id || '')
         .replace(/@[^.@]*/g, '')
         .toLowerCase()
         .trim();
@@ -1463,7 +1461,7 @@ function sendEpgUpdate() {
   if (!ch) return;
   const now = new Date();
   const normId = id =>
-    id
+    (id || '')
       .replace(/@[^.@]*/g, '')
       .toLowerCase()
       .trim();
@@ -1740,6 +1738,7 @@ historyOverlay.addEventListener('click', e => {
   if (e.target === historyOverlay) closeHistory();
 });
 historyClear.addEventListener('click', () => {
+  if (!confirm('Gesamten Verlauf löschen?')) return;
   window.electronAPI.clearHistory().then(renderHistory);
 });
 
@@ -1875,11 +1874,11 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
       closeTvSidebar();
       return true;
     }
-    if (epgDetailBackdrop.style.display !== 'none') {
+    if (epgDetailBackdrop.style.display === 'flex') {
       closeEpgDetail();
       return true;
     }
-    if (epgOverlay.style.display !== 'none') {
+    if (epgOverlay.style.display === 'flex') {
       closeEpgView();
       return true;
     }
