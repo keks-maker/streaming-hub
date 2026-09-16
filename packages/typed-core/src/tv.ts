@@ -18,8 +18,9 @@ export function getMediathekForChannel(tvgIdOrName: string): MediathekMatch | nu
 /**
  * Normalisiert TV-Sender-IDs identisch zur EPG-Normalisierung (epg.ts):
  * entfernt das Suffix ab "@" bis zum nächsten Punkt ("ard@hdr.de" → "ard.de").
- * Vorher wurde hier "/@.*/" verwendet ("ard@hdr.de" → "ard") – dadurch schlug
- * der EPG-Abgleich zwischen beiden Funktionen fehl.
+ * Vorher entfernte der Regex hier alles ab "@" bis zum Zeilenende
+ * ("ard@hdr.de" → "ard") – dadurch schlug der EPG-Abgleich zwischen beiden
+ * Funktionen fehl.
  */
 export function normalizeTvId(id: string): string {
   return (id || '').replace(/@[^.@]*/g, '').toLowerCase().trim();
