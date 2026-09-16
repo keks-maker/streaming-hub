@@ -1,4 +1,4 @@
-/* v0.3.6. */
+/* v0.3.7. – Zurück-Button in der Top-Bar */
 :root {
   --bg: #0a0a0f;
   --glass: rgba(255,255,255,0.04);
@@ -196,6 +196,43 @@ body {
 }
 .overlay-location:hover {
   transform: scale(1.15);
+}
+
+/* ── Zurück-Button ── */
+/* Nebenan der Standort-Anzeige, unsichtbar solange die Historie leer ist
+   (renderer.js setzt display:none). Folgt dem Hover-/Kompakt-Verhalten
+   der Top-Bar wie die übrigen Action-Buttons. */
+.back-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  margin-right: 8px;
+  opacity: 0;
+  transform: scale(0.5);
+  pointer-events: none;
+}
+.overlay-bar:hover .back-btn,
+.overlay-bar.always-visible .back-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.back-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+.back-btn:active {
+  transform: scale(0.92);
 }
 
 .overlay-actions {

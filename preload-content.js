@@ -1,4 +1,4 @@
-// v0.3.6. – postMessage-Bridge für tv-player Befehle
+// v0.3.7. – postMessage-Bridge + komplette Shortcut-Weiterleitung inkl. Alt+← (Zurück)
 const { ipcRenderer } = require('electron');
 
 const script = document.createElement('script');
@@ -99,16 +99,23 @@ if (document.documentElement) {
 }
 
 // Forward keyboard shortcuts to main window (via main process)
+// Alt+← ("Zurück") wird ebenfalls weitergeleitet – so funktioniert die
+// Zurück-Navigation auch, wenn der Fokus in einem Webview liegt.
+// Pfeiltasten hoch/runter nur im TV-Player (tv.html) weiterleiten und
+// unterdrücken, damit Pfeiltasten-Scrolling auf Streaming-Seiten
+// (YouTube & Co.) weiterhin funktioniert.
+const isTvPlayerPage = () => location.pathname.endsWith('tv.html');
+
 document.addEventListener('keydown', e => {
   if (
     e.key === 'Escape' ||
     e.key === 'F11' ||
     e.key === '?' ||
-    e.key === 'ArrowUp' ||
-    e.key === 'ArrowDown' ||
-    (e.ctrlKey && (e.key === 'Tab' || e.key === 'p' || e.key === 'P'))
+    (isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) ||
+    (e.altKey && e.key === 'ArrowLeft') ||
+    (e.ctrlKey && (e.key === 'Tab' || e.key === 'p' || e.key === 'P' || e.key === 'h' || e.key === 'H' || e.key === 't' || e.key === 'T'))
   ) {
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    if ((isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) || (e.altKey && e.key === 'ArrowLeft')) {
       e.preventDefault();
     }
     ipcRenderer.send('webview-keydown', {
@@ -116,6 +123,7 @@ document.addEventListener('keydown', e => {
       ctrlKey: e.ctrlKey,
       shiftKey: e.shiftKey,
       metaKey: e.metaKey,
+      altKey: e.altKey,
     });
   }
 });

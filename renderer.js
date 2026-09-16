@@ -1,4 +1,4 @@
-// v0.3.7. – Kanalwechsel per postMessage (kein Vollbild-Ende) + Reihenfolge = Sidebar
+// v0.3.8. – Zurück-Navigation (Ansichts-Historie) + Kanalwechsel per postMessage
 const {
   escapeHtml,
   decodeEntities,
@@ -106,6 +106,7 @@ errorReloadBtn.addEventListener('click', () => {
 
 const welcomeScreen = document.getElementById('welcomeScreen');
 const overlayLocation = document.getElementById('overlayLocation');
+const backBtn = document.getElementById('backBtn');
 const pipBtn = document.getElementById('pipBtn');
 const shortcutsOverlay = document.getElementById('shortcutsOverlay');
 const historyOverlay = document.getElementById('historyOverlay');
@@ -289,7 +290,67 @@ function createGroupLabel(text) {
   return l;
 }
 
+// ── Zurück-Navigation (Ansichts-Historie) ──
+// Jeder Ansichtswechsel (Service, TV, Startseite) legt den vorherigen
+// Zustand auf einen Stack. "Zurück" stellt ihn wiederher – inklusive der
+// letzten URL des Dienstes, sodass man exakt dorthin zurückkehrt, wo man war.
+let navStack = []; // { kind: 'start' | 'service' | 'tv', id?, url? }
+let restoringNav = false;
+let lastUrlByService = {}; // serviceId → zuletzt geladene URL
+
+function currentNavState() {
+  if (currentProvider === '__tv__') return { kind: 'tv' };
+  if (!currentProvider) return { kind: 'start' };
+  return { kind: 'service', id: currentProvider, url: lastUrlByService[currentProvider] || null };
+}
+
+function pushNavState() {
+  const st = currentNavState();
+  const top = navStack[navStack.length - 1];
+  // Keine Duplikate direkt hintereinander (z. B. Kanalwechsel im TV)
+  if (top && JSON.stringify(top) === JSON.stringify(st)) return;
+  navStack.push(st);
+  if (navStack.length > 50) navStack.shift();
+  updateBackBtn();
+}
+
+function updateBackBtn() {
+  if (backBtn) backBtn.style.display = navStack.length ? '' : 'none';
+}
+
+function goBack() {
+  const target = navStack.pop();
+  updateBackBtn();
+  if (!target) return;
+  restoringNav = true;
+  try {
+    if (target.kind === 'service') {
+      const svc = services.find(s => s.id === target.id);
+      if (svc) {
+        // Letzte URL des Dienstes wiederherstellen statt nur der Basis-URL
+        navigateTo({ ...svc, url: target.url || svc.url });
+      } else {
+        goToStartPage();
+      }
+    } else if (target.kind === 'tv') {
+      const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+      if (ch) {
+        selectTvChannel(ch, { suppressChannelList: true });
+      } else {
+        goToStartPage();
+      }
+    } else {
+      goToStartPage();
+    }
+  } finally {
+    restoringNav = false;
+  }
+}
+
+backBtn.addEventListener('click', goBack);
+
 function goToStartPage() {
+  if (!restoringNav) pushNavState();
   currentUA = chromeUA;
   currentProvider = '';
   lastMediaTitle = '';
@@ -308,6 +369,7 @@ function goToStartPage() {
 }
 
 function navigateTo(svc) {
+  if (!restoringNav) pushNavState();
   currentUA = svc.id === 'magentatv' ? safariUA : chromeUA;
   currentProvider = svc.id;
   lastMediaTitle = '';
@@ -318,6 +380,7 @@ function navigateTo(svc) {
   welcomeScreen.style.display = 'none';
   overlayBar.classList.remove('always-visible');
   const targetUrl = normalizeUrl(svc.url);
+  lastUrlByService[svc.id] = targetUrl;
   if (webviewReady) {
     try {
       webview.loadURL(targetUrl);
@@ -509,6 +572,7 @@ function toggleTvSidebar() {
       navigateTo(svc);
       return;
     }
+    if (!restoringNav) pushNavState();
     webview.loadURL('https://web.magentatv.de');
     currentProvider = 'magentatv';
     lastMediaTitle = '';
@@ -1088,6 +1152,7 @@ function reorderChannel(draggedId, targetId) {
 }
 
 async function selectTvChannel(ch, options = {}) {
+  if (!restoringNav) pushNavState();
   tvActiveChannelId = ch.id;
   overlayBar.classList.remove('always-visible');
   renderTvChannels();
@@ -1856,7 +1921,7 @@ document.querySelectorAll('.epg-slot-btn').forEach(btn => {
 });
 
 // Keyboard shortcut handler (shared for document + webview forwarding)
-function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
+function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   if (key === 'Escape') {
     if (shortcutsOverlay.classList.contains('open')) {
       shortcutsOverlay.classList.remove('open');
@@ -1905,6 +1970,15 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey) {
     return true;
   }
 
+  if (altKey && key === 'ArrowLeft') {
+    // Zurück zur vorherigen Ansicht (wie Browser-Zurück auf App-Ebene)
+    if (navStack.length) {
+      goBack();
+      return true;
+    }
+    return false;
+  }
+
   if (ctrlKey && (key === 'p' || key === 'P')) {
     const url = webview.getURL();
     if (url && url !== 'about:blank') {
@@ -1949,14 +2023,14 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  if (handleKeyShortcut(e.key, e.ctrlKey, e.shiftKey, e.metaKey)) {
+  if (handleKeyShortcut(e.key, e.ctrlKey, e.shiftKey, e.metaKey, e.altKey)) {
     e.preventDefault();
   }
 });
 
 // Forwarded shortcuts from webview (via main process)
 const cleanupShortcuts = window.electronAPI.onWebviewKeydown(data => {
-  handleKeyShortcut(data.key, data.ctrlKey, data.shiftKey, data.metaKey);
+  handleKeyShortcut(data.key, data.ctrlKey, data.shiftKey, data.metaKey, data.altKey);
 });
 
 // Global media keys → webview Media Session
@@ -2160,6 +2234,7 @@ window.electronAPI.getServices().then(svcs => {
   services = svcs;
   renderNav();
   tvBtn = document.getElementById('tvBtn');
+  updateBackBtn();
 });
 
 window.electronAPI.onServicesChanged(svcs => {
