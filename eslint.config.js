@@ -26,6 +26,7 @@ export default [
       'dist/',
       'release/',
       '.cache/',
+      '.claude/',
       '.serena/',
       'Weiterentwicklung/',
       'tv.html',

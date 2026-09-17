@@ -674,9 +674,11 @@ ipcMain.handle('restore-settings', async () => {
   try {
     const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
     const data = parseBackup(raw);
-    saveServices(data.services);
-    saveTvSources(data.tvsources);
-    saveHistory(data.history);
+    userStorage.writeJsonBatch({
+      services: data.services,
+      tvSources: data.tvsources,
+      history: data.history,
+    });
     broadcastServices();
     broadcastTvSources();
     mainWindow?.webContents.send('history-changed', data.history);
