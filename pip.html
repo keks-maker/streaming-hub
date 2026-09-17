@@ -94,16 +94,21 @@
       const webview = document.getElementById('pipView');
       const video = document.getElementById('pipVideo');
 
+      let activeHls = null;
       window.addEventListener('message', e => {
-        // Guard: Messages ohne Payload (z. B. von anderen Frames) nicht verarbeiten
-        if (!e.data) return;
+        if (e.source !== window || e.origin !== window.location.origin) return;
+        if (!e.data || typeof e.data !== 'object' || Array.isArray(e.data)) return;
         if (!['load-url', 'load-tv-stream'].includes(e.data.type) || typeof e.data.url !== 'string') return;
         let target;
         try {
           target = new URL(e.data.url);
-          if (!['http:', 'https:'].includes(target.protocol)) return;
+          if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password) return;
         } catch (_) {
           return;
+        }
+        if (activeHls) {
+          activeHls.destroy();
+          activeHls = null;
         }
         if (e.data.type === 'load-url') {
           video.style.display = 'none';
@@ -132,10 +137,10 @@
           if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = target.toString();
           } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-            const hls = new Hls({ enableWorker: false, maxBufferLength: 30, liveSyncDuration: 15 });
-            hls.loadSource(target.toString());
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            activeHls = new Hls({ enableWorker: false, maxBufferLength: 30, liveSyncDuration: 15 });
+            activeHls.loadSource(target.toString());
+            activeHls.attachMedia(video);
+            activeHls.on(Hls.Events.MANIFEST_PARSED, () => {
               video.play().catch(() => {});
             });
           } else {
