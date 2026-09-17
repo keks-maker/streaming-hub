@@ -697,10 +697,13 @@ ipcMain.handle('pick-m3u-file', async event => {
     filters: [{ name: 'M3U Playlist', extensions: ['m3u', 'm3u8'] }],
     properties: ['openFile'],
   });
-  if (result.canceled) return null;
+  if (result.canceled || !result.filePaths[0]) return null;
   const selectedPath = path.resolve(result.filePaths[0]);
-  selectedM3uFiles.add(selectedPath);
-  return selectedPath;
+  const stat = fs.statSync(selectedPath);
+  if (!stat.isFile() || !/\.m3u8?$/i.test(selectedPath)) throw new Error('Nur M3U-Dateien sind erlaubt');
+  const realPath = fs.realpathSync.native(selectedPath);
+  selectedM3uFiles.add(realPath);
+  return realPath;
 });
 
 ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
@@ -722,11 +725,13 @@ ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
       const selectedPath = path.resolve(input);
       if (!selectedM3uFiles.has(selectedPath))
         throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
-      const stat = fs.statSync(selectedPath);
-      if (!stat.isFile() || !/\.m3u8?$/i.test(selectedPath)) throw new Error('Nur M3U-Dateien sind erlaubt');
+      const realPath = fs.realpathSync.native(selectedPath);
+      if (!selectedM3uFiles.has(realPath)) throw new Error('Dateipfad ist nicht mehr gültig');
+      const stat = fs.statSync(realPath);
+      if (!stat.isFile() || !/\.m3u8?$/i.test(realPath)) throw new Error('Nur M3U-Dateien sind erlaubt');
       if (stat.size > MAX_PLAYLIST_BYTES) throw new Error('Datei ist zu groß');
-      content = fs.readFileSync(selectedPath, 'utf-8');
-      baseUrl = path.dirname(selectedPath) + path.sep;
+      content = fs.readFileSync(realPath, 'utf-8');
+      baseUrl = path.dirname(realPath) + path.sep;
     }
     const result = parseM3U(content);
     // Resolve relative URLs for logos
