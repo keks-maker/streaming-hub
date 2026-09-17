@@ -9,7 +9,7 @@ const { fork, execSync } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
-const { normalizeWebviewKeydown, validateVersion } = require('./lib/ipc-validation.js');
+const { normalizeWebviewKeydown, validateUpdateAssetUrl, validateVersion } = require('./lib/ipc-validation.js');
 const {
   MAX_EPG_BYTES,
   MAX_PLAYLIST_BYTES,
@@ -226,7 +226,12 @@ function startUpdater() {
           if (token) headers.Authorization = `token ${token}`;
 
           mainWindow?.webContents.send('update-status', { type: 'progress', percent: 0 });
-          const res = await fetch(asset.browser_download_url, { headers, signal: AbortSignal.timeout(300000) });
+          const downloadUrl = validateUpdateAssetUrl(asset.browser_download_url, new URL(GITEA_BASE).origin);
+          const res = await fetch(downloadUrl, {
+            headers,
+            signal: AbortSignal.timeout(300000),
+            redirect: 'error',
+          });
           if (!res.ok) throw new Error(`Download ${res.status}`);
           const total = parseInt(res.headers.get('content-length') || '0');
           const reader = res.body.getReader();
