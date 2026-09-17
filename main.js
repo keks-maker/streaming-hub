@@ -451,6 +451,18 @@ ipcMain.on('toggle-pip', (event, url) => {
     },
   });
 
+  pipWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  const allowPipNavigation = (_event, navigationUrl) => {
+    try {
+      const target = new URL(navigationUrl);
+      if (target.protocol !== 'file:') _event.preventDefault();
+    } catch (_) {
+      _event.preventDefault();
+    }
+  };
+  pipWindow.webContents.on('will-navigate', allowPipNavigation);
+  pipWindow.webContents.on('will-redirect', allowPipNavigation);
+
   // Detect TV stream URL (ends with .m3u8 or contains common streaming patterns)
   const isStreamUrl = /\.m3u8$|\.mpd$|\.ts$|mpegts/i.test(pipUrl);
 
