@@ -14,6 +14,7 @@ const {
   MAX_EPG_BYTES,
   MAX_PLAYLIST_BYTES,
   httpUrl,
+  remoteHttpUrl,
   readResponseText,
   service: validateService,
   text: validateText,
@@ -434,7 +435,7 @@ ipcMain.on('toggle-pip', (event, url) => {
   const pipW = Math.min(480, Math.round(width * 0.3));
   const pipH = Math.min(320, Math.round((pipW * 9) / 16) + 32);
 
-  const pipUrl = httpUrl(url, 'PiP-URL');
+  const pipUrl = remoteHttpUrl(url, 'PiP-URL');
   pipWindow = new BrowserWindow({
     width: pipW,
     height: pipH,
@@ -656,7 +657,10 @@ ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
     let baseUrl = '';
     if (/^https?:\/\//i.test(input)) {
       const sourceUrl = httpUrl(input, 'M3U-URL');
-      const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(20_000) });
+      const response = await fetch(remoteHttpUrl(sourceUrl, 'M3U-URL'), {
+        signal: AbortSignal.timeout(20_000),
+        redirect: 'error',
+      });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       content = await readResponseText(response, MAX_PLAYLIST_BYTES);
       baseUrl = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
@@ -737,8 +741,11 @@ ipcMain.handle('restore-settings', async event => {
 ipcMain.handle('fetch-epg', async (event, url) => {
   requireMainRenderer(event);
   try {
-    const epgUrl = httpUrl(url, 'EPG-URL');
-    const response = await fetch(epgUrl, { signal: AbortSignal.timeout(20_000) });
+    const epgUrl = remoteHttpUrl(url, 'EPG-URL');
+    const response = await fetch(epgUrl, {
+      signal: AbortSignal.timeout(20_000),
+      redirect: 'error',
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const xml = await readResponseText(response, MAX_EPG_BYTES);
     return parseXMLTV(xml);
