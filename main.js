@@ -9,6 +9,7 @@ const { fork, execSync } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
+const { normalizeWebviewKeydown, validateVersion } = require('./lib/ipc-validation.js');
 const {
   MAX_EPG_BYTES,
   MAX_PLAYLIST_BYTES,
@@ -265,7 +266,8 @@ function startUpdater() {
   }
 }
 
-ipcMain.handle('check-for-update', async () => {
+ipcMain.handle('check-for-update', async event => {
+  requireMainRenderer(event);
   if (process.env.APPIMAGE) {
     if (!autoUpdater) return { hasUpdate: false, error: 'kein updater' };
     return autoUpdater.check();
@@ -284,11 +286,13 @@ ipcMain.handle('check-for-update', async () => {
   });
 });
 
-ipcMain.handle('apply-update', async (_e, version) => {
+ipcMain.handle('apply-update', async (event, version) => {
+  requireMainRenderer(event);
+  const updateVersion = validateVersion(version);
   if (process.env.APPIMAGE) {
     if (!autoUpdater) return { success: false, error: 'kein updater' };
     try {
-      const newAppImage = await autoUpdater.download(version);
+      const newAppImage = await autoUpdater.download(updateVersion);
       // Remove old AppImage if replaced by a differently-named version
       const oldAppImage = process.env.APPIMAGE;
       if (oldAppImage && oldAppImage !== newAppImage) {
@@ -332,9 +336,22 @@ ipcMain.handle('apply-update', async (_e, version) => {
       proc.removeListener('message', onMsg);
       resolve({ success: false, error: 'prozess unerwartet beendet' });
     });
-    proc.send({ type: 'apply', version });
+    proc.send({ type: 'apply', version: updateVersion });
   });
 });
+
+function requireMainRenderer(event) {
+  if (!mainWindow || event?.sender !== mainWindow.webContents) {
+    throw new Error('IPC-Aufruf von nicht autorisiertem Renderer');
+  }
+}
+
+function requireWebviewRenderer(event) {
+  const sender = event?.sender;
+  if (!mainWindow || !sender || sender.getType?.() !== 'webview' || sender.hostWebContents !== mainWindow.webContents) {
+    throw new Error('WebView-IPC-Aufruf von nicht autorisiertem Renderer');
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -404,7 +421,8 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => globalShortcut.unregisterAll());
 
-ipcMain.on('toggle-pip', (_e, url) => {
+ipcMain.on('toggle-pip', (event, url) => {
+  requireMainRenderer(event);
   if (pipWindow) {
     pipWindow.close();
     pipWindow = null;
@@ -433,7 +451,7 @@ ipcMain.on('toggle-pip', (_e, url) => {
   });
 
   // Detect TV stream URL (ends with .m3u8 or contains common streaming patterns)
-  const isStreamUrl = /\.m3u8$|\.mpd$|\.ts$|mpegts/i.test(url);
+  const isStreamUrl = /\.m3u8$|\.mpd$|\.ts$|mpegts/i.test(pipUrl);
 
   if (isStreamUrl) {
     // Load a player page for TV streams
@@ -462,11 +480,15 @@ ipcMain.on('toggle-pip', (_e, url) => {
   mainWindow.webContents.send('pip-state', true);
 });
 
-ipcMain.on('webview-keydown', (_e, data) => {
-  mainWindow?.webContents.send('webview-keydown', data);
+ipcMain.on('webview-keydown', (event, data) => {
+  requireWebviewRenderer(event);
+  const normalized = normalizeWebviewKeydown(data);
+  if (!normalized) return;
+  mainWindow.webContents.send('webview-keydown', normalized);
 });
 
-ipcMain.handle('get-app-version', () => {
+ipcMain.handle('get-app-version', event => {
+  requireMainRenderer(event);
   try {
     const raw = execSync('git describe --tags --abbrev=0', {
       cwd: __dirname,
@@ -479,7 +501,8 @@ ipcMain.handle('get-app-version', () => {
   }
 });
 
-ipcMain.on('toggle-fullscreen', () => {
+ipcMain.on('toggle-fullscreen', event => {
+  requireMainRenderer(event);
   if (!mainWindow) return;
   mainWindow.setFullScreen(!mainWindow.isFullScreen());
 });
@@ -493,9 +516,13 @@ app.on('browser-window-created', (_event, window) => {
   window.on('leave-full-screen', sendFullscreenState);
 });
 
-ipcMain.handle('get-services', () => loadServices());
+ipcMain.handle('get-services', event => {
+  requireMainRenderer(event);
+  return loadServices();
+});
 
-ipcMain.handle('add-service', (_e, input) => {
+ipcMain.handle('add-service', (event, input) => {
+  requireMainRenderer(event);
   const services = loadServices();
   const service = validateService(input);
   service.id = service.name
@@ -511,7 +538,8 @@ ipcMain.handle('add-service', (_e, input) => {
   return service;
 });
 
-ipcMain.handle('remove-service', (_e, id) => {
+ipcMain.handle('remove-service', (event, id) => {
+  requireMainRenderer(event);
   const serviceId = validateText(id, 'Dienst-ID', 200);
   let services = loadServices();
   services = services.filter(s => s.id !== serviceId);
@@ -520,9 +548,13 @@ ipcMain.handle('remove-service', (_e, id) => {
 });
 
 // History
-ipcMain.handle('get-history', () => loadHistory());
+ipcMain.handle('get-history', event => {
+  requireMainRenderer(event);
+  return loadHistory();
+});
 
-ipcMain.handle('save-history-entry', (_e, entry) => {
+ipcMain.handle('save-history-entry', (event, entry) => {
+  requireMainRenderer(event);
   let history = loadHistory();
   const idx = history.findIndex(e => e.title === entry.title && e.serviceKey === entry.serviceKey);
   if (idx !== -1) {
@@ -536,15 +568,20 @@ ipcMain.handle('save-history-entry', (_e, entry) => {
   return history;
 });
 
-ipcMain.handle('clear-history', () => {
+ipcMain.handle('clear-history', event => {
+  requireMainRenderer(event);
   saveHistory([]);
   return [];
 });
 
 // TV Sources
-ipcMain.handle('get-tv-sources', () => loadTvSources());
+ipcMain.handle('get-tv-sources', event => {
+  requireMainRenderer(event);
+  return loadTvSources();
+});
 
-ipcMain.handle('add-tv-source', (_e, input) => {
+ipcMain.handle('add-tv-source', (event, input) => {
+  requireMainRenderer(event);
   const source = validateTvSource(input);
   const sources = loadTvSources();
   // Existierende Quelle mit gleicher URL wiedererkennen → ID + Overrides erhalten
@@ -575,7 +612,8 @@ ipcMain.handle('add-tv-source', (_e, input) => {
   return source;
 });
 
-ipcMain.handle('remove-tv-source', (_e, id) => {
+ipcMain.handle('remove-tv-source', (event, id) => {
+  requireMainRenderer(event);
   const sourceId = validateText(id, 'Quellen-ID', 200);
   let sources = loadTvSources();
   sources = sources.filter(s => s.id !== sourceId);
@@ -583,7 +621,8 @@ ipcMain.handle('remove-tv-source', (_e, id) => {
   broadcastTvSources();
 });
 
-ipcMain.handle('update-tv-source', (_e, id, updates) => {
+ipcMain.handle('update-tv-source', (event, id, updates) => {
+  requireMainRenderer(event);
   const sourceId = validateText(id, 'Quellen-ID', 200);
   const source = validateTvSourceUpdates(updates);
   const sources = loadTvSources();
@@ -597,7 +636,8 @@ ipcMain.handle('update-tv-source', (_e, id, updates) => {
   return null;
 });
 
-ipcMain.handle('pick-m3u-file', async () => {
+ipcMain.handle('pick-m3u-file', async event => {
+  requireMainRenderer(event);
   const result = await dialog.showOpenDialog(mainWindow, {
     filters: [{ name: 'M3U Playlist', extensions: ['m3u', 'm3u8'] }],
     properties: ['openFile'],
@@ -608,7 +648,8 @@ ipcMain.handle('pick-m3u-file', async () => {
   return selectedPath;
 });
 
-ipcMain.handle('fetch-and-parse-m3u', async (_e, urlOrPath) => {
+ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
+  requireMainRenderer(event);
   try {
     const input = validateText(urlOrPath, 'M3U-Quelle', 4096);
     let content;
@@ -644,11 +685,15 @@ ipcMain.handle('fetch-and-parse-m3u', async (_e, urlOrPath) => {
   }
 });
 
-ipcMain.handle('get-app-path', () => __dirname);
+ipcMain.handle('get-app-path', event => {
+  requireMainRenderer(event);
+  return __dirname;
+});
 
 // ── Backup / Restore ──
 
-ipcMain.handle('backup-settings', async () => {
+ipcMain.handle('backup-settings', async event => {
+  requireMainRenderer(event);
   const data = {
     version: app.getVersion(),
     date: new Date().toISOString(),
@@ -665,7 +710,8 @@ ipcMain.handle('backup-settings', async () => {
   return { success: true, path: result.filePath };
 });
 
-ipcMain.handle('restore-settings', async () => {
+ipcMain.handle('restore-settings', async event => {
+  requireMainRenderer(event);
   const result = await dialog.showOpenDialog(mainWindow, {
     filters: [{ name: 'Sicherungsdatei', extensions: ['json'] }],
     properties: ['openFile'],
@@ -688,7 +734,8 @@ ipcMain.handle('restore-settings', async () => {
   }
 });
 
-ipcMain.handle('fetch-epg', async (_e, url) => {
+ipcMain.handle('fetch-epg', async (event, url) => {
+  requireMainRenderer(event);
   try {
     const epgUrl = httpUrl(url, 'EPG-URL');
     const response = await fetch(epgUrl, { signal: AbortSignal.timeout(20_000) });

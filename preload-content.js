@@ -107,6 +107,7 @@ if (document.documentElement) {
 const isTvPlayerPage = () => location.pathname.endsWith('tv.html');
 
 document.addEventListener('keydown', e => {
+  if (!e.isTrusted) return;
   if (
     e.key === 'Escape' ||
     e.key === 'F11' ||
