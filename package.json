@@ -29,7 +29,7 @@
     "build:renderer": "node scripts/build-renderer.js",
     "build:all": "npm run build:typed-core && npm run build:renderer",
     "watch": "node scripts/watch-renderer.js",
-    "test": "npm run test:updater && npm test --workspace packages/typed-core && node --test tests/user-storage.test.js tests/backup.test.js",
+    "test": "npm run test:updater && npm test --workspace packages/typed-core && node --test tests/user-storage.test.js tests/backup.test.js tests/input-validation.test.js",
     "test:updater": "node --test tests/tvsources-merge.test.js tests/post-update-reconcile.test.js",
     "dev:watch": "npm run build:all && (node scripts/watch-renderer.js &) && electron . --dev"
   },

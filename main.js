@@ -9,10 +9,21 @@ const { fork, execSync } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
+const {
+  MAX_EPG_BYTES,
+  MAX_PLAYLIST_BYTES,
+  httpUrl,
+  readResponseText,
+  service: validateService,
+  text: validateText,
+  tvSource: validateTvSource,
+  tvSourceUpdates: validateTvSourceUpdates,
+} = require('./lib/input-validation.js');
 
 let mainWindow;
 let pipWindow = null;
 let userStorage = null;
+const selectedM3uFiles = new Set();
 
 // Updater
 let updaterProcess = null;
@@ -483,8 +494,9 @@ app.on('browser-window-created', (_event, window) => {
 
 ipcMain.handle('get-services', () => loadServices());
 
-ipcMain.handle('add-service', (_e, service) => {
+ipcMain.handle('add-service', (_e, input) => {
   const services = loadServices();
+  const service = validateService(input);
   service.id = service.name
     .toLowerCase()
     .replace(/\s+/g, '-')
@@ -499,8 +511,9 @@ ipcMain.handle('add-service', (_e, service) => {
 });
 
 ipcMain.handle('remove-service', (_e, id) => {
+  const serviceId = validateText(id, 'Dienst-ID', 200);
   let services = loadServices();
-  services = services.filter(s => s.id !== id);
+  services = services.filter(s => s.id !== serviceId);
   saveServices(services);
   broadcastServices();
 });
@@ -530,7 +543,8 @@ ipcMain.handle('clear-history', () => {
 // TV Sources
 ipcMain.handle('get-tv-sources', () => loadTvSources());
 
-ipcMain.handle('add-tv-source', (_e, source) => {
+ipcMain.handle('add-tv-source', (_e, input) => {
+  const source = validateTvSource(input);
   const sources = loadTvSources();
   // Existierende Quelle mit gleicher URL wiedererkennen → ID + Overrides erhalten
   const existing = sources.find(s => s.url === source.url);
@@ -561,17 +575,20 @@ ipcMain.handle('add-tv-source', (_e, source) => {
 });
 
 ipcMain.handle('remove-tv-source', (_e, id) => {
+  const sourceId = validateText(id, 'Quellen-ID', 200);
   let sources = loadTvSources();
-  sources = sources.filter(s => s.id !== id);
+  sources = sources.filter(s => s.id !== sourceId);
   saveTvSources(sources);
   broadcastTvSources();
 });
 
 ipcMain.handle('update-tv-source', (_e, id, updates) => {
+  const sourceId = validateText(id, 'Quellen-ID', 200);
+  const source = validateTvSourceUpdates(updates);
   const sources = loadTvSources();
-  const idx = sources.findIndex(s => s.id === id);
+  const idx = sources.findIndex(s => s.id === sourceId);
   if (idx !== -1) {
-    sources[idx] = { ...sources[idx], ...updates };
+    sources[idx] = { ...sources[idx], ...source };
     saveTvSources(sources);
     broadcastTvSources();
     return sources[idx];
@@ -585,21 +602,31 @@ ipcMain.handle('pick-m3u-file', async () => {
     properties: ['openFile'],
   });
   if (result.canceled) return null;
-  return result.filePaths[0];
+  const selectedPath = path.resolve(result.filePaths[0]);
+  selectedM3uFiles.add(selectedPath);
+  return selectedPath;
 });
 
 ipcMain.handle('fetch-and-parse-m3u', async (_e, urlOrPath) => {
   try {
+    const input = validateText(urlOrPath, 'M3U-Quelle', 4096);
     let content;
     let baseUrl = '';
-    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
-      const response = await fetch(urlOrPath);
+    if (/^https?:\/\//i.test(input)) {
+      const sourceUrl = httpUrl(input, 'M3U-URL');
+      const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(20_000) });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      content = await response.text();
-      baseUrl = urlOrPath.substring(0, urlOrPath.lastIndexOf('/') + 1);
+      content = await readResponseText(response, MAX_PLAYLIST_BYTES);
+      baseUrl = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
     } else {
-      content = fs.readFileSync(urlOrPath, 'utf-8');
-      baseUrl = path.dirname(urlOrPath) + path.sep;
+      const selectedPath = path.resolve(input);
+      if (!selectedM3uFiles.has(selectedPath))
+        throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
+      const stat = fs.statSync(selectedPath);
+      if (!stat.isFile() || !/\.m3u8?$/i.test(selectedPath)) throw new Error('Nur M3U-Dateien sind erlaubt');
+      if (stat.size > MAX_PLAYLIST_BYTES) throw new Error('Datei ist zu groß');
+      content = fs.readFileSync(selectedPath, 'utf-8');
+      baseUrl = path.dirname(selectedPath) + path.sep;
     }
     const result = parseM3U(content);
     // Resolve relative URLs for logos
@@ -660,9 +687,10 @@ ipcMain.handle('restore-settings', async () => {
 
 ipcMain.handle('fetch-epg', async (_e, url) => {
   try {
-    const response = await fetch(url);
+    const epgUrl = httpUrl(url, 'EPG-URL');
+    const response = await fetch(epgUrl, { signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const xml = await response.text();
+    const xml = await readResponseText(response, MAX_EPG_BYTES);
     return parseXMLTV(xml);
   } catch (err) {
     throw new Error(`Fehler beim Laden des EPG: ${err.message}`);
