@@ -45,6 +45,7 @@ export default [
         window: 'readable',
         console: 'readable',
         navigator: 'readable',
+        location: 'readable',
         HTMLElement: 'readable',
         HTMLVideoElement: 'readable',
         Event: 'readable',

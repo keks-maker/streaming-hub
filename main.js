@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseXMLTV, parseM3UFull } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -91,20 +91,8 @@ if (chromeWidevine) {
   }
 }
 
-// Widevine ohne Sandbox: Castlabs Electron benötigt i.d.R. keinen --no-sandbox
-// für DRM, aber das System-Widevine aus Chrome kann ohne Sandbox-Zugriff lahmlegen.
-// --no-sandbox ist ein Security-Tradeoff – nur setzen wenn nötig.
-if (chromeWidevine) {
-  const isCastlabs =
-    process.env.ELECTRON_CUSTOM_VERSION?.includes('castlabs') ||
-    (process.execPath || '').toLowerCase().includes('castlabs');
-  if (!isCastlabs) {
-    app.commandLine.appendSwitch('no-sandbox');
-    if (process.platform === 'linux') {
-      app.commandLine.appendSwitch('no-zygote');
-    }
-  }
-}
+// Keep Chromium's sandbox enabled. DRM failures must be diagnosed explicitly instead
+// of weakening isolation for every window and every embedded provider.
 app.commandLine.appendSwitch('disable-service-worker-autostart');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedDolbyVision');
@@ -357,6 +345,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       webviewTag: true,
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -366,6 +355,13 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
   mainWindow.setMenuBarVisibility(false);
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url).catch(() => {});
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', event => {
+    event.preventDefault();
+  });
 
   // Global media keys (Play/Pause, Next, Previous, Stop)
   const mediaActions = [
@@ -420,6 +416,7 @@ ipcMain.on('toggle-pip', (_e, url) => {
   const pipW = Math.min(480, Math.round(width * 0.3));
   const pipH = Math.min(320, Math.round((pipW * 9) / 16) + 32);
 
+  const pipUrl = httpUrl(url, 'PiP-URL');
   pipWindow = new BrowserWindow({
     width: pipW,
     height: pipH,
@@ -427,7 +424,11 @@ ipcMain.on('toggle-pip', (_e, url) => {
     frame: false,
     backgroundColor: '#0a0a0f',
     webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
       webviewTag: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
@@ -440,7 +441,7 @@ ipcMain.on('toggle-pip', (_e, url) => {
 
     pipWindow.webContents.on('did-finish-load', () => {
       pipWindow.webContents.executeJavaScript(`
-        window.postMessage({ type: 'load-tv-stream', url: ${JSON.stringify(url)} }, '*');
+        window.postMessage({ type: 'load-tv-stream', url: ${JSON.stringify(pipUrl)} }, window.location.origin);
       `);
     });
   } else {
@@ -448,7 +449,7 @@ ipcMain.on('toggle-pip', (_e, url) => {
 
     pipWindow.webContents.on('did-finish-load', () => {
       pipWindow.webContents.executeJavaScript(`
-        window.postMessage({ type: 'load-url', url: ${JSON.stringify(url)} }, '*');
+        window.postMessage({ type: 'load-url', url: ${JSON.stringify(pipUrl)} }, window.location.origin);
       `);
     });
   }

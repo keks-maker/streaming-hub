@@ -113,7 +113,14 @@ document.addEventListener('keydown', e => {
     e.key === '?' ||
     (isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) ||
     (e.altKey && e.key === 'ArrowLeft') ||
-    (e.ctrlKey && (e.key === 'Tab' || e.key === 'p' || e.key === 'P' || e.key === 'h' || e.key === 'H' || e.key === 't' || e.key === 'T'))
+    (e.ctrlKey &&
+      (e.key === 'Tab' ||
+        e.key === 'p' ||
+        e.key === 'P' ||
+        e.key === 'h' ||
+        e.key === 'H' ||
+        e.key === 't' ||
+        e.key === 'T'))
   ) {
     if ((isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) || (e.altKey && e.key === 'ArrowLeft')) {
       e.preventDefault();
@@ -139,7 +146,13 @@ document.addEventListener(
 
 // Bridge: page postMessage → host renderer (for tv-player channel commands)
 window.addEventListener('message', e => {
-  if (e.data && e.data.source === 'tv-player') {
-    ipcRenderer.sendToHost('tv-channel', e.data);
+  if (
+    e.source === window &&
+    e.origin === window.location.origin &&
+    e.data &&
+    e.data.source === 'tv-player' &&
+    ['channel-next', 'channel-prev', 'request-epg'].includes(e.data.action)
+  ) {
+    ipcRenderer.sendToHost('tv-channel', { source: 'tv-player', action: e.data.action });
   }
 });

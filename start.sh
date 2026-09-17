@@ -5,8 +5,6 @@
 
 APP_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd -P)"
 
-export ELECTRON_DISABLE_SANDBOX=1
-
 cd "$APP_DIR"
 
 npm start
