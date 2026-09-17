@@ -465,7 +465,17 @@ ipcMain.handle('get-app-version', () => {
 });
 
 ipcMain.on('toggle-fullscreen', () => {
-  mainWindow?.setFullScreen(!mainWindow.isFullScreen());
+  if (!mainWindow) return;
+  mainWindow.setFullScreen(!mainWindow.isFullScreen());
+});
+
+function sendFullscreenState() {
+  mainWindow?.webContents.send('fullscreen-state', mainWindow.isFullScreen());
+}
+
+app.on('browser-window-created', (_event, window) => {
+  window.on('enter-full-screen', sendFullscreenState);
+  window.on('leave-full-screen', sendFullscreenState);
 });
 
 ipcMain.handle('get-services', () => loadServices());

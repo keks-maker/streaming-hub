@@ -26,6 +26,7 @@ let webviewReady = false;
 let pendingNav = null;
 let pipActive = false;
 let currentProvider = '';
+let currentDashboardGroup = null;
 
 // TV state
 let tvSources = [];
@@ -106,6 +107,18 @@ errorReloadBtn.addEventListener('click', () => {
 });
 
 const welcomeScreen = document.getElementById('welcomeScreen');
+const dashboardView = document.getElementById('dashboardView');
+const dashboardEyebrow = document.getElementById('dashboardEyebrow');
+const dashboardTitle = document.getElementById('dashboardTitle');
+const dashboardCount = document.getElementById('dashboardCount');
+const dashboardGrid = document.getElementById('dashboardGrid');
+const dashboardEmpty = document.getElementById('dashboardEmpty');
+const dashboardEpg = document.getElementById('dashboardEpg');
+const dashboardEpgList = document.getElementById('dashboardEpgList');
+const dashboardEpgOpen = document.getElementById('dashboardEpgOpen');
+const dashboardPlayer = document.getElementById('dashboardPlayer');
+const dashboardPlayerStage = document.getElementById('dashboardPlayerStage');
+const dashboardPlayerClose = document.getElementById('dashboardPlayerClose');
 const overlayLocation = document.getElementById('overlayLocation');
 const backBtn = document.getElementById('backBtn');
 const pipBtn = document.getElementById('pipBtn');
@@ -156,6 +169,13 @@ const epgDetailActions = document.getElementById('epgDetailActions');
 const epgDetailClose = document.getElementById('epgDetailClose');
 const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
+dashboardEpgOpen.addEventListener('click', openEpgView);
+dashboardPlayerClose.addEventListener('click', closeDashboardPlayer);
+dashboardPlayer.addEventListener('dblclick', closeDashboardPlayer);
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && activePreview?.fullscreen) closeDashboardPlayer();
+});
+
 let epgSlotHours = 8;
 
 // Mediathek mapping for EPG -> service search (now in typed-core tv.ts)
@@ -192,6 +212,302 @@ if (bg) {
   }
 }
 
+function renderDashboardTile(svc) {
+  const group = svc.group === 'mediathek' ? 'Mediathek' : 'Streaming';
+  const tile = document.createElement('button');
+  tile.className = 'dashboard-tile is-loading';
+  tile.type = 'button';
+  tile.setAttribute('aria-label', `${svc.name} öffnen`);
+  tile.style.setProperty('--tile-color', svc.color || '#6c5ce7');
+  tile.innerHTML = `
+    <span class="dashboard-tile-glow"></span>
+    <span class="dashboard-tile-icon">
+      <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((svc.name || '?').slice(0, 1).toUpperCase())}</span>
+      <img src="${getIconSrc(svc)}" alt="" loading="lazy">
+    </span>
+    <span class="dashboard-tile-content">
+      <span class="dashboard-tile-name">${escapeHtml(svc.name)}</span>
+      <span class="dashboard-tile-meta">${group}</span>
+    </span>
+    <span class="dashboard-tile-action">Öffnen</span>
+  `;
+  const icon = tile.querySelector('.dashboard-tile-icon');
+  const image = tile.querySelector('img');
+  image.addEventListener('load', () => tile.classList.remove('is-loading'));
+  image.addEventListener('error', () => {
+    image.remove();
+    tile.classList.remove('is-loading');
+    icon.classList.add('has-error');
+  });
+  tile.addEventListener('click', () => navigateTo(svc));
+  return tile;
+}
+
+function getCurrentEpg(ch) {
+  if (!tvEpgIndex) return null;
+  const normId = (ch.tvgId || '').replace(/@[^.@]*/g, '').toLowerCase().trim();
+  const entries = tvEpgIndex.get(normId) || [];
+  const now = Date.now();
+  return entries.find(entry => {
+    const start = parseEpgTime(entry.start);
+    const stop = parseEpgTime(entry.stop);
+    return start <= now && stop >= now;
+  }) || null;
+}
+
+let activePreview = null;
+let previewTimer = null;
+
+function closeDashboardPlayer() {
+  if (!activePreview || !activePreview.fullscreen) return;
+  const { tile, video } = activePreview;
+  if (document.fullscreenElement === dashboardPlayer) document.exitFullscreen().catch(() => {});
+  dashboardPlayerStage.innerHTML = '';
+  tile.prepend(video);
+  tile.classList.remove('is-fullscreen');
+  dashboardPlayer.style.display = 'none';
+  activePreview.fullscreen = false;
+}
+
+function openDashboardPlayer(tile, ch) {
+  if (!activePreview || activePreview.tile !== tile) {
+    startLivePreview(tile, ch, true);
+    return;
+  }
+  const { video } = activePreview;
+  dashboardPlayerStage.appendChild(video);
+  tile.classList.add('is-fullscreen');
+  dashboardPlayer.style.display = '';
+  activePreview.fullscreen = true;
+  dashboardPlayer.requestFullscreen().catch(() => {});
+}
+
+function disposeDashboardPlayback() {
+  if (activePreview?.fullscreen) closeDashboardPlayer();
+  stopLivePreview();
+}
+
+function stopLivePreview() {
+  if (activePreview?.fullscreen) return;
+  if (previewTimer) {
+    clearTimeout(previewTimer);
+    previewTimer = null;
+  }
+  if (!activePreview) return;
+  const { tile, video, hls } = activePreview;
+  if (hls) hls.destroy();
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  video.remove();
+  tile.classList.remove('is-previewing', 'is-preview-error');
+  activePreview = null;
+}
+
+function startLivePreview(tile, ch, openAfterStart = false) {
+  if (!ch.url || activePreview?.tile === tile) {
+    if (openAfterStart && activePreview?.tile === tile) openDashboardPlayer(tile, ch);
+    return;
+  }
+  stopLivePreview();
+  previewTimer = setTimeout(() => {
+    previewTimer = null;
+    const video = document.createElement('video');
+    video.className = 'dashboard-tv-preview';
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.setAttribute('aria-hidden', 'true');
+    tile.prepend(video);
+    const preview = { tile, video, hls: null, fullscreen: false };
+    activePreview = preview;
+    tile.classList.add('is-previewing');
+    if (openAfterStart) {
+      video.addEventListener('playing', () => {
+        if (activePreview === preview && !preview.fullscreen) openDashboardPlayer(tile, ch);
+      }, { once: true });
+    }
+    const fail = () => {
+      if (activePreview !== preview) return;
+      tile.classList.add('is-preview-error');
+      stopLivePreview();
+    };
+    video.addEventListener('error', fail, { once: true });
+    if (window.Hls && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: false, maxBufferLength: 8, liveSyncDurationCount: 2 });
+      preview.hls = hls;
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) fail();
+      });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(fail));
+      hls.loadSource(ch.url);
+      hls.attachMedia(video);
+    } else {
+      video.src = ch.url;
+      video.play().catch(fail);
+    }
+  }, 350);
+}
+
+function renderLiveTvTile(ch) {
+  const source = tvSources.find(item => item.id === ch.sourceId);
+  const current = getCurrentEpg(ch);
+  const start = current ? parseEpgTime(current.start) : 0;
+  const stop = current ? parseEpgTime(current.stop) : 0;
+  const now = Date.now();
+  const progress = start && stop > start ? Math.min(100, Math.max(0, ((now - start) / (stop - start)) * 100)) : 0;
+  const tile = document.createElement('button');
+  tile.className = 'dashboard-tile dashboard-tv-tile';
+  tile.type = 'button';
+  tile.setAttribute('aria-label', `${ch.name} öffnen`);
+  tile.style.setProperty('--tile-color', source?.color || '#6c5ce7');
+  tile.innerHTML = `
+    <span class="dashboard-tv-badge">LIVE</span>
+    <span class="dashboard-tile-glow"></span>
+    <span class="dashboard-tile-icon">
+      <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((ch.name || '?').slice(0, 1).toUpperCase())}</span>
+      <img src="${ch.logo || ''}" alt="" loading="lazy">
+    </span>
+    <span class="dashboard-tile-content">
+      <span class="dashboard-tile-name">${escapeHtml(ch.name)}</span>
+      <span class="dashboard-tile-meta">${current ? escapeHtml(decodeEntities(current.title)) : 'Kein EPG verfügbar'}</span>
+      ${current ? `<span class="dashboard-tv-progress"><span style="width:${progress.toFixed(1)}%"></span></span>` : ''}
+    </span>
+    <span class="dashboard-tile-action">Sender öffnen</span>
+  `;
+  const image = tile.querySelector('img');
+  const icon = tile.querySelector('.dashboard-tile-icon');
+  image.addEventListener('error', () => {
+    image.remove();
+    icon.classList.add('has-error');
+  });
+  tile.addEventListener('mouseenter', () => startLivePreview(tile, ch));
+  tile.addEventListener('mouseleave', stopLivePreview);
+  tile.addEventListener('focus', () => startLivePreview(tile, ch));
+  tile.addEventListener('blur', stopLivePreview);
+  tile.addEventListener('click', () => selectTvChannel(ch, { suppressChannelList: true }));
+  return tile;
+}
+
+function renderLiveTvDashboard() {
+  const favorites = tvChannels.filter(ch => isFavorite(ch, tvSources));
+  dashboardGrid.innerHTML = '';
+  dashboardEpg.style.display = '';
+  dashboardCount.textContent = `${favorites.length} ${favorites.length === 1 ? 'Favorit' : 'Favoriten'}`;
+  if (!favorites.length) {
+    dashboardEmpty.textContent = tvChannels.length ? 'Noch keine Favoritensender vorhanden. Verwalte deine Favoriten über die TV-Sidebar.' : 'Keine Sender geladen.';
+    dashboardEmpty.style.display = '';
+  } else {
+    dashboardEmpty.style.display = 'none';
+    favorites.forEach(ch => dashboardGrid.appendChild(renderLiveTvTile(ch)));
+  }
+  renderDashboardEpg(favorites);
+}
+
+function renderDashboardEpg(channels) {
+  dashboardEpgList.innerHTML = '';
+  channels.slice(0, 8).forEach(ch => {
+    const current = getCurrentEpg(ch);
+    const row = document.createElement('button');
+    row.className = 'dashboard-epg-row';
+    row.type = 'button';
+    row.innerHTML = `<span class="dashboard-epg-channel">${escapeHtml(ch.name)}</span><span class="dashboard-epg-program">${current ? escapeHtml(decodeEntities(current.title)) : 'Kein EPG verfügbar'}</span><span class="dashboard-epg-time">${current ? `${formatEpgTime(current.start)} – ${formatEpgTime(current.stop)}` : ''}</span>`;
+    row.addEventListener('click', () => selectTvChannel(ch, { suppressChannelList: true }));
+    dashboardEpgList.appendChild(row);
+  });
+  if (!channels.length) dashboardEpgList.innerHTML = '<div class="dashboard-epg-empty">Favorisiere Sender, um die Programmübersicht zu sehen.</div>';
+}
+
+function renderStartDashboard() {
+  currentDashboardGroup = null;
+  dashboardView.classList.remove('settings-dashboard');
+  dashboardEyebrow.textContent = 'Streaming Hub';
+  dashboardTitle.textContent = 'Was möchtest du sehen?';
+  dashboardCount.textContent = '';
+  dashboardGrid.setAttribute('aria-label', 'Bereiche');
+  dashboardGrid.innerHTML = '';
+  dashboardEpg.style.display = 'none';
+  dashboardEmpty.style.display = 'none';
+  const sections = [
+    { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
+    { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
+    { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
+    { key: 'settings', label: 'Einstellungen', icon: null, color: '#64748b' },
+  ];
+  sections.forEach(section => {
+    const tile = document.createElement('button');
+    tile.className = 'dashboard-tile dashboard-section-tile';
+    tile.type = 'button';
+    tile.style.setProperty('--tile-color', section.color);
+    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
+    tile.addEventListener('click', () => {
+      overlayBar.classList.remove('nav-collapsed');
+      if (section.key === 'settings') openSettings();
+      else showDashboard(section.key);
+    });
+    dashboardGrid.appendChild(tile);
+  });
+  dashboardView.style.display = '';
+  welcomeScreen.style.display = 'none';
+  overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
+}
+
+function renderDashboard(groupKey) {
+  if (!dashboardView) return;
+  if (groupKey === 'start') {
+    renderStartDashboard();
+    return;
+  }
+  if (groupKey === 'settings') {
+    openSettings();
+    return;
+  }
+  currentDashboardGroup = groupKey;
+  dashboardView.classList.remove('settings-dashboard');
+  const isTv = groupKey === 'livetv';
+  const items = isTv ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
+  const title = isTv ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+  dashboardEyebrow.textContent = isTv ? 'Live Fernsehen' : groupKey === 'mediathek' ? 'Deine Mediatheken' : 'Deine Streamingdienste';
+  dashboardTitle.textContent = title;
+  dashboardCount.textContent = isTv ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
+  dashboardGrid.setAttribute('aria-label', `${title}-Dienste`);
+  dashboardGrid.innerHTML = '';
+  dashboardEpg.style.display = 'none';
+  dashboardEmpty.style.display = 'none';
+  if (isTv) {
+    renderLiveTvDashboard();
+  } else if (!items.length) {
+    dashboardEmpty.textContent = 'Keine Dienste konfiguriert.';
+    dashboardEmpty.style.display = '';
+  } else {
+    items.forEach(svc => dashboardGrid.appendChild(renderDashboardTile(svc)));
+  }
+  dashboardView.style.display = '';
+  welcomeScreen.style.display = 'none';
+}
+
+function showDashboard(groupKey) {
+  if (!restoringNav) pushNavState();
+  disposeDashboardPlayback();
+  currentProvider = '';
+  currentDashboardGroup = groupKey;
+  lastMediaTitle = '';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const activeSection = nav.querySelector(`[data-section="${groupKey}"]`);
+  if (activeSection) activeSection.classList.add('active');
+  switchWebview(false);
+  contentView.style.opacity = '0';
+  contentView.style.pointerEvents = 'none';
+  tvView.style.opacity = '0';
+  tvView.style.pointerEvents = 'none';
+  webview = contentView;
+  renderDashboard(groupKey);
+  overlayLocation.textContent = groupKey === 'livetv' ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+  overlayBar.classList.add('always-visible');
+  overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
+  if (tvSidebarOpen) closeTvSidebar();
+}
+
 function getIconSrc(svc) {
   if (svc.icon) {
     if (svc.icon.startsWith('http://') || svc.icon.startsWith('https://')) return svc.icon;
@@ -207,75 +523,31 @@ function getIconSrc(svc) {
 
 function renderNav() {
   nav.innerHTML = '';
-  const styleEl =
-    document.getElementById('dynamic-service-styles') ||
-    (() => {
-      const s = document.createElement('style');
-      s.id = 'dynamic-service-styles';
-      document.head.appendChild(s);
-      return s;
-    })();
-  let css = '';
 
   const groups = [
-    { key: 'livetv', label: 'LiveTV' },
-    { key: 'streaming', label: 'Streaming' },
-    { key: 'mediathek', label: 'Mediatheken' },
+    { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png' },
+    { key: 'streaming', label: 'Streaming', icon: 'netflix.png' },
+    { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png' },
   ];
 
-  groups.forEach((group, gi) => {
-    if (group.key === 'livetv') {
-      if (gi > 0) {
-        nav.appendChild(createDivider());
-      }
-      nav.appendChild(createGroupLabel(group.label));
-
-      const btn = document.createElement('button');
-      btn.className = 'nav-item';
-      btn.id = 'tvBtn';
-      btn.dataset.provider = '__tv__';
-      btn.innerHTML = `<span class="nav-icon nav-tv-icon">
-        <img src="assets/icons/tv-icon.png" alt="TV" draggable="false">
-      </span>`;
-      btn.addEventListener('mousedown', e => {
-        e.preventDefault();
-        toggleTvSidebar();
-      });
-      nav.appendChild(btn);
-      return;
-    }
-
-    const items = services.filter(s => (s.group || 'streaming') === group.key);
-    if (!items.length) return;
-
-    if (gi > 0) {
-      nav.appendChild(createDivider());
-    }
-    nav.appendChild(createGroupLabel(group.label));
-
-    items.forEach(svc => {
-      const btn = document.createElement('button');
-      btn.className = 'nav-item';
-      btn.dataset.provider = svc.id;
-      btn.dataset.url = svc.url;
-
-      css += `.nav-icon.${svc.id} { --icon-bg: ${svc.color}33; }\n`;
-      css += `.nav-item.active.${svc.id} .nav-icon { --active-glow: ${svc.color}99; }\n`;
-
-      btn.innerHTML = `<span class="nav-icon ${svc.id}">
-          <img src="${getIconSrc(svc)}" alt="${svc.name}" loading="lazy">
-        </span>`;
-
-      btn.addEventListener('mousedown', e => {
-        e.preventDefault();
-        navigateTo(svc);
-      });
-
-      nav.appendChild(btn);
-    });
+  groups.forEach(group => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-item nav-section-item';
+    btn.type = 'button';
+    btn.dataset.section = group.key;
+    btn.innerHTML = `<span class="nav-section-icon"><img src="assets/icons/${group.icon}" alt=""></span><span class="nav-section-label">${group.label}</span>`;
+    btn.addEventListener('click', () => showDashboard(group.key));
+    nav.appendChild(btn);
   });
 
-  styleEl.textContent = css;
+  const settingsItem = document.createElement('button');
+  settingsItem.className = 'nav-item nav-settings-item';
+  settingsItem.type = 'button';
+  settingsItem.title = 'Einstellungen';
+  settingsItem.innerHTML = `<span class="nav-section-icon">⚙</span><span class="nav-section-label">Einstellungen</span>`;
+  settingsItem.addEventListener('click', openSettings);
+  nav.appendChild(settingsItem);
+  tvBtn = nav.querySelector('[data-section="livetv"]');
 }
 
 function createDivider() {
@@ -284,10 +556,13 @@ function createDivider() {
   return d;
 }
 
-function createGroupLabel(text) {
-  const l = document.createElement('span');
+function createGroupLabel(text, groupKey) {
+  const l = document.createElement('button');
   l.className = 'nav-group-label';
+  l.type = 'button';
   l.textContent = text;
+  l.setAttribute('aria-label', `${text} anzeigen`);
+  l.addEventListener('click', () => showDashboard(groupKey));
   return l;
 }
 
@@ -304,7 +579,9 @@ function currentNavState() {
     // Kanal-ID mitspeichern, damit "Zurück" exakt den letzten Sender öffnet
     return { kind: 'tv', id: tvActiveChannelId || null };
   }
-  if (!currentProvider) return { kind: 'start' };
+  if (!currentProvider) {
+    return currentDashboardGroup ? { kind: 'dashboard', group: currentDashboardGroup } : { kind: 'start' };
+  }
   return { kind: 'service', id: currentProvider, url: lastUrlByService[currentProvider] || null };
 }
 
@@ -319,7 +596,9 @@ function pushNavState() {
 }
 
 function updateBackBtn() {
-  if (backBtn) backBtn.style.display = navStack.length ? '' : 'none';
+  if (!backBtn) return;
+  backBtn.style.display = navStack.length ? '' : 'none';
+  overlayBar.classList.toggle('has-back', navStack.length > 0);
 }
 
 function goBack() {
@@ -346,6 +625,8 @@ function goBack() {
       } else {
         goToStartPage();
       }
+    } else if (target.kind === 'dashboard') {
+      showDashboard(target.group);
     } else {
       goToStartPage();
     }
@@ -354,17 +635,41 @@ function goBack() {
   }
 }
 
-backBtn.addEventListener('click', goBack);
+function handleBackNavigation() {
+  if (
+    webviewReady &&
+    currentProvider &&
+    currentProvider !== '__tv__' &&
+    webview.getURL() !== 'about:blank' &&
+    webview.canGoBack()
+  ) {
+    webview.goBack();
+    return true;
+  }
+
+  if (navStack.length) {
+    goBack();
+    return true;
+  }
+
+  return false;
+}
+
+backBtn.addEventListener('click', handleBackNavigation);
 
 function goToStartPage() {
   if (!restoringNav) pushNavState();
+  disposeDashboardPlayback();
   currentUA = chromeUA;
+  currentDashboardGroup = null;
+  if (dashboardView) dashboardView.style.display = 'none';
   currentProvider = '';
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   switchWebview(false);
   welcomeScreen.style.display = '';
   overlayBar.classList.add('always-visible');
+  overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   if (webviewReady) {
     try {
       webview.loadURL('about:blank');
@@ -372,20 +677,27 @@ function goToStartPage() {
       logger.warn('loadURL failed');
     }
   }
-  if (tvSources.length && !tvSidebarOpen && tvMode === 'free') openTvSidebar();
+  if (tvSidebarOpen) closeTvSidebar();
 }
 
 function navigateTo(svc) {
   if (!restoringNav) pushNavState();
+  disposeDashboardPlayback();
   currentUA = svc.id === 'magentatv' ? safariUA : chromeUA;
   currentProvider = svc.id;
+  currentDashboardGroup = null;
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const btn = nav.querySelector(`.nav-item[data-provider="${svc.id}"]`);
   if (btn) btn.classList.add('active');
   switchWebview(false);
+  if (dashboardView) {
+    dashboardView.style.display = 'none';
+    dashboardView.classList.remove('settings-dashboard');
+  }
   welcomeScreen.style.display = 'none';
-  overlayBar.classList.remove('always-visible');
+  overlayBar.classList.add('nav-collapsed');
+  overlayBar.classList.remove('is-fullscreen');
   const targetUrl = normalizeUrl(svc.url);
   lastUrlByService[svc.id] = targetUrl;
   if (webviewReady) {
@@ -598,23 +910,7 @@ function toggleTvSidebar() {
 }
 
 function openTvSidebar() {
-  tvSidebarOpen = true;
-  tvSidebar.classList.add('open');
-  if (tvBtn) tvBtn.classList.add('active');
-
-  // Restore collapsed groups from localStorage
-  try {
-    const saved = localStorage.getItem('tv-collapsed-groups');
-    if (saved) tvCollapsedGroups = JSON.parse(saved);
-  } catch {}
-
-  // If no sources selected, select all
-  if (!tvSelectedSourceIds.length && tvSources.length) {
-    tvSelectedSourceIds = tvSources.map(s => s.id);
-  }
-
-  renderSourcePills();
-  loadTvChannels();
+  return;
 }
 
 function closeTvSidebar() {
@@ -673,6 +969,7 @@ function loadTvChannels(forceReload) {
 
     renderTvChannels();
     updateEpgStatus();
+    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
   });
 }
 
@@ -697,9 +994,10 @@ function loadEpgData() {
   Promise.all(urls.map(url => window.electronAPI.fetchEPG(url).catch(() => []))).then(results => {
     tvEpgData = results.flat();
     tvEpgIndex = buildEpgIndex(tvEpgData);
-    if (tvSidebarOpen) {
-      tvSidebarStatus.innerHTML =
-        tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG geladen ✓</span>';
+       if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
+       if (tvSidebarOpen) {
+         tvSidebarStatus.innerHTML =
+           tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG geladen ✓</span>';
       setTimeout(() => updateEpgStatus(), 2000);
       renderTvChannels();
     }
@@ -771,12 +1069,14 @@ function refreshEpg() {
     .then(results => {
       tvEpgData = results.flat();
       tvEpgIndex = buildEpgIndex(tvEpgData);
+      if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
       if (tvSidebarOpen) {
         tvSidebarStatus.innerHTML =
           tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG aktualisiert ✓</span>';
         setTimeout(() => updateEpgStatus(), 2000);
       }
       renderTvChannels();
+      if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
     })
     .finally(() => {
       tvEpgRefreshing = false;
@@ -1160,8 +1460,10 @@ function reorderChannel(draggedId, targetId) {
 
 async function selectTvChannel(ch, options = {}) {
   if (!restoringNav) pushNavState();
+  disposeDashboardPlayback();
   tvActiveChannelId = ch.id;
-  overlayBar.classList.remove('always-visible');
+  overlayBar.classList.add('nav-collapsed');
+  overlayBar.classList.remove('is-fullscreen');
   renderTvChannels();
   closeTvSidebar();
 
@@ -1177,6 +1479,7 @@ async function selectTvChannel(ch, options = {}) {
   switchWebview(true);
   lastMediaTitle = 'TV: ' + ch.name;
   welcomeScreen.style.display = 'none';
+  if (dashboardView) dashboardView.style.display = 'none';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
   // Find current + next EPG entry (via Index)
@@ -1719,17 +2022,10 @@ webview.addEventListener('did-navigate', () => {
   }
 });
 
-// Navigation INNERHALB eines Dienstes tracken (SPAs wie Netflix/YouTube/Prime
-// feuern nur did-navigate-in-page). Ohne diesen Handler enthielt der Stack
-// nur Ansichtswechsel, und "Zurück" sprang immer auf die Startseite.
 webview.addEventListener('did-navigate-in-page', e => {
-  if (restoringNav) return;
   if (!currentProvider || currentProvider === '__tv__') return;
   const url = (e && e.url) || webview.getURL();
   if (!url || url === 'about:blank') return;
-  // Vorherigen Zustand (mit der alten URL) auf den Stack legen –
-  // lastUrlByService wird erst danach aktualisiert.
-  pushNavState();
   lastUrlByService[currentProvider] = url;
 });
 
@@ -1743,6 +2039,12 @@ webview.addEventListener('permissionrequest', e => {
 
 // ── Webview Error Recovery (contentView) ──
 
+webview.addEventListener('enter-html-full-screen', () => {
+  overlayBar.classList.add('is-fullscreen');
+});
+webview.addEventListener('leave-html-full-screen', () => {
+  overlayBar.classList.remove('is-fullscreen');
+});
 webview.addEventListener('did-fail-load', e => {
   if (e.errorCode === -3) return;
   if (!e.isMainFrame) return;
@@ -1761,6 +2063,12 @@ webview.addEventListener('unresponsive', () => {
 
 // ── tvView Event Listeners ──
 
+tvView.addEventListener('enter-html-full-screen', () => {
+  overlayBar.classList.add('is-fullscreen');
+});
+tvView.addEventListener('leave-html-full-screen', () => {
+  overlayBar.classList.remove('is-fullscreen');
+});
 tvView.addEventListener('did-attach', () => {
   tvViewReady = true;
 
@@ -2074,23 +2382,7 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   }
 
   if (altKey && key === 'ArrowLeft') {
-    if (
-      webviewReady &&
-      currentProvider &&
-      currentProvider !== '__tv__' &&
-      webview.getURL() !== 'about:blank' &&
-      webview.canGoBack()
-    ) {
-      webview.goBack();
-      return true;
-    }
-
-    if (navStack.length) {
-      goBack();
-      return true;
-    }
-
-    return false;
+    return handleBackNavigation();
   }
 
   if (ctrlKey && (key === 'p' || key === 'P')) {
@@ -2107,7 +2399,7 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   }
 
   if (ctrlKey && (key === 't' || key === 'T')) {
-    toggleTvSidebar();
+    showDashboard('livetv');
     return true;
   }
 
@@ -2281,17 +2573,38 @@ setTimeout(checkForUpdates, 4000);
 
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsModal = document.getElementById('settingsModal');
+const settingsPanel = settingsModal;
 const settingsClose = document.getElementById('settingsClose');
 const settingsStatus = document.getElementById('settingsStatus');
 const backupBtn = document.getElementById('backupBtn');
 const restoreBtn = document.getElementById('restoreBtn');
+const settingsTvSourcesBtn = document.getElementById('settingsTvSourcesBtn');
+const settingsTvChannelsBtn = document.getElementById('settingsTvChannelsBtn');
+const settingsEpgRefreshBtn = document.getElementById('settingsEpgRefreshBtn');
 
 function openSettings() {
-  settingsStatus.textContent = '';
+  if (!restoringNav) pushNavState();
+  currentDashboardGroup = 'settings';
+  currentProvider = '';
+  disposeDashboardPlayback();
+  switchWebview(false);
+  closeTvSidebar();
   renderSettingsServices();
   settingsAddForm.style.display = 'none';
   document.querySelector('input[name="tvMode"][value="' + tvMode + '"]').checked = true;
-  settingsOverlay.classList.add('open');
+  settingsOverlay.classList.remove('open');
+  dashboardView.style.display = '';
+  welcomeScreen.style.display = 'none';
+  dashboardEyebrow.textContent = 'Streaming Hub';
+  dashboardTitle.textContent = 'Einstellungen';
+  dashboardCount.textContent = '';
+  dashboardGrid.innerHTML = '';
+  dashboardEpg.style.display = 'none';
+  dashboardEmpty.style.display = 'none';
+  dashboardView.classList.add('settings-dashboard');
+  dashboardGrid.appendChild(settingsPanel);
+  overlayBar.classList.add('always-visible');
 }
 
 document.querySelectorAll('input[name="tvMode"]').forEach(r => {
@@ -2304,10 +2617,14 @@ document.querySelectorAll('input[name="tvMode"]').forEach(r => {
 
 function closeSettings() {
   settingsOverlay.classList.remove('open');
+  if (dashboardView?.classList.contains('settings-dashboard')) goToStartPage();
 }
 
 settingsBtn.addEventListener('click', openSettings);
 settingsClose.addEventListener('click', closeSettings);
+settingsTvSourcesBtn.addEventListener('click', openTvModal);
+settingsTvChannelsBtn.addEventListener('click', openTvChEditor);
+settingsEpgRefreshBtn.addEventListener('click', refreshEpg);
 settingsOverlay.addEventListener('click', e => {
   if (e.target === settingsOverlay) closeSettings();
 });
@@ -2343,6 +2660,10 @@ restoreBtn.addEventListener('click', async () => {
   }, 3000);
 });
 
+window.electronAPI.onFullscreenState(state => {
+  overlayBar.classList.toggle('is-fullscreen', state);
+});
+
 // Services laden
 window.electronAPI.getServices().then(svcs => {
   services = svcs;
@@ -2356,6 +2677,7 @@ window.electronAPI.onServicesChanged(svcs => {
   renderNav();
   tvBtn = document.getElementById('tvBtn');
   renderSettingsServices();
+  if (currentDashboardGroup && currentDashboardGroup !== 'settings' && !currentProvider) renderDashboard(currentDashboardGroup);
   if (currentProvider === '__tv__') {
     // Stay in TV mode
     return;
@@ -2371,13 +2693,15 @@ window.electronAPI.onServicesChanged(svcs => {
 
 // Startseite-Klick
 overlayLocation.addEventListener('click', goToStartPage);
+renderStartDashboard();
 
 // TV Sources laden
 window.electronAPI.getTvSources().then(sources => {
   tvSources = sources;
   tvSelectedSourceIds = sources.map(s => s.id);
+  loadTvChannels(true);
   loadEpgData();
-  if (tvSources.length && tvMode === 'free') openTvSidebar();
+  closeTvSidebar();
 });
 
 window.electronAPI.onTvSourcesChanged(sources => {
@@ -2399,11 +2723,11 @@ window.electronAPI.onTvSourcesChanged(sources => {
   if (!tvSelectedSourceIds.length && sources.length) tvSelectedSourceIds = sources.map(s => s.id);
 
   renderTvSourceList();
-  if (tvSidebarOpen) {
-    renderSourcePills();
-    if (structuralChange) {
-      loadTvChannels(true);
-      loadEpgData();
-    } else renderTvChannels();
+  if (structuralChange) {
+    loadTvChannels(true);
+    loadEpgData();
+  } else {
+    renderTvChannels();
+    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
   }
 });

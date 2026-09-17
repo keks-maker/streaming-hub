@@ -32,22 +32,6 @@
     "group": "streaming"
   },
   {
-    "id": "twitch",
-    "name": "Twitch",
-    "url": "https://www.twitch.tv",
-    "icon": "twitch.png",
-    "color": "#9146ff",
-    "group": "streaming"
-  },
-  {
-    "id": "spotify",
-    "name": "Spotify",
-    "url": "https://open.spotify.com",
-    "icon": "spotify.png",
-    "color": "#1db954",
-    "group": "streaming"
-  },
-  {
     "id": "ard",
     "name": "ARD Mediathek",
     "url": "https://www.ardmediathek.de/",

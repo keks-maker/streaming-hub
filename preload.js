@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  onFullscreenState: cb => {
+    const handler = (_e, state) => cb(state);
+    ipcRenderer.on('fullscreen-state', handler);
+    return () => ipcRenderer.removeListener('fullscreen-state', handler);
+  },
   getServices: () => ipcRenderer.invoke('get-services'),
   addService: svc => ipcRenderer.invoke('add-service', svc),
   removeService: id => ipcRenderer.invoke('remove-service', id),
