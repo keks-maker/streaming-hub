@@ -8,6 +8,7 @@ const os = require('os');
 const { fork, execSync } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { createUserStorage } = require('./lib/user-storage.js');
+const { parseBackup } = require('./lib/backup.js');
 
 let mainWindow;
 let pipWindow = null;
@@ -644,17 +645,13 @@ ipcMain.handle('restore-settings', async () => {
   if (result.canceled || !result.filePaths[0]) return { success: false };
   try {
     const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
-    const data = JSON.parse(raw);
-    if (!data.services && !data.tvsources) throw new Error('ungültiges Backup-Format');
-    if (data.services) {
-      saveServices(data.services);
-      broadcastServices();
-    }
-    if (data.tvsources) {
-      saveTvSources(data.tvsources);
-      broadcastTvSources();
-    }
-    if (data.history) saveHistory(data.history);
+    const data = parseBackup(raw);
+    saveServices(data.services);
+    saveTvSources(data.tvsources);
+    saveHistory(data.history);
+    broadcastServices();
+    broadcastTvSources();
+    mainWindow?.webContents.send('history-changed', data.history);
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
