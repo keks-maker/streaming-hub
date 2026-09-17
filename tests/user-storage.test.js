@@ -56,5 +56,8 @@ test('batch restores all files or rolls back', () => {
   }
   assert.deepEqual(fixture.storage.readJson('services', []), [{ id: 'old' }]);
   assert.deepEqual(fixture.storage.readJson('history', []), [{ title: 'old' }]);
-  assert.equal(fs.readdirSync(fixture.userData).some(name => name.endsWith('.tmp') || name.endsWith('.bak')), false);
+  assert.equal(
+    fs.readdirSync(fixture.userData).some(name => name.endsWith('.tmp') || name.endsWith('.bak')),
+    false,
+  );
 });
