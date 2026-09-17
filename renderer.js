@@ -21,6 +21,21 @@ const {
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 
+function safeResourceUrl(value, { allowRelative = true } = {}) {
+  if (typeof value !== 'string' || !value.trim()) return '';
+  try {
+    const parsed = new URL(value, window.location.href);
+    if (parsed.username || parsed.password) return '';
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
+    if (allowRelative && parsed.protocol === 'file:') return parsed.toString();
+  } catch {}
+  return '';
+}
+
+function safeColor(value, fallback) {
+  return typeof value === 'string' && /^#[0-9a-f]{6,8}$/i.test(value) ? value : fallback;
+}
+
 let services = [];
 let webviewReady = false;
 let pendingNav = null;
@@ -218,12 +233,12 @@ function renderDashboardTile(svc) {
   tile.className = 'dashboard-tile is-loading';
   tile.type = 'button';
   tile.setAttribute('aria-label', `${svc.name} öffnen`);
-  tile.style.setProperty('--tile-color', svc.color || '#6c5ce7');
+  tile.style.setProperty('--tile-color', safeColor(svc.color, '#6c5ce7'));
   tile.innerHTML = `
     <span class="dashboard-tile-glow"></span>
     <span class="dashboard-tile-icon">
       <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((svc.name || '?').slice(0, 1).toUpperCase())}</span>
-      <img src="${getIconSrc(svc)}" alt="" loading="lazy">
+      <img alt="" loading="lazy">
     </span>
     <span class="dashboard-tile-content">
       <span class="dashboard-tile-name">${escapeHtml(svc.name)}</span>
@@ -233,6 +248,8 @@ function renderDashboardTile(svc) {
   `;
   const icon = tile.querySelector('.dashboard-tile-icon');
   const image = tile.querySelector('img');
+  const iconSrc = safeResourceUrl(getIconSrc(svc));
+  if (iconSrc) image.src = iconSrc;
   image.addEventListener('load', () => tile.classList.remove('is-loading'));
   image.addEventListener('error', () => {
     image.remove();
@@ -245,14 +262,19 @@ function renderDashboardTile(svc) {
 
 function getCurrentEpg(ch) {
   if (!tvEpgIndex) return null;
-  const normId = (ch.tvgId || '').replace(/@[^.@]*/g, '').toLowerCase().trim();
+  const normId = (ch.tvgId || '')
+    .replace(/@[^.@]*/g, '')
+    .toLowerCase()
+    .trim();
   const entries = tvEpgIndex.get(normId) || [];
   const now = Date.now();
-  return entries.find(entry => {
-    const start = parseEpgTime(entry.start);
-    const stop = parseEpgTime(entry.stop);
-    return start <= now && stop >= now;
-  }) || null;
+  return (
+    entries.find(entry => {
+      const start = parseEpgTime(entry.start);
+      const stop = parseEpgTime(entry.stop);
+      return start <= now && stop >= now;
+    }) || null
+  );
 }
 
 let activePreview = null;
@@ -323,9 +345,13 @@ function startLivePreview(tile, ch, openAfterStart = false) {
     activePreview = preview;
     tile.classList.add('is-previewing');
     if (openAfterStart) {
-      video.addEventListener('playing', () => {
-        if (activePreview === preview && !preview.fullscreen) openDashboardPlayer(tile, ch);
-      }, { once: true });
+      video.addEventListener(
+        'playing',
+        () => {
+          if (activePreview === preview && !preview.fullscreen) openDashboardPlayer(tile, ch);
+        },
+        { once: true },
+      );
     }
     const fail = () => {
       if (activePreview !== preview) return;
@@ -395,7 +421,9 @@ function renderLiveTvDashboard() {
   dashboardEpg.style.display = '';
   dashboardCount.textContent = `${favorites.length} ${favorites.length === 1 ? 'Favorit' : 'Favoriten'}`;
   if (!favorites.length) {
-    dashboardEmpty.textContent = tvChannels.length ? 'Noch keine Favoritensender vorhanden. Verwalte deine Favoriten über die TV-Sidebar.' : 'Keine Sender geladen.';
+    dashboardEmpty.textContent = tvChannels.length
+      ? 'Noch keine Favoritensender vorhanden. Verwalte deine Favoriten über die TV-Sidebar.'
+      : 'Keine Sender geladen.';
     dashboardEmpty.style.display = '';
   } else {
     dashboardEmpty.style.display = 'none';
@@ -411,11 +439,22 @@ function renderDashboardEpg(channels) {
     const row = document.createElement('button');
     row.className = 'dashboard-epg-row';
     row.type = 'button';
-    row.innerHTML = `<span class="dashboard-epg-channel">${escapeHtml(ch.name)}</span><span class="dashboard-epg-program">${current ? escapeHtml(decodeEntities(current.title)) : 'Kein EPG verfügbar'}</span><span class="dashboard-epg-time">${current ? `${formatEpgTime(current.start)} – ${formatEpgTime(current.stop)}` : ''}</span>`;
+    const channel = document.createElement('span');
+    channel.className = 'dashboard-epg-channel';
+    channel.textContent = ch.name;
+    const program = document.createElement('span');
+    program.className = 'dashboard-epg-program';
+    program.textContent = current ? decodeEntities(current.title) : 'Kein EPG verfügbar';
+    const time = document.createElement('span');
+    time.className = 'dashboard-epg-time';
+    time.textContent = current ? `${formatEpgTime(current.start)} – ${formatEpgTime(current.stop)}` : '';
+    row.append(channel, program, time);
     row.addEventListener('click', () => selectTvChannel(ch, { suppressChannelList: true }));
     dashboardEpgList.appendChild(row);
   });
-  if (!channels.length) dashboardEpgList.innerHTML = '<div class="dashboard-epg-empty">Favorisiere Sender, um die Programmübersicht zu sehen.</div>';
+  if (!channels.length)
+    dashboardEpgList.innerHTML =
+      '<div class="dashboard-epg-empty">Favorisiere Sender, um die Programmübersicht zu sehen.</div>';
 }
 
 function renderStartDashboard() {
@@ -467,7 +506,11 @@ function renderDashboard(groupKey) {
   const isTv = groupKey === 'livetv';
   const items = isTv ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
   const title = isTv ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
-  dashboardEyebrow.textContent = isTv ? 'Live Fernsehen' : groupKey === 'mediathek' ? 'Deine Mediatheken' : 'Deine Streamingdienste';
+  dashboardEyebrow.textContent = isTv
+    ? 'Live Fernsehen'
+    : groupKey === 'mediathek'
+      ? 'Deine Mediatheken'
+      : 'Deine Streamingdienste';
   dashboardTitle.textContent = title;
   dashboardCount.textContent = isTv ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
   dashboardGrid.setAttribute('aria-label', `${title}-Dienste`);
@@ -502,7 +545,8 @@ function showDashboard(groupKey) {
   tvView.style.pointerEvents = 'none';
   webview = contentView;
   renderDashboard(groupKey);
-  overlayLocation.textContent = groupKey === 'livetv' ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+  overlayLocation.textContent =
+    groupKey === 'livetv' ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
   overlayBar.classList.add('always-visible');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   if (tvSidebarOpen) closeTvSidebar();
@@ -747,13 +791,14 @@ function renderSettingsServices() {
     items.forEach(svc => {
       const row = document.createElement('div');
       row.className = 'service-row';
-      const iconSrc = getIconSrc(svc);
-      const color = svc.color || '#6c5ce7';
+      const iconSrc = safeResourceUrl(getIconSrc(svc));
+      const color = safeColor(svc.color, '#6c5ce7');
       row.innerHTML = `
-        <img class="service-row-icon" src="${iconSrc}" alt="" style="background:${color}33;border-color:${color}66">
-        <span class="service-row-name">${svc.name}</span>
-        <button class="service-row-remove" data-id="${svc.id}" title="Entfernen">&times;</button>
+        <img class="service-row-icon" alt="" style="background:${color}33;border-color:${color}66">
+        <span class="service-row-name">${escapeHtml(svc.name)}</span>
+        <button class="service-row-remove" data-id="${escapeHtml(svc.id)}" title="Entfernen">&times;</button>
       `;
+      if (iconSrc) row.querySelector('.service-row-icon').src = iconSrc;
       row.querySelector('.service-row-remove').addEventListener('click', () => {
         window.electronAPI.removeService(svc.id);
       });
@@ -978,9 +1023,8 @@ function updateEpgStatus() {
     tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG: ' + tvEpgIndex.size + ' Kanäle';
   } else {
     const hasEpgConfig = tvSources.some(s => s.epgUrl);
-    tvSidebarStatus.innerHTML =
-      tvSources.map(s => s.name).join(', ') +
-      (hasEpgConfig ? ' | <span class="tv-epg-loading">EPG lädt…</span>' : ' | Keine EPG-URL');
+    tvSidebarStatus.textContent =
+      tvSources.map(s => s.name).join(', ') + (hasEpgConfig ? ' | EPG lädt…' : ' | Keine EPG-URL');
   }
 }
 
@@ -994,10 +1038,9 @@ function loadEpgData() {
   Promise.all(urls.map(url => window.electronAPI.fetchEPG(url).catch(() => []))).then(results => {
     tvEpgData = results.flat();
     tvEpgIndex = buildEpgIndex(tvEpgData);
-       if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
-       if (tvSidebarOpen) {
-         tvSidebarStatus.innerHTML =
-           tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG geladen ✓</span>';
+    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
+    if (tvSidebarOpen) {
+      tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG geladen ✓';
       setTimeout(() => updateEpgStatus(), 2000);
       renderTvChannels();
     }
@@ -1010,7 +1053,8 @@ function renderSourcePills() {
     const pill = document.createElement('span');
     const isActive = tvSelectedSourceIds.includes(src.id);
     pill.className = 'tv-source-pill' + (isActive ? ' active' : '');
-    pill.innerHTML = `<span class="tv-source-pill-dot" style="background:${src.color || '#a78bfa'}"></span>${escapeHtml(src.name)}`;
+    pill.innerHTML = `<span class="tv-source-pill-dot"></span>${escapeHtml(src.name)}`;
+    pill.querySelector('.tv-source-pill-dot').style.background = safeColor(src.color, '#a78bfa');
     pill.addEventListener('click', () => toggleSource(src.id));
     tvSidebarSources.appendChild(pill);
   });
@@ -1062,8 +1106,7 @@ function refreshEpg() {
   }
 
   if (tvSidebarOpen) {
-    tvSidebarStatus.innerHTML =
-      tvSources.map(s => s.name).join(', ') + ' | <span class="tv-epg-loading">EPG lädt…</span>';
+    tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG lädt…';
   }
   Promise.all(epgUrls.map(url => window.electronAPI.fetchEPG(url).catch(() => [])))
     .then(results => {
@@ -1071,8 +1114,7 @@ function refreshEpg() {
       tvEpgIndex = buildEpgIndex(tvEpgData);
       if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
       if (tvSidebarOpen) {
-        tvSidebarStatus.innerHTML =
-          tvSources.map(s => s.name).join(', ') + ' | <span style="color:#4ade80">EPG aktualisiert ✓</span>';
+        tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG aktualisiert ✓';
         setTimeout(() => updateEpgStatus(), 2000);
       }
       renderTvChannels();
@@ -1111,11 +1153,12 @@ function renderTvChannelItem(ch, showFav) {
   const fav = isFavorite(ch, tvSources);
   const isMultiSource = tvSelectedSourceIds.length > 1;
 
+  const safeLogo = safeResourceUrl(ch.logo);
   item.innerHTML = `
-    <img class="tv-channel-logo" src="${ch.logo || ''}" alt="" onerror="this.style.display='none'" loading="lazy">
+    <img class="tv-channel-logo" alt="" loading="lazy">
     <div class="tv-channel-info">
       <div class="tv-channel-name">
-        ${isMultiSource ? `<span class="tv-channel-source-dot" style="background:${srcColor}"></span>` : ''}
+        ${isMultiSource ? '<span class="tv-channel-source-dot"></span>' : ''}
         ${escapeHtml(ch.name)}
       </div>
       ${currentEpg ? `<div class="tv-channel-epg">${escapeHtml(decodeEntities(currentEpg.title))}</div>` : ''}
@@ -1123,6 +1166,10 @@ function renderTvChannelItem(ch, showFav) {
     <span class="tv-channel-fav ${fav ? 'active' : ''}" title="Favorit">${fav ? '★' : '☆'}</span>
     <span class="tv-channel-drag" draggable="true">⠿</span>
   `;
+  const logo = item.querySelector('.tv-channel-logo');
+  if (safeLogo) logo.src = safeLogo;
+  else logo.style.display = 'none';
+  if (isMultiSource) item.querySelector('.tv-channel-source-dot').style.background = safeColor(srcColor, '#a78bfa');
 
   item.addEventListener('click', e => {
     if (e.target.closest('.tv-channel-drag')) return;
@@ -1533,7 +1580,10 @@ async function selectTvChannel(ch, options = {}) {
           const fullCh = tvChannels.find(tc => tc.id === c.id);
           // Wichtig: gleiche Normalisierung wie im EPG-Index (@[^.@]*),
           // sonst schlägt die EPG-Vorschau für IDs wie "ard@hdr.de" fehl.
-          const normId = (fullCh?.tvgId || c.name || '').replace(/@[^.@]*/g, '').toLowerCase().trim();
+          const normId = (fullCh?.tvgId || c.name || '')
+            .replace(/@[^.@]*/g, '')
+            .toLowerCase()
+            .trim();
           const epgs = tvEpgIndex ? tvEpgIndex.get(normId) : undefined;
           let epgTitle = '';
           if (epgs) {
@@ -1874,9 +1924,11 @@ function sendEpgUpdate() {
     dvr: dvrBarMode,
     // Raw EPG für DVR-Marker (Sendungen rund um das DVR-Fenster streamen zu) —
     // U2: Selection via typed-core (selectEpgWindowEntries, unit-getestet)
-    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(
-      e => ({ title: decodeEntities(e.title), start: e.start, stop: e.stop }),
-    ),
+    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(e => ({
+      title: decodeEntities(e.title),
+      start: e.start,
+      stop: e.stop,
+    })),
   };
   try {
     webview.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
@@ -1940,9 +1992,11 @@ function pushEpgToTvView() {
     epgEnd: epgEnd,
     epgNext: epgNext,
     dvr: dvrBarMode(),
-    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(
-      e => ({ title: decodeEntities(e.title), start: e.start, stop: e.stop }),
-    ),
+    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(e => ({
+      title: decodeEntities(e.title),
+      start: e.start,
+      stop: e.stop,
+    })),
   };
   try {
     tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
@@ -2677,7 +2731,8 @@ window.electronAPI.onServicesChanged(svcs => {
   renderNav();
   tvBtn = document.getElementById('tvBtn');
   renderSettingsServices();
-  if (currentDashboardGroup && currentDashboardGroup !== 'settings' && !currentProvider) renderDashboard(currentDashboardGroup);
+  if (currentDashboardGroup && currentDashboardGroup !== 'settings' && !currentProvider)
+    renderDashboard(currentDashboardGroup);
   if (currentProvider === '__tv__') {
     // Stay in TV mode
     return;

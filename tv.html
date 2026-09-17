@@ -467,18 +467,27 @@
 
       // ── EPG update (ohne Rest des Channels zu berühren) ──
       function updateEpgBar(epg, start, end, next) {
-        if (epg) {
-          // esc(): Sendungstitel können "<", "&" etc. enthalten – niemals roh in innerHTML
-          epgBar.innerHTML = '<span class="epg-time">' + esc(start || '') + '</span>'
-            + '<span class="epg-sep">–</span>'
-            + '<span class="epg-time">' + esc(end || '') + '</span>'
-            + '<span class="epg-sep">·</span>'
-            + '<span class="epg-title">' + esc(epg) + '</span>'
-            + (next ? '<span class="epg-sep">|</span><span class="epg-next">' + esc(next) + '</span>' : '');
-          epgBar.style.display = 'block';
-        } else {
+        if (!epg) {
           epgBar.style.display = 'none';
+          return;
         }
+        epgBar.replaceChildren();
+        function addText(className, text) {
+          var node = document.createElement('span');
+          node.className = className;
+          node.textContent = text || '';
+          epgBar.appendChild(node);
+        }
+        addText('epg-time', start);
+        addText('epg-sep', '–');
+        addText('epg-time', end);
+        addText('epg-sep', '·');
+        addText('epg-title', epg);
+        if (next) {
+          addText('epg-sep', '|');
+          addText('epg-next', next);
+        }
+        epgBar.style.display = 'block';
       }
 
       // ── EPG-Polling: Host um aktuelle EPG-Daten bitten ──
@@ -806,15 +815,37 @@
 
         if (!channels || !channels.length) { container.classList.remove('visible'); return; }
 
-        inner.innerHTML = channels.map(function(ch, i) {
-          var isActive = i === currentIdx;
-          return '<div class="tv-channel-item' + (isActive ? ' active' : '') + '">'
-            + (ch.logo ? '<img src="' + esc(ch.logo) + '" alt="" loading="lazy">' : '')
-            + '<div class="tv-channel-info">'
-            + '<span class="tv-channel-name">' + esc(ch.name) + '</span>'
-            + (ch.epg ? '<span class="tv-channel-epg">' + esc(ch.epg) + '</span>' : '')
-            + '</div></div>';
-        }).join('');
+        inner.replaceChildren();
+        channels.forEach(function(ch, i) {
+          var item = document.createElement('div');
+          item.className = 'tv-channel-item' + (i === currentIdx ? ' active' : '');
+          var info = document.createElement('div');
+          info.className = 'tv-channel-info';
+          var name = document.createElement('span');
+          name.className = 'tv-channel-name';
+          name.textContent = ch.name || '';
+          info.appendChild(name);
+          if (ch.epg) {
+            var epg = document.createElement('span');
+            epg.className = 'tv-channel-epg';
+            epg.textContent = ch.epg;
+            info.appendChild(epg);
+          }
+          if (ch.logo) {
+            try {
+              var logoUrl = new URL(ch.logo, document.baseURI);
+              if (logoUrl.protocol === 'http:' || logoUrl.protocol === 'https:') {
+                var logo = document.createElement('img');
+                logo.src = logoUrl.toString();
+                logo.alt = '';
+                logo.loading = 'lazy';
+                item.appendChild(logo);
+              }
+            } catch (_) {}
+          }
+          item.appendChild(info);
+          inner.appendChild(item);
+        });
 
         container.classList.add('visible');
         inner.offsetHeight;
@@ -848,6 +879,17 @@
       }
 
       // ── Reusable channel setup ──
+      function safeHttpUrl(value) {
+        if (typeof value !== 'string' || !value.trim()) return '';
+        try {
+          var parsed = new URL(value, document.baseURI);
+          if (parsed.username || parsed.password) return '';
+          return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : '';
+        } catch (_) {
+          return '';
+        }
+      }
+
       function setupChannel(url, name, logo, epg, start, end, next) {
         channelGen++;
         var gen = channelGen;
@@ -876,8 +918,8 @@
         // switch-channel/epg-update überschreiben (dvr: 'on'|'off'|'auto').
         dvrBarMode = 'auto';
 
-        const channelName = name || 'TV';
-        const channelLogo = logo;
+        const channelName = typeof name === 'string' ? name : 'TV';
+        const channelLogo = safeHttpUrl(logo);
 
         topName.textContent = channelName;
         channelNameEl.textContent = channelName;
@@ -904,7 +946,18 @@
           return;
         }
 
-        const decodedUrl = decodeURIComponent(url);
+        let decodedUrl;
+        try {
+          decodedUrl = safeHttpUrl(decodeURIComponent(url));
+        } catch (_) {
+          decodedUrl = '';
+        }
+        if (!decodedUrl) {
+          disarmLoadWatchdog();
+          showError('Ungültige Stream-URL');
+          loadingEl.style.display = 'none';
+          return;
+        }
 
         if (prevCanplay) video.removeEventListener('canplay', prevCanplay);
         if (prevWaiting) video.removeEventListener('waiting', prevWaiting);
@@ -1076,7 +1129,8 @@
 
       // ── Message listener (host → webview) ──
       window.addEventListener('message', function(e) {
-        if (e.data && e.data.type === 'switch-channel') {
+        if (e.source !== window || e.origin !== window.location.origin || !e.data) return;
+        if (e.data.type === 'switch-channel') {
           setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
             e.data.epgStart, e.data.epgEnd, e.data.epgNext);
           if (e.data.dvr === 'on' || e.data.dvr === 'off') {
