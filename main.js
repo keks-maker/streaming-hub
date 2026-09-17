@@ -9,7 +9,12 @@ const { fork, execSync } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
-const { normalizeWebviewKeydown, validateUpdateAssetUrl, validateVersion } = require('./lib/ipc-validation.js');
+const {
+  normalizeWebviewKeydown,
+  validateDownloadSize,
+  validateReleaseMetadata,
+  validateVersion,
+} = require('./lib/ipc-validation.js');
 const {
   MAX_EPG_BYTES,
   MAX_PLAYLIST_BYTES,
@@ -182,6 +187,8 @@ function saveHistory(history) {
 const GITEA_BASE = process.env.STREAMING_HUB_UPDATE_URL || 'http://192.168.4.105:3000';
 const GITEA_OWNER = 'kekskarlo';
 const GITEA_REPO = 'Streaming-Hub';
+const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
+const GITEA_RELEASE_PATH = `/${GITEA_OWNER}/${GITEA_REPO}/releases/download/`;
 
 async function giteaApi(path) {
   const token = process.env.GITEA_TOKEN;
@@ -214,48 +221,78 @@ function startUpdater() {
       download: async version => {
         try {
           const release = await giteaApi('releases/latest');
-          const asset = release.assets?.find(a => a.name.endsWith('.AppImage'));
-          if (!asset) throw new Error('keine AppImage in Release gefunden');
+          const metadata = validateReleaseMetadata(
+            release,
+            version,
+            new URL(GITEA_BASE).origin,
+            `${GITEA_RELEASE_PATH}${version}/`,
+          );
+          const asset = metadata.asset;
 
           const currentAppImage = process.env.APPIMAGE;
           const appDir = path.dirname(currentAppImage);
-          const tmpDest = path.join(appDir, `.update-${Date.now()}.AppImage`);
+          const tmpDest = path.join(appDir, `.update-${Date.now()}-${process.pid}.AppImage`);
           const finalDest = path.join(appDir, `Streaming Hub-${version}.AppImage`);
           const token = process.env.GITEA_TOKEN;
           const headers = {};
           if (token) headers.Authorization = `token ${token}`;
 
           mainWindow?.webContents.send('update-status', { type: 'progress', percent: 0 });
-          const downloadUrl = validateUpdateAssetUrl(asset.browser_download_url, new URL(GITEA_BASE).origin);
-          const res = await fetch(downloadUrl, {
+          const res = await fetch(asset.browser_download_url, {
             headers,
             signal: AbortSignal.timeout(300000),
             redirect: 'error',
           });
           if (!res.ok) throw new Error(`Download ${res.status}`);
-          const total = parseInt(res.headers.get('content-length') || '0');
+          const total = validateDownloadSize(res.headers.get('content-length'), MAX_UPDATE_BYTES);
+          if (!res.body) throw new Error('Update-Download ohne Datenstrom');
           const reader = res.body.getReader();
-          const ws = fs.createWriteStream(tmpDest);
+          const ws = fs.createWriteStream(tmpDest, { flags: 'wx', mode: 0o600 });
           let received = 0;
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            ws.write(value);
-            received += value.length;
-            if (total)
-              mainWindow?.webContents.send('update-status', { type: 'progress', percent: (received / total) * 100 });
-          }
-          ws.end();
-          await new Promise(r => ws.on('finish', r));
-          fs.chmodSync(tmpDest, 0o755);
-
-          if (currentAppImage !== finalDest) {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              received += value.byteLength;
+              if (received > MAX_UPDATE_BYTES) throw new Error('Update-Datei ist zu groß');
+              if (!ws.write(value))
+                await new Promise((resolve, reject) => {
+                  ws.once('drain', resolve);
+                  ws.once('error', reject);
+                });
+              if (total) {
+                mainWindow?.webContents.send('update-status', {
+                  type: 'progress',
+                  percent: Math.min(100, (received / total) * 100),
+                });
+              }
+            }
+            await new Promise((resolve, reject) => {
+              ws.once('finish', resolve);
+              ws.once('error', reject);
+              ws.end();
+            });
+            if (total && received !== total) throw new Error('Unvollständiger Update-Download');
+            fs.chmodSync(tmpDest, 0o755);
+            if (currentAppImage !== finalDest) {
+              try {
+                fs.unlinkSync(finalDest);
+              } catch (e) {
+                if (e.code !== 'ENOENT') throw e;
+              }
+            }
+            fs.renameSync(tmpDest, finalDest);
+            return finalDest;
+          } catch (error) {
+            ws.destroy();
+            throw error;
+          } finally {
             try {
-              fs.unlinkSync(finalDest);
-            } catch (e) {}
+              fs.unlinkSync(tmpDest);
+            } catch (e) {
+              if (e.code !== 'ENOENT') logger.warn('Temporäre Update-Datei konnte nicht entfernt werden:', e.message);
+            }
           }
-          fs.renameSync(tmpDest, finalDest);
-          return finalDest;
         } catch (e) {
           throw e;
         }
