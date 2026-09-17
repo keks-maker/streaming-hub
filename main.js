@@ -7,12 +7,11 @@ const path = require('path');
 const os = require('os');
 const { fork, execSync } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
+const { createUserStorage } = require('./lib/user-storage.js');
 
 let mainWindow;
 let pipWindow = null;
-const servicesPath = path.join(__dirname, 'services.json');
-const historyPath = path.join(__dirname, 'history.json');
-const tvSourcesPath = path.join(__dirname, 'tvsources.json');
+let userStorage = null;
 
 // Updater
 let updaterProcess = null;
@@ -102,15 +101,15 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 function loadServices() {
   try {
-    const raw = fs.readFileSync(servicesPath, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
+    return userStorage.readJson('services', []);
+  } catch (error) {
+    logger.warn('Dienste konnten nicht geladen werden:', error.message);
     return [];
   }
 }
 
 function saveServices(services) {
-  fs.writeFileSync(servicesPath, JSON.stringify(services, null, 2), 'utf-8');
+  userStorage.writeJson('services', services);
 }
 
 function broadcastServices() {
@@ -119,28 +118,27 @@ function broadcastServices() {
 }
 
 function loadTvSources() {
+  const defaults = [
+    {
+      id: 'deutsche-oeffentlich-rechtliche',
+      name: 'Deutsche Öffentlich-Rechtliche',
+      url: 'https://iptv-org.github.io/iptv/countries/de.m3u',
+      type: 'url',
+      color: '#a78bfa',
+      epgUrl: 'https://iptv-epg.org/files/epg-de.xml',
+      sortOrder: [],
+    },
+  ];
   try {
-    const raw = fs.readFileSync(tvSourcesPath, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    const defaults = [
-      {
-        id: 'deutsche-oeffentlich-rechtliche',
-        name: 'Deutsche Öffentlich-Rechtliche',
-        url: 'https://iptv-org.github.io/iptv/countries/de.m3u',
-        type: 'url',
-        color: '#a78bfa',
-        epgUrl: 'https://iptv-epg.org/files/epg-de.xml',
-        sortOrder: [],
-      },
-    ];
-    saveTvSources(defaults);
+    return userStorage.readJson('tvSources', defaults);
+  } catch (error) {
+    logger.warn('TV-Quellen konnten nicht geladen werden:', error.message);
     return defaults;
   }
 }
 
 function saveTvSources(sources) {
-  fs.writeFileSync(tvSourcesPath, JSON.stringify(sources, null, 2), 'utf-8');
+  userStorage.writeJson('tvSources', sources);
 }
 
 function broadcastTvSources() {
@@ -166,15 +164,15 @@ function parseM3U(content, sourceId) {
 
 function loadHistory() {
   try {
-    const raw = fs.readFileSync(historyPath, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
+    return userStorage.readJson('history', []);
+  } catch (error) {
+    logger.warn('Verlauf konnte nicht geladen werden:', error.message);
     return [];
   }
 }
 
 function saveHistory(history) {
-  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
+  userStorage.writeJson('history', history);
 }
 
 // ── Updater ──
@@ -376,6 +374,10 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  userStorage = createUserStorage({
+    userDataPath: app.getPath('userData'),
+    bundlePath: __dirname,
+  });
   try {
     reconcilePostUpdate(__dirname, app.getVersion());
   } catch (e) {
