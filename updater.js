@@ -8,7 +8,7 @@
 // Release-Fixes kommen durch). services.json/history.json: Verhalten unverändert
 // (Overwrite — dort überschreibt der Geräte-Stand bewusst den committed Stand).
 const logger = require('./logger.js');
-const { execSync } = require('child_process');
+const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { mergeTvsources } = require('./lib/tvsources-merge.js');
@@ -22,7 +22,10 @@ const mergeFile = 'tvsources.json';
 const backupDir = path.join(appDir, '.update-backup');
 
 function git(args, timeout) {
-  return execSync(`git ${args}`, {
+  const argv = Array.isArray(args)
+    ? args
+    : args.match(/"[^"]*"|'[^']*'|\S+/g).map(value => value.replace(/^['"]|['"]$/g, ''));
+  return execFileSync('git', argv, {
     cwd: appDir,
     encoding: 'utf-8',
     timeout: timeout || 15000,
@@ -256,7 +259,7 @@ process.on('message', msg => {
         /* stash error – continue */
       }
 
-      git(`checkout --force v${msg.version}`, 30000);
+      git(['checkout', '--force', `v${msg.version}`], 30000);
 
       // User-Daten nach dem Checkout wiederherstellen:
       //  - tvsources.json: 3-way-Merge (User-Favoriten/Overrides + Release-Fixes)

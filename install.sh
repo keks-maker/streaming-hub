@@ -12,8 +12,8 @@
 
 set -euo pipefail
 
-REPO_URL="http://192.168.4.105:3000/kekskarlo/Streaming-Hub.git"
-RAW_BASE="http://192.168.4.105:3000/kekskarlo/Streaming-Hub/raw/branch/master"
+REPO_URL="${STREAMING_HUB_REPO_URL:-http://192.168.4.105:3000/kekskarlo/Streaming-Hub.git}"
+RAW_BASE="${STREAMING_HUB_RAW_BASE:-http://192.168.4.105:3000/kekskarlo/Streaming-Hub/raw/branch/master}"
 MIN_NODE_MAJOR=22
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'

@@ -177,7 +177,7 @@ function saveHistory(history) {
 
 // ── Updater ──
 
-const GITEA_BASE = 'http://192.168.4.105:3000';
+const GITEA_BASE = process.env.STREAMING_HUB_UPDATE_URL || 'http://192.168.4.105:3000';
 const GITEA_OWNER = 'kekskarlo';
 const GITEA_REPO = 'Streaming-Hub';
 
