@@ -85,7 +85,7 @@ script.textContent = `
   // Notify preload when a video starts playing (for Media Session polling trigger)
   document.addEventListener('play', function(e) {
     if (e.target.tagName === 'VIDEO') {
-      window.postMessage({ type: '__media-play' }, '*');
+      window.postMessage({ type: '__media-play' }, window.location.origin);
     }
   }, true);
 })();

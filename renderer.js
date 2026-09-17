@@ -1600,7 +1600,7 @@ async function selectTvChannel(ch, options = {}) {
         msg.channelList = enrichedChannels;
         msg.channelIndex = channelList.currentIndex;
       }
-      tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ",'*')");
+      tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ',window.location.origin)');
       // U2: EPG-Rohdaten sofort hinterher schieben, damit die DVR-Marker nicht
       // auf den ersten 30s-Poll warten müssen.
       pushEpgToTvView();
@@ -1931,7 +1931,7 @@ function sendEpgUpdate() {
     })),
   };
   try {
-    webview.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
+    webview.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)');
   } catch (err) {
     logger.warn('sendEpgUpdate failed:', err);
   }
@@ -1999,13 +1999,41 @@ function pushEpgToTvView() {
     })),
   };
   try {
-    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ",'*')");
+    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)');
   } catch (err) {
     logger.warn('pushEpgToTvView failed:', err);
   }
 }
 
 // Webview events
+function allowContentNavigation(event) {
+  try {
+    const target = new URL(event.url);
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') event.preventDefault();
+  } catch (_) {
+    event.preventDefault();
+  }
+}
+
+function allowTvNavigation(event) {
+  try {
+    const target = new URL(event.url);
+    const allowed = target.protocol === 'about:' && target.href === 'about:blank';
+    const localTvPage = target.protocol === 'file:' && target.pathname.endsWith('/tv.html');
+    if (!allowed && !localTvPage) event.preventDefault();
+  } catch (_) {
+    event.preventDefault();
+  }
+}
+
+webview.addEventListener('will-navigate', allowContentNavigation);
+webview.addEventListener('will-redirect', allowContentNavigation);
+webview.addEventListener('new-window', event => event.preventDefault());
+
+tvView.addEventListener('will-navigate', allowTvNavigation);
+tvView.addEventListener('will-redirect', allowTvNavigation);
+tvView.addEventListener('new-window', event => event.preventDefault());
+
 webview.addEventListener('did-attach', () => {
   webviewReady = true;
 
@@ -2055,7 +2083,7 @@ webview.addEventListener('did-finish-load', () => {
               channels: cl.channels,
               currentIndex: cl.currentIndex,
             }) +
-            ",'*')",
+            ',window.location.origin)',
         )
         .catch(() => {});
     }
@@ -2171,7 +2199,7 @@ tvView.addEventListener('did-finish-load', () => {
               channels: cl.channels,
               currentIndex: cl.currentIndex,
             }) +
-            ",'*')",
+            ',window.location.origin)',
         )
         .catch(() => {});
       // U2: Auch beim ersten TV-Seiten-Load EPG sofort pushen (die URL-Params

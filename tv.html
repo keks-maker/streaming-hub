@@ -507,7 +507,7 @@
       function startEpgPolling() {
         stopEpgPolling();
         epgPollTimer = setInterval(function() {
-          window.postMessage({ source: 'tv-player', action: 'request-epg' }, '*');
+          window.postMessage({ source: 'tv-player', action: 'request-epg' }, window.location.origin);
         }, 30000); // alle 30 Sekunden
       }
       function stopEpgPolling() {
