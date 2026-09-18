@@ -53,6 +53,12 @@ let tvSearchFilter = '';
 let tvSelectedSourceIds = [];
 let tvCollapsedGroups = {};
 let tvEpgRefreshing = false;
+let tvSourcesRefreshing = false;
+let tvSourceStatus = 'idle';
+let tvEpgStatus = 'idle';
+let tvSourceErrors = [];
+let tvEpgErrors = [];
+let tvEpgUrls = [];
 let tvEpgIndex = null; // Map<normId, epgEntry[]> für schnelle EPG-Lookups
 let tvChOverrides = {}; // {sourceId: {chId: {name?,url?,tvgId?,tvgLogo?}}} – ungespeicherte Änderungen
 let tvChDirty = false;
@@ -150,6 +156,7 @@ const tvSidebarTrigger = document.getElementById('tvSidebarTrigger');
 
 const tvSidebarManage = document.getElementById('tvSidebarManage');
 const tvSidebarEpgRefresh = document.getElementById('tvSidebarEpgRefresh');
+const tvSidebarSourcesRefresh = document.getElementById('tvSidebarSourcesRefresh');
 const tvSidebarSources = document.getElementById('tvSidebarSources');
 const tvSidebarChannels = document.getElementById('tvSidebarChannels');
 const tvSidebarStatus = document.getElementById('tvSidebarStatus');
@@ -955,7 +962,28 @@ function toggleTvSidebar() {
 }
 
 function openTvSidebar() {
-  return;
+  tvSidebarOpen = true;
+  tvSidebar.classList.add('open');
+  if (tvBtn) tvBtn.classList.add('active');
+
+  // Restore collapsed groups from localStorage
+  try {
+    const saved = localStorage.getItem('tv-collapsed-groups');
+    if (saved) tvCollapsedGroups = JSON.parse(saved);
+  } catch {}
+
+  // If no sources selected, select all
+  if (!tvSelectedSourceIds.length && tvSources.length) {
+    tvSelectedSourceIds = tvSources.map(s => s.id);
+  }
+
+  renderSourcePills();
+  loadTvChannels().then(result => {
+    if (!tvEpgIndex || tvEpgStatus === 'unavailable') {
+      return loadEpgData(collectEpgUrls(result.epgUrls));
+    }
+    return null;
+  });
 }
 
 function closeTvSidebar() {
@@ -964,87 +992,144 @@ function closeTvSidebar() {
   if (tvBtn) tvBtn.classList.remove('active');
 }
 
-function loadTvChannels(forceReload) {
-  // Cache: nicht erneut laden wenn Daten bereits vorhanden
-  if (!forceReload && tvChannels.length > 0) {
-    renderTvChannels();
-    return;
-  }
-  tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Lade Sender...</div>';
-  tvChannels = [];
-
+function renderTvStatus() {
   if (!tvSources.length) {
-    tvSidebarChannels.innerHTML =
-      '<div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>';
     tvSidebarStatus.textContent = 'Keine Quellen';
     return;
   }
+  if (tvSourcesRefreshing || tvSourceStatus === 'loading') {
+    tvSidebarStatus.textContent = 'Quellen werden aktualisiert…';
+    return;
+  }
+  if (tvEpgRefreshing || tvEpgStatus === 'loading') {
+    tvSidebarStatus.textContent = 'EPG wird aktualisiert…';
+    return;
+  }
+  const sourceText = tvSourceErrors.length
+    ? `${tvSources.length - tvSourceErrors.length}/${tvSources.length} Quellen geladen`
+    : `${tvChannels.length} Sender geladen`;
+  if (tvEpgStatus === 'unavailable') {
+    tvSidebarStatus.textContent = sourceText + ' · Keine EPG-URL';
+  } else if (tvEpgErrors.length) {
+    tvSidebarStatus.textContent = sourceText + ` · EPG: ${tvEpgErrors.length} Fehler`;
+  } else if (tvEpgIndex && tvEpgData.length) {
+    tvSidebarStatus.textContent = sourceText + ` · EPG: ${tvEpgIndex.size} Kanäle`;
+  } else {
+    tvSidebarStatus.textContent = sourceText;
+  }
+}
 
-  tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ');
-  const parsePromises = [];
-  const sourceChannelMap = {}; // sourceId → channels[]
+function collectEpgUrls(extraUrls = []) {
+  return [...new Set([...tvSources.map(s => s.epgUrl), ...tvEpgUrls, ...extraUrls].filter(Boolean))];
+}
 
-  tvSources.forEach(source => {
-    const p = window.electronAPI
-      .fetchAndParseM3U(source.url)
-      .then(result => {
+async function loadTvChannels(forceReload) {
+  if (!forceReload && tvChannels.length > 0) {
+    renderTvChannels();
+    renderTvStatus();
+    return { epgUrls: tvEpgUrls, failedSources: [] };
+  }
+  if (!tvSources.length) {
+    tvChannels = [];
+    tvSourceErrors = [];
+    tvSourceStatus = 'success';
+    tvSidebarChannels.innerHTML =
+      '<div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>';
+    renderTvStatus();
+    return { epgUrls: [], failedSources: [] };
+  }
+
+  tvSourceStatus = 'loading';
+  tvSourceErrors = [];
+  renderTvStatus();
+  tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Lade Sender…</div>';
+  const sourceChannelMap = {};
+  const sourceEpgUrls = [];
+  const results = await Promise.all(
+    tvSources.map(async source => {
+      try {
+        const result = await window.electronAPI.fetchAndParseM3U(source.url);
         const tagged = result.channels.map(ch => ({ ...ch, sourceId: source.id }));
         sourceChannelMap[source.id] = tagged;
-        source.baseUrl = result.baseUrl || ''; // für relative Logo-Auflösung in Overrides
-        tvChannels = tvChannels.concat(tagged);
-      })
-      .catch(err => {
+        source.baseUrl = result.baseUrl || '';
+        sourceEpgUrls.push(...(result.epgUrls || []));
+        return { source, ok: true };
+      } catch (err) {
         logger.warn('Fehler beim Laden von', source.name, err.message);
         sourceChannelMap[source.id] = [];
-      });
-    parsePromises.push(p);
-  });
-
-  Promise.all(parsePromises).then(() => {
-    // Apply channel overrides + sort order via typed-core
-    tvChannels = [];
-    tvSources.forEach(source => {
-      let srcChannels = sourceChannelMap[source.id] || [];
-      srcChannels = applyChannelOverrides(srcChannels, source);
-      if (source.sortOrder && source.sortOrder.length) {
-        srcChannels = applySortOrder(srcChannels, source.sortOrder);
+        return { source, ok: false, error: err };
       }
-      tvChannels = tvChannels.concat(srcChannels);
-    });
+    }),
+  );
 
-    renderTvChannels();
-    updateEpgStatus();
-    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
+  tvSourceErrors = results.filter(result => !result.ok).map(result => result.source.name);
+  tvEpgUrls = [...new Set(sourceEpgUrls.filter(Boolean))];
+  tvChannels = [];
+  tvSources.forEach(source => {
+    let srcChannels = applyChannelOverrides(sourceChannelMap[source.id] || [], source);
+    if (source.sortOrder && source.sortOrder.length) srcChannels = applySortOrder(srcChannels, source.sortOrder);
+    tvChannels = tvChannels.concat(srcChannels);
   });
+  });
+  tvSourceStatus = tvSourceErrors.length === tvSources.length ? 'error' : 'success';
+  renderTvChannels();
+  renderTvStatus();
+  return { epgUrls: tvEpgUrls, failedSources: tvSourceErrors };
+}
+
+async function loadEpgData(urls = collectEpgUrls()) {
+  tvEpgUrls = [...new Set(urls.filter(Boolean))];
+  if (!tvEpgUrls.length) {
+    tvEpgData = [];
+    tvEpgIndex = null;
+    tvEpgErrors = [];
+    tvEpgStatus = 'unavailable';
+    renderTvStatus();
+    return { loaded: 0, failed: 0 };
+  }
+  tvEpgStatus = 'loading';
+  tvEpgErrors = [];
+  renderTvStatus();
+  const results = await Promise.all(
+    tvEpgUrls.map(async url => {
+      try {
+        return { url, data: await window.electronAPI.fetchEPG(url), ok: true };
+      } catch (error) {
+        logger.warn('Fehler beim Laden des EPG', url, error.message);
+        return { url, data: [], ok: false, error };
+      }
+    }),
+  );
+  tvEpgErrors = results.filter(result => !result.ok).map(result => result.url);
+  tvEpgData = results.flatMap(result => result.data);
+  tvEpgIndex = buildEpgIndex(tvEpgData);
+  tvEpgStatus = tvEpgErrors.length === results.length ? 'error' : 'success';
+  renderTvChannels();
+  renderTvStatus();
+  return { loaded: results.length - tvEpgErrors.length, failed: tvEpgErrors.length };
+}
+
+async function refreshTvSourcesAndEpg() {
+  if (tvSourcesRefreshing) return;
+  tvSourcesRefreshing = true;
+  tvEpgRefreshing = true;
+  tvSidebarSourcesRefresh.classList.add('refreshing');
+  tvSidebarSourcesRefresh.disabled = true;
+  renderTvStatus();
+  try {
+    const sourceResult = await loadTvChannels(true);
+    await loadEpgData(collectEpgUrls(sourceResult.epgUrls));
+  } finally {
+    tvSourcesRefreshing = false;
+    tvEpgRefreshing = false;
+    tvSidebarSourcesRefresh.classList.remove('refreshing');
+    tvSidebarSourcesRefresh.disabled = false;
+    renderTvStatus();
+  }
 }
 
 function updateEpgStatus() {
-  if (tvEpgIndex && tvEpgData.length) {
-    tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG: ' + tvEpgIndex.size + ' Kanäle';
-  } else {
-    const hasEpgConfig = tvSources.some(s => s.epgUrl);
-    tvSidebarStatus.textContent =
-      tvSources.map(s => s.name).join(', ') + (hasEpgConfig ? ' | EPG lädt…' : ' | Keine EPG-URL');
-  }
-}
-
-function loadEpgData() {
-  const urls = [...new Set(tvSources.map(s => s.epgUrl).filter(Boolean))];
-  if (!urls.length) {
-    if (tvSidebarOpen) updateEpgStatus();
-    return;
-  }
-  if (tvSidebarOpen) updateEpgStatus();
-  Promise.all(urls.map(url => window.electronAPI.fetchEPG(url).catch(() => []))).then(results => {
-    tvEpgData = results.flat();
-    tvEpgIndex = buildEpgIndex(tvEpgData);
-    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
-    if (tvSidebarOpen) {
-      tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG geladen ✓';
-      setTimeout(() => updateEpgStatus(), 2000);
-      renderTvChannels();
-    }
-  });
+  renderTvStatus();
 }
 
 function renderSourcePills() {
@@ -1087,43 +1172,20 @@ function toggleFavorite(ch) {
   renderTvChannels();
 }
 
-function refreshEpg() {
-  if (tvEpgRefreshing) return;
+async function refreshEpg() {
+  if (tvEpgRefreshing || tvSourcesRefreshing) return;
   tvEpgRefreshing = true;
   tvSidebarEpgRefresh.classList.add('refreshing');
-
-  const epgUrls = [];
-  tvSources.forEach(src => {
-    if (src.epgUrl && !epgUrls.includes(src.epgUrl)) epgUrls.push(src.epgUrl);
-  });
-  // Also check if any loaded channel EPG URLs are not in source list
-  // (from x-tvg-url in M3U)
-
-  if (!epgUrls.length) {
+  tvSidebarEpgRefresh.disabled = true;
+  try {
+    await loadEpgData(collectEpgUrls());
+  } finally {
     tvEpgRefreshing = false;
     tvSidebarEpgRefresh.classList.remove('refreshing');
-    return;
+    tvSidebarEpgRefresh.disabled = false;
+    renderTvStatus();
   }
-
-  if (tvSidebarOpen) {
-    tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG lädt…';
   }
-  Promise.all(epgUrls.map(url => window.electronAPI.fetchEPG(url).catch(() => [])))
-    .then(results => {
-      tvEpgData = results.flat();
-      tvEpgIndex = buildEpgIndex(tvEpgData);
-      if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
-      if (tvSidebarOpen) {
-        tvSidebarStatus.textContent = tvSources.map(s => s.name).join(', ') + ' | EPG aktualisiert ✓';
-        setTimeout(() => updateEpgStatus(), 2000);
-      }
-      renderTvChannels();
-      if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
-    })
-    .finally(() => {
-      tvEpgRefreshing = false;
-      tvSidebarEpgRefresh.classList.remove('refreshing');
-    });
 }
 
 function renderTvChannelItem(ch, showFav) {
@@ -1161,7 +1223,7 @@ function renderTvChannelItem(ch, showFav) {
         ${isMultiSource ? '<span class="tv-channel-source-dot"></span>' : ''}
         ${escapeHtml(ch.name)}
       </div>
-      ${currentEpg ? `<div class="tv-channel-epg">${escapeHtml(decodeEntities(currentEpg.title))}</div>` : ''}
+      <div class="tv-channel-epg">${currentEpg ? escapeHtml(decodeEntities(currentEpg.title)) : tvEpgStatus === 'loading' ? 'EPG wird geladen…' : tvEpgStatus === 'error' ? 'EPG konnte nicht geladen werden' : tvEpgStatus === 'unavailable' ? 'Keine EPG-Quelle' : 'Kein aktuelles Programm'}</div>
     </div>
     <span class="tv-channel-fav ${fav ? 'active' : ''}" title="Favorit">${fav ? '★' : '☆'}</span>
     <span class="tv-channel-drag" draggable="true">⠿</span>
@@ -1578,8 +1640,7 @@ async function selectTvChannel(ch, options = {}) {
         const channelList = buildChannelList(ch, tvChannels, tvSources);
         const enrichedChannels = (channelList.channels || []).map(c => {
           const fullCh = tvChannels.find(tc => tc.id === c.id);
-          // Wichtig: gleiche Normalisierung wie im EPG-Index (@[^.@]*),
-          // sonst schlägt die EPG-Vorschau für IDs wie "ard@hdr.de" fehl.
+          // Keep channel IDs consistent with the EPG index.
           const normId = (fullCh?.tvgId || c.name || '')
             .replace(/@[^.@]*/g, '')
             .toLowerCase()
@@ -1872,16 +1933,6 @@ function toggleHistory() {
     openHistory();
   }
 }
-
-// TV channel navigation via webview ipc-message (from tv.html → preload-content bridge)
-webview.addEventListener('ipc-message', e => {
-  if (e.channel === 'sidebar-close' && tvSidebarOpen) closeTvSidebar();
-  if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
-    if (e.args[0].action === 'channel-next') switchTvChannel(1);
-    else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
-    else if (e.args[0].action === 'request-epg') sendEpgUpdate();
-  }
-});
 
 function sendEpgUpdate() {
   if (!tvActiveChannelId) return;
@@ -2302,6 +2353,7 @@ historyClear.addEventListener('click', () => {
 
 // TV event listeners
 tvSidebarManage.addEventListener('click', openTvModal);
+tvSidebarSourcesRefresh.addEventListener('click', refreshTvSourcesAndEpg);
 tvSidebarEpgRefresh.addEventListener('click', refreshEpg);
 tvModalClose.addEventListener('click', closeTvModal);
 tvModalOverlay.addEventListener('click', e => {
@@ -2779,12 +2831,12 @@ overlayLocation.addEventListener('click', goToStartPage);
 renderStartDashboard();
 
 // TV Sources laden
-window.electronAPI.getTvSources().then(sources => {
+window.electronAPI.getTvSources().then(async sources => {
   tvSources = sources;
   tvSelectedSourceIds = sources.map(s => s.id);
-  loadTvChannels(true);
-  loadEpgData();
-  closeTvSidebar();
+  const result = await loadTvChannels(true);
+  await loadEpgData(collectEpgUrls(result.epgUrls));
+  if (tvSources.length && tvMode === 'free') openTvSidebar();
 });
 
 window.electronAPI.onTvSourcesChanged(sources => {
@@ -2807,10 +2859,10 @@ window.electronAPI.onTvSourcesChanged(sources => {
 
   renderTvSourceList();
   if (structuralChange) {
-    loadTvChannels(true);
-    loadEpgData();
-  } else {
+    if (tvSidebarOpen) renderSourcePills();
+    refreshTvSourcesAndEpg();
+  } else if (tvSidebarOpen) {
+    renderSourcePills();
     renderTvChannels();
-    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
   }
 });

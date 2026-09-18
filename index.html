@@ -305,7 +305,12 @@
     <div class="tv-sidebar-header">
       <span class="tv-sidebar-title">TV Sender</span>
       <div class="tv-sidebar-actions">
-        <button class="tv-sidebar-manage" id="tvSidebarEpgRefresh" title="EPG aktualisieren">
+        <button class="tv-sidebar-manage" id="tvSidebarSourcesRefresh" title="TV-Quellen aktualisieren" aria-label="TV-Quellen aktualisieren">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 11a8.1 8.1 0 0 0-14.9-3L3 11"/><path d="M3 4v7h7"/><path d="M4 13a8.1 8.1 0 0 0 14.9 3L21 13"/><path d="M21 20v-7h-7"/>
+          </svg>
+        </button>
+        <button class="tv-sidebar-manage" id="tvSidebarEpgRefresh" title="EPG aktualisieren" aria-label="EPG aktualisieren">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
           </svg>
@@ -319,7 +324,7 @@
       </div>
     </div>
     <div class="tv-sidebar-sources" id="tvSidebarSources"></div>
-    <div class="tv-sidebar-status" id="tvSidebarStatus"></div>
+    <div class="tv-sidebar-status" id="tvSidebarStatus" aria-live="polite"></div>
     <div class="tv-sidebar-epg-bar">
       <button class="tv-sidebar-epg-btn" id="tvSidebarEpgBtn">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

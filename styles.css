@@ -1329,6 +1329,20 @@ body {
   color: var(--text);
 }
 
+.tv-sidebar-manage:disabled {
+  opacity: .45;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.tv-sidebar-manage.refreshing svg {
+  animation: tvSourceRefreshSpin .8s linear infinite;
+}
+
+@keyframes tvSourceRefreshSpin {
+  to { transform: rotate(360deg); }
+}
+
 .tv-sidebar-sources {
   padding: 6px 12px;
   border-bottom: 1px solid var(--border);
