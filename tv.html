@@ -1060,6 +1060,7 @@
               if (gen !== channelGen) return;
               updatePdtFromLevelDetails(data.details);
               updateDvrFromLevelDetails(data.details);
+              recomputeDvrMarkers();
             });
             hls.loadSource(decodedUrl);
             hls.attachMedia(video);

@@ -2568,9 +2568,32 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
     return true;
   }
 
-  if ((key === 'ArrowUp' || key === 'ArrowDown') && currentProvider === '__tv__') {
-    if (tvMode === 'magenta') return false;
-    switchTvChannel(key === 'ArrowUp' ? -1 : 1);
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
+    if (currentProvider !== '__tv__') return false;
+    if (tvMode === 'magenta') {
+      logger.debug('TV channel key ignored in magenta mode');
+      return false;
+    }
+    if (!tvActiveChannelId) {
+      logger.warn('TV channel key ignored: no active channel');
+      return true;
+    }
+    if (!tvChannels.length) {
+      logger.warn('TV channel key ignored: no channels loaded');
+      return true;
+    }
+    const direction = key === 'ArrowUp' ? -1 : 1;
+    const nextId = getNextChannelId(tvActiveChannelId, tvChannels, tvSources, direction);
+    if (!nextId) {
+      logger.warn('TV channel key ignored: no next channel', {
+        current: tvActiveChannelId,
+        direction,
+        channels: tvChannels.length,
+      });
+      return true;
+    }
+    const nextCh = tvChannels.find(ch => ch.id === nextId);
+    if (nextCh) selectTvChannel(nextCh);
     return true;
   }
 
