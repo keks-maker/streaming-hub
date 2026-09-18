@@ -1070,7 +1070,6 @@ async function loadTvChannels(forceReload) {
     if (source.sortOrder && source.sortOrder.length) srcChannels = applySortOrder(srcChannels, source.sortOrder);
     tvChannels = tvChannels.concat(srcChannels);
   });
-  });
   tvSourceStatus = tvSourceErrors.length === tvSources.length ? 'error' : 'success';
   renderTvChannels();
   renderTvStatus();
@@ -1184,7 +1183,6 @@ async function refreshEpg() {
     tvSidebarEpgRefresh.classList.remove('refreshing');
     tvSidebarEpgRefresh.disabled = false;
     renderTvStatus();
-  }
   }
 }
 
