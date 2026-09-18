@@ -2179,7 +2179,13 @@ body {
 .dashboard-empty { max-width:1440px; margin:48px auto; padding:36px; color:var(--text-dim); text-align:center; border:1px dashed var(--border); border-radius:18px; }
 .dashboard-epg { max-width:1440px; margin:56px auto 0; }
 .dashboard-section-heading { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.dashboard-main-heading { align-items:center; }
+.dashboard-tv-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.dashboard-tv-actions[hidden] { display:none; }
+.dashboard-tv-status { max-width:280px; color:var(--text-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dashboard-tv-status.expanded { max-width:none; white-space:normal; }
 .dashboard-section-title { margin:0; font-size:24px; letter-spacing:-.03em; }
+.dashboard-section-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .dashboard-section-action { color:var(--text-dim); background:transparent; border:1px solid var(--border); border-radius:8px; padding:8px 12px; cursor:pointer; }
 .dashboard-section-action:hover,.dashboard-section-action:focus-visible { color:var(--text); border-color:var(--accent); outline:none; }
 .dashboard-epg-list { display:grid; gap:8px; }
@@ -2204,7 +2210,7 @@ body {
 .dashboard-player-stage .dashboard-tv-preview { position:static; display:block; width:100%; height:100%; opacity:1; object-fit:contain; }
 .dashboard-player-close { position:absolute; top:18px; right:22px; z-index:2; width:38px; height:38px; color:#fff; font-size:28px; line-height:1; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.2); border-radius:50%; cursor:pointer; }
 .dashboard-player-close:hover,.dashboard-player-close:focus-visible { background:rgba(139,92,246,.7); outline:none; }
-@media (max-width:700px) { .dashboard-view { padding:76px 20px 32px; } .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .dashboard-tile { min-height:164px; padding:16px; } .dashboard-epg-row { grid-template-columns:1fr; gap:5px; } .dashboard-epg-time { white-space:normal; } }
+@media (max-width:700px) { .dashboard-view { padding:76px 20px 32px; } .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .dashboard-tile { min-height:164px; padding:16px; } .dashboard-header { align-items:flex-start; flex-direction:column; } .dashboard-tv-actions { justify-content:flex-start; width:100%; } .dashboard-tv-status { max-width:100%; order:3; flex-basis:100%; } .dashboard-epg-row { grid-template-columns:1fr; gap:5px; } .dashboard-epg-time { white-space:normal; } }
 
 .modal-overlay,.shortcuts-overlay,.history-overlay { background:rgba(3,5,9,.72); backdrop-filter:blur(14px); }
 .modal,.shortcuts-panel { background:rgba(17,21,29,.96); border-color:rgba(255,255,255,.1); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.48); }
@@ -2212,6 +2218,7 @@ body {
 .modal-input:focus,.tv-search-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(139,92,246,.14); }
 .modal-btn,.dashboard-section-action,.epg-slot-btn,.epg-refresh-btn,.epg-close-btn,.tv-sidebar-manage { transition:background .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease; }
 .modal-btn:focus-visible,.modal-close:focus-visible,.epg-slot-btn:focus-visible,.epg-refresh-btn:focus-visible,.epg-close-btn:focus-visible,.tv-sidebar-manage:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(139,92,246,.22); }
+.tv-sidebar[hidden],.tv-sidebar-trigger[hidden] { display:none !important; }
 .tv-sidebar { background:rgba(12,16,23,.97); border-right-color:rgba(255,255,255,.1); box-shadow:16px 0 50px rgba(0,0,0,.22); }
 .tv-sidebar-header { padding:18px 16px 14px; }
 .tv-source-pill.active,.tv-channel-item.active { background:rgba(139,92,246,.14); border-color:rgba(139,92,246,.42); }

@@ -137,6 +137,11 @@ const dashboardEmpty = document.getElementById('dashboardEmpty');
 const dashboardEpg = document.getElementById('dashboardEpg');
 const dashboardEpgList = document.getElementById('dashboardEpgList');
 const dashboardEpgOpen = document.getElementById('dashboardEpgOpen');
+const dashboardEpgRefresh = document.getElementById('dashboardEpgRefresh');
+const dashboardTvActions = document.getElementById('dashboardTvActions');
+const dashboardTvStatus = document.getElementById('dashboardTvStatus');
+const dashboardTvStatusBtn = document.getElementById('dashboardTvStatusBtn');
+const dashboardTvRefresh = document.getElementById('dashboardTvRefresh');
 const dashboardPlayer = document.getElementById('dashboardPlayer');
 const dashboardPlayerStage = document.getElementById('dashboardPlayerStage');
 const dashboardPlayerClose = document.getElementById('dashboardPlayerClose');
@@ -192,6 +197,31 @@ const epgDetailClose = document.getElementById('epgDetailClose');
 const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
 dashboardEpgOpen.addEventListener('click', openEpgView);
+dashboardTvRefresh.addEventListener('click', async () => {
+  dashboardTvRefresh.disabled = true;
+  dashboardTvRefresh.textContent = 'Wird aktualisiert…';
+  try {
+    await refreshEpg();
+    renderDashboard('livetv');
+  } finally {
+    dashboardTvRefresh.disabled = false;
+    dashboardTvRefresh.textContent = 'EPG aktualisieren';
+  }
+});
+dashboardTvStatusBtn.addEventListener('click', () => {
+  dashboardTvStatus.classList.toggle('expanded');
+});
+dashboardEpgRefresh.addEventListener('click', async () => {
+  dashboardEpgRefresh.disabled = true;
+  dashboardEpgRefresh.textContent = 'EPG wird aktualisiert…';
+  try {
+    await refreshEpg();
+    if (currentDashboardGroup === 'livetv') renderDashboard('livetv');
+  } finally {
+    dashboardEpgRefresh.disabled = false;
+    dashboardEpgRefresh.textContent = 'EPG aktualisieren';
+  }
+});
 dashboardPlayerClose.addEventListener('click', closeDashboardPlayer);
 dashboardPlayer.addEventListener('dblclick', closeDashboardPlayer);
 document.addEventListener('fullscreenchange', () => {
@@ -424,12 +454,13 @@ function renderLiveTvTile(ch) {
 
 function renderLiveTvDashboard() {
   const favorites = tvChannels.filter(ch => isFavorite(ch, tvSources));
+  dashboardTvActions.hidden = false;
   dashboardGrid.innerHTML = '';
   dashboardEpg.style.display = '';
   dashboardCount.textContent = `${favorites.length} ${favorites.length === 1 ? 'Favorit' : 'Favoriten'}`;
   if (!favorites.length) {
     dashboardEmpty.textContent = tvChannels.length
-      ? 'Noch keine Favoritensender vorhanden. Verwalte deine Favoriten über die TV-Sidebar.'
+      ? 'Noch keine Favoritensender vorhanden. Verwalte deine Favoriten in den TV-Einstellungen.'
       : 'Keine Sender geladen.';
     dashboardEmpty.style.display = '';
   } else {
@@ -473,6 +504,7 @@ function renderStartDashboard() {
   dashboardGrid.setAttribute('aria-label', 'Bereiche');
   dashboardGrid.innerHTML = '';
   dashboardEpg.style.display = 'none';
+  dashboardTvActions.hidden = true;
   dashboardEmpty.style.display = 'none';
   const sections = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
@@ -519,6 +551,7 @@ function renderDashboard(groupKey) {
       ? 'Deine Mediatheken'
       : 'Deine Streamingdienste';
   dashboardTitle.textContent = title;
+  dashboardTvActions.hidden = !isTv;
   dashboardCount.textContent = isTv ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
   dashboardGrid.setAttribute('aria-label', `${title}-Dienste`);
   dashboardGrid.innerHTML = '';
@@ -993,30 +1026,25 @@ function closeTvSidebar() {
 }
 
 function renderTvStatus() {
-  if (!tvSources.length) {
-    tvSidebarStatus.textContent = 'Keine Quellen';
-    return;
+  let statusText = 'Keine Quellen';
+  if (tvSources.length) {
+    if (tvSourcesRefreshing || tvSourceStatus === 'loading') {
+      statusText = 'Quellen werden aktualisiert…';
+    } else if (tvEpgRefreshing || tvEpgStatus === 'loading') {
+      statusText = 'EPG wird aktualisiert…';
+    } else {
+      const sourceText = tvSourceErrors.length
+        ? `${tvSources.length - tvSourceErrors.length}/${tvSources.length} Quellen geladen`
+        : `${tvChannels.length} Sender geladen`;
+      if (tvEpgStatus === 'unavailable') statusText = sourceText + ' · Keine EPG-URL';
+      else if (tvEpgErrors.length) statusText = sourceText + ` · EPG: ${tvEpgErrors.length} Fehler`;
+      else if (tvEpgIndex && tvEpgData.length) statusText = sourceText + ` · EPG: ${tvEpgIndex.size} Kanäle`;
+      else statusText = sourceText;
+    }
   }
-  if (tvSourcesRefreshing || tvSourceStatus === 'loading') {
-    tvSidebarStatus.textContent = 'Quellen werden aktualisiert…';
-    return;
-  }
-  if (tvEpgRefreshing || tvEpgStatus === 'loading') {
-    tvSidebarStatus.textContent = 'EPG wird aktualisiert…';
-    return;
-  }
-  const sourceText = tvSourceErrors.length
-    ? `${tvSources.length - tvSourceErrors.length}/${tvSources.length} Quellen geladen`
-    : `${tvChannels.length} Sender geladen`;
-  if (tvEpgStatus === 'unavailable') {
-    tvSidebarStatus.textContent = sourceText + ' · Keine EPG-URL';
-  } else if (tvEpgErrors.length) {
-    tvSidebarStatus.textContent = sourceText + ` · EPG: ${tvEpgErrors.length} Fehler`;
-  } else if (tvEpgIndex && tvEpgData.length) {
-    tvSidebarStatus.textContent = sourceText + ` · EPG: ${tvEpgIndex.size} Kanäle`;
-  } else {
-    tvSidebarStatus.textContent = sourceText;
-  }
+  tvSidebarStatus.textContent = statusText;
+  dashboardTvStatus.textContent = statusText;
+  dashboardTvStatus.title = statusText;
 }
 
 function collectEpgUrls(extraUrls = []) {
@@ -1105,6 +1133,7 @@ async function loadEpgData(urls = collectEpgUrls()) {
   tvEpgStatus = tvEpgErrors.length === results.length ? 'error' : 'success';
   renderTvChannels();
   renderTvStatus();
+  if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
   return { loaded: results.length - tvEpgErrors.length, failed: tvEpgErrors.length };
 }
 
@@ -2834,7 +2863,7 @@ window.electronAPI.getTvSources().then(async sources => {
   tvSelectedSourceIds = sources.map(s => s.id);
   const result = await loadTvChannels(true);
   await loadEpgData(collectEpgUrls(result.epgUrls));
-  if (tvSources.length && tvMode === 'free') openTvSidebar();
+  if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
 });
 
 window.electronAPI.onTvSourcesChanged(sources => {

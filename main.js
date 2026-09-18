@@ -795,11 +795,19 @@ ipcMain.handle('restore-settings', async event => {
 ipcMain.handle('fetch-epg', async (event, url) => {
   requireMainRenderer(event);
   try {
-    const epgUrl = remoteHttpUrl(url, 'EPG-URL');
-    const response = await fetch(epgUrl, {
-      signal: AbortSignal.timeout(20_000),
-      redirect: 'error',
-    });
+    let epgUrl = remoteHttpUrl(url, 'EPG-URL');
+    let response;
+    for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+      response = await fetch(epgUrl, {
+        signal: AbortSignal.timeout(20_000),
+        redirect: 'manual',
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers.get('location');
+      if (!location) throw new Error(`HTTP ${response.status} ohne Redirect-Ziel`);
+      if (redirectCount === 5) throw new Error('Zu viele Redirects');
+      epgUrl = remoteHttpUrl(new URL(location, epgUrl).toString(), 'EPG-Redirect-Ziel');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const xml = await readResponseText(response, MAX_EPG_BYTES);
     const entries = parseXMLTV(xml);

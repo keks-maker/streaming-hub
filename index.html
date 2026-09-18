@@ -74,7 +74,12 @@
           <span class="dashboard-eyebrow" id="dashboardEyebrow">Streaming Hub</span>
           <h1 class="dashboard-title" id="dashboardTitle">LiveTV</h1>
         </div>
-        <span class="dashboard-count" id="dashboardCount"></span>
+        <div class="dashboard-tv-actions" id="dashboardTvActions" hidden>
+          <span class="dashboard-tv-status" id="dashboardTvStatus" aria-live="polite"></span>
+          <button class="dashboard-section-action" id="dashboardTvStatusBtn" type="button">Status</button>
+          <button class="dashboard-section-action" id="dashboardTvRefresh" type="button">EPG aktualisieren</button>
+          <span class="dashboard-count" id="dashboardCount"></span>
+        </div>
       </div>
       <div class="dashboard-grid" id="dashboardGrid"></div>
       <section class="dashboard-epg" id="dashboardEpg" style="display:none">
@@ -83,7 +88,10 @@
             <span class="dashboard-eyebrow">Programmübersicht</span>
             <h2 class="dashboard-section-title">Jetzt im TV</h2>
           </div>
-          <button class="dashboard-section-action" id="dashboardEpgOpen" type="button">EPG öffnen</button>
+          <div class="dashboard-section-actions">
+            <button class="dashboard-section-action" id="dashboardEpgRefresh" type="button">EPG aktualisieren</button>
+            <button class="dashboard-section-action" id="dashboardEpgOpen" type="button">EPG öffnen</button>
+          </div>
         </div>
         <div class="dashboard-epg-list" id="dashboardEpgList"></div>
       </section>
@@ -301,7 +309,7 @@
   </div>
 
   <!-- TV management retained for settings, never shown as navigation -->
-  <div class="tv-sidebar" id="tvSidebar" aria-hidden="true">
+  <div class="tv-sidebar" id="tvSidebar" aria-hidden="true" hidden>
     <div class="tv-sidebar-header">
       <span class="tv-sidebar-title">TV Sender</span>
       <div class="tv-sidebar-actions">
@@ -342,7 +350,7 @@
       <div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>
     </div>
   </div>
-  <div class="tv-sidebar-trigger" id="tvSidebarTrigger"></div>
+  <div class="tv-sidebar-trigger" id="tvSidebarTrigger" hidden></div>
 
   <!-- EPG Full Screen Overlay -->
   <div class="epg-overlay" id="epgOverlay" style="display:none">
