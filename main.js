@@ -807,8 +807,11 @@ ipcMain.handle('fetch-epg', async (event, url) => {
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const xml = await readResponseText(response, MAX_EPG_BYTES);
-    return parseXMLTV(xml);
+    const entries = parseXMLTV(xml);
+    if (!entries.length) throw new Error('Die XMLTV-Datei enthält keine gültigen Sendungen');
+    return entries;
   } catch (err) {
-    throw new Error(`Fehler beim Laden des EPG: ${err.message}`);
+    logger.warn('EPG-Abruf fehlgeschlagen:', url, err.message);
+    throw new Error(`Fehler beim Laden des EPG (${url}): ${err.message}`);
   }
 });

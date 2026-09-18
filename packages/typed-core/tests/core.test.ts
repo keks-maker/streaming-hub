@@ -80,6 +80,15 @@ https://example.com/zdf.m3u8`;
   expect(result.channels.length).toBe(2);
 });
 
+it('parseM3UFull – url-tvg EPG URL extraction', () => {
+  const result = parseM3UFull(
+    '#EXTM3U url-tvg="https://epg.example.com/url-tvg.xml"\n' +
+      '#EXTINF:-1,Das Erste\nhttps://example.com/ard.m3u8',
+    'test',
+  );
+  expect(result.epgUrls).toEqual(['https://epg.example.com/url-tvg.xml']);
+});
+
 it('flattenM3U', () => {
   const groups = parseM3U(SAMPLE_M3U, 'test');
   const flat = flattenM3U(groups);
