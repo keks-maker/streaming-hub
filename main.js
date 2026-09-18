@@ -184,19 +184,19 @@ function saveHistory(history) {
 
 // ── Updater ──
 
-const GITEA_BASE = process.env.STREAMING_HUB_UPDATE_URL || 'http://192.168.4.105:3000';
-const GITEA_OWNER = 'kekskarlo';
-const GITEA_REPO = 'Streaming-Hub';
+const UPDATE_API_BASE = process.env.STREAMING_HUB_UPDATE_URL || 'https://api.github.com';
+const UPDATE_OWNER = 'keks-maker';
+const UPDATE_REPO = 'streaming-hub';
 const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
-const GITEA_RELEASE_PATH = `/${GITEA_OWNER}/${GITEA_REPO}/releases/download/`;
+const UPDATE_RELEASE_PATH = `/keks-maker/streaming-hub/releases/download/`;
 
-async function giteaApi(path) {
-  const token = process.env.GITEA_TOKEN;
-  const url = `${GITEA_BASE}/api/v1/repos/${GITEA_OWNER}/${GITEA_REPO}/${path}`;
-  const headers = { Accept: 'application/json' };
-  if (token) headers.Authorization = `token ${token}`;
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`Gitea API ${res.status}`);
+async function updateApi(path) {
+  const url = `${UPDATE_API_BASE}/repos/${UPDATE_OWNER}/${UPDATE_REPO}/${path}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Streaming-Hub' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Update API ${res.status}`);
   return res.json();
 }
 
@@ -206,7 +206,7 @@ function startUpdater() {
     autoUpdater = {
       check: async () => {
         try {
-          const release = await giteaApi('releases/latest');
+          const release = await updateApi('releases/latest');
           const tag = release.tag_name?.replace(/^v/i, '');
           if (!tag) return { hasUpdate: false, error: 'no tag' };
           return {
@@ -220,12 +220,12 @@ function startUpdater() {
       },
       download: async version => {
         try {
-          const release = await giteaApi('releases/latest');
+          const release = await updateApi('releases/latest');
           const metadata = validateReleaseMetadata(
             release,
             version,
-            new URL(GITEA_BASE).origin,
-            `${GITEA_RELEASE_PATH}${version}/`,
+            new URL(UPDATE_API_BASE).origin,
+            `${UPDATE_RELEASE_PATH}${version}/`,
           );
           const asset = metadata.asset;
 
@@ -233,13 +233,8 @@ function startUpdater() {
           const appDir = path.dirname(currentAppImage);
           const tmpDest = path.join(appDir, `.update-${Date.now()}-${process.pid}.AppImage`);
           const finalDest = path.join(appDir, `Streaming Hub-${version}.AppImage`);
-          const token = process.env.GITEA_TOKEN;
-          const headers = {};
-          if (token) headers.Authorization = `token ${token}`;
-
           mainWindow?.webContents.send('update-status', { type: 'progress', percent: 0 });
           const res = await fetch(asset.browser_download_url, {
-            headers,
             signal: AbortSignal.timeout(300000),
             redirect: 'error',
           });
