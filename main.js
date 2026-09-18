@@ -534,6 +534,7 @@ ipcMain.on('webview-keydown', (event, data) => {
   requireWebviewRenderer(event);
   const normalized = normalizeWebviewKeydown(data);
   if (!normalized) return;
+  logger.info('webview-keydown forwarded:', normalized.key);
   mainWindow.webContents.send('webview-keydown', normalized);
 });
 

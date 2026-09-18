@@ -2040,7 +2040,7 @@ function pushEpgToTvView() {
   const ch = tvChannels.find(c => c.id === tvActiveChannelId);
   if (!ch) return;
   const normId = id =>
-    id
+    (id || '')
       .replace(/@[^.@]*/g, '')
       .toLowerCase()
       .trim();
@@ -2081,7 +2081,9 @@ function pushEpgToTvView() {
     })),
   };
   try {
-    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)');
+    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)').catch(err => {
+      logger.warn('pushEpgToTvView failed:', err);
+    });
   } catch (err) {
     logger.warn('pushEpgToTvView failed:', err);
   }
@@ -2624,6 +2626,7 @@ document.addEventListener('keydown', e => {
 
 // Forwarded shortcuts from webview (via main process)
 const cleanupShortcuts = window.electronAPI.onWebviewKeydown(data => {
+  if (data.key === 'ArrowUp' || data.key === 'ArrowDown') logger.info('webview-keydown received:', data.key);
   handleKeyShortcut(data.key, data.ctrlKey, data.shiftKey, data.metaKey, data.altKey);
 });
 
