@@ -422,20 +422,37 @@
       var markerHoverGuardUntil = 0;
       var pointerOverMarker = false;
 
-      // Load HLS.js dynamically (file:// in webview doesn't load relative <script src>)
+      // Load HLS.js dynamically. A file:// webview cannot resolve the package
+      // from the repository root reliably, so try the page-local path first
+      // and then the absolute path supplied by the host renderer.
       function loadHlsJs(cb) {
         if (hlsLoaded) { if (cb) cb(); return; }
         var base = window.location.href.split('?')[0];
         var dir = base.substring(0, base.lastIndexOf('/') + 1);
-        var s = document.createElement('script');
-        s.onload = function() { hlsLoaded = true; if (cb) cb(); };
-        s.onerror = function() {
-          console.warn('hls.js konnte nicht geladen werden – Fallback auf native Wiedergabe');
-          hlsLoaded = true; // verhindert Endlos-Retries
-          if (cb) cb(); // initHls greift dann auf native Wiedergabe zurück
-        };
-        s.src = dir + 'node_modules/hls.js/dist/hls.min.js';
-        document.head.appendChild(s);
+        var candidates = [
+          dir + 'node_modules/hls.js/dist/hls.min.js',
+          dir + '../../../node_modules/hls.js/dist/hls.min.js',
+        ];
+        if (window.__streamingHubHlsPath) candidates.push(window.__streamingHubHlsPath);
+        var index = 0;
+        function tryNext() {
+          if (index >= candidates.length) {
+            console.warn('hls.js konnte nicht geladen werden – Fallback auf native Wiedergabe');
+            hlsLoaded = true;
+            if (cb) cb();
+            return;
+          }
+          var s = document.createElement('script');
+          s.onload = function() { hlsLoaded = true; if (cb) cb(); };
+          s.onerror = function() {
+            s.remove();
+            index += 1;
+            tryNext();
+          };
+          s.src = candidates[index++];
+          document.head.appendChild(s);
+        }
+        tryNext();
       }
 
       // ── U1: Bar-Exklusivität im DVR-Modus ──
@@ -1122,6 +1139,10 @@
 
       // ── Initial load from URL params ──
       var params = new URLSearchParams(location.search);
+      var hlsPath = params.get('hls');
+      if (hlsPath) {
+        try { window.__streamingHubHlsPath = decodeURIComponent(hlsPath); } catch (_) {}
+      }
       setupChannel(
         params.get('channel'), params.get('name'), params.get('logo'),
         params.get('epg'), params.get('epgStart'), params.get('epgEnd'), params.get('epgNext')
@@ -1284,6 +1305,14 @@
           case 'M': e.preventDefault(); muteBtn.click(); break;
           case 'ArrowLeft': e.preventDefault(); if (dvrState.enabled) trySeek(video.currentTime - 10); else video.currentTime = Math.max(0, video.currentTime - 10); break;
           case 'ArrowRight': e.preventDefault(); if (dvrState.enabled) { if (!dvrState.isLive) trySeek(video.currentTime + 10); } else video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
+          case 'ArrowUp':
+            e.preventDefault();
+            window.postMessage({ source: 'tv-player', action: 'channel-prev' }, window.location.origin);
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            window.postMessage({ source: 'tv-player', action: 'channel-next' }, window.location.origin);
+            break;
           case 'l':
           case 'L': if (dvrState.enabled) { e.preventDefault(); goLive(); } break;
           case '=':

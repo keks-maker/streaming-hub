@@ -112,7 +112,6 @@ document.addEventListener('keydown', e => {
     e.key === 'Escape' ||
     e.key === 'F11' ||
     e.key === '?' ||
-    (isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) ||
     (e.altKey && e.key === 'ArrowLeft') ||
     (e.ctrlKey &&
       (e.key === 'Tab' ||
@@ -123,7 +122,7 @@ document.addEventListener('keydown', e => {
         e.key === 't' ||
         e.key === 'T'))
   ) {
-    if ((isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) || (e.altKey && e.key === 'ArrowLeft')) {
+    if ((e.altKey && e.key === 'ArrowLeft')) {
       e.preventDefault();
     }
     ipcRenderer.send('webview-keydown', {
