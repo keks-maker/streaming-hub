@@ -1306,14 +1306,6 @@
           case 'M': e.preventDefault(); muteBtn.click(); break;
           case 'ArrowLeft': e.preventDefault(); if (dvrState.enabled) trySeek(video.currentTime - 10); else video.currentTime = Math.max(0, video.currentTime - 10); break;
           case 'ArrowRight': e.preventDefault(); if (dvrState.enabled) { if (!dvrState.isLive) trySeek(video.currentTime + 10); } else video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
-          case 'ArrowUp':
-            e.preventDefault();
-            window.postMessage({ source: 'tv-player', action: 'channel-prev' }, window.location.origin);
-            break;
-          case 'ArrowDown':
-            e.preventDefault();
-            window.postMessage({ source: 'tv-player', action: 'channel-next' }, window.location.origin);
-            break;
           case 'l':
           case 'L': if (dvrState.enabled) { e.preventDefault(); goLive(); } break;
           case '=':

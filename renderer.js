@@ -2001,7 +2001,7 @@ function sendEpgUpdate() {
     epgStart: epgStart,
     epgEnd: epgEnd,
     epgNext: epgNext,
-    dvr: dvrBarMode,
+    dvr: dvrBarMode(),
     // Raw EPG für DVR-Marker (Sendungen rund um das DVR-Fenster streamen zu) —
     // U2: Selection via typed-core (selectEpgWindowEntries, unit-getestet)
     epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(e => ({
@@ -2011,7 +2011,9 @@ function sendEpgUpdate() {
     })),
   };
   try {
-    webview.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)');
+    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)').catch(err => {
+      logger.warn('sendEpgUpdate failed:', err);
+    });
   } catch (err) {
     logger.warn('sendEpgUpdate failed:', err);
   }
