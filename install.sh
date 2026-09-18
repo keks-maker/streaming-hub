@@ -6,14 +6,14 @@
 # Installiert Streaming Hub (Castlabs Electron + Widevine) auf Linux (x86_64).
 #
 # Aufruf:
-#   curl -fsSL http://192.168.4.105:3000/kekskarlo/Streaming-Hub/raw/branch/master/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/keks-maker/streaming-hub/main/install.sh | bash
 #
 # Optional: Installationsverzeichnis via INSTALL_DIR=/pfad setzen
 
 set -euo pipefail
 
-REPO_URL="${STREAMING_HUB_REPO_URL:-http://192.168.4.105:3000/kekskarlo/Streaming-Hub.git}"
-RAW_BASE="${STREAMING_HUB_RAW_BASE:-http://192.168.4.105:3000/kekskarlo/Streaming-Hub/raw/branch/master}"
+REPO_URL="${STREAMING_HUB_REPO_URL:-https://github.com/keks-maker/streaming-hub.git}"
+RAW_BASE="${STREAMING_HUB_RAW_BASE:-https://raw.githubusercontent.com/keks-maker/streaming-hub/main}"
 MIN_NODE_MAJOR=22
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'

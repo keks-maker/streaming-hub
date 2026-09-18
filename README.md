@@ -54,7 +54,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 ## Installation
 
 ```bash
-curl -fsSL http://192.168.4.105:3000/kekskarlo/Streaming-Hub/raw/branch/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/keks-maker/streaming-hub/main/install.sh | bash
 ```
 
 ## Projektstruktur

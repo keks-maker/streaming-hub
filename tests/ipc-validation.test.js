@@ -18,7 +18,7 @@ test('accepts only strict numeric update versions', () => {
 });
 
 test('accepts only update assets from the configured Gitea origin', () => {
-  const origin = 'http://192.168.4.105:3000';
+  const origin = 'https://updates.example.invalid';
   assert.equal(
     validateUpdateAssetUrl(`${origin}/download/app.AppImage`, origin, '/download/'),
     `${origin}/download/app.AppImage`,
@@ -31,18 +31,18 @@ test('accepts only update assets from the configured Gitea origin', () => {
 });
 
 test('validates release metadata and matching AppImage assets', () => {
-  const origin = 'http://192.168.4.105:3000';
+  const origin = 'https://updates.example.invalid';
   const release = {
     tag_name: 'v1.2.3',
     assets: [
       {
         name: 'Streaming-Hub.AppImage',
-        browser_download_url: `${origin}/kekskarlo/Streaming-Hub/releases/download/1.2.3/Streaming-Hub.AppImage`,
+        browser_download_url: `${origin}/streaming-hub/releases/download/1.2.3/Streaming-Hub.AppImage`,
       },
     ],
   };
   assert.deepEqual(
-    validateReleaseMetadata(release, '1.2.3', origin, '/kekskarlo/Streaming-Hub/releases/download/1.2.3/'),
+    validateReleaseMetadata(release, '1.2.3', origin, '/streaming-hub/releases/download/1.2.3/'),
     { version: '1.2.3', asset: release.assets[0] },
   );
   assert.throws(
@@ -51,7 +51,7 @@ test('validates release metadata and matching AppImage assets', () => {
         { ...release, tag_name: 'v1.2.4' },
         '1.2.3',
         origin,
-        '/kekskarlo/Streaming-Hub/releases/download/1.2.3/',
+        '/streaming-hub/releases/download/1.2.3/',
       ),
     /stimmt nicht/,
   );
@@ -61,7 +61,7 @@ test('validates release metadata and matching AppImage assets', () => {
         { ...release, assets: [] },
         '1.2.3',
         origin,
-        '/kekskarlo/Streaming-Hub/releases/download/1.2.3/',
+        '/streaming-hub/releases/download/1.2.3/',
       ),
     /genau ein AppImage/,
   );
@@ -71,7 +71,7 @@ test('validates release metadata and matching AppImage assets', () => {
         { ...release, assets: [{ ...release.assets[0], browser_download_url: 'https://evil.example/app.AppImage' }] },
         '1.2.3',
         origin,
-        '/kekskarlo/Streaming-Hub/releases/download/1.2.3/',
+        '/streaming-hub/releases/download/1.2.3/',
       ),
     /nicht autorisierten/,
   );

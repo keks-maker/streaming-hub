@@ -16,8 +16,8 @@ test('accepts HTTP(S) URLs and rejects executable schemes', () => {
 
 test('rejects private remote targets except the configured local Gitea origin', () => {
   assert.equal(
-    remoteHttpUrl('http://192.168.4.105:3000/releases/latest', 'URL', { allowOrigin: 'http://192.168.4.105:3000' }),
-    'http://192.168.4.105:3000/releases/latest',
+    remoteHttpUrl('https://updates.example.invalid/releases/latest', 'URL', { allowOrigin: 'https://updates.example.invalid' }),
+    'https://updates.example.invalid/releases/latest',
   );
   for (const value of ['http://127.0.0.1:8080/a', 'http://192.168.1.2/a', 'http://169.254.169.254/latest']) {
     assert.throws(() => remoteHttpUrl(value, 'URL'), /lokales oder privates Ziel/);
