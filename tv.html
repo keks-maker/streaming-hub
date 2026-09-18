@@ -431,13 +431,14 @@
         var dir = base.substring(0, base.lastIndexOf('/') + 1);
         var candidates = [
           dir + 'node_modules/hls.js/dist/hls.min.js',
-          dir + '../../../node_modules/hls.js/dist/hls.min.js',
+          dir + '../../../../node_modules/hls.js/dist/hls.min.js',
         ];
         if (window.__streamingHubHlsPath) candidates.push(window.__streamingHubHlsPath);
         var index = 0;
         function tryNext() {
           if (index >= candidates.length) {
-            console.warn('hls.js konnte nicht geladen werden – Fallback auf native Wiedergabe');
+            console.error('hls.js konnte nicht geladen werden', candidates);
+            console.warn('Fallback auf native Wiedergabe');
             hlsLoaded = true;
             if (cb) cb();
             return;

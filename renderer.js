@@ -1715,7 +1715,7 @@ async function selectTvChannel(ch, options = {}) {
       '&epgNext=' +
       encodeURIComponent(epgNext) +
       '&hls=' +
-      encodeURIComponent(appPath + '/node_modules/hls.js/dist/hls.min.js');
+      encodeURIComponent('file://' + appPath + '/node_modules/hls.js/dist/hls.min.js');
     if (tvViewReady) {
       try {
         tvView.loadURL(playerUrl);
