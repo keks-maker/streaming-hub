@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('webview-keydown', handler);
     return () => ipcRenderer.removeListener('webview-keydown', handler);
   },
+  sendTvDiagnostic: data => ipcRenderer.send('tv-renderer-diagnostic', data),
   saveHistoryEntry: entry => ipcRenderer.invoke('save-history-entry', entry),
   getHistory: () => ipcRenderer.invoke('get-history'),
   clearHistory: () => ipcRenderer.invoke('clear-history'),

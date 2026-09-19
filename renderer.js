@@ -1047,6 +1047,12 @@ function renderTvStatus() {
   dashboardTvStatus.title = statusText;
 }
 
+function sendTvDiagnostic(type, data = {}) {
+  try {
+    window.electronAPI.sendTvDiagnostic({ type, ...data });
+  } catch (_) {}
+}
+
 function collectEpgUrls(extraUrls = []) {
   return [...new Set([...tvSources.map(s => s.epgUrl), ...tvEpgUrls, ...extraUrls].filter(Boolean))];
 }
@@ -1078,12 +1084,18 @@ async function loadTvChannels(forceReload) {
       try {
         const result = await window.electronAPI.fetchAndParseM3U(source.url);
         const tagged = result.channels.map(ch => ({ ...ch, sourceId: source.id }));
+        sendTvDiagnostic('m3u-result', {
+          source: source.name,
+          channels: result.channels.length,
+          epgUrls: Array.isArray(result.epgUrls) ? result.epgUrls.length : 0,
+        });
         sourceChannelMap[source.id] = tagged;
         source.baseUrl = result.baseUrl || '';
         sourceEpgUrls.push(...(result.epgUrls || []));
         return { source, ok: true };
       } catch (err) {
         logger.warn('Fehler beim Laden von', source.name, err.message);
+        sendTvDiagnostic('m3u-error', { source: source.name, error: err.message });
         sourceChannelMap[source.id] = [];
         return { source, ok: false, error: err };
       }
@@ -1099,6 +1111,12 @@ async function loadTvChannels(forceReload) {
     tvChannels = tvChannels.concat(srcChannels);
   });
   tvSourceStatus = tvSourceErrors.length === tvSources.length ? 'error' : 'success';
+  sendTvDiagnostic('channels-merged', {
+    sources: tvSources.length,
+    channels: tvChannels.length,
+    failed: tvSourceErrors.length,
+    epgUrls: tvEpgUrls.length,
+  });
   renderTvChannels();
   renderTvStatus();
   return { epgUrls: tvEpgUrls, failedSources: tvSourceErrors };
@@ -2577,6 +2595,14 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   if (key === 'ArrowUp' || key === 'ArrowDown') {
     const direction = key === 'ArrowUp' ? -1 : 1;
     const nextId = getNextChannelId(tvActiveChannelId, tvChannels, tvSources, direction);
+    sendTvDiagnostic('zap-key', {
+      key,
+      direction,
+      active: tvActiveChannelId || '',
+      channels: tvChannels.length,
+      sources: tvSources.length,
+      next: nextId || '',
+    });
     if (!nextId) {
       logger.warn('TV channel key ignored: no next channel', {
         current: tvActiveChannelId,
@@ -2586,7 +2612,10 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
       return true;
     }
     const nextCh = tvChannels.find(ch => ch.id === nextId);
-    if (nextCh) selectTvChannel(nextCh);
+    if (nextCh) {
+      sendTvDiagnostic('zap-select', { active: nextCh.id });
+      selectTvChannel(nextCh);
+    }
     return true;
   }
 
@@ -2881,6 +2910,7 @@ renderStartDashboard();
 // TV Sources laden
 window.electronAPI.getTvSources().then(async sources => {
   tvSources = sources;
+  sendTvDiagnostic('sources-loaded', { sources: sources.length });
   tvSelectedSourceIds = sources.map(s => s.id);
   const result = await loadTvChannels(true);
   await loadEpgData(collectEpgUrls(result.epgUrls));

@@ -543,6 +543,19 @@ ipcMain.on('tv-diagnostic', (event, data) => {
   logger.info('TV-DIAG keydown-preload', data.key);
 });
 
+ipcMain.on('tv-renderer-diagnostic', (event, data) => {
+  requireMainRenderer(event);
+  if (!data || typeof data !== 'object' || typeof data.type !== 'string') return;
+  const safe = { type: data.type };
+  for (const key of ['key', 'source', 'error', 'active', 'next']) {
+    if (typeof data[key] === 'string') safe[key] = data[key].slice(0, 300);
+  }
+  for (const key of ['direction', 'channels', 'sources', 'failed', 'epgUrls']) {
+    if (Number.isSafeInteger(data[key])) safe[key] = data[key];
+  }
+  logger.info('TV-DIAG renderer', safe);
+});
+
 ipcMain.handle('get-app-version', event => {
   requireMainRenderer(event);
   try {
