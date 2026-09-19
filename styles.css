@@ -2309,7 +2309,7 @@ body {
 }
 .overlay-bar.nav-collapsed:not(.is-fullscreen):hover.has-back .back-btn {
   opacity:1 !important;
-  pointer-events:auto;
+  pointer-events:auto !important;
   transform:none !important;
 }
 .overlay-bar.is-fullscreen { display:none; }
