@@ -1715,12 +1715,8 @@ async function selectTvChannel(ch, options = {}) {
         tvReady: tvViewReady,
         url: tvView.getURL(),
       });
-      tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ',window.location.origin)')
-        .then(() => sendTvDiagnostic('switch-post-complete', { active: ch.id }))
-        .catch(error => {
-          sendTvDiagnostic('switch-post-error', { active: ch.id, error: error.message });
-          logger.warn('postMessage to tv.html failed:', error);
-        });
+      sendTvDiagnostic('switch-command', { active: ch.id });
+      tvView.send('tv-player-command', msg);
       // U2: EPG-Rohdaten sofort hinterher schieben, damit die DVR-Marker nicht
       // auf den ersten 30s-Poll warten müssen.
       pushEpgToTvView();
@@ -2054,9 +2050,7 @@ function sendEpgUpdate() {
     })),
   };
   try {
-    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)').catch(err => {
-      logger.warn('sendEpgUpdate failed:', err);
-    });
+    tvView.send('tv-player-command', data);
   } catch (err) {
     logger.warn('sendEpgUpdate failed:', err);
   }
@@ -2124,9 +2118,7 @@ function pushEpgToTvView() {
     })),
   };
   try {
-    tvView.executeJavaScript('window.postMessage(' + JSON.stringify(data) + ',window.location.origin)').catch(err => {
-      logger.warn('pushEpgToTvView failed:', err);
-    });
+    tvView.send('tv-player-command', data);
   } catch (err) {
     logger.warn('pushEpgToTvView failed:', err);
   }
@@ -2202,17 +2194,13 @@ webview.addEventListener('did-finish-load', () => {
     const ch = tvChannels.find(c => c.id === tvActiveChannelId);
     if (ch) {
       const cl = buildChannelList(ch, tvChannels, tvSources);
-      webview
-        .executeJavaScript(
-          'window.postMessage(' +
-            JSON.stringify({
-              type: 'channel-list',
-              channels: cl.channels,
-              currentIndex: cl.currentIndex,
-            }) +
-            ',window.location.origin)',
-        )
-        .catch(() => {});
+      if (webview === tvView) {
+        tvView.send('tv-player-command', {
+          type: 'channel-list',
+          channels: cl.channels,
+          currentIndex: cl.currentIndex,
+        });
+      }
     }
   }
 });
@@ -2318,17 +2306,11 @@ tvView.addEventListener('did-finish-load', () => {
     const ch = tvChannels.find(c => c.id === tvActiveChannelId);
     if (ch) {
       const cl = buildChannelList(ch, tvChannels, tvSources);
-      tvView
-        .executeJavaScript(
-          'window.postMessage(' +
-            JSON.stringify({
-              type: 'channel-list',
-              channels: cl.channels,
-              currentIndex: cl.currentIndex,
-            }) +
-            ',window.location.origin)',
-        )
-        .catch(() => {});
+      tvView.send('tv-player-command', {
+        type: 'channel-list',
+        channels: cl.channels,
+        currentIndex: cl.currentIndex,
+      });
       // U2: Auch beim ersten TV-Seiten-Load EPG sofort pushen (die URL-Params
       // tragen nur Titel/Zeiten, keine Roh-EPG-Einträge für die DVR-Marker).
       pushEpgToTvView();

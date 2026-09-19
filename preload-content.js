@@ -148,6 +148,13 @@ document.addEventListener(
   true,
 );
 
+// Native host → TV-player command bridge. This avoids relying on window.postMessage
+// between the host renderer and the embedded file:// page.
+ipcRenderer.on('tv-player-command', (_event, data) => {
+  if (!data || typeof data !== 'object' || typeof data.type !== 'string') return;
+  window.dispatchEvent(new CustomEvent('streaming-hub-tv-command', { detail: data }));
+});
+
 // Bridge: page postMessage → host renderer (for tv-player channel commands)
 window.addEventListener('message', e => {
   if (

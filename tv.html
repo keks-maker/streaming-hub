@@ -1204,48 +1204,57 @@
         params.get('epg'), params.get('epgStart'), params.get('epgEnd'), params.get('epgNext')
       );
 
-      // ── Message listener (host → webview) ──
-      window.addEventListener('message', function(e) {
-        if (e.source !== window || e.origin !== window.location.origin || !e.data) return;
-        if (e.data.type === 'switch-channel') {
-          tvDiagnostic('switch-received', { name: e.data.name || '', url: e.data.url || '' });
-          setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
-            e.data.epgStart, e.data.epgEnd, e.data.epgNext);
-          if (e.data.dvr === 'on' || e.data.dvr === 'off') {
-            dvrBarMode = e.data.dvr;
+      function handleHostMessage(data) {
+        if (!data) return;
+        if (data.type === 'switch-channel') {
+          tvDiagnostic('switch-received', { name: data.name || '', url: data.url || '' });
+          setupChannel(data.url, data.name, data.logo, data.epg,
+            data.epgStart, data.epgEnd, data.epgNext);
+          if (data.dvr === 'on' || data.dvr === 'off') {
+            dvrBarMode = data.dvr;
             applyDvrBarMode();
           }
-          if (e.data.channelList && e.data.channelIndex !== undefined) {
-            showChannelList(e.data.channelList, e.data.channelIndex);
+          if (data.channelList && data.channelIndex !== undefined) {
+            showChannelList(data.channelList, data.channelIndex);
           }
-        } else if (e.data && e.data.type === 'channel-list') {
-          if (e.data.channels && e.data.currentIndex !== undefined) {
-            channelListData = e.data.channels;
-            channelListIndex = e.data.currentIndex;
+        } else if (data.type === 'channel-list') {
+          if (data.channels && data.currentIndex !== undefined) {
+            channelListData = data.channels;
+            channelListIndex = data.currentIndex;
           }
-        } else if (e.data && e.data.type === 'epg-update') {
+        } else if (data.type === 'epg-update') {
           tvDiagnostic('epg-update', {
-            entries: Array.isArray(e.data.epgEntries) ? e.data.epgEntries.length : null,
-            title: !!e.data.epg,
-            dvr: e.data.dvr || 'auto',
+            entries: Array.isArray(data.epgEntries) ? data.epgEntries.length : null,
+            title: !!data.epg,
+            dvr: data.dvr || 'auto',
           });
-          updateEpgBar(e.data.epg, e.data.epgStart, e.data.epgEnd, e.data.epgNext);
+          updateEpgBar(data.epg, data.epgStart, data.epgEnd, data.epgNext);
           // U2: Roh-EPG sofort übernehmen und Marker rendern — der Push passiert
           // beim Kanalwechsel/did-finish-load, nicht erst nach 30s-Poll.
-          if (e.data.epgEntries && Array.isArray(e.data.epgEntries)) {
-            epgEntries = e.data.epgEntries;
+          if (data.epgEntries && Array.isArray(data.epgEntries)) {
+            epgEntries = data.epgEntries;
             epgMarkersStale = true;
             recomputeDvrMarkers();
-          } else if (e.data.epgEntries === null) {
+          } else if (data.epgEntries === null) {
             epgEntries = [];
             recomputeDvrMarkers();
           }
           // U1: Bar-Modus-Signal vom Host ('on'|'off'|'auto') anwenden
-          if (e.data.dvr === 'on' || e.data.dvr === 'off') {
-            dvrBarMode = e.data.dvr;
+          if (data.dvr === 'on' || data.dvr === 'off') {
+            dvrBarMode = data.dvr;
             applyDvrBarMode();
           }
         }
+      }
+
+      window.addEventListener('streaming-hub-tv-command', function(e) {
+        handleHostMessage(e.detail);
+      });
+
+      // Backward-compatible message listener for page-originated commands.
+      window.addEventListener('message', function(e) {
+        if (e.source !== window || e.origin !== window.location.origin || !e.data) return;
+        handleHostMessage(e.data);
       });
 
       // ── Show/hide controls overlay ──
