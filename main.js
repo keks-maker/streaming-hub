@@ -16,7 +16,6 @@ const {
   validateVersion,
 } = require('./lib/ipc-validation.js');
 const {
-  MAX_EPG_BYTES,
   MAX_PLAYLIST_BYTES,
   httpUrl,
   remoteHttpUrl,
@@ -816,7 +815,7 @@ ipcMain.handle('fetch-epg', async (event, url) => {
       epgUrl = remoteHttpUrl(new URL(location, epgUrl).toString(), 'EPG-Redirect-Ziel');
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const xml = await readResponseText(response, MAX_EPG_BYTES);
+    const xml = await readResponseText(response, Infinity);
     const entries = parseXMLTV(xml);
     if (!entries.length) throw new Error('Die XMLTV-Datei enthält keine gültigen Sendungen');
     return entries;
