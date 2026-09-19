@@ -2303,6 +2303,10 @@ tvView.addEventListener('permissionrequest', e => {
 
 // TV channel navigation from tv.html in tvView
 tvView.addEventListener('ipc-message', e => {
+  if (e.channel === 'tv-diagnostic' && e.args[0] && e.args[0].source === 'tv-diagnostic') {
+    logger.info('TV-DIAG tv-view', e.args[0].type, e.args[0].data || {});
+    return;
+  }
   if (e.channel === 'sidebar-close' && tvSidebarOpen) closeTvSidebar();
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);

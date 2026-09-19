@@ -126,6 +126,9 @@ document.addEventListener('keydown', e => {
     if ((isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) || (e.altKey && e.key === 'ArrowLeft')) {
       e.preventDefault();
     }
+    if (isTvPlayerPage() && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      ipcRenderer.send('tv-diagnostic', { type: 'keydown-forward', key: e.key });
+    }
     ipcRenderer.send('webview-keydown', {
       key: e.key,
       ctrlKey: e.ctrlKey,
@@ -155,5 +158,8 @@ window.addEventListener('message', e => {
     ['channel-next', 'channel-prev', 'request-epg'].includes(e.data.action)
   ) {
     ipcRenderer.sendToHost('tv-channel', { source: 'tv-player', action: e.data.action });
+  }
+  if (e.source === window && e.origin === window.location.origin && e.data && e.data.source === 'tv-diagnostic') {
+    ipcRenderer.sendToHost('tv-diagnostic', e.data);
   }
 });

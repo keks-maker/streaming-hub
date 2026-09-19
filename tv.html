@@ -409,6 +409,9 @@
       };
       let epgEntries = [];    // raw EPG for current channel (from host)
       let epgMarkersStale = true;
+      function tvDiagnostic(type, data) {
+        try { window.postMessage({ source: 'tv-diagnostic', type: type, data: data || {} }, window.location.origin); } catch (_) {}
+      }
       const DVR_MIN_SEEKABLE = 900; // Sekunden Playlist-Fenster; Scrub-UI enabler (Orchestrator decision)
       // U1: Bar-Exklusivität. dvrBarMode ('auto' | 'on' | 'off') kommt vom Host
       // (renderer.js dvrBarMode()); 'off' zwingt die Legacy-Bar. Default 'auto':
@@ -616,10 +619,26 @@
 
       // Marker aus epgEntries berechnen, sobald Fenster + PDT bekannt
       function recomputeDvrMarkers() {
-        if (!dvrState.enabled || pdtAnchor == null || !epgEntries.length) { dvrState.markers = []; renderScrubMarkers(); return; }
+        if (!dvrState.enabled || pdtAnchor == null || !epgEntries.length) {
+          tvDiagnostic('marker-prerequisites', {
+            dvr: dvrState.enabled,
+            pdt: !!pdtAnchor,
+            epgEntries: epgEntries.length,
+            windowStart: dvrState.windowStart,
+            windowEnd: dvrState.windowEnd,
+          });
+          dvrState.markers = [];
+          renderScrubMarkers();
+          return;
+        }
         var winStartWall = mediaSecToWallSec(dvrState.windowStart) * 1000;
         var winEndWall = mediaSecToWallSec(dvrState.windowEnd) * 1000;
-        if (!isFinite(winStartWall) || !isFinite(winEndWall)) { dvrState.markers = []; renderScrubMarkers(); return; }
+        if (!isFinite(winStartWall) || !isFinite(winEndWall)) {
+          tvDiagnostic('marker-invalid-window', { winStartWall: winStartWall, winEndWall: winEndWall });
+          dvrState.markers = [];
+          renderScrubMarkers();
+          return;
+        }
         var out = [];
         for (var i = 0; i < epgEntries.length; i++) {
           var e = epgEntries[i];
@@ -631,6 +650,14 @@
           }
         }
         dvrState.markers = out;
+        tvDiagnostic('markers-computed', {
+          dvr: dvrState.enabled,
+          pdt: !!pdtAnchor,
+          epgEntries: epgEntries.length,
+          markers: out.length,
+          windowStart: dvrState.windowStart,
+          windowEnd: dvrState.windowEnd,
+        });
         renderScrubMarkers();
       }
 
@@ -1054,12 +1081,32 @@
               updatePdtFromLevelDetails(data.details);
               // DVR sentinel: DVR-Fenster aus der Sliding-Playlist lesen
               updateDvrFromLevelDetails(data.details);
+              tvDiagnostic('hls-level', {
+                event: 'LEVEL_LOADED',
+                live: !!(data.details && data.details.live),
+                fragmentStart: data.details && data.details.fragmentStart,
+                edge: data.details && data.details.edge,
+                dvr: dvrState.enabled,
+                pdt: !!pdtAnchor,
+                epgEntries: epgEntries.length,
+                markers: dvrState.markers.length,
+              });
               recomputeDvrMarkers();
             });
             hls.on(Hls.Events.LEVEL_UPDATED, function(_event, data) {
               if (gen !== channelGen) return;
               updatePdtFromLevelDetails(data.details);
               updateDvrFromLevelDetails(data.details);
+              tvDiagnostic('hls-level', {
+                event: 'LEVEL_UPDATED',
+                live: !!(data.details && data.details.live),
+                fragmentStart: data.details && data.details.fragmentStart,
+                edge: data.details && data.details.edge,
+                dvr: dvrState.enabled,
+                pdt: !!pdtAnchor,
+                epgEntries: epgEntries.length,
+                markers: dvrState.markers.length,
+              });
               recomputeDvrMarkers();
             });
             hls.loadSource(decodedUrl);
@@ -1169,6 +1216,11 @@
             channelListIndex = e.data.currentIndex;
           }
         } else if (e.data && e.data.type === 'epg-update') {
+          tvDiagnostic('epg-update', {
+            entries: Array.isArray(e.data.epgEntries) ? e.data.epgEntries.length : null,
+            title: !!e.data.epg,
+            dvr: e.data.dvr || 'auto',
+          });
           updateEpgBar(e.data.epg, e.data.epgStart, e.data.epgEnd, e.data.epgNext);
           // U2: Roh-EPG sofort übernehmen und Marker rendern — der Push passiert
           // beim Kanalwechsel/did-finish-load, nicht erst nach 30s-Poll.

@@ -534,8 +534,14 @@ ipcMain.on('webview-keydown', (event, data) => {
   requireWebviewRenderer(event);
   const normalized = normalizeWebviewKeydown(data);
   if (!normalized) return;
-  logger.info('webview-keydown forwarded:', normalized.key);
+  logger.info('TV-DIAG keydown-main', normalized.key);
   mainWindow.webContents.send('webview-keydown', normalized);
+});
+
+ipcMain.on('tv-diagnostic', (event, data) => {
+  requireWebviewRenderer(event);
+  if (!data || data.type !== 'keydown-forward' || typeof data.key !== 'string') return;
+  logger.info('TV-DIAG keydown-preload', data.key);
 });
 
 ipcMain.handle('get-app-version', event => {
