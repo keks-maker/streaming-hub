@@ -1613,6 +1613,10 @@ function reorderChannel(draggedId, targetId) {
 }
 
 async function selectTvChannel(ch, options = {}) {
+  sendTvDiagnostic('select-start', {
+    active: ch.id,
+    channels: tvChannels.length,
+  });
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
   tvActiveChannelId = ch.id;
@@ -1706,7 +1710,17 @@ async function selectTvChannel(ch, options = {}) {
         msg.channelList = enrichedChannels;
         msg.channelIndex = channelList.currentIndex;
       }
-      tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ',window.location.origin)');
+      sendTvDiagnostic('switch-post', {
+        active: ch.id,
+        tvReady: tvViewReady,
+        url: tvView.getURL(),
+      });
+      tvView.executeJavaScript('window.postMessage(' + JSON.stringify(msg) + ',window.location.origin)')
+        .then(() => sendTvDiagnostic('switch-post-complete', { active: ch.id }))
+        .catch(error => {
+          sendTvDiagnostic('switch-post-error', { active: ch.id, error: error.message });
+          logger.warn('postMessage to tv.html failed:', error);
+        });
       // U2: EPG-Rohdaten sofort hinterher schieben, damit die DVR-Marker nicht
       // auf den ersten 30s-Poll warten müssen.
       pushEpgToTvView();
@@ -1715,6 +1729,11 @@ async function selectTvChannel(ch, options = {}) {
     }
   } else {
     const appPath = await window.electronAPI.getAppPath();
+    sendTvDiagnostic('switch-load', {
+      active: ch.id,
+      tvReady: tvViewReady,
+      url: tvView.getURL(),
+    });
     const playerUrl =
       'file://' +
       appPath +
@@ -1736,8 +1755,14 @@ async function selectTvChannel(ch, options = {}) {
       encodeURIComponent('file://' + appPath + '/node_modules/hls.js/dist/hls.min.js');
     if (tvViewReady) {
       try {
-        tvView.loadURL(playerUrl);
+        tvView.loadURL(playerUrl)
+          .then(() => sendTvDiagnostic('switch-load-complete', { active: ch.id }))
+          .catch(error => {
+            sendTvDiagnostic('switch-load-error', { active: ch.id, error: error.message });
+            logger.warn('loadURL failed:', error);
+          });
       } catch (e) {
+        sendTvDiagnostic('switch-load-error', { active: ch.id, error: e.message });
         logger.warn('loadURL failed:', e);
       }
     } else {

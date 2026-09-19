@@ -936,6 +936,7 @@
       }
 
       function setupChannel(url, name, logo, epg, start, end, next) {
+        tvDiagnostic('setup-channel', { name: name || '', url: url || '' });
         channelGen++;
         var gen = channelGen;
         var savedVolume = video.volume;
@@ -985,6 +986,7 @@
         }
 
         if (!url) {
+          tvDiagnostic('setup-invalid-url', { reason: 'missing' });
           disarmLoadWatchdog(); // W2: sofortige Meldung genügt, kein Watchdog nötig
           showError('Keine Stream-URL');
           loadingEl.style.display = 'none';
@@ -998,6 +1000,7 @@
           decodedUrl = '';
         }
         if (!decodedUrl) {
+          tvDiagnostic('setup-invalid-url', { reason: 'invalid' });
           disarmLoadWatchdog();
           showError('Ungültige Stream-URL');
           loadingEl.style.display = 'none';
@@ -1021,6 +1024,7 @@
           lastStallTime = Date.now();
         };
         prevPlaying = function() {
+          tvDiagnostic('playing', { name: channelName });
           loadingEl.style.display = 'none';
           signalPlayback(); // W2
           if (stallTimer) clearInterval(stallTimer);
@@ -1035,6 +1039,7 @@
           }, 3000);
         };
         prevError = function() {
+          tvDiagnostic('video-error', { name: channelName, code: video.error && video.error.code });
           loadingEl.style.display = 'none';
           disarmLoadWatchdog();
           // W2: fatale Native-Player-Fehler gehören zum persistenten Dialog
@@ -1109,6 +1114,7 @@
               });
               recomputeDvrMarkers();
             });
+            tvDiagnostic('hls-start', { name: channelName, url: decodedUrl });
             hls.loadSource(decodedUrl);
             hls.attachMedia(video);
             fetch(decodedUrl).then(function(r) { return r.text(); }).then(function(txt) {
@@ -1150,6 +1156,7 @@
             });
             hls.on(Hls.Events.ERROR, function(_event, data) {
               if (gen !== channelGen) return;
+              tvDiagnostic('hls-error', { name: channelName, fatal: !!data.fatal, type: data.type || '', details: data.details || '' });
               if (data.fatal) {
                 // W2: fatale hls.js-Fehler zählen strike-weise. Nach 4 Strikes ohne
                 // erfolgreiches Lebenszeichen (canplay/playing setzt zurück) wird
@@ -1201,6 +1208,7 @@
       window.addEventListener('message', function(e) {
         if (e.source !== window || e.origin !== window.location.origin || !e.data) return;
         if (e.data.type === 'switch-channel') {
+          tvDiagnostic('switch-received', { name: e.data.name || '', url: e.data.url || '' });
           setupChannel(e.data.url, e.data.name, e.data.logo, e.data.epg,
             e.data.epgStart, e.data.epgEnd, e.data.epgNext);
           if (e.data.dvr === 'on' || e.data.dvr === 'off') {
