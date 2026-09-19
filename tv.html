@@ -409,9 +409,6 @@
       };
       let epgEntries = [];    // raw EPG for current channel (from host)
       let epgMarkersStale = true;
-      function tvDiagnostic(type, data) {
-        try { window.postMessage({ source: 'tv-diagnostic', type: type, data: data || {} }, window.location.origin); } catch (_) {}
-      }
       const DVR_MIN_SEEKABLE = 900; // Sekunden Playlist-Fenster; Scrub-UI enabler (Orchestrator decision)
       // U1: Bar-Exklusivität. dvrBarMode ('auto' | 'on' | 'off') kommt vom Host
       // (renderer.js dvrBarMode()); 'off' zwingt die Legacy-Bar. Default 'auto':
@@ -620,13 +617,6 @@
       // Marker aus epgEntries berechnen, sobald Fenster + PDT bekannt
       function recomputeDvrMarkers() {
         if (!dvrState.enabled || pdtAnchor == null || !epgEntries.length) {
-          tvDiagnostic('marker-prerequisites', {
-            dvr: dvrState.enabled,
-            pdt: !!pdtAnchor,
-            epgEntries: epgEntries.length,
-            windowStart: dvrState.windowStart,
-            windowEnd: dvrState.windowEnd,
-          });
           dvrState.markers = [];
           renderScrubMarkers();
           return;
@@ -634,7 +624,6 @@
         var winStartWall = mediaSecToWallSec(dvrState.windowStart) * 1000;
         var winEndWall = mediaSecToWallSec(dvrState.windowEnd) * 1000;
         if (!isFinite(winStartWall) || !isFinite(winEndWall)) {
-          tvDiagnostic('marker-invalid-window', { winStartWall: winStartWall, winEndWall: winEndWall });
           dvrState.markers = [];
           renderScrubMarkers();
           return;
@@ -650,14 +639,6 @@
           }
         }
         dvrState.markers = out;
-        tvDiagnostic('markers-computed', {
-          dvr: dvrState.enabled,
-          pdt: !!pdtAnchor,
-          epgEntries: epgEntries.length,
-          markers: out.length,
-          windowStart: dvrState.windowStart,
-          windowEnd: dvrState.windowEnd,
-        });
         renderScrubMarkers();
       }
 
@@ -936,7 +917,6 @@
       }
 
       function setupChannel(url, name, logo, epg, start, end, next) {
-        tvDiagnostic('setup-channel', { name: name || '', url: url || '' });
         channelGen++;
         var gen = channelGen;
         var savedVolume = video.volume;
@@ -986,7 +966,6 @@
         }
 
         if (!url) {
-          tvDiagnostic('setup-invalid-url', { reason: 'missing' });
           disarmLoadWatchdog(); // W2: sofortige Meldung genügt, kein Watchdog nötig
           showError('Keine Stream-URL');
           loadingEl.style.display = 'none';
@@ -1000,7 +979,6 @@
           decodedUrl = '';
         }
         if (!decodedUrl) {
-          tvDiagnostic('setup-invalid-url', { reason: 'invalid' });
           disarmLoadWatchdog();
           showError('Ungültige Stream-URL');
           loadingEl.style.display = 'none';
@@ -1024,7 +1002,6 @@
           lastStallTime = Date.now();
         };
         prevPlaying = function() {
-          tvDiagnostic('playing', { name: channelName });
           loadingEl.style.display = 'none';
           signalPlayback(); // W2
           if (stallTimer) clearInterval(stallTimer);
@@ -1039,7 +1016,6 @@
           }, 3000);
         };
         prevError = function() {
-          tvDiagnostic('video-error', { name: channelName, code: video.error && video.error.code });
           loadingEl.style.display = 'none';
           disarmLoadWatchdog();
           // W2: fatale Native-Player-Fehler gehören zum persistenten Dialog
@@ -1086,35 +1062,14 @@
               updatePdtFromLevelDetails(data.details);
               // DVR sentinel: DVR-Fenster aus der Sliding-Playlist lesen
               updateDvrFromLevelDetails(data.details);
-              tvDiagnostic('hls-level', {
-                event: 'LEVEL_LOADED',
-                live: !!(data.details && data.details.live),
-                fragmentStart: data.details && data.details.fragmentStart,
-                edge: data.details && data.details.edge,
-                dvr: dvrState.enabled,
-                pdt: !!pdtAnchor,
-                epgEntries: epgEntries.length,
-                markers: dvrState.markers.length,
-              });
               recomputeDvrMarkers();
             });
             hls.on(Hls.Events.LEVEL_UPDATED, function(_event, data) {
               if (gen !== channelGen) return;
               updatePdtFromLevelDetails(data.details);
               updateDvrFromLevelDetails(data.details);
-              tvDiagnostic('hls-level', {
-                event: 'LEVEL_UPDATED',
-                live: !!(data.details && data.details.live),
-                fragmentStart: data.details && data.details.fragmentStart,
-                edge: data.details && data.details.edge,
-                dvr: dvrState.enabled,
-                pdt: !!pdtAnchor,
-                epgEntries: epgEntries.length,
-                markers: dvrState.markers.length,
-              });
               recomputeDvrMarkers();
             });
-            tvDiagnostic('hls-start', { name: channelName, url: decodedUrl });
             hls.loadSource(decodedUrl);
             hls.attachMedia(video);
             fetch(decodedUrl).then(function(r) { return r.text(); }).then(function(txt) {
@@ -1156,7 +1111,6 @@
             });
             hls.on(Hls.Events.ERROR, function(_event, data) {
               if (gen !== channelGen) return;
-              tvDiagnostic('hls-error', { name: channelName, fatal: !!data.fatal, type: data.type || '', details: data.details || '' });
               if (data.fatal) {
                 // W2: fatale hls.js-Fehler zählen strike-weise. Nach 4 Strikes ohne
                 // erfolgreiches Lebenszeichen (canplay/playing setzt zurück) wird
@@ -1207,7 +1161,6 @@
       function handleHostMessage(data) {
         if (!data) return;
         if (data.type === 'switch-channel') {
-          tvDiagnostic('switch-received', { name: data.name || '', url: data.url || '' });
           setupChannel(data.url, data.name, data.logo, data.epg,
             data.epgStart, data.epgEnd, data.epgNext);
           if (data.dvr === 'on' || data.dvr === 'off') {
@@ -1223,11 +1176,6 @@
             channelListIndex = data.currentIndex;
           }
         } else if (data.type === 'epg-update') {
-          tvDiagnostic('epg-update', {
-            entries: Array.isArray(data.epgEntries) ? data.epgEntries.length : null,
-            title: !!data.epg,
-            dvr: data.dvr || 'auto',
-          });
           updateEpgBar(data.epg, data.epgStart, data.epgEnd, data.epgNext);
           // U2: Roh-EPG sofort übernehmen und Marker rendern — der Push passiert
           // beim Kanalwechsel/did-finish-load, nicht erst nach 30s-Poll.
