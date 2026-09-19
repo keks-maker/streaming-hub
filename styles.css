@@ -109,20 +109,214 @@ body {
 
 .dashboard-view.start-page {
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 
 .dashboard-view.start-page .dashboard-grid {
-  flex: 1;
-  min-height: 0;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: repeat(4, minmax(220px, 280px));
+  justify-content: center;
+  gap: 22px;
 }
 
 .dashboard-view.start-page .dashboard-tile {
-  min-height: 0;
+  min-height: 280px;
+  height: 280px;
+  padding: 22px;
+}
+
+.dashboard-section-tile {
+  isolation: isolate;
+}
+
+.dashboard-section-tile::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, transparent 28%, rgba(6, 8, 14, .28) 52%, rgba(6, 8, 14, .92) 100%);
+  content: '';
+}
+
+.dashboard-section-tile-art {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  opacity: .92;
+  transition: transform .35s ease, opacity .35s ease;
+}
+
+.dashboard-section-tile-art::before,
+.dashboard-section-tile-art::after,
+.dashboard-section-tile-art-shape,
+.dashboard-section-tile-art-detail {
+  position: absolute;
+  content: '';
+}
+
+.dashboard-section-tile:hover .dashboard-section-tile-art,
+.dashboard-section-tile:focus-visible .dashboard-section-tile-art {
+  transform: scale(1.06);
+  opacity: 1;
+}
+
+/* LiveTV: broadcast waves and an on-air signal. */
+.dashboard-section-livetv .dashboard-section-tile-art {
+  background: radial-gradient(circle at 76% 22%, rgba(196, 181, 253, .42) 0 3px, transparent 4px), linear-gradient(135deg, #261c4d, #121a30 70%);
+}
+.dashboard-section-livetv .dashboard-section-tile-art::before {
+  top: 35px;
+  right: -34px;
+  width: 190px;
+  height: 190px;
+  border: 1px solid rgba(196, 181, 253, .28);
+  border-radius: 50%;
+  box-shadow: 0 0 0 22px rgba(196, 181, 253, .08), 0 0 0 46px rgba(196, 181, 253, .06), 0 0 0 70px rgba(196, 181, 253, .045);
+}
+.dashboard-section-livetv .dashboard-section-tile-art::after {
+  top: 56px;
+  right: 42px;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, .55);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 7px rgba(255, 255, 255, .05);
+}
+.dashboard-section-livetv .dashboard-section-tile-art-detail {
+  top: 78px;
+  right: 61px;
+  width: 9px;
+  height: 9px;
+  background: #fb7185;
+  border-radius: 50%;
+  box-shadow: 0 0 18px #fb7185;
+}
+
+/* Streaming: cinematic light and film-strip geometry. */
+.dashboard-section-streaming .dashboard-section-tile-art {
+  background: linear-gradient(145deg, #411326, #1d1727 62%, #10131d);
+}
+.dashboard-section-streaming .dashboard-section-tile-art::before {
+  top: -42px;
+  right: 8px;
+  width: 112px;
+  height: 250px;
+  background: linear-gradient(110deg, transparent 0 28%, rgba(248, 113, 113, .3) 29% 48%, rgba(251, 146, 60, .12) 49% 66%, transparent 67%);
+  transform: rotate(12deg);
+}
+.dashboard-section-streaming .dashboard-section-tile-art::after {
+  top: 42px;
+  left: 28px;
+  width: 124px;
+  height: 70px;
+  border: 1px solid rgba(251, 146, 60, .34);
+  border-radius: 8px;
+  transform: skewY(-10deg) rotate(-8deg);
+  box-shadow: 18px 16px 0 -1px rgba(251, 146, 60, .1), 36px 32px 0 -1px rgba(251, 146, 60, .07);
+}
+.dashboard-section-streaming .dashboard-section-tile-art-detail {
+  top: 62px;
+  left: 78px;
+  width: 0;
+  height: 0;
+  border-top: 16px solid transparent;
+  border-bottom: 16px solid transparent;
+  border-left: 24px solid rgba(255, 255, 255, .68);
+  filter: drop-shadow(0 0 14px rgba(251, 146, 60, .6));
+}
+
+/* Mediatheken: editorial grid and broadcast typography cues. */
+.dashboard-section-mediathek .dashboard-section-tile-art {
+  background: linear-gradient(145deg, #123c54, #14283a 64%, #101923);
+}
+.dashboard-section-mediathek .dashboard-section-tile-art::before {
+  top: 36px;
+  right: 18px;
+  width: 160px;
+  height: 92px;
+  border: 1px solid rgba(125, 211, 252, .3);
+  background: repeating-linear-gradient(90deg, transparent 0 20px, rgba(125, 211, 252, .15) 21px 22px), repeating-linear-gradient(0deg, transparent 0 20px, rgba(125, 211, 252, .12) 21px 22px);
+  transform: rotate(-8deg);
+}
+.dashboard-section-mediathek .dashboard-section-tile-art::after {
+  top: 78px;
+  left: 34px;
+  width: 84px;
+  height: 3px;
+  background: #67e8f9;
+  box-shadow: 0 12px 0 rgba(103, 232, 249, .5), 0 24px 0 rgba(103, 232, 249, .22), 0 36px 0 rgba(103, 232, 249, .12);
+  transform: rotate(-8deg);
+}
+.dashboard-section-mediathek .dashboard-section-tile-art-detail {
+  top: 45px;
+  left: 38px;
+  width: 14px;
+  height: 14px;
+  background: #67e8f9;
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(103, 232, 249, .8);
+}
+
+/* Settings: a quiet control panel made from sliders and status lights. */
+.dashboard-section-settings .dashboard-section-tile-art {
+  background: linear-gradient(145deg, #293442, #1a222e 65%, #111720);
+}
+.dashboard-section-settings .dashboard-section-tile-art::before {
+  top: 38px;
+  left: 28px;
+  width: 170px;
+  height: 88px;
+  border: 1px solid rgba(203, 213, 225, .18);
+  border-radius: 12px;
+  background: repeating-linear-gradient(0deg, transparent 0 21px, rgba(203, 213, 225, .1) 22px 23px);
+}
+.dashboard-section-settings .dashboard-section-tile-art::after {
+  top: 61px;
+  left: 48px;
+  width: 126px;
+  height: 2px;
+  background: rgba(203, 213, 225, .46);
+  box-shadow: 0 24px 0 rgba(203, 213, 225, .3), 0 48px 0 rgba(203, 213, 225, .18);
+}
+.dashboard-section-settings .dashboard-section-tile-art-detail {
+  top: 54px;
+  left: 94px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #c4b5fd;
+  border-radius: 50%;
+  background: #1a222e;
+  box-shadow: 46px 24px 0 -3px #67e8f9, 92px 48px 0 -3px #fda4af;
+}
+
+.dashboard-section-tile-icon {
+  position: relative;
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 16px;
+  background: rgba(9, 12, 20, .58);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .14);
+  color: rgba(255, 255, 255, .88);
+  font-size: 26px;
+}
+.dashboard-section-tile-icon img {
+  width: 100%;
   height: 100%;
+  object-fit: contain;
+}
+.dashboard-section-tile .dashboard-tile-content {
+  width: 100%;
+  padding-top: 4px;
+}
+.dashboard-section-tile .dashboard-tile-name {
+  font-size: 18px;
+  letter-spacing: -.02em;
+}
+.dashboard-section-tile .dashboard-tile-meta {
+  color: rgba(240, 244, 255, .62);
 }
 
 .nav-divider {
@@ -2389,7 +2583,16 @@ body {
 .dashboard-epg { max-width:1480px; }
 .dashboard-epg-row { border-radius:16px; background:rgba(24,27,36,.68); box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
 .modal,.shortcuts-panel { border-radius:24px; box-shadow:0 26px 90px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.06); }
-@media (max-width:700px) { .overlay-bar { top:12px; width:calc(100vw - 24px); border-radius:18px; } .overlay-bar.nav-collapsed:not(.is-fullscreen) { top:0; width:100%; border-radius:0 0 12px 12px; } .nav-section-item { min-width:0; padding:0 10px; } .nav-section-label { display:none; } .dashboard-view { padding-top:112px; } }
+@media (max-width:700px) {
+  .overlay-bar { top:12px; width:calc(100vw - 24px); border-radius:18px; }
+  .overlay-bar.nav-collapsed:not(.is-fullscreen) { top:0; width:100%; border-radius:0 0 12px 12px; }
+  .nav-section-item { min-width:0; padding:0 10px; }
+  .nav-section-label { display:none; }
+  .dashboard-view { padding-top:112px; }
+  .dashboard-view.start-page .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .dashboard-view.start-page .dashboard-tile { min-height:190px; height:190px; padding:16px; border-radius:20px; }
+  .dashboard-section-tile-icon { width:46px; height:46px; padding:8px; border-radius:14px; }
+}
 
 /* Version tag (bottom-right) */
 .version-tag {

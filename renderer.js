@@ -597,10 +597,11 @@ function renderStartDashboard() {
   ];
   sections.forEach(section => {
     const tile = document.createElement('button');
-    tile.className = 'dashboard-tile dashboard-section-tile';
+    tile.className = `dashboard-tile dashboard-section-tile dashboard-section-${section.key}`;
     tile.type = 'button';
+    tile.dataset.section = section.key;
     tile.style.setProperty('--tile-color', section.color);
-    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
+    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
     tile.addEventListener('click', () => {
       overlayBar.classList.remove('nav-collapsed');
       if (section.key === 'settings') openSettings();
@@ -609,7 +610,9 @@ function renderStartDashboard() {
     dashboardGrid.appendChild(tile);
   });
   dashboardView.style.display = '';
+  dashboardView.classList.add('start-page');
   welcomeScreen.style.display = 'none';
+  overlayBar.classList.add('start-page');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
 }
 
@@ -624,6 +627,8 @@ function renderDashboard(groupKey) {
     return;
   }
   currentDashboardGroup = groupKey;
+  dashboardView.classList.remove('start-page');
+  overlayBar.classList.remove('start-page');
   dashboardView.classList.remove('settings-dashboard');
   const isTv = groupKey === 'livetv';
   const items = isTv ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
@@ -827,6 +832,8 @@ backBtn.addEventListener('click', handleBackNavigation);
 function goToStartPage() {
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
+  dashboardView.classList.remove('start-page');
+  overlayBar.classList.add('start-page');
   currentUA = chromeUA;
   currentDashboardGroup = null;
   if (dashboardView) dashboardView.style.display = 'none';
@@ -850,6 +857,8 @@ function goToStartPage() {
 function navigateTo(svc) {
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
+  dashboardView.classList.remove('start-page');
+  overlayBar.classList.remove('start-page');
   currentUA = svc.id === 'magentatv' ? safariUA : chromeUA;
   currentProvider = svc.id;
   currentDashboardGroup = null;
@@ -1433,14 +1442,18 @@ function renderTvChannels() {
     const header = document.createElement('div');
     header.className = 'tv-channel-group-header';
     if (tvCollapsedGroups[groupName]) header.classList.add('collapsed');
-    const totalInGroup = tvChannels.filter(c => c.group === groupName && tvSelectedSourceIds.includes(c.sourceId)).length;
+    const totalInGroup = tvChannels.filter(
+      c => c.group === groupName && tvSelectedSourceIds.includes(c.sourceId),
+    ).length;
     const showCount = groups[groupName].length;
     const countStr = showCount < totalInGroup ? `${showCount}/${totalInGroup}` : String(totalInGroup);
     header.innerHTML = `<span class="tv-channel-group-arrow">▼</span> ${escapeHtml(groupName)} (${countStr})`;
     header.addEventListener('click', () => {
       header.classList.toggle('collapsed');
       tvCollapsedGroups[groupName] = header.classList.contains('collapsed');
-      try { localStorage.setItem('tv-collapsed-groups', JSON.stringify(tvCollapsedGroups)); } catch {}
+      try {
+        localStorage.setItem('tv-collapsed-groups', JSON.stringify(tvCollapsedGroups));
+      } catch {}
     });
     groupEl.appendChild(header);
     const content = document.createElement('div');
@@ -2864,6 +2877,8 @@ const settingsEpgRefreshBtn = document.getElementById('settingsEpgRefreshBtn');
 
 function openSettings() {
   if (!restoringNav) pushNavState();
+  dashboardView.classList.remove('start-page');
+  overlayBar.classList.remove('start-page');
   currentDashboardGroup = 'settings';
   currentProvider = '';
   disposeDashboardPlayback();
