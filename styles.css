@@ -2283,11 +2283,20 @@ body {
   background:rgba(255,255,255,.46);
   content:'';
 }
-.overlay-bar.nav-collapsed:not(.is-fullscreen) .overlay-nav,
-.overlay-bar.nav-collapsed:not(.is-fullscreen).has-back .back-btn {
+.overlay-bar.nav-collapsed:not(.is-fullscreen) .overlay-nav {
   opacity:0 !important;
   pointer-events:none !important;
   transform:translateY(-8px) scale(.96) !important;
+}
+.overlay-bar.nav-collapsed:not(.is-fullscreen) .back-btn {
+  opacity:0 !important;
+  pointer-events:none !important;
+  transform:translateY(-8px) scale(.96) !important;
+}
+.overlay-bar.nav-collapsed:not(.is-fullscreen).has-back .back-btn {
+  opacity:1 !important;
+  pointer-events:auto !important;
+  transform:none !important;
 }
 .overlay-bar.nav-collapsed:not(.is-fullscreen):hover {
   top:0;

@@ -2180,6 +2180,7 @@ webview.addEventListener('did-navigate', () => {
       break;
     }
   }
+  updateBackBtn();
 });
 
 webview.addEventListener('did-navigate-in-page', e => {
@@ -2187,6 +2188,7 @@ webview.addEventListener('did-navigate-in-page', e => {
   const url = (e && e.url) || webview.getURL();
   if (!url || url === 'about:blank') return;
   lastUrlByService[currentProvider] = url;
+  updateBackBtn();
 });
 
 webview.addEventListener('permissionrequest', e => {
