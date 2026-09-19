@@ -2210,6 +2210,34 @@ body {
 .dashboard-player-stage .dashboard-tv-preview { position:static; display:block; width:100%; height:100%; opacity:1; object-fit:contain; }
 .dashboard-player-close { position:absolute; top:18px; right:22px; z-index:2; width:38px; height:38px; color:#fff; font-size:28px; line-height:1; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.2); border-radius:50%; cursor:pointer; }
 .dashboard-player-close:hover,.dashboard-player-close:focus-visible { background:rgba(139,92,246,.7); outline:none; }
+
+.tv-channel-manager-overlay { position:fixed; inset:0; z-index:140; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(3,5,9,.76); backdrop-filter:blur(10px); }
+.tv-channel-manager-overlay.open { display:flex; }
+.tv-channel-manager { display:flex; width:min(900px,100%); max-height:min(820px,calc(100vh - 48px)); flex-direction:column; overflow:hidden; color:var(--text); background:rgba(17,21,29,.98); border:1px solid rgba(255,255,255,.12); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.55); }
+.tv-channel-manager-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 22px 14px; border-bottom:1px solid var(--border); }
+.tv-channel-manager-header h2 { margin:3px 0 0; font-size:24px; }
+.tv-channel-manager-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 22px; border-bottom:1px solid var(--border); }
+.tv-channel-manager-tabs { display:flex; gap:6px; }
+.tv-channel-manager-tab { padding:8px 12px; color:var(--text-dim); background:transparent; border:1px solid transparent; border-radius:8px; cursor:pointer; }
+.tv-channel-manager-tab:hover,.tv-channel-manager-tab:focus-visible,.tv-channel-manager-tab.active { color:var(--text); background:rgba(139,92,246,.16); border-color:rgba(139,92,246,.45); outline:none; }
+.tv-channel-manager-filters { display:flex; align-items:center; gap:12px; padding:14px 22px; border-bottom:1px solid var(--border); }
+.tv-channel-manager-filters .modal-input { flex:1; min-width:180px; }
+.tv-channel-manager-filters .tv-source-pills { display:flex; max-width:50%; gap:6px; overflow-x:auto; }
+.tv-channel-manager-list { min-height:180px; padding:8px 22px 22px; overflow:auto; }
+.tv-channel-manager-list .tv-channel-group { margin-top:12px; }
+.tv-channel-manager-list .tv-channel-item { min-height:54px; }
+.tv-channel-manager-list .tv-channel-fav { display:grid; width:34px; height:34px; place-items:center; padding:0; color:var(--text-dim); background:transparent; border:0; border-radius:8px; cursor:pointer; font-size:20px; }
+.tv-channel-manager-list .tv-channel-fav:hover,.tv-channel-manager-list .tv-channel-fav:focus-visible,.tv-channel-manager-list .tv-channel-fav.active { color:#fbbf24; background:rgba(251,191,36,.12); outline:none; }
+.tv-channel-manager-list .tv-channel-drag.visible { display:inline-flex; cursor:grab; }
+.tv-channel-manager-list .tv-channel-drag.visible:active { cursor:grabbing; }
+.tv-channel-manager-list .tv-channel-drag[draggable="false"] { display:none; }
+@media (max-width:700px) {
+  .tv-channel-manager-overlay { padding:10px; align-items:stretch; }
+  .tv-channel-manager { max-height:none; }
+  .tv-channel-manager-toolbar,.tv-channel-manager-filters { align-items:stretch; flex-direction:column; }
+  .tv-channel-manager-filters .tv-source-pills { max-width:none; }
+  .tv-channel-manager-list { padding:8px 12px 18px; }
+}
 @media (max-width:700px) { .dashboard-view { padding:76px 20px 32px; } .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .dashboard-tile { min-height:164px; padding:16px; } .dashboard-header { align-items:flex-start; flex-direction:column; } .dashboard-tv-actions { justify-content:flex-start; width:100%; } .dashboard-tv-status { max-width:100%; order:3; flex-basis:100%; } .dashboard-epg-row { grid-template-columns:1fr; gap:5px; } .dashboard-epg-time { white-space:normal; } }
 
 .modal-overlay,.shortcuts-overlay,.history-overlay { background:rgba(3,5,9,.72); backdrop-filter:blur(14px); }

@@ -327,7 +327,7 @@ it('getNextChannelId – zappt über alle Sender, Favoriten zuerst (W3)', () => 
   expect(getNextChannelId('ch2', channels, sources, -1)).toBe('ch3');
 });
 
-it('buildZapOrder – Favoriten zuerst, Rest in Listenreihenfolge', () => {
+it('buildZapOrder – Favoritenreihenfolge, Rest in Listenreihenfolge', () => {
   const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['c', 'a'] }];
   const channels = [
     { id: 'a', name: 'A', url: 'x', group: 'G', sourceId: 'src1' },
@@ -335,9 +335,8 @@ it('buildZapOrder – Favoriten zuerst, Rest in Listenreihenfolge', () => {
     { id: 'c', name: 'C', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'd', name: 'D', url: 'x', group: 'G', sourceId: 'src1' },
   ];
-  // Konsistent mit separateFavorites/Sidebar: Favoriten in LISTENreihenfolge
-  // (a vor c, nicht in favorites-Array-Reihenfolge), dann Rest.
-  expect(buildZapOrder(channels, sources)).toEqual(['a', 'c', 'b', 'd']);
+  // Die Sortierreihenfolge aus dem Favoriten-Sortiermodus wird überall genutzt.
+  expect(buildZapOrder(channels, sources)).toEqual(['c', 'a', 'b', 'd']);
   // Leere Favoriten => unverändert die Listenreihenfolge
   const noFav: typeof sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0 }];
   expect(buildZapOrder(channels, noFav)).toEqual(['a', 'b', 'c', 'd']);

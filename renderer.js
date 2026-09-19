@@ -145,6 +145,7 @@ const dashboardTvRefresh = document.getElementById('dashboardTvRefresh');
 const dashboardPlayer = document.getElementById('dashboardPlayer');
 const dashboardPlayerStage = document.getElementById('dashboardPlayerStage');
 const dashboardPlayerClose = document.getElementById('dashboardPlayerClose');
+const dashboardTvManage = document.getElementById('dashboardTvManage');
 const overlayLocation = document.getElementById('overlayLocation');
 const backBtn = document.getElementById('backBtn');
 const pipBtn = document.getElementById('pipBtn');
@@ -154,6 +155,17 @@ const historyBtn = document.getElementById('historyBtn');
 const historyList = document.getElementById('historyList');
 const historyClose = document.getElementById('historyClose');
 const historyClear = document.getElementById('historyClear');
+const tvChannelManagerOverlay = document.getElementById('tvChannelManagerOverlay');
+const tvChannelManagerClose = document.getElementById('tvChannelManagerClose');
+const tvChannelManagerList = document.getElementById('tvChannelManagerList');
+const tvChannelManagerSearch = document.getElementById('tvChannelManagerSearch');
+const tvChannelManagerSources = document.getElementById('tvChannelManagerSources');
+const tvChannelViewAll = document.getElementById('tvChannelViewAll');
+const tvChannelViewFavorites = document.getElementById('tvChannelViewFavorites');
+const tvFavoriteSortToggle = document.getElementById('tvFavoriteSortToggle');
+let tvChannelView = 'all';
+let tvFavoriteSortMode = false;
+let tvChannelManagerReturnFocus = null;
 
 // TV DOM references
 const tvSidebar = document.getElementById('tvSidebar');
@@ -197,6 +209,64 @@ const epgDetailClose = document.getElementById('epgDetailClose');
 const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
 dashboardEpgOpen.addEventListener('click', openEpgView);
+
+function openTvChannelManager() {
+  if (!tvChannelManagerOverlay) return;
+  tvChannelManagerReturnFocus = document.activeElement;
+  if (!tvSelectedSourceIds.length && tvSources.length) tvSelectedSourceIds = tvSources.map(s => s.id);
+  tvChannelManagerOverlay.classList.add('open');
+  tvChannelManagerOverlay.setAttribute('aria-hidden', 'false');
+  dashboardTvManage.setAttribute('aria-expanded', 'true');
+  tvFavoriteSortMode = false;
+  tvFavoriteSortToggle.textContent = 'Reihenfolge bearbeiten';
+  renderTvManagerSources();
+  renderTvChannels();
+  tvChannelManagerSearch.focus();
+}
+
+function closeTvChannelManager() {
+  if (!tvChannelManagerOverlay) return;
+  tvChannelManagerOverlay.classList.remove('open');
+  tvChannelManagerOverlay.setAttribute('aria-hidden', 'true');
+  dashboardTvManage.setAttribute('aria-expanded', 'false');
+  tvFavoriteSortMode = false;
+  if (tvChannelManagerReturnFocus && typeof tvChannelManagerReturnFocus.focus === 'function') {
+    tvChannelManagerReturnFocus.focus();
+  }
+  tvChannelManagerReturnFocus = null;
+}
+
+dashboardTvManage.addEventListener('click', openTvChannelManager);
+tvChannelManagerClose.addEventListener('click', closeTvChannelManager);
+tvChannelManagerOverlay.addEventListener('click', e => {
+  if (e.target === tvChannelManagerOverlay) closeTvChannelManager();
+});
+tvChannelViewAll.addEventListener('click', () => {
+  tvChannelView = 'all';
+  tvChannelViewAll.classList.add('active');
+  tvChannelViewFavorites.classList.remove('active');
+  tvChannelViewAll.setAttribute('aria-selected', 'true');
+  tvChannelViewFavorites.setAttribute('aria-selected', 'false');
+  renderTvChannels();
+});
+tvChannelViewFavorites.addEventListener('click', () => {
+  tvChannelView = 'favorites';
+  tvChannelViewFavorites.classList.add('active');
+  tvChannelViewAll.classList.remove('active');
+  tvChannelViewFavorites.setAttribute('aria-selected', 'true');
+  tvChannelViewAll.setAttribute('aria-selected', 'false');
+  renderTvChannels();
+});
+tvFavoriteSortToggle.addEventListener('click', () => {
+  tvFavoriteSortMode = !tvFavoriteSortMode;
+  tvFavoriteSortToggle.textContent = tvFavoriteSortMode ? 'Sortieren beenden' : 'Reihenfolge bearbeiten';
+  renderTvChannels();
+});
+tvChannelManagerSearch.addEventListener('input', () => {
+  tvSearchFilter = tvChannelManagerSearch.value;
+  renderTvChannels();
+});
+
 dashboardTvRefresh.addEventListener('click', async () => {
   dashboardTvRefresh.disabled = true;
   dashboardTvRefresh.textContent = 'Wird aktualisiert…';
@@ -452,8 +522,21 @@ function renderLiveTvTile(ch) {
   return tile;
 }
 
+function getOrderedFavoriteChannels(channels = tvChannels) {
+  return channels
+    .filter(ch => isFavorite(ch, tvSources))
+    .slice()
+    .sort((a, b) => {
+      const sourceA = tvSources.find(s => s.id === a.sourceId);
+      const sourceB = tvSources.find(s => s.id === b.sourceId);
+      const orderA = sourceA?.favorites?.indexOf(a.id) ?? -1;
+      const orderB = sourceB?.favorites?.indexOf(b.id) ?? -1;
+      return (orderA < 0 ? Number.MAX_SAFE_INTEGER : orderA) - (orderB < 0 ? Number.MAX_SAFE_INTEGER : orderB);
+    });
+}
+
 function renderLiveTvDashboard() {
-  const favorites = tvChannels.filter(ch => isFavorite(ch, tvSources));
+  const favorites = getOrderedFavoriteChannels();
   dashboardTvActions.hidden = false;
   dashboardGrid.innerHTML = '';
   dashboardEpg.style.display = '';
@@ -1160,17 +1243,22 @@ function updateEpgStatus() {
   renderTvStatus();
 }
 
-function renderSourcePills() {
-  tvSidebarSources.innerHTML = '';
+function renderTvManagerSources() {
+  tvChannelManagerSources.innerHTML = '';
   tvSources.forEach(src => {
-    const pill = document.createElement('span');
+    const pill = document.createElement('button');
+    pill.type = 'button';
     const isActive = tvSelectedSourceIds.includes(src.id);
     pill.className = 'tv-source-pill' + (isActive ? ' active' : '');
     pill.innerHTML = `<span class="tv-source-pill-dot"></span>${escapeHtml(src.name)}`;
     pill.querySelector('.tv-source-pill-dot').style.background = safeColor(src.color, '#a78bfa');
     pill.addEventListener('click', () => toggleSource(src.id));
-    tvSidebarSources.appendChild(pill);
+    tvChannelManagerSources.appendChild(pill);
   });
+}
+
+function renderSourcePills() {
+  renderTvManagerSources();
 }
 
 function toggleSource(sourceId) {
@@ -1198,6 +1286,7 @@ function toggleFavorite(ch) {
   }
   window.electronAPI.updateTvSource(source.id, { favorites: source.favorites });
   renderTvChannels();
+  if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
 }
 
 async function refreshEpg() {
@@ -1241,6 +1330,7 @@ function renderTvChannelItem(ch, showFav) {
   const srcColor = srcIdx !== -1 ? tvSources[srcIdx].color || '#a78bfa' : '#a78bfa';
   const fav = isFavorite(ch, tvSources);
   const isMultiSource = tvSelectedSourceIds.length > 1;
+  const canReorder = tvFavoriteSortMode && fav;
 
   const safeLogo = safeResourceUrl(ch.logo);
   item.innerHTML = `
@@ -1252,8 +1342,8 @@ function renderTvChannelItem(ch, showFav) {
       </div>
       <div class="tv-channel-epg">${currentEpg ? escapeHtml(decodeEntities(currentEpg.title)) : tvEpgStatus === 'loading' ? 'EPG wird geladen…' : tvEpgStatus === 'error' ? 'EPG konnte nicht geladen werden' : tvEpgStatus === 'unavailable' ? 'Keine EPG-Quelle' : 'Kein aktuelles Programm'}</div>
     </div>
-    <span class="tv-channel-fav ${fav ? 'active' : ''}" title="Favorit">${fav ? '★' : '☆'}</span>
-    <span class="tv-channel-drag" draggable="true">⠿</span>
+    <button class="tv-channel-fav ${fav ? 'active' : ''}" type="button" title="${fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}" aria-label="${fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}" aria-pressed="${fav}">${fav ? '★' : '☆'}</button>
+    <span class="tv-channel-drag ${canReorder ? 'visible' : ''}" draggable="${canReorder}">⠿</span>
   `;
   const logo = item.querySelector('.tv-channel-logo');
   if (safeLogo) logo.src = safeLogo;
@@ -1271,6 +1361,8 @@ function renderTvChannelItem(ch, showFav) {
   });
 
   const dragHandle = item.querySelector('.tv-channel-drag');
+  if (!canReorder) return item;
+
   dragHandle.addEventListener('dragstart', e => {
     e.dataTransfer.setData('text/plain', ch.id);
     item.classList.add('dragging');
@@ -1299,71 +1391,64 @@ function renderTvChannelItem(ch, showFav) {
 }
 
 function renderTvChannels() {
-  tvSidebarChannels.innerHTML = '';
+  const container = tvChannelManagerList;
+  if (!container) return;
+  container.innerHTML = '';
 
   if (!tvChannels.length) {
-    tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Keine Sender geladen.</div>';
+    container.innerHTML = '<div class="tv-sidebar-empty">Keine Sender geladen.</div>';
     return;
   }
 
   const filtered = filterChannels(tvChannels, tvSelectedSourceIds, tvSearchFilter);
+  const visibleChannels = tvChannelView === 'favorites' ? filtered.filter(ch => isFavorite(ch, tvSources)) : filtered;
 
-  if (!filtered.length) {
-    tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Keine Sender gefunden.</div>';
+  if (!visibleChannels.length) {
+    container.innerHTML = `<div class="tv-sidebar-empty">${tvChannelView === 'favorites' ? 'Keine Favoriten vorhanden.' : 'Keine Sender gefunden.'}</div>`;
     return;
   }
 
-  // Separate favorites + group channels via typed-core
-  const { favorites: favoriteChannels, regular: regularChannels } = separateFavorites(filtered, tvSources);
-  const groups = groupChannels(regularChannels);
-
+  const { favorites: favoriteChannels, regular: regularChannels } = separateFavorites(visibleChannels, tvSources);
+  const orderedFavorites = getOrderedFavoriteChannels(favoriteChannels);
+  const groups = groupChannels(tvChannelView === 'favorites' ? [] : regularChannels);
   const groupNames = Object.keys(groups).sort((a, b) => a.localeCompare(b));
 
-  // Render favorites group first (if any)
-  if (favoriteChannels.length) {
+  if (orderedFavorites.length) {
     const groupEl = document.createElement('div');
     groupEl.className = 'tv-channel-group';
     const favHeader = document.createElement('div');
     favHeader.className = 'tv-channel-group-header';
-    favHeader.innerHTML = `<span class="tv-channel-group-arrow">▼</span> Favoriten (${favoriteChannels.length})`;
+    favHeader.innerHTML = `<span class="tv-channel-group-arrow">▼</span> Favoriten (${orderedFavorites.length})`;
     groupEl.appendChild(favHeader);
     const favContent = document.createElement('div');
     favContent.className = 'tv-channel-group-content';
-    favoriteChannels.forEach(ch => favContent.appendChild(renderTvChannelItem(ch, true)));
+    orderedFavorites.forEach(ch => favContent.appendChild(renderTvChannelItem(ch, true)));
     groupEl.appendChild(favContent);
-    tvSidebarChannels.appendChild(groupEl);
+    container.appendChild(groupEl);
   }
 
   groupNames.forEach(groupName => {
     const groupEl = document.createElement('div');
     groupEl.className = 'tv-channel-group';
-
     const header = document.createElement('div');
     header.className = 'tv-channel-group-header';
     if (tvCollapsedGroups[groupName]) header.classList.add('collapsed');
-    const totalInGroup = tvChannels.filter(
-      c => c.group === groupName && tvSelectedSourceIds.includes(c.sourceId),
-    ).length;
+    const totalInGroup = tvChannels.filter(c => c.group === groupName && tvSelectedSourceIds.includes(c.sourceId)).length;
     const showCount = groups[groupName].length;
     const countStr = showCount < totalInGroup ? `${showCount}/${totalInGroup}` : String(totalInGroup);
     header.innerHTML = `<span class="tv-channel-group-arrow">▼</span> ${escapeHtml(groupName)} (${countStr})`;
     header.addEventListener('click', () => {
       header.classList.toggle('collapsed');
       tvCollapsedGroups[groupName] = header.classList.contains('collapsed');
-      try {
-        localStorage.setItem('tv-collapsed-groups', JSON.stringify(tvCollapsedGroups));
-      } catch {}
+      try { localStorage.setItem('tv-collapsed-groups', JSON.stringify(tvCollapsedGroups)); } catch {}
     });
     groupEl.appendChild(header);
-
     const content = document.createElement('div');
     content.className = 'tv-channel-group-content';
     if (tvCollapsedGroups[groupName]) content.style.display = 'none';
-
     groups[groupName].forEach(ch => content.appendChild(renderTvChannelItem(ch, false)));
-
     groupEl.appendChild(content);
-    tvSidebarChannels.appendChild(groupEl);
+    container.appendChild(groupEl);
   });
 }
 
@@ -1575,6 +1660,26 @@ function saveTvChEditor() {
 }
 
 function reorderChannel(draggedId, targetId) {
+  const dragged = tvChannels.find(ch => ch.id === draggedId);
+  const target = tvChannels.find(ch => ch.id === targetId);
+  if (!dragged || !target) return;
+
+  if (tvFavoriteSortMode && isFavorite(dragged, tvSources) && isFavorite(target, tvSources)) {
+    const source = tvSources.find(s => s.id === dragged.sourceId);
+    if (!source || source.id !== target.sourceId) return;
+    const favorites = Array.isArray(source.favorites) ? source.favorites : [];
+    const fromIdx = favorites.indexOf(draggedId);
+    const toIdx = favorites.indexOf(targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = favorites.splice(fromIdx, 1);
+    favorites.splice(toIdx, 0, moved);
+    source.favorites = favorites;
+    window.electronAPI.updateTvSource(source.id, { favorites });
+    renderTvChannels();
+    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
+    return;
+  }
+
   const fromIdx = tvChannels.findIndex(c => c.id === draggedId);
   const toIdx = tvChannels.findIndex(c => c.id === targetId);
   if (fromIdx === -1 || toIdx === -1) return;
@@ -1582,7 +1687,6 @@ function reorderChannel(draggedId, targetId) {
   tvChannels.splice(toIdx, 0, moved);
   renderTvChannels();
 
-  // Persist the new sort order per source
   const sourceIds = [...new Set(tvChannels.map(c => c.sourceId))];
   sourceIds.forEach(sid => {
     const order = tvChannels.filter(c => c.sourceId === sid).map(c => c.id);
@@ -1595,6 +1699,7 @@ function reorderChannel(draggedId, targetId) {
 }
 
 async function selectTvChannel(ch, options = {}) {
+  closeTvChannelManager();
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
   tvActiveChannelId = ch.id;
@@ -2517,6 +2622,10 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
     }
     if (historyOverlay.classList.contains('open')) {
       closeHistory();
+      return true;
+    }
+    if (tvChannelManagerOverlay.classList.contains('open')) {
+      closeTvChannelManager();
       return true;
     }
     // Don't consume Escape if nothing is open (let webview handle it)

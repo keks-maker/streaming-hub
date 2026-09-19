@@ -76,6 +76,7 @@
         </div>
         <div class="dashboard-tv-actions" id="dashboardTvActions" hidden>
           <span class="dashboard-tv-status" id="dashboardTvStatus" aria-live="polite"></span>
+          <button class="dashboard-section-action" id="dashboardTvManage" type="button">Alle Sender</button>
           <button class="dashboard-section-action" id="dashboardTvStatusBtn" type="button">Status</button>
           <button class="dashboard-section-action" id="dashboardTvRefresh" type="button">EPG aktualisieren</button>
           <span class="dashboard-count" id="dashboardCount"></span>
@@ -100,6 +101,30 @@
     <div class="dashboard-player" id="dashboardPlayer" style="display:none">
       <button class="dashboard-player-close" id="dashboardPlayerClose" type="button" aria-label="Vollbild schließen">&times;</button>
       <div class="dashboard-player-stage" id="dashboardPlayerStage"></div>
+    </div>
+
+    <div class="tv-channel-manager-overlay" id="tvChannelManagerOverlay" aria-hidden="true">
+      <section class="tv-channel-manager" role="dialog" aria-modal="true" aria-labelledby="tvChannelManagerTitle">
+        <div class="tv-channel-manager-header">
+          <div>
+            <span class="dashboard-eyebrow">LiveTV</span>
+            <h2 id="tvChannelManagerTitle">Sender auswählen</h2>
+          </div>
+          <button class="modal-close" id="tvChannelManagerClose" type="button" aria-label="Senderliste schließen">&times;</button>
+        </div>
+        <div class="tv-channel-manager-toolbar">
+          <div class="tv-channel-manager-tabs" role="tablist" aria-label="Senderansicht">
+            <button class="tv-channel-manager-tab active" id="tvChannelViewAll" type="button" role="tab" aria-selected="true">Alle Sender</button>
+            <button class="tv-channel-manager-tab" id="tvChannelViewFavorites" type="button" role="tab" aria-selected="false">Favoriten</button>
+          </div>
+          <button class="dashboard-section-action" id="tvFavoriteSortToggle" type="button">Reihenfolge bearbeiten</button>
+        </div>
+        <div class="tv-channel-manager-filters">
+          <input class="modal-input" id="tvChannelManagerSearch" type="search" placeholder="Sender suchen…" autocomplete="off">
+          <div class="tv-source-pills" id="tvChannelManagerSources" aria-label="TV-Quellen"></div>
+        </div>
+        <div class="tv-channel-manager-list" id="tvChannelManagerList"></div>
+      </section>
     </div>
 
     <div class="welcome-screen" id="welcomeScreen">

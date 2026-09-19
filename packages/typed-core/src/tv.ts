@@ -34,22 +34,17 @@ export function isFavorite(ch: TvChannel, sources: TvSource[]): boolean {
 // ─── Zapping-Reihenfolge (W3) ──────────────────────────────────
 //
 // ArrowUp/Down zappt konsistent über ALLE Sender des aktiven Quellservices
-// (Favoriten sind kein eigenes Zapping-Universum mehr). Die Reihenfolge ist
-// immer die Sidebar-/sortOrder-Reihenfolge:
-//   erst Favoriten (in Listenreihenfolge), dann Rest (in Listenreihenfolge).
-// Der aktive Sender ist damit immer Teil der Reihenfolge – Zapping startet
-// dort, wo man gerade ist, statt still zu versagen.
+// (Favoriten sind kein eigenes Zapping-Universum mehr). Favoriten folgen dabei
+// ihrer explizit gespeicherten Reihenfolge; nicht favorisierte Sender behalten
+// die Reihenfolge der geladenen Sender. Der aktive Sender ist damit immer Teil
+// der Reihenfolge – Zapping startet dort, wo man gerade ist.
 export function buildZapOrder(channels: TvChannel[], sources: TvSource[]): string[] {
-  const favIds = new Set<string>();
-  for (const ch of channels) {
-    if (isFavorite(ch, sources)) favIds.add(ch.id);
-  }
-  const favorites: string[] = [];
-  const regular: string[] = [];
-  for (const ch of channels) {
-    (favIds.has(ch.id) ? favorites : regular).push(ch.id);
-  }
-  return [...favorites, ...regular];
+  const source = channels.length ? sources.find(s => s.id === channels[0]!.sourceId) : undefined;
+  const channelIds = new Set(channels.map(ch => ch.id));
+  const favoriteIds = (source?.favorites ?? []).filter(id => channelIds.has(id));
+  const favoriteSet = new Set(favoriteIds);
+  const regular = channels.filter(ch => !favoriteSet.has(ch.id)).map(ch => ch.id);
+  return [...favoriteIds, ...regular];
 }
 
 export function filterChannels(
