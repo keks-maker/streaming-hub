@@ -98,6 +98,33 @@ body {
   pointer-events: auto;
 }
 
+/* The start page already contains navigation tiles. */
+.overlay-bar.start-page {
+  display: none;
+}
+
+.overlay-bar.start-page .overlay-nav {
+  display: none;
+}
+
+.dashboard-view.start-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dashboard-view.start-page .dashboard-grid {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.dashboard-view.start-page .dashboard-tile {
+  min-height: 0;
+  height: 100%;
+}
+
 .nav-divider {
   width: 1px;
   height: 28px;
