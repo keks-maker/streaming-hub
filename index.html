@@ -1,0 +1,435 @@
+<!-- v0.3.7. – Zurück-Button in der Top-Bar -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: https:; connect-src 'self' https:; frame-src https:; object-src 'none'; base-uri 'self';">
+  <title>Streaming Hub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="overlay-bar always-visible" id="overlayBar">
+    <button class="back-btn" id="backBtn" title="Zurück (Alt+←)" style="display:none">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+    </button>
+    <span class="overlay-location" id="overlayLocation">Startseite</span>
+    <nav class="overlay-nav" id="overlayNav">
+    </nav>
+    <div class="overlay-actions">
+      <button class="add-btn" id="historyBtn" title="Verlauf (Strg+H)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <polyline points="12,7 12,12 16,14"/>
+        </svg>
+      </button>
+      <button class="settings-btn" id="settingsBtn" title="Einstellungen">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button class="update-btn" id="updateBtn" title="Update prüfen">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline class="path-check" points="8 13 11 16 16 9"/>
+          <g class="path-arrow">
+            <polyline points="8 14 12 18 16 14"/>
+            <line x1="12" y1="6" x2="12" y2="18"/>
+          </g>
+        </svg>
+      </button>
+      <button class="pip-btn" id="pipBtn" title="Bild-in-Bild (Strg+P)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <rect x="11" y="9" width="9" height="6" rx="1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="content-area" id="contentArea">
+    <webview id="contentView" class="content-view"
+             src="about:blank"
+             partition="persist:streaming"
+             preload="preload-content.js"
+             plugins>
+    </webview>
+    <webview id="tvView" class="tv-view"
+             src="about:blank"
+             partition="persist:tv"
+             preload="preload-content.js"
+             plugins>
+    </webview>
+    <div id="errorOverlay" class="error-overlay" style="display:none">
+      <div class="error-overlay-content">
+        <span id="errorMsg" class="error-msg"></span>
+        <button id="errorReloadBtn" class="error-reload-btn">↻ Neu laden</button>
+      </div>
+    </div>
+    <div class="dashboard-view" id="dashboardView" style="display:none">
+      <div class="dashboard-header">
+        <div>
+          <span class="dashboard-eyebrow" id="dashboardEyebrow">Streaming Hub</span>
+          <h1 class="dashboard-title" id="dashboardTitle">LiveTV</h1>
+        </div>
+        <div class="dashboard-tv-actions" id="dashboardTvActions" hidden>
+          <span class="dashboard-tv-status" id="dashboardTvStatus" aria-live="polite"></span>
+          <button class="dashboard-section-action" id="dashboardTvManage" type="button">Alle Sender</button>
+          <button class="dashboard-section-action" id="dashboardTvStatusBtn" type="button">Status</button>
+          <button class="dashboard-section-action" id="dashboardTvRefresh" type="button">EPG aktualisieren</button>
+          <span class="dashboard-count" id="dashboardCount"></span>
+        </div>
+      </div>
+      <div class="dashboard-grid" id="dashboardGrid"></div>
+      <section class="dashboard-epg" id="dashboardEpg" style="display:none">
+        <div class="dashboard-section-heading">
+          <div>
+            <span class="dashboard-eyebrow">Programmübersicht</span>
+            <h2 class="dashboard-section-title">Jetzt im TV</h2>
+          </div>
+          <div class="dashboard-section-actions">
+            <button class="dashboard-section-action" id="dashboardEpgRefresh" type="button">EPG aktualisieren</button>
+            <button class="dashboard-section-action" id="dashboardEpgOpen" type="button">EPG öffnen</button>
+          </div>
+        </div>
+        <div class="dashboard-epg-list" id="dashboardEpgList"></div>
+      </section>
+      <div class="dashboard-empty" id="dashboardEmpty" style="display:none"></div>
+      <div class="settings-panel-host" id="settingsPanelHost" hidden></div>
+    </div>
+    <div class="dashboard-player" id="dashboardPlayer" style="display:none">
+      <button class="dashboard-player-close" id="dashboardPlayerClose" type="button" aria-label="Vollbild schließen">&times;</button>
+      <div class="dashboard-player-stage" id="dashboardPlayerStage"></div>
+    </div>
+
+    <div class="tv-channel-manager-overlay" id="tvChannelManagerOverlay" aria-hidden="true">
+      <section class="tv-channel-manager" role="dialog" aria-modal="true" aria-labelledby="tvChannelManagerTitle">
+        <div class="tv-channel-manager-header">
+          <div>
+            <span class="dashboard-eyebrow">LiveTV</span>
+            <h2 id="tvChannelManagerTitle">Sender auswählen</h2>
+          </div>
+          <button class="modal-close" id="tvChannelManagerClose" type="button" aria-label="Senderliste schließen">&times;</button>
+        </div>
+        <div class="tv-channel-manager-toolbar">
+          <div class="tv-channel-manager-tabs" role="tablist" aria-label="Senderansicht">
+            <button class="tv-channel-manager-tab active" id="tvChannelViewAll" type="button" role="tab" aria-selected="true">Alle Sender</button>
+            <button class="tv-channel-manager-tab" id="tvChannelViewFavorites" type="button" role="tab" aria-selected="false">Favoriten</button>
+          </div>
+          <button class="dashboard-section-action" id="tvFavoriteSortToggle" type="button">Reihenfolge bearbeiten</button>
+        </div>
+        <div class="tv-channel-manager-filters">
+          <input class="modal-input" id="tvChannelManagerSearch" type="search" placeholder="Sender suchen…" autocomplete="off">
+          <div class="tv-source-pills" id="tvChannelManagerSources" aria-label="TV-Quellen"></div>
+        </div>
+        <div class="tv-channel-manager-list" id="tvChannelManagerList"></div>
+      </section>
+    </div>
+
+    <div class="welcome-screen" id="welcomeScreen">
+      <div class="welcome-bg" id="welcomeBg"></div>
+
+      <div class="welcome-arrow-wrap">
+        <svg class="welcome-arrow" viewBox="0 0 40 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="ag" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#fff" stop-opacity=".08"/>
+              <stop offset="50%" stop-color="#fff" stop-opacity=".3"/>
+              <stop offset="100%" stop-color="#fff" stop-opacity=".7"/>
+            </linearGradient>
+            <linearGradient id="ag2" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#a78bfa" stop-opacity="0"/>
+              <stop offset="70%" stop-color="#a78bfa" stop-opacity=".5"/>
+              <stop offset="100%" stop-color="#a78bfa" stop-opacity=".9"/>
+            </linearGradient>
+          </defs>
+          <line x1="20" y1="50" x2="20" y2="240" stroke="url(#ag)" stroke-width="4" stroke-dasharray="6 5"/>
+          <line x1="20" y1="50" x2="20" y2="240" stroke="url(#ag2)" stroke-width="2" stroke-dasharray="6 5"/>
+          <polyline points="4,70 20,45 36,70" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+          <polyline points="10,59 20,45 30,59" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+        </svg>
+      </div>
+
+      <p class="welcome-text">Hier kannst du einen Streamingdienst<br>mit der Maus ausw&auml;hlen.</p>
+      <div class="welcome-shortcuts">
+        <span class="ws-row"><kbd>Strg</kbd>+<kbd>Tab</kbd> nächster Dienst</span>
+        <span class="ws-row"><kbd>Alt</kbd>+<kbd>←</kbd> Zurück</span>
+        <span class="ws-row"><kbd>Strg</kbd>+<kbd>H</kbd> Verlauf</span>
+        <span class="ws-row"><kbd>Strg</kbd>+<kbd>T</kbd> TV</span>
+        <span class="ws-row"><kbd>Strg</kbd>+<kbd>P</kbd> Bild-in-Bild</span>
+        <span class="ws-row"><kbd>F11</kbd> Vollbild</span>
+        <span class="ws-row"><kbd>?</kbd> alle Kürzel</span>
+      </div>
+    </div>
+    <span class="nav-reveal-hint" aria-hidden="true">⌃</span>
+    <span class="version-tag" id="versionTag"></span>
+  </div>
+
+  <!-- Shortcuts Overlay -->
+  <div class="shortcuts-overlay" id="shortcutsOverlay">
+    <div class="shortcuts-panel">
+      <div class="shortcuts-header">Tastaturkürzel</div>
+      <div class="shortcuts-list">
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Nächster Dienst</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>Umsch</kbd> + <kbd>Tab</kbd></span><span class="shortcut-desc">Vorheriger Dienst</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>←</kbd></span><span class="shortcut-desc">Zurück (vorherige Ansicht)</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>H</kbd></span><span class="shortcut-desc">Verlauf anzeigen</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>T</kbd></span><span class="shortcut-desc">TV Sidebar umschalten</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Strg</kbd> + <kbd>P</kbd></span><span class="shortcut-desc">Bild-in-Bild umschalten</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>F11</kbd></span><span class="shortcut-desc">Vollbild umschalten</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span class="shortcut-desc">Diese Übersicht</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Escape</kbd></span><span class="shortcut-desc">Modal / Overlay schließen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Overlay -->
+  <div class="history-overlay" id="historyOverlay">
+    <div class="history-panel">
+      <div class="history-header">
+        <span>Verlauf</span>
+        <div class="history-header-actions">
+          <button class="history-clear" id="historyClear">Löschen</button>
+          <button class="history-close" id="historyClose">&times;</button>
+        </div>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Noch keine Einträge.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TV Sources Modal -->
+  <div class="modal-overlay" id="tvModalOverlay">
+    <div class="modal" id="tvModal">
+      <div class="modal-header">
+        <span class="modal-title">TV-Quellen verwalten</span>
+        <button class="modal-close" id="tvModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tv-source-list" id="tvSourceList"></div>
+        <div class="modal-divider"></div>
+        <label class="modal-label">Quellen-Name</label>
+        <input class="modal-input" id="tvInputName" type="text" placeholder="z.B. Deutsche Sender">
+
+        <label class="modal-label">M3U-URL</label>
+        <div class="tv-url-row">
+          <input class="modal-input tv-url-input" id="tvInputUrl" type="url" placeholder="https://example.com/playlist.m3u">
+          <button class="tv-file-btn" id="tvFileBtn" title="Lokale Datei auswählen">📁</button>
+        </div>
+
+        <label class="modal-label">EPG-URL (optional)</label>
+        <input class="modal-input" id="tvInputEpgUrl" type="url" placeholder="https://example.com/epg.xml">
+
+        <label class="modal-label">Akzentfarbe</label>
+        <input class="modal-color" id="tvInputColor" type="color" value="#a78bfa">
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-save" id="tvModalSave">Hinzufügen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TV Channel Editor Modal -->
+  <div class="modal-overlay" id="tvChModalOverlay">
+    <div class="modal tv-ch-modal" id="tvChModal">
+      <div class="modal-header">
+        <span class="modal-title">Sender bearbeiten</span>
+        <button class="modal-close" id="tvChModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tv-ch-search">
+          <input class="modal-input" id="tvChSearch" type="text" placeholder="Sender filtern..." autocomplete="off">
+        </div>
+        <div class="tv-ch-list" id="tvChList"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="tv-ch-status" id="tvChStatus"></span>
+        <button class="modal-btn modal-btn-save" id="tvChModalSave">Änderungen speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings dashboard panel -->
+  <section class="settings-panel" id="settingsPanel" aria-labelledby="settingsTitle" hidden>
+    <div class="modal-header">
+      <h2 class="modal-title" id="settingsTitle">Einstellungen</h2>
+    </div>
+    <div class="modal-body settings-body">
+        <button class="settings-action-btn" id="backupBtn">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Backup erstellen
+        </button>
+        <button class="settings-action-btn" id="restoreBtn">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Backup einspielen
+        </button>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <span class="settings-section-title">Dienste verwalten</span>
+            <button class="settings-add-dienst-btn" id="settingsAddDienstBtn" title="Dienst hinzufügen">+</button>
+          </div>
+
+          <div class="settings-service-group">
+            <span class="settings-service-group-label">Streamingdienste</span>
+            <div class="service-list" id="settingsServiceListStreaming"></div>
+          </div>
+
+          <div class="settings-service-group">
+            <span class="settings-service-group-label">Mediatheken</span>
+            <div class="service-list" id="settingsServiceListMediathek"></div>
+          </div>
+
+          <div class="settings-add-form" id="settingsAddForm" style="display:none">
+            <input class="modal-input" id="settingsInputName" type="text" placeholder="Name">
+            <input class="modal-input" id="settingsInputUrl" type="url" placeholder="URL (z.B. https://www.netflix.com)">
+            <input class="modal-input" id="settingsInputIcon" type="text" placeholder="Icon (URL oder Dateiname)">
+            <div class="settings-add-row">
+              <input class="modal-color" id="settingsInputColor" type="color" value="#6c5ce7">
+              <select class="settings-group-select" id="settingsInputGroup">
+                <option value="streaming">Streamingdienst</option>
+                <option value="mediathek">Mediathek</option>
+              </select>
+              <button class="modal-btn modal-btn-save" id="settingsAddSave">Hinzufügen</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section settings-tv-section">
+          <span class="settings-section-title">LiveTV verwalten</span>
+          <div class="settings-tv-actions">
+            <button class="settings-action-btn" id="settingsTvSourcesBtn" type="button">TV-Quellen verwalten</button>
+            <button class="settings-action-btn" id="settingsTvChannelsBtn" type="button">Sender bearbeiten</button>
+            <button class="settings-action-btn" id="settingsEpgRefreshBtn" type="button">EPG aktualisieren</button>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <span class="settings-section-title">TV-Modus</span>
+          <label class="tv-mode-label">
+            <input type="radio" name="tvMode" value="free" checked> FreeTV (Sidebar + eigene Sender)
+          </label>
+          <label class="tv-mode-label">
+            <input type="radio" name="tvMode" value="magenta"> MagentaTV (web.magentatv.de)
+          </label>
+        </div>
+
+        <div class="settings-status" id="settingsStatus"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TV management retained for settings, never shown as navigation -->
+  <div class="tv-sidebar" id="tvSidebar" aria-hidden="true" hidden>
+    <div class="tv-sidebar-header">
+      <span class="tv-sidebar-title">TV Sender</span>
+      <div class="tv-sidebar-actions">
+        <button class="tv-sidebar-manage" id="tvSidebarSourcesRefresh" title="TV-Quellen aktualisieren" aria-label="TV-Quellen aktualisieren">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 11a8.1 8.1 0 0 0-14.9-3L3 11"/><path d="M3 4v7h7"/><path d="M4 13a8.1 8.1 0 0 0 14.9 3L21 13"/><path d="M21 20v-7h-7"/>
+          </svg>
+        </button>
+        <button class="tv-sidebar-manage" id="tvSidebarEpgRefresh" title="EPG aktualisieren" aria-label="EPG aktualisieren">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
+        <button class="tv-sidebar-manage" id="tvSidebarManage" title="Quellen verwalten">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 4.68-15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <button class="tv-sidebar-manage" id="tvSidebarEdit" title="Sender bearbeiten">✎</button>
+      </div>
+    </div>
+    <div class="tv-sidebar-sources" id="tvSidebarSources"></div>
+    <div class="tv-sidebar-status" id="tvSidebarStatus" aria-live="polite"></div>
+    <div class="tv-sidebar-epg-bar">
+      <button class="tv-sidebar-epg-btn" id="tvSidebarEpgBtn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+        EPG-Programmübersicht
+      </button>
+    </div>
+    <div class="tv-sidebar-search" id="tvSidebarSearch">
+      <input class="tv-search-input" id="tvSearchInput" type="text" placeholder="Sender suchen..." autocomplete="off">
+    </div>
+    <div class="tv-sidebar-channels" id="tvSidebarChannels">
+      <div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>
+    </div>
+  </div>
+  <div class="tv-sidebar-trigger" id="tvSidebarTrigger" hidden></div>
+
+  <!-- EPG Full Screen Overlay -->
+  <div class="epg-overlay" id="epgOverlay" style="display:none">
+    <div class="epg-header">
+      <div class="epg-header-left">
+        <div class="epg-timeslots">
+          <button class="epg-slot-btn" data-hours="2">2h</button>
+          <button class="epg-slot-btn" data-hours="4">4h</button>
+          <button class="epg-slot-btn active" data-hours="8">8h</button>
+          <button class="epg-slot-btn" data-hours="12">12h</button>
+          <button class="epg-slot-btn" data-hours="24">24h</button>
+        </div>
+        <span class="epg-range-label" id="epgRangeLabel"></span>
+      </div>
+      <div class="epg-header-right">
+        <button class="epg-refresh-btn" id="epgRefreshBtn" title="EPG aktualisieren">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
+        <button class="epg-close-btn" id="epgCloseBtn">&times;</button>
+      </div>
+    </div>
+    <div class="epg-body" id="epgBody">
+      <div class="epg-loading">EPG-Daten werden geladen...</div>
+    </div>
+  </div>
+
+  <!-- Update Overlay -->
+  <div class="update-overlay" id="updateOverlay">
+    <div class="update-card">
+      <div class="update-spinner"></div>
+      <div class="update-title" id="updateTitle">Update wird installiert…</div>
+      <div class="update-step" id="updateStep">Vorbereiten…</div>
+      <div class="update-progress-track">
+        <div class="update-progress-fill" id="updateProgressFill"></div>
+      </div>
+      <div class="update-note">Bitte warten, die App startet nach der Installation neu.</div>
+    </div>
+  </div>
+
+  <!-- EPG Detail Modal -->
+  <div class="epg-detail-backdrop" id="epgDetailBackdrop" style="display:none">
+    <div class="epg-detail-modal">
+      <div class="epg-detail-header">
+        <h3 class="epg-detail-title" id="epgDetailTitle"></h3>
+        <button class="epg-detail-close" id="epgDetailClose">&times;</button>
+      </div>
+      <div class="epg-detail-meta" id="epgDetailMeta"></div>
+      <div class="epg-detail-desc" id="epgDetailDesc"></div>
+      <div class="epg-detail-actions" id="epgDetailActions"></div>
+    </div>
+  </div>
+
+  <script src="node_modules/hls.js/dist/hls.min.js"></script>
+  <script src="dist/renderer.js"></script>
+</body>
+</html>
