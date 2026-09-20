@@ -580,6 +580,10 @@ function renderDashboardEpg(channels) {
 
 function renderStartDashboard() {
   currentDashboardGroup = null;
+  settingsPanel.hidden = true;
+  settingsPanelHost.hidden = true;
+  if (settingsPanel.parentNode !== settingsPanelPlaceholder.parentNode)
+    settingsPanelPlaceholder.parentNode.insertBefore(settingsPanel, settingsPanelPlaceholder.nextSibling);
   dashboardView.classList.remove('settings-dashboard');
   dashboardEyebrow.textContent = 'Streaming Hub';
   dashboardTitle.textContent = 'Was möchtest du sehen?';
@@ -604,8 +608,7 @@ function renderStartDashboard() {
     tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
     tile.addEventListener('click', () => {
       overlayBar.classList.remove('nav-collapsed');
-      if (section.key === 'settings') openSettings();
-      else showDashboard(section.key);
+      showDashboard(section.key);
     });
     dashboardGrid.appendChild(tile);
   });
@@ -622,30 +625,37 @@ function renderDashboard(groupKey) {
     renderStartDashboard();
     return;
   }
-  if (groupKey === 'settings') {
-    openSettings();
-    return;
-  }
   currentDashboardGroup = groupKey;
   dashboardView.classList.remove('start-page');
   overlayBar.classList.remove('start-page');
-  dashboardView.classList.remove('settings-dashboard');
+  dashboardView.classList.toggle('settings-dashboard', groupKey === 'settings');
   const isTv = groupKey === 'livetv';
-  const items = isTv ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
-  const title = isTv ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
-  dashboardEyebrow.textContent = isTv
-    ? 'Live Fernsehen'
-    : groupKey === 'mediathek'
-      ? 'Deine Mediatheken'
-      : 'Deine Streamingdienste';
+  const isSettings = groupKey === 'settings';
+  const items = isTv || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
+  const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+  dashboardEyebrow.textContent = isSettings
+    ? 'Streaming Hub'
+    : isTv
+      ? 'Live Fernsehen'
+      : groupKey === 'mediathek'
+        ? 'Deine Mediatheken'
+        : 'Deine Streamingdienste';
   dashboardTitle.textContent = title;
   dashboardTvActions.hidden = !isTv;
-  dashboardCount.textContent = isTv ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
-  dashboardGrid.setAttribute('aria-label', `${title}-Dienste`);
+  dashboardCount.textContent = isTv || isSettings ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
+  dashboardGrid.setAttribute('aria-label', title);
+  settingsPanelHost.hidden = groupKey !== 'settings';
   dashboardGrid.innerHTML = '';
   dashboardEpg.style.display = 'none';
   dashboardEmpty.style.display = 'none';
-  if (isTv) {
+  if (isSettings) {
+    settingsPanelHost.hidden = false;
+    renderSettingsServices();
+    settingsAddForm.style.display = 'none';
+    document.querySelector('input[name="tvMode"][value="' + tvMode + '"]').checked = true;
+    settingsPanel.hidden = false;
+    settingsPanelHost.appendChild(settingsPanel);
+  } else if (isTv) {
     renderLiveTvDashboard();
   } else if (!items.length) {
     dashboardEmpty.textContent = 'Keine Dienste konfiguriert.';
@@ -674,7 +684,13 @@ function showDashboard(groupKey) {
   webview = contentView;
   renderDashboard(groupKey);
   overlayLocation.textContent =
-    groupKey === 'livetv' ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+    groupKey === 'settings'
+      ? 'Einstellungen'
+      : groupKey === 'livetv'
+        ? 'LiveTV'
+        : groupKey === 'mediathek'
+          ? 'Mediatheken'
+          : 'Streaming';
   overlayBar.classList.add('always-visible');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   if (tvSidebarOpen) closeTvSidebar();
@@ -717,7 +733,8 @@ function renderNav() {
   settingsItem.type = 'button';
   settingsItem.title = 'Einstellungen';
   settingsItem.innerHTML = `<span class="nav-section-icon">⚙</span><span class="nav-section-label">Einstellungen</span>`;
-  settingsItem.addEventListener('click', openSettings);
+  settingsItem.dataset.section = 'settings';
+  settingsItem.addEventListener('click', () => showDashboard('settings'));
   nav.appendChild(settingsItem);
   tvBtn = nav.querySelector('[data-section="livetv"]');
 }
@@ -2617,8 +2634,8 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
       closeTvModal();
       return true;
     }
-    if (settingsOverlay.classList.contains('open')) {
-      closeSettings();
+    if (currentDashboardGroup === 'settings') {
+      goToStartPage();
       return true;
     }
     if (tvSidebarOpen) {
@@ -2710,8 +2727,8 @@ document.addEventListener('keydown', e => {
       if (shortcutsOverlay.classList.contains('open')) {
         shortcutsOverlay.classList.remove('open');
         e.preventDefault();
-      } else if (settingsOverlay.classList.contains('open')) {
-        closeSettings();
+      } else if (currentDashboardGroup === 'settings') {
+        goToStartPage();
         e.preventDefault();
       } else if (historyOverlay.classList.contains('open')) {
         closeHistory();
@@ -2864,10 +2881,10 @@ setTimeout(checkForUpdates, 4000);
 // ── Backup / Restore ──
 
 const settingsBtn = document.getElementById('settingsBtn');
-const settingsOverlay = document.getElementById('settingsOverlay');
-const settingsModal = document.getElementById('settingsModal');
-const settingsPanel = settingsModal;
-const settingsClose = document.getElementById('settingsClose');
+const settingsPanel = document.getElementById('settingsPanel');
+const settingsPanelHost = document.getElementById('settingsPanelHost');
+const settingsPanelPlaceholder = document.createComment('settings-panel-placeholder');
+settingsPanel.parentNode.insertBefore(settingsPanelPlaceholder, settingsPanel);
 const settingsStatus = document.getElementById('settingsStatus');
 const backupBtn = document.getElementById('backupBtn');
 const restoreBtn = document.getElementById('restoreBtn');
@@ -2875,31 +2892,6 @@ const settingsTvSourcesBtn = document.getElementById('settingsTvSourcesBtn');
 const settingsTvChannelsBtn = document.getElementById('settingsTvChannelsBtn');
 const settingsEpgRefreshBtn = document.getElementById('settingsEpgRefreshBtn');
 
-function openSettings() {
-  if (!restoringNav) pushNavState();
-  dashboardView.classList.remove('start-page');
-  overlayBar.classList.remove('start-page');
-  currentDashboardGroup = 'settings';
-  currentProvider = '';
-  disposeDashboardPlayback();
-  switchWebview(false);
-  closeTvSidebar();
-  renderSettingsServices();
-  settingsAddForm.style.display = 'none';
-  document.querySelector('input[name="tvMode"][value="' + tvMode + '"]').checked = true;
-  settingsOverlay.classList.remove('open');
-  dashboardView.style.display = '';
-  welcomeScreen.style.display = 'none';
-  dashboardEyebrow.textContent = 'Streaming Hub';
-  dashboardTitle.textContent = 'Einstellungen';
-  dashboardCount.textContent = '';
-  dashboardGrid.innerHTML = '';
-  dashboardEpg.style.display = 'none';
-  dashboardEmpty.style.display = 'none';
-  dashboardView.classList.add('settings-dashboard');
-  dashboardGrid.appendChild(settingsPanel);
-  overlayBar.classList.add('always-visible');
-}
 
 document.querySelectorAll('input[name="tvMode"]').forEach(r => {
   r.addEventListener('change', () => {
@@ -2909,19 +2901,10 @@ document.querySelectorAll('input[name="tvMode"]').forEach(r => {
   });
 });
 
-function closeSettings() {
-  settingsOverlay.classList.remove('open');
-  if (dashboardView?.classList.contains('settings-dashboard')) goToStartPage();
-}
-
-settingsBtn.addEventListener('click', openSettings);
-settingsClose.addEventListener('click', closeSettings);
+settingsBtn.addEventListener('click', () => showDashboard('settings'));
 settingsTvSourcesBtn.addEventListener('click', openTvModal);
 settingsTvChannelsBtn.addEventListener('click', openTvChEditor);
 settingsEpgRefreshBtn.addEventListener('click', refreshEpg);
-settingsOverlay.addEventListener('click', e => {
-  if (e.target === settingsOverlay) closeSettings();
-});
 
 backupBtn.addEventListener('click', async () => {
   backupBtn.disabled = true;

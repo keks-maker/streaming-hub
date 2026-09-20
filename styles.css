@@ -2568,8 +2568,13 @@ body {
 .overlay-bar.has-back .back-btn { opacity:1 !important; pointer-events:auto !important; }
 .back-btn:disabled { opacity:.35 !important; pointer-events:none !important; }
 .settings-dashboard .dashboard-grid { display:block; max-width:1000px; }
-.settings-dashboard .dashboard-grid > .modal { width:100%; max-width:none; background:rgba(22,27,38,.78); border:1px solid rgba(255,255,255,.1); }
+.settings-dashboard .dashboard-grid > .settings-panel { width:100%; max-width:none; background:rgba(22,27,38,.78); border:1px solid rgba(255,255,255,.1); }
 .settings-dashboard .dashboard-view { overflow:auto; }
+.overlay-bar:not(.is-fullscreen) .settings-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
 .overlay-location { display:none; }
 .content-area { min-height:100vh; background:radial-gradient(circle at 20% 15%, rgba(125,96,255,.22), transparent 34%), radial-gradient(circle at 82% 78%, rgba(45,177,206,.13), transparent 30%), #0b0e15; }
 .content-view,.tv-view { top:0; height:100%; }
