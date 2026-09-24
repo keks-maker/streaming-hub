@@ -436,6 +436,10 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  if (process.platform === 'darwin' && app.dock) {
+    app.dock.setIcon(path.join(__dirname, 'assets/icon.png'));
+  }
+
   userStorage = createUserStorage({
     userDataPath: app.getPath('userData'),
     bundlePath: __dirname,

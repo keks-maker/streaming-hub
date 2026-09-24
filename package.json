@@ -56,7 +56,8 @@
       "target": [
         "zip"
       ],
-      "category": "public.app-category.video"
+      "category": "public.app-category.video",
+      "icon": "assets/icon.icns"
     },
     "win": {
       "target": [
