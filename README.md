@@ -1,6 +1,6 @@
 # Streaming Hub
 
-Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Electron. Bündelt beliebte Streaming-Dienste in einer einheitlichen Oberfläche.
+Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Electron. Bündelt Streaming-Dienste, Mediatheken und Live-TV in einer einheitlichen Oberfläche. Der Installer unterstützt Linux x86_64 sowie macOS auf Intel- und Apple-Silicon-Macs.
 
 ## Unterstützte Dienste
 
@@ -23,39 +23,49 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 
 ## Funktionen
 
-- **Dienst-Navigation** – Icon-Leiste mit Gruppen (Streaming/Mediatheken); erscheint bei Hover auf der kompakten Leiste
-- **Live-TV** – M3U-Playlists laden, EPG, integrierter HLS-Player mit Sendersuche und Channel-Editor
-- **EPG (Electronic Program Guide)** – XMLTV-Parsing mit Vollbild-Overlay, Favoriten-Ansicht, Zeitslots (2/4/8/12/24h)
+- **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken und Einstellungen
+- **Live-TV-Dashboard** – Sender-Kacheln, Favoriten, EPG-Status und aktuell laufende Sendungen
+- **Senderverwaltung** – M3U-Quellen, Suche, Favoriten, Sortierung und Channel-Editor
+- **EPG (Electronic Program Guide)** – XMLTV-Parsing mit Vollbild-Overlay, Favoriten-Ansicht und Zeitslots (2/4/8/12/24h)
+- **DVR-Timeshift** – Bei unterstützten Live-Streams Sendungen zurückspulen und per EPG-Marker direkt anspringen
 - **Mediathek-Integration** – ARD/ZDF/arte-Suche via MediathekViewWeb-API
 - **Picture-in-Picture** – Schwebe-Fenster für paralleles Streamen (auch TV-Streams)
 - **Browser-Navigation** – Zurück, Vorwärts und Neu-laden über Webview-API
-- **Compact-Overlay** – Leiste standardmäßig 24px, expandiert bei Hover auf 64px
-- **Draggable Titlebar** – Fenster per Leiste verschiebbar
+- **Kompakte Navigationsleiste** – Erweitert sich bei Hover
+- **Verschiebbare Titelleiste** – Fenster per Leiste verschieben
 - **Widevine DRM** – Castlabs Electron mit VMP-Support (Netflix, Disney+, Prime Video)
-- **Chrome Widevine Fallback** – Nutzt `/opt/google/chrome/WidevineCdm/` falls vorhanden
+- **Chrome-Widevine-Fallback** – Nutzt ein vorhandenes Widevine-CDM von Chrome, abhängig vom Betriebssystem
 - **Custom User-Agent** – Chrome-identischer User-Agent (dynamisch via `process.versions.chrome`)
 - **Session-Persistenz** – Persistente Partitionen (`persist:streaming`, `persist:tv`)
 - **Permission-Handling** – Automatische Freigabe für Medien- und DRM-Anfragen
-- **Willkommensbildschirm** – Logo-Hintergrund, animierter Pfeil, Hinweistext
 - **Dark-UI** – Glasmorphismus mit anbieter-spezifischen Akzentfarben
-- **Auto-Update** – Git-basiertes Update-System mit Gitea-API
-- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen, Verlauf sichern/wiederherstellen
-- **Tastaturkürzel** – Strg+T (TV), Strg+H (History), Strg+P (PiP), F11 (Fullscreen)
+- **Plattform-Icons** – Eigenes App- und Dock-Icon auf macOS
+- **Auto-Update** – Git-basiertes Update-System
+- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen und Verlauf sichern/wiederherstellen
+- **Tastaturkürzel** – Strg+T (TV), Strg+H (Verlauf), Strg+P (PiP), F11 (Vollbild)
 - **typed-core Package** – TypeScript-Datenlogik (M3U-Parsing, EPG, TV-Channel) mit Unit-Tests
 
 ## Voraussetzungen
 
-| Abhängigkeit | Version |
+| Voraussetzung | Unterstützung |
 |---|---|
 | **Node.js** | >= 22.12 |
-| **npm** | (kommt mit Node.js) |
-| **electron** (castlabs) | `v42.0.0+wvcus` |
+| **npm** | Kommt mit Node.js |
+| **Castlabs Electron** | `v42.0.0+wvcus` |
+| **Linux** | x86_64; Paketmanager apt, dnf, pacman oder zypper |
+| **macOS** | Intel (x64) und Apple Silicon (arm64) |
 
 ## Installation
+
+Unter Linux und macOS erkennt der Installer Betriebssystem und Architektur automatisch:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/keks-maker/streaming-hub/main/install.sh | bash
 ```
+
+Unter Linux wird die App standardmäßig nach `~/.local/share/streaming-hub` installiert und im Anwendungsmenü eingetragen. Unter macOS liegt die Installation standardmäßig in `~/Library/Application Support/Streaming Hub`; der startbare App-Launcher erscheint unter `~/Applications/Streaming Hub.app`. Ein abweichender Installationspfad kann über `INSTALL_DIR` gesetzt werden.
+
+Der Installer kann Node.js unter Linux über den jeweiligen Paketmanager installieren. Auf macOS nutzt er Homebrew, falls Node.js fehlt oder zu alt ist und Homebrew bereits installiert ist; andernfalls müssen Node.js und npm vorher installiert sein. Windows wird von `install.sh` nicht unterstützt.
 
 ## Projektstruktur
 
@@ -74,7 +84,7 @@ Streaming-Hub/
 ├── styles.css           # Dark-UI, Animationen
 ├── start.sh             # Startskript (Linux/macOS)
 ├── start.cmd            # Startskript (Windows)
-├── install.sh           # One-Line-Installer
+├── install.sh           # Installer (Linux/macOS)
 ├── package.json         # Abhängigkeiten + Workspaces
 ├── CHANGELOG.md         # Versionshistorie
 ├── services.json        # Streaming-Dienst-Konfiguration
@@ -89,29 +99,25 @@ Streaming-Hub/
 │   └── watch-renderer.js  # Watch-Mode
 └── assets/
     ├── icons/           # Dienst-Icons
-    └── icon.svg         # App-Icon
+    ├── screenshots/     # Aktuelle UI-Screenshots
+    ├── icon.svg         # Vektor-App-Icon
+    ├── icon.png         # App- und Dock-Icon
+    └── icon.icns        # macOS-App-Icon
 ```
 
 ## Bedienung
 
 ### Startseite
 
-Beim Start zeigt die App einen Willkommensbildschirm mit den Logos der Streaming-Anbieter und einem animierten Pfeil, der zur Navigationsleiste zeigt. Die wichtigsten Tastaturkürzel werden direkt angezeigt.
+Die Startseite bündelt die vier Bereiche Live-TV, Streaming, Mediatheken und Einstellungen. Wähle eine Kachel, um den Bereich zu öffnen.
 
-![startseite.png](assets/screenshots/startseite.png)
+![Start-Dashboard der Version 0.4.84](assets/screenshots/startseite.png)
 
 ### Navigationsleiste
 
-Die Navigationsleiste befindet sich am oberen Bildschirmrand. Bewege die Maus an den oberen Rand, um sie zu erweitern.
+In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken und Einstellungen.
 
-Die Leiste ist in drei Gruppen unterteilt:
-- **LiveTV** – TV-Icon zum Öffnen der TV-Sidebar
-- **Streaming** – Netflix, YouTube, Disney+, Prime Video, Twitch, Spotify
-- **Mediatheken** – ARD, ZDF, ARTE
-
-Klicke auf ein Icon, um den entsprechenden Dienst zu öffnen. Die Leiste klappt automatisch ein, sobald ein Dienst ausgewählt ist.
-
-![img.png](assets/screenshots/navbar.png)
+![Navigationsleiste und Streaming-Dashboard, Version 0.4.84](assets/screenshots/navbar.png)
 
 ### Streaming-Dienste nutzen
 
@@ -119,15 +125,21 @@ Nach dem Klick auf einen Dienst wird die Webseite im Hauptbereich geladen. Deine
 
 ### Live-TV
 
-#### TV-Sidebar öffnen
+#### Live-TV-Dashboard öffnen
 
-Klicke auf das TV-Icon in der Navigationsleiste oder drücke `Strg+T`. Die TV-Sidebar öffnet sich am rechten Bildschirmrand und zeigt alle geladenen Sender.
+Wähle in der Navigationsleiste **LiveTV**. Das Dashboard zeigt geladene Sender als Kacheln, Favoriten sowie die aktuelle EPG-Programmübersicht. Über **Alle Sender** öffnest du die Senderverwaltung.
 
-![tv-sidebar.png](assets/screenshots/tv-sidebar.png)
+![Live-TV-Dashboard, Version 0.4.84](assets/screenshots/livetv-dashboard.png)
+
+#### Sender verwalten
+
+Die Senderverwaltung bietet eine Suche, getrennte Ansichten für alle Sender und Favoriten sowie Sortierung und Senderbearbeitung.
+
+![Senderverwaltung, Version 0.4.84](assets/screenshots/tv-senderverwaltung.png)
 
 #### TV-Quellen verwalten
 
-In der TV-Sidebar klickst du auf das Zahnrad-Symbol (⚙), um TV-Quellen zu verwalten:
+Öffne **Einstellungen** und wähle **TV-Quellen verwalten**, um TV-Quellen zu pflegen:
 - **Quellen-Name** – z.B. "Deutsche Sender"
 - **M3U-URL** – Link zu einer M3U-Playlist (oder lokale Datei über 📁)
 - **EPG-URL** (optional) – Link zu einer XMLTV-Datei für Programminformationen
@@ -137,17 +149,15 @@ Eine vorkonfigurierte Quelle (Deutsche Öffentlich-Rechtliche) ist bereits entha
 
 #### Sender auswählen
 
-Klicke in der Sidebar auf einen Sender, um ihn zu starten. Die Sidebar schließt sich automatisch und der TV-Player wird geladen.
-
-Die Sender sind in Gruppen organisiert (z.B. "HD", "SD"). Klicke auf eine Gruppenüberschrift, um sie ein- oder auszuklappen.
+Klicke eine Sender-Kachel im Live-TV-Dashboard oder einen Eintrag in der Senderverwaltung an, um den Stream zu starten. Die Senderverwaltung lässt sich über **Alle Sender** öffnen und bietet Suche sowie Gruppen.
 
 #### Favoriten
 
-Klicke auf den Stern (☆) neben einem Sender, um ihn als Favorit zu markieren. Favoriten werden oben in der Sidebar-Gruppe "Favoriten" gesammelt und können für die EPG-Programmübersicht genutzt werden.
+Klicke in der Senderverwaltung auf den Stern (☆), um einen Sender als Favorit zu markieren. Im Tab **Favoriten** kannst du die Favoriten separat ansehen und sortieren.
 
-#### Sender sortieren (Drag & Drop)
+#### Favoriten sortieren
 
-Ziehe einen Sender am Griff-Symbol (⠿) nach oben oder unten, um die Reihenfolge zu ändern. Die Sortierung wird automatisch gespeichert.
+Öffne in der Senderverwaltung den Tab **Favoriten**, wähle **Reihenfolge bearbeiten** und verschiebe Sender per Drag & Drop. Die Sortierung wird gespeichert.
 
 #### Kanalwechsel im TV-Modus
 
@@ -164,6 +174,7 @@ Bewege die Maus, um die Steuerungs-Overlays einzublenden:
 
 **Unten:** Komplette Player-Steuerung:
 - **EPG-Leiste** – Aktuelle Sendung mit Uhrzeit
+- **DVR-Leiste** – Sendungsmarker anklicken, zurückspulen oder mit `L` zur Live-Kante springen (bei unterstützten Streams)
 - **Play/Pause** – Button oder `Leertaste` / `K`
 - **Lautstärke** – Slider oder `+` / `-`
 - **Stumm** – Button oder `M`
@@ -172,7 +183,7 @@ Bewege die Maus, um die Steuerungs-Overlays einzublenden:
 
 #### Sender bearbeiten (Channel-Editor)
 
-Klicke in der TV-Sidebar auf das Stift-Symbol (✎), um den Channel-Editor zu öffnen:
+Öffne in den Einstellungen **Sender bearbeiten**, um den Channel-Editor aufzurufen:
 - **Name** – Anzeigename des Senders
 - **URL** – Stream-URL überschreiben
 - **tvg-id** – Zuordnung für EPG-Daten (mit Autovervollständigung aus EPG-Quellen)
@@ -182,9 +193,9 @@ Die Änderungen werden pro TV-Quelle gespeichert und sind sofort aktiv.
 
 ### EPG – Programmübersicht
 
-Klicke in der TV-Sidebar auf "EPG-Programmübersicht", um die vollständige Programmübersicht zu öffnen.
+Klicke im Live-TV-Dashboard auf **EPG öffnen**, um die vollständige Programmübersicht aufzurufen.
 
-![epg-uebersicht.png](assets/screenshots/epg-uebersicht.png)
+![EPG-Programmübersicht, Version 0.4.84](assets/screenshots/epg-uebersicht.png)
 
 Die EPG-Ansicht zeigt:
 - **Zeitleiste** – Alle Favoriten-Sender mit Sendungen als Balken
@@ -195,7 +206,7 @@ Klicke auf eine Sendung für Details:
 - **Sender öffnen** – Sender direkt starten
 - **In Mediathek ansehen** – Sendung in ARD/ZDF/arte Mediathek suchen (falls verfügbar)
 
-![epg-sendung.png](assets/screenshots/epg-sendung.png)
+![EPG-Sendungsdetails mit Aktionen, Version 0.4.84](assets/screenshots/epg-sendung.png)
 
 ### Mediathek-Suche
 
@@ -207,13 +218,13 @@ Klicke auf das Uhr-Icon in der Navigationsleiste oder drücke `Strg+H`, um den V
 
 Ein Klick auf einen Eintrag springt direkt zum entsprechenden Dienst oder TV-Sender. Mit "Löschen" kannst du den gesamten Verlauf leeren.
 
-![verlauf.png](assets/screenshots/verlauf.png)
+![Wiedergabeverlauf, Version 0.4.84](assets/screenshots/verlauf.png)
 
 ### Einstellungen
 
 Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu öffnen.
 
-![settings.png](assets/screenshots/settings.png)
+![Einstellungen mit Diensteverwaltung und TV-Modus, Version 0.4.84](assets/screenshots/settings.png)
 
 #### Backup & Restore
 - **Backup erstellen** – Speichert Dienste, TV-Quellen und Verlauf als Datei
@@ -250,6 +261,7 @@ Drücke `?` für eine Übersicht aller Kürzel:
 | `F` | Vollbild |
 | `M` | Stumm schalten |
 | `←` / `→` | 10s zurück / vor |
+| `L` | Zur Live-Kante springen (DVR-Streams) |
 | `+` / `-` | Lautstärke hoch / runter |
 
 ### Auto-Update
