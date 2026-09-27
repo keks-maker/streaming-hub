@@ -1167,6 +1167,7 @@ async function loadTvChannels(forceReload) {
     return { epgUrls: tvEpgUrls, failedSources: [] };
   }
   if (!tvSources.length) {
+    tvOriginalChannelUrls = {};
     tvChannels = [];
     tvSourceErrors = [];
     tvSourceStatus = 'success';
@@ -1181,6 +1182,7 @@ async function loadTvChannels(forceReload) {
   renderTvStatus();
   tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Lade Sender…</div>';
   const sourceChannelMap = {};
+  const sourceChannelOriginalUrlMap = {};
   const sourceEpgUrls = [];
   const results = await Promise.all(
     tvSources.map(async source => {
@@ -1188,6 +1190,7 @@ async function loadTvChannels(forceReload) {
         const result = await window.electronAPI.fetchAndParseM3U(source.url);
         const tagged = result.channels.map(ch => ({ ...ch, sourceId: source.id }));
         sourceChannelMap[source.id] = tagged;
+        sourceChannelOriginalUrlMap[source.id] = Object.fromEntries(result.channels.map(ch => [ch.id, ch.url]));
         source.baseUrl = result.baseUrl || '';
         sourceEpgUrls.push(...(result.epgUrls || []));
         return { source, ok: true };
@@ -1200,6 +1203,7 @@ async function loadTvChannels(forceReload) {
   );
 
   tvSourceErrors = results.filter(result => !result.ok).map(result => result.source.name);
+  tvOriginalChannelUrls = sourceChannelOriginalUrlMap;
   tvEpgUrls = [...new Set(sourceEpgUrls.filter(Boolean))];
   tvChannels = [];
   tvSources.forEach(source => {
@@ -1486,6 +1490,7 @@ function renderTvChannels() {
 
 let tvChEditCache = []; // {ch, source}[] für die aktuelle Editor-Liste
 let tvEpgChannelList = []; // [{normId, channelId, sampleTitle}] für EPG-Dropdown
+let tvOriginalChannelUrls = {};
 
 function openTvChEditor() {
   tvChOverrides = {};
@@ -1526,10 +1531,15 @@ function renderTvChEditor() {
   tvChList.innerHTML = '';
   items.forEach(({ ch, src }) => {
     const ov = (tvChOverrides[src.id] && tvChOverrides[src.id][ch.id]) || {};
+    const existingOv = (src.channelOverrides && src.channelOverrides[ch.id]) || {};
     const effName = ov.name != null ? ov.name : ch.name;
-    const effUrl = ov.url != null ? ov.url : ch.url;
     const effTvgId = ov.tvgId != null ? ov.tvgId : ch.tvgId;
     const effLogo = ov.tvgLogo != null ? ov.tvgLogo : ch.logo || '';
+    const originalUrl = (tvOriginalChannelUrls[src.id] && tvOriginalChannelUrls[src.id][ch.id]) || ch.url;
+    const hasLocalUrlOverride = Object.prototype.hasOwnProperty.call(ov, 'url');
+    const urlOverride = hasLocalUrlOverride ? ov.url : existingOv.url;
+    const isUrlOverridden = typeof urlOverride === 'string' && (hasLocalUrlOverride || urlOverride.length > 0);
+    const effUrl = isUrlOverridden ? urlOverride : originalUrl;
 
     // EPG-Status
     const normId = id =>
@@ -1544,23 +1554,58 @@ function renderTvChEditor() {
     const row = document.createElement('div');
     row.className = 'tv-ch-row';
     row.innerHTML = `
-      <div class="tv-ch-row-fields">
-        <input class="tv-ch-input tv-ch-name" value="${escapeHtml(effName)}" placeholder="Name">
-        <input class="tv-ch-input tv-ch-url" value="${escapeHtml(effUrl)}" placeholder="URL">
-        <div class="tv-ch-row-meta">
+      <div class="tv-ch-row-header">
+        <div class="tv-ch-name-field">
+          <label class="tv-ch-field-label">Sendername</label>
+          <input class="tv-ch-input tv-ch-name" value="${escapeHtml(effName)}" placeholder="Sendername" aria-label="Sendername">
+        </div>
+        <div class="tv-ch-row-status">
+          <span class="tv-ch-row-src">${escapeHtml(src.name)}</span>
           <span class="tv-ch-epg-badge" style="background:${epgColor}">EPG ${epgIcon}</span>
-          <div class="tv-ch-combo">
-            <input class="tv-ch-input tv-ch-tvgid" value="${escapeHtml(effTvgId)}" placeholder="tvg-id ..." autocomplete="off">
-            <div class="tv-ch-combodrop"></div>
-          </div>
-          <input class="tv-ch-input tv-ch-logo" value="${escapeHtml(effLogo)}" placeholder="Logo-URL">
         </div>
       </div>
-      <span class="tv-ch-row-src">${escapeHtml(src.name)}</span>
+      <div class="tv-ch-row-fields">
+        <section class="tv-ch-section">
+          <div class="tv-ch-section-heading">
+            <span>Stream-URL</span>
+            <span class="tv-ch-override-state ${isUrlOverridden ? 'active' : ''}">${isUrlOverridden ? 'Überschrieben' : 'Standard'}</span>
+          </div>
+          <div class="tv-ch-original-url">
+            <span class="tv-ch-field-label">Original</span>
+            <code title="${escapeHtml(originalUrl)}">${escapeHtml(originalUrl)}</code>
+          </div>
+          <label class="tv-ch-override-toggle">
+            <input class="tv-ch-url-toggle" type="checkbox" ${isUrlOverridden ? 'checked' : ''}>
+            <span>Eigene URL verwenden</span>
+          </label>
+          <div class="tv-ch-url-editor" ${isUrlOverridden ? '' : 'hidden'}>
+            <input class="tv-ch-input tv-ch-url" value="${escapeHtml(effUrl)}" placeholder="https://…" aria-label="Eigene Stream-URL">
+            <button class="tv-ch-reset" type="button">Auf Standard zurücksetzen</button>
+          </div>
+        </section>
+        <section class="tv-ch-section tv-ch-metadata">
+          <div class="tv-ch-section-heading">EPG &amp; Darstellung</div>
+          <div class="tv-ch-row-meta">
+            <div class="tv-ch-field tv-ch-combo">
+              <label class="tv-ch-field-label">EPG tvg-id</label>
+              <input class="tv-ch-input tv-ch-tvgid" value="${escapeHtml(effTvgId)}" placeholder="tvg-id …" autocomplete="off">
+              <div class="tv-ch-combodrop"></div>
+            </div>
+            <label class="tv-ch-field tv-ch-logo-field">
+              <span class="tv-ch-field-label">Logo-URL</span>
+              <input class="tv-ch-input tv-ch-logo" value="${escapeHtml(effLogo)}" placeholder="https://…">
+            </label>
+          </div>
+        </section>
+      </div>
     `;
 
     const nameInp = row.querySelector('.tv-ch-name');
     const urlInp = row.querySelector('.tv-ch-url');
+    const urlToggle = row.querySelector('.tv-ch-url-toggle');
+    const urlEditor = row.querySelector('.tv-ch-url-editor');
+    const urlState = row.querySelector('.tv-ch-override-state');
+    const urlReset = row.querySelector('.tv-ch-reset');
     const tvgInp = row.querySelector('.tv-ch-tvgid');
     const logoInp = row.querySelector('.tv-ch-logo');
     const comboDrop = row.querySelector('.tv-ch-combodrop');
@@ -1633,10 +1678,31 @@ function renderTvChEditor() {
       tvChOverrides[src.id][ch.id].name = nameInp.value || undefined;
       markDirty();
     });
+    const setUrlOverride = enabled => {
+      if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
+      if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
+      if (enabled) {
+        if (!urlInp.value) urlInp.value = originalUrl;
+        tvChOverrides[src.id][ch.id].url = urlInp.value;
+      } else {
+        urlInp.value = originalUrl;
+        tvChOverrides[src.id][ch.id].url = undefined;
+      }
+      urlEditor.hidden = !enabled;
+      urlState.textContent = enabled ? 'Überschrieben' : 'Standard';
+      urlState.classList.toggle('active', enabled);
+      markDirty();
+    };
+
+    urlToggle.addEventListener('change', () => setUrlOverride(urlToggle.checked));
+    urlReset.addEventListener('click', () => {
+      urlToggle.checked = false;
+      setUrlOverride(false);
+    });
     urlInp.addEventListener('input', () => {
       if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
       if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
-      tvChOverrides[src.id][ch.id].url = urlInp.value || undefined;
+      tvChOverrides[src.id][ch.id].url = urlInp.value;
       markDirty();
     });
     logoInp.addEventListener('input', () => {
@@ -1657,7 +1723,10 @@ function saveTvChEditor() {
     const source = tvSources.find(s => s.id === sid);
     if (!source) return;
     const existing = source.channelOverrides || {};
-    const merged = { ...existing, ...tvChOverrides[sid] };
+    const merged = { ...existing };
+    Object.entries(tvChOverrides[sid]).forEach(([chId, changes]) => {
+      merged[chId] = { ...(existing[chId] || {}), ...changes };
+    });
     // Leere Overrides entfernen
     Object.keys(merged).forEach(chId => {
       const clean = {};
