@@ -63,7 +63,7 @@ Unter Linux und macOS erkennt der Installer Betriebssystem und Architektur autom
 curl -fsSL https://raw.githubusercontent.com/keks-maker/streaming-hub/main/install.sh | bash
 ```
 
-Unter Linux wird die App standardmäßig nach `~/.local/share/streaming-hub` installiert und im Anwendungsmenü eingetragen. Unter macOS liegt die Installation standardmäßig in `~/Library/Application Support/Streaming Hub`; der startbare App-Launcher erscheint unter `~/Applications/Streaming Hub.app`. Ein abweichender Installationspfad kann über `INSTALL_DIR` gesetzt werden.
+Unter Linux wird die App standardmäßig nach `~/.local/share/streaming-hub` installiert und im Anwendungsmenü eingetragen. Unter macOS liegen die App-Dateien standardmäßig in `~/Library/Application Support/Streaming Hub`; das native App-Bundle für Finder und Dock wird unter `~/Applications/Streaming Hub.app` installiert. Ein abweichender Installationspfad kann über `INSTALL_DIR` gesetzt werden.
 
 Der Installer kann Node.js unter Linux über den jeweiligen Paketmanager installieren. Auf macOS nutzt er Homebrew, falls Node.js fehlt oder zu alt ist und Homebrew bereits installiert ist; andernfalls müssen Node.js und npm vorher installiert sein. Windows wird von `install.sh` nicht unterstützt.
 

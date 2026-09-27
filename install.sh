@@ -326,38 +326,26 @@ EOF
   info "Desktop-Eintrag: $DESKTOP_FILE"
 else
   APP_BUNDLE="$HOME/Applications/Streaming Hub.app"
-  mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
+  APP_RESOURCES="$APP_BUNDLE/Contents/Resources"
   APP_VERSION=$(node -p "require('./package.json').version")
-
-  cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleName</key><string>Streaming Hub</string>
-  <key>CFBundleDisplayName</key><string>Streaming Hub</string>
-  <key>CFBundleIdentifier</key><string>com.streaming-hub.launcher</string>
-  <key>CFBundleVersion</key><string>$APP_VERSION</string>
-  <key>CFBundleShortVersionString</key><string>$APP_VERSION</string>
-  <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleExecutable</key><string>StreamingHub</string>
-  <key>CFBundleIconFile</key><string>AppIcon</string>
-  <key>LSMinimumSystemVersion</key><string>11.0</string>
-  <key>NSHighResolutionCapable</key><true/>
-  <key>LSApplicationCategoryType</key><string>public.app-category.video</string>
-</dict>
-</plist>
-EOF
-
-  APP_EXEC="$APP_BUNDLE/Contents/MacOS/StreamingHub"
-  printf '#!/bin/bash\nexport PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"\nAPP_DIR=%q\ncd "$APP_DIR"\nexec "$APP_DIR/start.sh"\n' "$INSTALL_DIR" > "$APP_EXEC"
-  chmod +x "$APP_EXEC"
+  mkdir -p "$HOME/Applications"
+  rm -rf "$APP_BUNDLE"
+  ditto "$DIST_DIR/Electron.app" "$APP_BUNDLE"
+  APP_PLIST="$APP_BUNDLE/Contents/Info.plist"
+  plutil -replace CFBundleName -string "Streaming Hub" "$APP_PLIST"
+  plutil -replace CFBundleDisplayName -string "Streaming Hub" "$APP_PLIST"
+  plutil -replace CFBundleIdentifier -string "com.streaming-hub.app" "$APP_PLIST"
+  plutil -replace CFBundleVersion -string "$APP_VERSION" "$APP_PLIST"
+  plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_PLIST"
+  plutil -replace CFBundleIconFile -string "AppIcon.icns" "$APP_PLIST"
+  plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_PLIST"
+  ln -s "$INSTALL_DIR" "$APP_RESOURCES/app"
   if [ -f "$INSTALL_DIR/assets/icon.icns" ]; then
-    cp "$INSTALL_DIR/assets/icon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
-  elif [ -f "$DIST_DIR/Electron.app/Contents/Resources/Electron.icns" ]; then
-    cp "$DIST_DIR/Electron.app/Contents/Resources/Electron.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+    cp "$INSTALL_DIR/assets/icon.icns" "$APP_RESOURCES/AppIcon.icns"
+  elif [ -f "$APP_RESOURCES/electron.icns" ]; then
+    cp "$APP_RESOURCES/electron.icns" "$APP_RESOURCES/AppIcon.icns"
   fi
-  info "App-Launcher: $APP_BUNDLE"
+  info "App-Bundle: $APP_BUNDLE"
 fi
 
 # ------------------------------------------------------------------

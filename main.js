@@ -26,6 +26,11 @@ const {
   tvSourceUpdates: validateTvSourceUpdates,
 } = require('./lib/input-validation.js');
 
+if (process.platform === 'darwin') {
+  app.setName('Streaming Hub');
+  app.setPath('userData', path.join(app.getPath('appData'), 'streaming-hub'));
+}
+
 let mainWindow;
 let pipWindow = null;
 let userStorage = null;
