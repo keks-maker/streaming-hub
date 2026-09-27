@@ -342,14 +342,6 @@ else
   plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_PLIST"
   plutil -replace CFBundleIconFile -string "AppIcon.icns" "$APP_PLIST"
   plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_PLIST"
-  APP_RUNTIME_PATH="${PATH:-}"
-  for APP_PATH_ENTRY in "$HOME/.local/bin" "$HOME/.volta/bin" "$HOME/.asdf/shims" "/opt/homebrew/bin" "/usr/local/bin" "/usr/bin" "/bin" "/usr/sbin" "/sbin"; do
-    case ":$APP_RUNTIME_PATH:" in
-      *":$APP_PATH_ENTRY:"*) ;;
-      *) APP_RUNTIME_PATH="$APP_PATH_ENTRY${APP_RUNTIME_PATH:+:$APP_RUNTIME_PATH}" ;;
-    esac
-  done
-  plutil -insert LSEnvironment.PATH -string "$APP_RUNTIME_PATH" "$APP_PLIST"
   ln -s "$INSTALL_DIR" "$APP_RESOURCES/app"
   if [ -f "$INSTALL_DIR/assets/icon.icns" ]; then
     cp "$INSTALL_DIR/assets/icon.icns" "$APP_RESOURCES/AppIcon.icns"
