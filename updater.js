@@ -308,7 +308,14 @@ process.on('message', msg => {
       } catch (e) {}
 
       process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
-      execSync('npm install --ignore-scripts', {
+      execSync('npm install --include=dev --ignore-scripts', {
+        cwd: appDir,
+        encoding: 'utf-8',
+        timeout: 180000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      process.send({ type: 'progress', step: 'Laufzeitdateien werden gebaut…', percent: 85 });
+      execSync('npm run build:all', {
         cwd: appDir,
         encoding: 'utf-8',
         timeout: 180000,

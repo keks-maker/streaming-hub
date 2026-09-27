@@ -256,7 +256,7 @@ fi
 info "Installiere npm-Abhängigkeiten …"
 cd "$INSTALL_DIR"
 
-npm install --ignore-scripts
+npm install --include=dev --ignore-scripts
 
 ELECTRON_DIR="node_modules/electron"
 DIST_DIR="$ELECTRON_DIR/dist"
@@ -299,6 +299,9 @@ if [ ! -f "$DIST_DIR/$ELECTRON_EXECUTABLE" ]; then
   - Netzwerk oder Zertifikate prüfen"
   fi
 fi
+
+info "Baue Laufzeitdateien …"
+npm run build:all
 
 # ------------------------------------------------------------------
 # Desktop-Eintrag
