@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 (2026-09-27)
+- Update-Button in das neue Dashboard integriert; Update-Status per Hover und Installationsbestätigung bei verfügbarem Update
+- Senderbearbeitung neu strukturiert und Stream-URL-Overrides pro Sender ergänzt
+- HTTP-Streams für LiveTV-Player und Dashboard-Mini-Player freigegeben
+- macOS-Installation auf natives Electron-App-Bundle mit Streaming-Hub-Identität umgestellt
+- Laufzeitdateien werden bei Installation und Updates vor dem Start gebaut
+
 ## 0.4.84 (2026-09-10)
 - W2/W3 (PR #34) + U1–U3 (PR #35) gemeinsam ausgerollet — Details siehe Einträge der Feature-Branches unten (in dieser Version enthalten).
 - Fix (U1): DVR-Modus zeigt genau EINEN Fortschrittsbalken — die DVR-Scrub-Bar (Marker, LIVE-Button, ±10s) ist die einzige Bar; der Legacy-Player-Progress-Balken wird im DVR-Modus ausgeblendet (html.tv-dvr-mode → .tv-progress display:none). Nicht-DVR-Sender behalten exakt das alte Verhalten; Host kann pro Sender via `dvr: 'on'|'off'` im switch-channel/epg-update-Signal erzwingen.

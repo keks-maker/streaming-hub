@@ -465,6 +465,12 @@ body {
   -webkit-app-region: no-drag;
 }
 
+.overlay-update-slot,
+.dashboard-update-slot {
+  display: flex;
+  align-items: center;
+}
+
 .add-btn {
   width: 36px;
   height: 36px;
@@ -2225,6 +2231,22 @@ body {
   justify-content: center;
   padding: 20px;
 }
+.update-notice {
+  position:fixed;
+  top:calc(var(--overlay-h) + 14px);
+  right:24px;
+  z-index:190;
+  max-width:min(380px,calc(100vw - 32px));
+  padding:12px 16px;
+  color:var(--text);
+  background:rgba(18,21,30,.96);
+  border:1px solid rgba(34,197,94,.35);
+  border-radius:10px;
+  box-shadow:0 12px 32px rgba(0,0,0,.35);
+  font-size:13px;
+}
+.update-notice[hidden] { display:none; }
+.update-notice.error { border-color:rgba(239,68,68,.45); }
 .update-overlay {
   display: none;
   position: fixed;
@@ -2405,6 +2427,10 @@ body {
   color: var(--text);
 }
 .dashboard-header { display:flex; align-items:end; justify-content:space-between; gap:24px; max-width:1440px; margin:0 auto 28px; }
+.dashboard-header-actions { display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0; }
+.dashboard-update-btn { width:40px; height:40px; opacity:1; transform:none; pointer-events:auto; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.05); }
+.dashboard-update-btn:hover { background:rgba(255,255,255,.1); transform:translateY(-1px); }
+.dashboard-update-btn:disabled { opacity:.45; pointer-events:none; }
 .dashboard-eyebrow { display:block; color:var(--text-dim); font-size:12px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:8px; }
 .dashboard-title { margin:0; font-size:clamp(30px,4vw,54px); letter-spacing:-.04em; }
 .dashboard-count { color:var(--text-dim); font-size:14px; }
@@ -2426,6 +2452,7 @@ body {
 .dashboard-main-heading { align-items:center; }
 .dashboard-tv-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
 .dashboard-tv-actions[hidden] { display:none; }
+@media (max-width:700px) { .dashboard-header-actions { width:100%; justify-content:space-between; } }
 .dashboard-tv-status { max-width:280px; color:var(--text-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dashboard-tv-status.expanded { max-width:none; white-space:normal; }
 .dashboard-section-title { margin:0; font-size:24px; letter-spacing:-.03em; }

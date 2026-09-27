@@ -67,7 +67,15 @@ let tvMode = localStorage.getItem('tvMode') || 'free';
 
 const overlayBar = document.getElementById('overlayBar');
 const nav = document.getElementById('overlayNav');
+const updateBtn = document.getElementById('updateBtn');
+const dashboardUpdateSlot = document.getElementById('dashboardUpdateSlot');
+const overlayUpdateSlot = document.getElementById('overlayUpdateSlot');
 let tvBtn = null;
+
+function placeUpdateButton(slot, inDashboard = false) {
+  if (updateBtn.parentElement !== slot) slot.appendChild(updateBtn);
+  updateBtn.classList.toggle('dashboard-update-btn', inDashboard);
+}
 const contentView = document.getElementById('contentView');
 const tvView = document.getElementById('tvView');
 let webview = contentView;
@@ -617,6 +625,7 @@ function renderStartDashboard() {
   welcomeScreen.style.display = 'none';
   overlayBar.classList.add('start-page');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
+  placeUpdateButton(dashboardUpdateSlot, true);
 }
 
 function renderDashboard(groupKey) {
@@ -628,6 +637,7 @@ function renderDashboard(groupKey) {
   currentDashboardGroup = groupKey;
   dashboardView.classList.remove('start-page');
   overlayBar.classList.remove('start-page');
+  placeUpdateButton(overlayUpdateSlot);
   dashboardView.classList.toggle('settings-dashboard', groupKey === 'settings');
   const isTv = groupKey === 'livetv';
   const isSettings = groupKey === 'settings';
@@ -736,6 +746,7 @@ function renderNav() {
   settingsItem.dataset.section = 'settings';
   settingsItem.addEventListener('click', () => showDashboard('settings'));
   nav.appendChild(settingsItem);
+  nav.appendChild(overlayUpdateSlot);
   tvBtn = nav.querySelector('[data-section="livetv"]');
 }
 
@@ -851,6 +862,7 @@ function goToStartPage() {
   disposeDashboardPlayback();
   dashboardView.classList.remove('start-page');
   overlayBar.classList.add('start-page');
+  placeUpdateButton(overlayUpdateSlot);
   currentUA = chromeUA;
   currentDashboardGroup = null;
   if (dashboardView) dashboardView.style.display = 'none';
@@ -876,6 +888,7 @@ function navigateTo(svc) {
   disposeDashboardPlayback();
   dashboardView.classList.remove('start-page');
   overlayBar.classList.remove('start-page');
+  placeUpdateButton(overlayUpdateSlot);
   currentUA = svc.id === 'magentatv' ? safariUA : chromeUA;
   currentProvider = svc.id;
   currentDashboardGroup = null;
@@ -1804,6 +1817,7 @@ async function selectTvChannel(ch, options = {}) {
   tvActiveChannelId = ch.id;
   overlayBar.classList.add('nav-collapsed');
   overlayBar.classList.remove('is-fullscreen');
+  placeUpdateButton(overlayUpdateSlot);
   renderTvChannels();
   closeTvSidebar();
 
@@ -2838,9 +2852,10 @@ window.electronAPI.getAppVersion().then(v => {
 
 // ── Autoupdate ──
 
-const updateBtn = document.getElementById('updateBtn');
 let updateAvailableVersion = null;
 let updateChecking = false;
+let updateLastCheckedAt = 0;
+let updateCheckError = null;
 
 function setUpdateState(state) {
   updateBtn.classList.remove('update-available', 'uptodate');
@@ -2864,26 +2879,78 @@ function setUpdateState(state) {
   }
 }
 
-async function checkForUpdates() {
-  if (updateChecking) return;
+async function checkForUpdates({ quiet = false } = {}) {
+  if (updateChecking) return null;
   updateChecking = true;
-  setUpdateState('checking');
-  const result = await window.electronAPI.checkForUpdate();
-  updateChecking = false;
-  if (result.hasUpdate && result.latestVersion) {
-    updateAvailableVersion = result.latestVersion;
-    setUpdateState('available');
-  } else {
+  if (!quiet) setUpdateState('checking');
+  try {
+    const result = await window.electronAPI.checkForUpdate();
+    updateCheckError = result.error || null;
+    if (result.hasUpdate && result.latestVersion) {
+      updateAvailableVersion = result.latestVersion;
+      setUpdateState('available');
+    } else {
+      updateAvailableVersion = null;
+      setUpdateState('uptodate');
+    }
+    return result;
+  } catch (error) {
     updateAvailableVersion = null;
+    updateCheckError = error.message;
     setUpdateState('uptodate');
+    return { hasUpdate: false, error: error.message };
+  } finally {
+    updateChecking = false;
+    updateLastCheckedAt = Date.now();
+    if (updateButtonHovered) showUpdateStatusNotice();
   }
 }
 
 // ── Update Overlay ──
+const updateNotice = document.getElementById('updateNotice');
+let updateNoticeTimer = null;
+let updateButtonHovered = false;
 const updateOverlay = document.getElementById('updateOverlay');
 const updateTitle = document.getElementById('updateTitle');
 const updateStep = document.getElementById('updateStep');
 const updateProgressFill = document.getElementById('updateProgressFill');
+
+function showUpdateNotice(message, isError = false) {
+  updateNotice.textContent = message;
+  updateNotice.classList.toggle('error', isError);
+  updateNotice.hidden = false;
+  if (updateNoticeTimer) clearTimeout(updateNoticeTimer);
+  updateNoticeTimer = null;
+}
+
+function hideUpdateNotice() {
+  if (updateButtonHovered) return;
+  if (updateNoticeTimer) clearTimeout(updateNoticeTimer);
+  updateNoticeTimer = setTimeout(() => {
+    updateNotice.hidden = true;
+    updateNoticeTimer = null;
+  }, 250);
+}
+
+function showUpdateStatusNotice() {
+  if (!updateButtonHovered) return;
+  if (updateCheckError) {
+    showUpdateNotice(`Update-Prüfung fehlgeschlagen: ${updateCheckError}`, true);
+  } else if (updateAvailableVersion) {
+    showUpdateNotice(`Update v${updateAvailableVersion} verfügbar. Klicken zum Installieren.`);
+  } else {
+    showUpdateNotice('Kein Update verfügbar. Du verwendest die aktuelle Version.');
+  }
+}
+
+async function showUpdateStatusOnHover() {
+  if (updateChecking) {
+    showUpdateNotice('Update-Prüfung läuft…');
+    return;
+  }
+  if (!updateLastCheckedAt || Date.now() - updateLastCheckedAt > 30000) await checkForUpdates({ quiet: true });
+  showUpdateStatusNotice();
+}
 
 function showUpdateOverlay(title) {
   updateTitle.textContent = title || 'Update wird installiert…';
@@ -2923,26 +2990,35 @@ const cleanupUpdateStatus = window.electronAPI.onUpdateStatus(status => {
   }
 });
 
-updateBtn.addEventListener('click', async () => {
-  if (updateChecking || updateBtn.disabled) return;
-  if (updateAvailableVersion) {
-    if (confirm(`Update v${updateAvailableVersion} installieren?\nDie App wird nach der Installation neugestartet.`)) {
-      updateBtn.disabled = true;
-      updateBtn.title = 'Installiere…';
-      showUpdateOverlay(`Update v${updateAvailableVersion} wird installiert…`);
-      updateStep.textContent = 'Starte Installation…';
-      const result = await window.electronAPI.applyUpdate(updateAvailableVersion);
-      if (!result.success) {
-        hideUpdateOverlay();
-        updateBtn.disabled = false;
-        updateBtn.title = `Fehlgeschlagen: ${result.error}`;
-        setTimeout(() => setUpdateState('available'), 5000);
-      }
+async function handleUpdateButtonClick() {
+  if (updateChecking || updateBtn.disabled || !updateAvailableVersion) return;
+  updateNotice.hidden = true;
+  if (updateNoticeTimer) clearTimeout(updateNoticeTimer);
+  updateNoticeTimer = null;
+  if (confirm(`Update v${updateAvailableVersion} installieren?\nDie App wird nach der Installation neugestartet.`)) {
+    updateBtn.disabled = true;
+    updateBtn.title = 'Installiere…';
+    showUpdateOverlay(`Update v${updateAvailableVersion} wird installiert…`);
+    updateStep.textContent = 'Starte Installation…';
+    const result = await window.electronAPI.applyUpdate(updateAvailableVersion);
+    if (!result.success) {
+      hideUpdateOverlay();
+      updateBtn.disabled = false;
+      updateBtn.title = `Fehlgeschlagen: ${result.error}`;
+      setTimeout(() => setUpdateState('available'), 5000);
     }
-  } else {
-    checkForUpdates();
   }
+}
+
+updateBtn.addEventListener('mouseenter', () => {
+  updateButtonHovered = true;
+  showUpdateStatusOnHover();
 });
+updateBtn.addEventListener('mouseleave', () => {
+  updateButtonHovered = false;
+  hideUpdateNotice();
+});
+updateBtn.addEventListener('click', handleUpdateButtonClick);
 
 // Prüfe beim Start (nach kurzer Verzögerung)
 setTimeout(checkForUpdates, 4000);

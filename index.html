@@ -17,6 +17,7 @@
     </button>
     <span class="overlay-location" id="overlayLocation">Startseite</span>
     <nav class="overlay-nav" id="overlayNav">
+      <div class="overlay-update-slot" id="overlayUpdateSlot"></div>
     </nav>
     <div class="overlay-actions">
       <button class="add-btn" id="historyBtn" title="Verlauf (Strg+H)">
@@ -28,16 +29,6 @@
       <button class="settings-btn" id="settingsBtn" title="Einstellungen">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </button>
-      <button class="update-btn" id="updateBtn" title="Update prüfen">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <polyline class="path-check" points="8 13 11 16 16 9"/>
-          <g class="path-arrow">
-            <polyline points="8 14 12 18 16 14"/>
-            <line x1="12" y1="6" x2="12" y2="18"/>
-          </g>
         </svg>
       </button>
       <button class="pip-btn" id="pipBtn" title="Bild-in-Bild (Strg+P)">
@@ -74,12 +65,26 @@
           <span class="dashboard-eyebrow" id="dashboardEyebrow">Streaming Hub</span>
           <h1 class="dashboard-title" id="dashboardTitle">LiveTV</h1>
         </div>
-        <div class="dashboard-tv-actions" id="dashboardTvActions" hidden>
-          <span class="dashboard-tv-status" id="dashboardTvStatus" aria-live="polite"></span>
-          <button class="dashboard-section-action" id="dashboardTvManage" type="button">Alle Sender</button>
-          <button class="dashboard-section-action" id="dashboardTvStatusBtn" type="button">Status</button>
-          <button class="dashboard-section-action" id="dashboardTvRefresh" type="button">EPG aktualisieren</button>
-          <span class="dashboard-count" id="dashboardCount"></span>
+        <div class="dashboard-header-actions">
+          <div class="dashboard-update-slot" id="dashboardUpdateSlot">
+            <button class="update-btn dashboard-update-btn" id="updateBtn" type="button" title="Update prüfen" aria-label="Update prüfen">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline class="path-check" points="8 13 11 16 16 9"/>
+                <g class="path-arrow">
+                  <polyline points="8 14 12 18 16 14"/>
+                  <line x1="12" y1="6" x2="12" y2="18"/>
+                </g>
+              </svg>
+            </button>
+          </div>
+          <div class="dashboard-tv-actions" id="dashboardTvActions" hidden>
+            <span class="dashboard-tv-status" id="dashboardTvStatus" aria-live="polite"></span>
+            <button class="dashboard-section-action" id="dashboardTvManage" type="button">Alle Sender</button>
+            <button class="dashboard-section-action" id="dashboardTvStatusBtn" type="button">Status</button>
+            <button class="dashboard-section-action" id="dashboardTvRefresh" type="button">EPG aktualisieren</button>
+            <span class="dashboard-count" id="dashboardCount"></span>
+          </div>
         </div>
       </div>
       <div class="dashboard-grid" id="dashboardGrid"></div>
@@ -403,7 +408,7 @@
     </div>
   </div>
 
-  <!-- Update Overlay -->
+  <div class="update-notice" id="updateNotice" role="status" aria-live="polite" hidden></div>
   <div class="update-overlay" id="updateOverlay">
     <div class="update-card">
       <div class="update-spinner"></div>
