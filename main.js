@@ -412,7 +412,16 @@ function createWindow() {
     title: 'Streaming Hub',
   });
 
-  mainWindow.loadFile('index.html');
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.focus();
+  });
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    if (errorCode !== -3) logger.error('Hauptfenster konnte nicht geladen werden:', errorCode, errorDescription, validatedURL);
+  });
+  mainWindow.loadFile(path.join(__dirname, 'index.html')).catch(error => {
+    logger.error('Hauptfenster konnte nicht geladen werden:', error.message);
+  });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url).catch(() => {});
@@ -440,7 +449,7 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
   if (process.platform === 'darwin' && app.dock) {
     app.dock.setIcon(path.join(__dirname, 'assets/icon.png'));
   }
@@ -454,14 +463,11 @@ app.whenReady().then(async () => {
   } catch (e) {
     logger.error('Nach-Update-Reconciliation fehlgeschlagen (Start läuft weiter):', e.message);
   }
-  try {
-    await components.whenReady();
-    logger.info('Widevine CDM status:', components.status());
-  } catch (e) {
-    logger.warn('Component updater failed (expected without sandbox), using system Widevine if available');
-  }
   startUpdater();
   createWindow();
+  components.whenReady()
+    .then(() => logger.info('Widevine CDM status:', components.status()))
+    .catch(() => logger.warn('Component updater failed (expected without sandbox), using system Widevine if available'));
 });
 
 app.on('window-all-closed', () => app.quit());
@@ -513,7 +519,7 @@ ipcMain.on('toggle-pip', (event, url) => {
 
   if (isStreamUrl) {
     // Load a player page for TV streams
-    pipWindow.loadFile('pip.html');
+    pipWindow.loadFile(path.join(__dirname, 'pip.html'));
 
     pipWindow.webContents.on('did-finish-load', () => {
       pipWindow.webContents.executeJavaScript(`
@@ -521,7 +527,7 @@ ipcMain.on('toggle-pip', (event, url) => {
       `);
     });
   } else {
-    pipWindow.loadFile('pip.html');
+    pipWindow.loadFile(path.join(__dirname, 'pip.html'));
 
     pipWindow.webContents.on('did-finish-load', () => {
       pipWindow.webContents.executeJavaScript(`
