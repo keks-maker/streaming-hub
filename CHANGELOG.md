@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.2 (2026-09-27)
+- Fix: macOS-App und Updater erhalten den Node/npm-PATH; der Updater prüft Build-Werkzeuge und Runtime-Artefakte vor Abschluss
+
 ## 0.5.1 (2026-09-27)
 - Fix: Zurück-Navigation führt wieder auf das neue Startdashboard statt zur alten Welcome-Seite
 

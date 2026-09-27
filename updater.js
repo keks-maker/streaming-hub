@@ -11,7 +11,24 @@ const logger = require('./logger.js');
 const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { mergeTvsources } = require('./lib/tvsources-merge.js');
+
+if (process.platform === 'darwin') {
+  const macPathEntries = [
+    path.join(os.homedir(), '.local/bin'),
+    path.join(os.homedir(), '.volta/bin'),
+    path.join(os.homedir(), '.asdf/shims'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    '/usr/bin',
+    '/bin',
+    '/usr/sbin',
+    '/sbin',
+    ...String(process.env.PATH || '').split(path.delimiter),
+  ].filter(Boolean);
+  process.env.PATH = [...new Set(macPathEntries)].join(path.delimiter);
+}
 
 const appDir = process.argv[2] || process.cwd();
 
@@ -239,6 +256,14 @@ process.on('message', msg => {
         throw new Error('ungültige Versionsnummer: ' + msg.version);
       }
 
+      process.send({ type: 'progress', step: 'Build-Werkzeuge prüfen…', percent: 2 });
+      execSync('npm --version', {
+        cwd: appDir,
+        encoding: 'utf-8',
+        timeout: 15000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
       process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 5 });
       git('fetch --tags --force origin', 60000);
 
@@ -320,6 +345,17 @@ process.on('message', msg => {
         encoding: 'utf-8',
         timeout: 180000,
         stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      const runtimeArtifacts = [
+        ['renderer.js', 'dist/renderer.js'],
+        ['packages/typed-core/src/index.ts', 'packages/typed-core/dist/index.js'],
+      ];
+      runtimeArtifacts.forEach(([source, output]) => {
+        const sourcePath = path.join(appDir, source);
+        const outputPath = path.join(appDir, output);
+        if (!fs.existsSync(outputPath) || fs.statSync(outputPath).mtimeMs < fs.statSync(sourcePath).mtimeMs) {
+          throw new Error(`Laufzeit-Build-Artefakt fehlt oder ist veraltet: ${output}`);
+        }
       });
       process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
       process.send({ type: 'applied' });

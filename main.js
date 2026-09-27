@@ -27,6 +27,15 @@ const {
 } = require('./lib/input-validation.js');
 
 if (process.platform === 'darwin') {
+  const macPathEntries = [
+    path.join(os.homedir(), '.local/bin'),
+    path.join(os.homedir(), '.volta/bin'),
+    path.join(os.homedir(), '.asdf/shims'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    ...String(process.env.PATH || '').split(path.delimiter),
+  ].filter(Boolean);
+  process.env.PATH = [...new Set(macPathEntries)].join(path.delimiter);
   app.setName('Streaming Hub');
   app.setPath('userData', path.join(app.getPath('appData'), 'streaming-hub'));
 }
