@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.1 (2026-09-27)
+- Fix: Zurück-Navigation führt wieder auf das neue Startdashboard statt zur alten Welcome-Seite
+
 ## 0.5.0 (2026-09-27)
 - Update-Button in das neue Dashboard integriert; Update-Status per Hover und Installationsbestätigung bei verfügbarem Update
 - Senderbearbeitung neu strukturiert und Stream-URL-Overrides pro Sender ergänzt

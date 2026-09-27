@@ -694,13 +694,15 @@ function showDashboard(groupKey) {
   webview = contentView;
   renderDashboard(groupKey);
   overlayLocation.textContent =
-    groupKey === 'settings'
-      ? 'Einstellungen'
-      : groupKey === 'livetv'
-        ? 'LiveTV'
-        : groupKey === 'mediathek'
-          ? 'Mediatheken'
-          : 'Streaming';
+    groupKey === 'start'
+      ? 'Startseite'
+      : groupKey === 'settings'
+        ? 'Einstellungen'
+        : groupKey === 'livetv'
+          ? 'LiveTV'
+          : groupKey === 'mediathek'
+            ? 'Mediatheken'
+            : 'Streaming';
   overlayBar.classList.add('always-visible');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   if (tvSidebarOpen) closeTvSidebar();
@@ -858,29 +860,7 @@ function handleBackNavigation() {
 backBtn.addEventListener('click', handleBackNavigation);
 
 function goToStartPage() {
-  if (!restoringNav) pushNavState();
-  disposeDashboardPlayback();
-  dashboardView.classList.remove('start-page');
-  overlayBar.classList.add('start-page');
-  placeUpdateButton(overlayUpdateSlot);
-  currentUA = chromeUA;
-  currentDashboardGroup = null;
-  if (dashboardView) dashboardView.style.display = 'none';
-  currentProvider = '';
-  lastMediaTitle = '';
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  switchWebview(false);
-  welcomeScreen.style.display = '';
-  overlayBar.classList.add('always-visible');
-  overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
-  if (webviewReady) {
-    try {
-      webview.loadURL('about:blank');
-    } catch (e) {
-      logger.warn('loadURL failed');
-    }
-  }
-  if (tvSidebarOpen) closeTvSidebar();
+  showDashboard('start');
 }
 
 function navigateTo(svc) {
