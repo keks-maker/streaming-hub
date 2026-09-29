@@ -428,6 +428,9 @@ function createWindow() {
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     if (errorCode !== -3) logger.error('Hauptfenster konnte nicht geladen werden:', errorCode, errorDescription, validatedURL);
   });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    logger.error('Renderer-Prozess beendet:', details.reason, details.exitCode);
+  });
   mainWindow.loadFile(path.join(__dirname, 'index.html')).catch(error => {
     logger.error('Hauptfenster konnte nicht geladen werden:', error.message);
   });
