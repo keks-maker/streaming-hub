@@ -91,7 +91,7 @@ IPC-Brücke zum Renderer: `recording:start`, `recording:stop`, `recording:list`,
 - **Fenster schließen ≠ App beenden**, solange Aufnahmen laufen → App geht in den Tray (Electron `window-all-closed`-Muster, Doku-verified).
 - **Shutdown-Unterbrechung:**
   - **macOS:** `powerMonitor` feuert `shutdown` — App zeigt: „Es läuft eine Aufnahme — trotzdem herunterfahren?“ (electron-Doku: Event auf macOS/Windows vorhanden).
-  - **Linux:** `powerMonitor` hat **kein** `shutdown`-Event (Doku-verified). **Spike-Befund (30.09.2026, empirisch — Karte „Phase 1a“, Protokoll unten):** `powerSaveBlocker('prevent-app-suspension')` legt unter Linux **keinen** logind-Inhibitor an und kann einen Shutdown **nicht** abfangen. Der Weg scheidet damit aus; ein eigener DBus-Inhibit-Call (oder In-App-Warnung) bleibt als Alternative — mit User abwägen.
+  - **Linux:** `powerMonitor` hat **kein** `shutdown`-Event (Doku-verified). **Spike-Befund (30.09.2026, empirisch — Karte „Phase 1a“, Protokoll unten):** `powerSaveBlocker('prevent-app-suspension')` legt unter Linux **keinen** logind-Inhibitor an und kann einen Shutdown **nicht** abfangen. **User-Beschluss 30.09: In-App-Warnung ohne OS-Block (Einfachheit vor Schutzumfang); DBus-Inhibitor bleibt dokumentierte Option für später.**
   - Grenze auf beiden OS: hartes `shutdown -h now` per Terminal ist nicht abfangbar — der Schutz gilt für den normalen grafischen Shutdown-Fluss.
 
   **Spike-Protokoll (Linux, Castlabs-Electron v42.0.0+wvcus, headless-Host mit Xvfb):**
@@ -164,7 +164,7 @@ Erweiterung der EPG-Ansicht um eine **Kanal-Detailansicht**: Kanal wählen → v
 | ffmpeg-Binary | **gebündelt via `lib/ffmpeg.js` (Spike-Ergebnis: statische Builds aus ffmpeg-static-Release b6.1.1, SHA-256-gepinnt, `<App-Stamm>/bin/`)** | **identisch (gleicher Loader)** |
 | Record-Button, Bibliothek, HLS-Zwischenform, Remux-Progress | identisch | identisch |
 | powerSaveBlocker | `prevent-app-suspension` | `prevent-app-suspension` (legt **keinen** logind-Inhibitor an — Spike 30.09.2026) |
-| Shutdown-Warnung | `powerMonitor.shutdown` nativ | **Spike-Ergebnis: powerSaveBlocker blockiert keinen Shutdown** → eigener DBus-Inhibit-Call oder In-App-Warnung (Entscheid mit User offen) |
+| Shutdown-Warnung | `powerMonitor.shutdown` nativ | **User-Beschluss 30.09: In-App-Warnung ohne OS-Block** (DBus-Inhibitor dokumentierte Option für später) |
 | Tray-Icon | MenuBar | AppIndicator (Electron automatisch) |
 | Speicherort-Default | `~/Videos/Streaming Hub/` | `~/Videos/Streaming Hub/` |
 

@@ -17,6 +17,7 @@ const {
 } = require('./lib/ipc-validation.js');
 const { RecorderService } = require('./lib/recorder/RecorderService.js');
 const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorder/ipc.js');
+const { TrayController } = require('./lib/recorder/TrayController.js');
 const paths = require('./lib/recorder/paths.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 
@@ -35,6 +36,7 @@ function storageFreeBytes(root) {
 
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
 let recorder = null;
+let trayController = null;
 
 // Wiedergabe-Protokoll der Aufnahmen (Phase 1c, Karte t_bafa7928):
 // rec://<recId>/<datei> streamt Dateien aus dem Aufnahmen-Root. hls.js kann
@@ -744,13 +746,35 @@ app.whenReady().then(() => {
           }
         })
         .catch(e => logger.error('Aufnahme-Recovery fehlgeschlagen:', e.message));
+
+      // Tray (Konzept §3.2): Icon-Wechsel, Menü je Aufnahme, Ordner öffnen,
+      // Shutdown-/Beenden-Verhalten. Erst nach Recorder-Setup.
+      trayController = new TrayController({
+        recorder,
+        getWindow: () => mainWindow || null,
+        getStorageRoot: () => recorder.storageRoot,
+        openLibrary: () => {
+          mainWindow?.webContents.send('recordings:open');
+        },
+        appRoot: __dirname,
+      });
+      trayController.create();
     } catch (e) {
       logger.error('Aufnahme-Engine konnte nicht gestartet werden:', e.message);
     }
   }
 });
 
-app.on('window-all-closed', () => app.quit());
+app.on('window-all-closed', () => {
+  // Konzept §3.2: Fenster schließen ≠ App beenden, solange ≥ 1 Aufnahme
+  // läuft — die App geht in den Tray (TrayController übernimmt). Ohne
+  // aktive Aufnahmen gilt das normale Quit-Verhalten.
+  if (recorder && recorder.activeJobs().length > 0) {
+    logger.info('Fenster geschlossen — App bleibt wegen laufender Aufnahme(n) im Tray aktiv');
+    return;
+  }
+  app.quit();
+});
 app.on('will-quit', () => globalShortcut.unregisterAll());
 
 ipcMain.on('toggle-pip', (event, url) => {

@@ -2660,6 +2660,17 @@ function toggleRecordings() {
 const recordingsBtn = document.getElementById('recordingsBtn');
 if (recordingsBtn) recordingsBtn.addEventListener('click', toggleRecordings);
 
+// Tray → App: „Aufnahmen-Bibliothek“ im Tray-Menü öffnet den Screen
+window.electronAPI.onOpenRecordings?.(() => {
+  openRecordingsScreen();
+});
+
+// Shutdown-Warnung (Linux, User-Beschluss 30.09: In-App-Warnung statt Block):
+// sichtbarer Hinweis im App-Fenster, falls offen.
+window.electronAPI.onShutdownWarning?.(data => {
+  showTvToast((data && data.message) || 'Der Computer wird heruntergefahren — laufende Aufnahmen werden beendet.');
+});
+
 function sendEpgUpdate() {
   if (!tvActiveChannelId) return;
   const ch = tvChannels.find(c => c.id === tvActiveChannelId);

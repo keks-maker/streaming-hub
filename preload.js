@@ -103,4 +103,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
   checkFfmpegStatus: () => ipcRenderer.invoke('recording:ffmpeg-status'),
   getDefaultRecordingRoot: () => ipcRenderer.invoke('recording:get-default-root'),
+  onOpenRecordings: cb => {
+    const handler = () => cb();
+    ipcRenderer.on('recordings:open', handler);
+    return () => ipcRenderer.removeListener('recordings:open', handler);
+  },
+  onShutdownWarning: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:shutdown-warning', handler);
+    return () => ipcRenderer.removeListener('recording:shutdown-warning', handler);
+  },
 });
