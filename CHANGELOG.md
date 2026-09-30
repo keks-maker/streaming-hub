@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.4 (2026-09-30)
+- Change: Minimierte Navbar nutzt die eingeblendete Navbar-Breite und einen transparenteren Frosted-Glass-Look.
+
 ## 0.5.3 (2026-09-27)
 - Fix: macOS-App-Launcher schreibt PATH nicht mehr in die Info.plist; Laufzeit-PATH bleibt in App und Updater gesetzt
 
