@@ -860,6 +860,8 @@ function renderDashboard(groupKey) {
     document.querySelector('input[name="tvMode"][value="' + tvMode + '"]').checked = true;
     settingsPanel.hidden = false;
     settingsPanelHost.appendChild(settingsPanel);
+    // Aufnahmen-Settings (Phase 1c): Speicherort + ffmpeg-Diagnose laden
+    if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
   } else if (isTv) {
     renderLiveTvDashboard();
   } else if (!items.length) {
@@ -1146,6 +1148,101 @@ function renderSettingsServices() {
   renderList(streamingList, streaming);
   renderList(mediathekList, mediathek);
 }
+
+// ═══ Settings: Aufnahmen — Speicherort + ffmpeg-Diagnose (Phase 1c, §3.4) ═══
+// Netzwerkpfade sind erlaubt; Validierung (beschreibbar? Platz?) macht der
+// Main-Process beim Setzen. Warnhinweis bei Netzwerkpfad-Heuristik hier.
+const recPathInput = document.getElementById('recPathInput');
+const recPathPickBtn = document.getElementById('recPathPickBtn');
+const recPathSaveBtn = document.getElementById('recPathSaveBtn');
+const recPathResetBtn = document.getElementById('recPathResetBtn');
+const recPathHint = document.getElementById('recPathHint');
+const recPathWarn = document.getElementById('recPathWarn');
+const recFfmpegStatus = document.getElementById('recFfmpegStatus');
+
+function formatFreeBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes === null) return 'Platz: unbekannt';
+  const gib = bytes / 1024 ** 3;
+  if (gib >= 1) return `${gib.toFixed(1)} GiB frei`;
+  const mib = bytes / 1024 ** 2;
+  return `${Math.max(0, Math.round(mib))} MiB frei`;
+}
+
+function describeStorageRoot(info) {
+  const parts = [];
+  parts.push(info.isDefault ? 'Standard-Speicherort' : 'Eigener Speicherort');
+  parts.push(formatFreeBytes(info.freeBytes));
+  return parts.join(' · ');
+}
+
+async function loadRecordingSettingsUi() {
+  try {
+    const info = await window.electronAPI.getRecordingStorageRoot();
+    recPathInput.value = info.root;
+    recPathHint.textContent = describeStorageRoot(info);
+    recPathWarn.style.display = info.network ? '' : 'none';
+    recPathWarn.textContent = info.network
+      ? '⚠ Netzwerkpfad erkannt: Aufnahmequalität hängt von der Verbindung ab. Bei Verbindungsabbruch versucht die App, den Stream wiederzufinden.'
+      : '';
+  } catch (e) {
+    recPathHint.textContent = 'Speicherort konnte nicht geladen werden: ' + (e?.message || e);
+  }
+  try {
+    const ff = await window.electronAPI.checkFfmpegStatus();
+    recFfmpegStatus.classList.remove('ok', 'error');
+    if (ff.ok) {
+      recFfmpegStatus.classList.add('ok');
+      recFfmpegStatus.textContent = `ffmpeg OK — ${ff.version || ff.release || 'Version unbekannt'}`;
+    } else {
+      recFfmpegStatus.classList.add('error');
+      recFfmpegStatus.textContent = `ffmpeg/ffprobe fehlen (${(ff.missing || []).join(', ') || 'unbekannt'}) — Aufnahme nicht verfügbar. App-Start versucht Reparatur.`;
+    }
+  } catch (e) {
+    recFfmpegStatus.classList.remove('ok', 'error');
+    recFfmpegStatus.textContent = 'ffmpeg-Status nicht ermittelbar: ' + (e?.message || e);
+  }
+}
+
+async function saveRecordingStorageRoot(newRoot) {
+  recPathSaveBtn.disabled = true;
+  try {
+    const info = await window.electronAPI.setRecordingStorageRoot(newRoot);
+    recPathInput.value = info.root;
+    recPathHint.textContent = describeStorageRoot(info);
+    recPathWarn.style.display = info.network ? '' : 'none';
+    recPathWarn.textContent = info.network
+      ? '⚠ Netzwerkpfad erkannt: Aufnahmequalität hängt von der Verbindung ab. Bei Verbindungsabbruch versucht die App, den Stream wiederzufinden.'
+      : '';
+    setSettingsStatus('✓ Speicherort übernommen: ' + info.root);
+  } catch (e) {
+    setSettingsStatus('✕ ' + (e?.message || e));
+  } finally {
+    recPathSaveBtn.disabled = false;
+  }
+}
+
+recPathPickBtn.addEventListener('click', async () => {
+  try {
+    const picked = await window.electronAPI.pickRecordingFolder();
+    if (picked) recPathInput.value = picked;
+  } catch (e) {
+    setSettingsStatus('✕ ' + (e?.message || e));
+  }
+});
+recPathSaveBtn.addEventListener('click', () => {
+  const value = recPathInput.value.trim();
+  if (value) saveRecordingStorageRoot(value);
+});
+// Reset auf den Default-Speicherort: Main kennt den Default (paths.js) —
+// das Renderer-UI rät ihn nicht selbst.
+recPathResetBtn.addEventListener('click', async () => {
+  try {
+    const def = await window.electronAPI.getDefaultRecordingRoot();
+    if (def) saveRecordingStorageRoot(def);
+  } catch (e) {
+    setSettingsStatus('✕ ' + (e?.message || e));
+  }
+});
 
 // ── Settings: Add Service Form ──
 
@@ -3446,6 +3543,10 @@ const restoreBtn = document.getElementById('restoreBtn');
 const settingsTvSourcesBtn = document.getElementById('settingsTvSourcesBtn');
 const settingsTvChannelsBtn = document.getElementById('settingsTvChannelsBtn');
 const settingsEpgRefreshBtn = document.getElementById('settingsEpgRefreshBtn');
+
+function setSettingsStatus(message) {
+  if (settingsStatus) settingsStatus.textContent = message;
+}
 
 
 document.querySelectorAll('input[name="tvMode"]').forEach(r => {

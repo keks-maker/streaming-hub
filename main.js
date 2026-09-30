@@ -17,6 +17,21 @@ const {
 } = require('./lib/ipc-validation.js');
 const { RecorderService } = require('./lib/recorder/RecorderService.js');
 const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorder/ipc.js');
+const paths = require('./lib/recorder/paths.js');
+const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
+
+/**
+ * Freier Speicherplatz am Root (bytes) oder null, wenn nicht ermittelbar
+ * (Netzwerk-Filesysteme ohne statfs-Antwort — Konzept §3.4).
+ */
+function storageFreeBytes(root) {
+  try {
+    const stat = fs.statfsSync(path.resolve(root));
+    return stat.bavail * stat.bsize;
+  } catch (_) {
+    return null;
+  }
+}
 
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
 let recorder = null;
@@ -29,6 +44,10 @@ let recorder = null;
 const REC_SCHEME = 'rec';
 const REC_ALLOWED_EXTENSIONS = /^[\w.-]+\.(m3u8|ts|mp4)$/i;
 const REC_JOB_DIR_PATTERN = /^rec_[A-Za-z0-9._-]+$/;
+
+function isNetworkishPath(p) {
+  return isProbablyNetworkPath(p);
+}
 
 function registerRecordingProtocol({ protocol, getRoot }) {
   protocol.registerSchemesAsPrivileged([
@@ -581,7 +600,24 @@ app.whenReady().then(() => {
   // → nachholender Remux) läuft asynchron nach Fenster-Start.
   if (health.ok) {
     try {
-      const storageRoot = ensureDefaultStorageRoot(logger);
+      // Persistierten Speicherort (Settings, Konzept §3.4) laden — Fallback:
+      // Default ~/Videos/Streaming Hub. Ungültig persistierte Pfade fallen
+      // auf den Default zurück (App bleibt startbar, Fehler geloggt).
+      let storageRoot = ensureDefaultStorageRoot(logger);
+      let persisted = null;
+      try {
+        persisted = userStorage.readJson('recordingSettings', null);
+      } catch (_) {
+        persisted = null;
+      }
+      if (persisted && typeof persisted.storageRoot === 'string' && persisted.storageRoot.trim()) {
+        const check = paths.validateStorageRoot(persisted.storageRoot.trim());
+        if (check.ok) {
+          storageRoot = path.resolve(persisted.storageRoot.trim());
+        } else {
+          logger.warn('Persistierter Aufnahmen-Speicherort nicht nutzbar (' + check.error + ') — Default bleibt aktiv');
+        }
+      }
       recorder = new RecorderService({ appRoot: __dirname, storageRoot });
       registerRecorderIpc({ ipcMain, recorder, mainWindow });
       // Wiedergabeprotokoll rec:// (Bibliothek, Phase 1c)
@@ -632,6 +668,66 @@ app.whenReady().then(() => {
         // 3) Index-Eintrag entfernen
         recorder.store.removeFromIndex(recId);
         return { success: true };
+      });
+      // ── Settings: Speicherort (Konzept §3.4, Phase 1c) ──
+      ipcMain.handle('recording:get-storage-root', event => {
+        requireMainRenderer(event);
+        return {
+          root: recorder.storageRoot,
+          isDefault: recorder.storageRoot === paths.defaultRecordingsRoot(),
+          network: isNetworkishPath(recorder.storageRoot),
+          freeBytes: storageFreeBytes(recorder.storageRoot),
+        };
+      });
+      ipcMain.handle('recording:pick-folder', async event => {
+        requireMainRenderer(event);
+        const result = await dialog.showOpenDialog(mainWindow, {
+          title: 'Aufnahmen-Speicherort wählen',
+          defaultPath: recorder.storageRoot,
+          properties: ['openDirectory', 'createDirectory'],
+        });
+        if (result.canceled || !result.filePaths[0]) return null;
+        return result.filePaths[0];
+      });
+      ipcMain.handle('recording:set-storage-root', (event, root) => {
+        requireMainRenderer(event);
+        if (typeof root !== 'string' || !root.trim()) throw new Error('Kein Speicherort angegeben');
+        if (root.length > 1024) throw new Error('Speicherort-Pfad zu lang');
+        const resolved = recorder.setStorageRoot(root.trim());
+        userStorage.writeJson('recordingSettings', { storageRoot: resolved });
+        return {
+          root: resolved,
+          isDefault: resolved === paths.defaultRecordingsRoot(),
+          network: isNetworkishPath(resolved),
+          freeBytes: storageFreeBytes(resolved),
+        };
+      });
+      // ffmpeg-Diagnose (Konzept §3.4): Version/ok/Fehler für die Settings
+      ipcMain.handle('recording:ffmpeg-status', event => {
+        requireMainRenderer(event);
+        const { checkHealth } = require('./lib/ffmpeg.js');
+        const health = checkHealth(__dirname);
+        let version = null;
+        if (health.ok) {
+          try {
+            const { execFileSync } = require('child_process');
+            version = execFileSync(health.ffmpegPath, ['-version'], { encoding: 'utf-8', timeout: 5000 })
+              .split('\n')[0].trim();
+          } catch (_) {
+            version = null;
+          }
+        }
+        return {
+          ok: health.ok,
+          missing: health.missing,
+          release: health.release || null,
+          version,
+        };
+      });
+      // Default-Speicherort (für Reset-Button der Settings)
+      ipcMain.handle('recording:get-default-root', event => {
+        requireMainRenderer(event);
+        return paths.defaultRecordingsRoot();
       });
       recorder
         .recover({

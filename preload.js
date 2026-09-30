@@ -102,4 +102,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setRecordingStorageRoot: root => ipcRenderer.invoke('recording:set-storage-root', root),
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
   checkFfmpegStatus: () => ipcRenderer.invoke('recording:ffmpeg-status'),
+  getDefaultRecordingRoot: () => ipcRenderer.invoke('recording:get-default-root'),
 });
