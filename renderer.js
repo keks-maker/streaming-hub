@@ -20,6 +20,11 @@ const {
   selectEpgWindowEntries,
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
+const {
+  formatDuration,
+  currentEpgStopMs,
+  isProbablyNetworkPath,
+} = require('./lib/recorder/ui-model.js');
 
 function safeResourceUrl(value, { allowRelative = true } = {}) {
   if (typeof value !== 'string' || !value.trim()) return '';
@@ -64,6 +69,194 @@ let tvChOverrides = {}; // {sourceId: {chId: {name?,url?,tvgId?,tvgLogo?}}} – 
 let tvChDirty = false;
 
 let tvMode = localStorage.getItem('tvMode') || 'free';
+
+// ═══ Aufnahmen (Phase 1c): Host-seitiger Recording-State ═══
+// Der Renderer besitzt die Engine-IPC (preload electronAPI) und versorgt
+// tv.html mit Status-Snapshots (type 'recording-status' via tv-player-command)
+// sowie die Bibliothek/Settings-Screens. Konsumiert NUR die Engine
+// (recording:*), keine Aufnahme-Logik hier.
+let recordingState = { active: [], remuxing: [] };
+const recordingAutoStopTimers = new Map(); // recId → timeout („bis zum Ende der Sendung“)
+
+const recordingStatusListeners = [];
+function onRecordingStatusChanged(cb) {
+  recordingStatusListeners.push(cb);
+}
+function notifyRecordingStatusListeners() {
+  for (const cb of recordingStatusListeners) {
+    try { cb(recordingState); } catch (_e) { /* Listener-Fehler sollen State-Loop nicht killen */ }
+  }
+}
+
+function activeRecordingForChannel(channelId) {
+  if (!channelId) return null;
+  return (recordingState.active || []).find(a => a.channelId === channelId) || null;
+}
+
+function recordingActive() {
+  return !!(recordingState.active && recordingState.active.length);
+}
+
+/**
+ * Roh-EPG-Liste eines Kanals (XMLTV-Einträge mit start/stop-Zeitstrings) —
+ * Basis für Auto-Stopp „bis zum Ende der Sendung“ (Konzept §3.1).
+ */
+function epgListForChannel(ch) {
+  if (!ch) return [];
+  const normId = id =>
+    (id || '')
+      .replace(/@[^.@]*/g, '')
+      .toLowerCase()
+      .trim();
+  return (tvEpgIndex && tvEpgIndex.get(normId(ch.tvgId))) || [];
+}
+
+/** Titel der laufenden Sendung (für Aufnahme-Metadaten). */
+function currentEpgTitle(ch) {
+  const now = new Date();
+  const list = epgListForChannel(ch);
+  const cur = list.find(e => parseEpgTime(e.start) <= now && parseEpgTime(e.stop) >= now);
+  return cur ? decodeEntities(cur.title) : '';
+}
+
+/** Kleine Einblendung (Inline-Meldung im tvView-Bereich). */
+function showTvToast(message) {
+  try {
+    const host = document.getElementById('tvView');
+    let toast = document.getElementById('tvRecToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'tvRecToast';
+      toast.style.cssText =
+        'position:absolute;left:50%;bottom:96px;transform:translateX(-50%);' +
+        'background:rgba(0,0,0,0.85);color:#fff;padding:10px 18px;border-radius:10px;' +
+        'font-size:14px;z-index:40;pointer-events:none;max-width:70%;text-align:center;';
+      if (host && host.parentElement) host.parentElement.appendChild(toast);
+      else document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.style.opacity = '1';
+    clearTimeout(showTvToast._timer);
+    showTvToast._timer = setTimeout(() => {
+      toast.style.opacity = '0';
+    }, 4000);
+  } catch (_e) {
+    logger.warn('showTvToast fehlgeschlagen:', _e?.message || _e);
+  }
+}
+
+function applyRecordingState(status) {
+  recordingState = status && typeof status === 'object'
+    ? { active: Array.isArray(status.active) ? status.active : [], remuxing: Array.isArray(status.remuxing) ? status.remuxing : [] }
+    : { active: [], remuxing: [] };
+  notifyRecordingStatusListeners();
+  pushRecordingStatusToTvView();
+  syncAutoStopTimers();
+  updateRecordingsScreenIfVisible();
+}
+
+function pushRecordingStatusToTvView() {
+  try {
+    tvView.send('tv-player-command', {
+      type: 'recording-status',
+      status: recordingState,
+    });
+  } catch (_e) {
+    // tvView noch nicht bereit / about:blank — nächster Snapshot folgt
+  }
+}
+
+/**
+ * Auto-Stopp „Bis zum Ende der Sendung“ (Konzept §3.1): hält pro Aufnahme
+ * einen Timer, der bei EPG-Ende recording:stop auslöst. Timer werden bei jedem
+ * Status-Update neu synchronisiert (Aufnahme weg → Timer weg).
+ */
+function syncAutoStopTimers() {
+  for (const [recId, timer] of recordingAutoStopTimers) {
+    if (!(recordingState.active || []).some(a => a.recId === recId)) {
+      clearTimeout(timer);
+      recordingAutoStopTimers.delete(recId);
+    }
+  }
+}
+
+function armAutoStopFor(recId, stopAtMs) {
+  disarmAutoStopFor(recId);
+  const delay = stopAtMs - Date.now();
+  if (!(delay > 0)) return; // Sendung bereits zu Ende → User stoppt selbst
+  recordingAutoStopTimers.set(recId, setTimeout(() => {
+    recordingAutoStopTimers.delete(recId);
+    window.electronAPI.stopRecording(recId).catch(e => {
+      logger.warn('Auto-Stopp (Sendungsende) fehlgeschlagen:', e?.message || e);
+    });
+  }, delay));
+}
+
+function disarmAutoStopFor(recId) {
+  const timer = recordingAutoStopTimers.get(recId);
+  if (timer) {
+    clearTimeout(timer);
+    recordingAutoStopTimers.delete(recId);
+  }
+}
+
+/**
+ * Startet eine Aufnahme über die Engine. untilEpgEnd nutzt das Ende der
+ * laufenden Sendung (EPG) als Auto-Stopp; ohne EPG verhält sich der Request
+ * wie „ab jetzt“ (Hinweis kommt bereits aus dem tv.html-Dialog).
+ */
+async function startRecordingFromRequest({ channelId, channelName, epgTitle, epgDescription, untilEpgEnd = false, epgStopMs = null } = {}) {
+  const ch = channelId ? tvChannels.find(c => c.id === channelId) : null;
+  const url = ch?.url;
+  if (!url) throw new Error('Kein Stream für die Aufnahme verfügbar');
+  const result = await window.electronAPI.startRecording({
+    sourceUrl: url,
+    channelId: channelId || null,
+    channelName: channelName || ch?.name || null,
+    epgTitle: epgTitle || null,
+    epgDescription: epgDescription || null,
+  });
+  if (untilEpgEnd && epgStopMs && result?.recId) {
+    armAutoStopFor(result.recId, epgStopMs);
+  }
+  // Sofortiger Snapshot — die Engine-Events kommen zusätzlich asynchron.
+  try {
+    applyRecordingState(await window.electronAPI.getRecordingStatus());
+  } catch (_e) { /* Event-Stream liefert den Status ohnehin */ }
+  return result;
+}
+
+async function stopRecordingById(recId) {
+  const result = await window.electronAPI.stopRecording(recId);
+  disarmAutoStopFor(recId);
+  try {
+    applyRecordingState(await window.electronAPI.getRecordingStatus());
+  } catch (_e) { /* s. o. */ }
+  return result;
+}
+
+// Remux-Fortschritt aus den recording:status-Events ({recId, phase, percent,
+// remainingSec}) — für die Status-Spalte der Aufnahmen-Bibliothek.
+const remuxProgressMap = new Map(); // recId → { percent, remainingSec, ts }
+let recordingsScreenRenderTs = 0;
+
+function refreshRecordingSnapshot() {
+  window.electronAPI
+    .getRecordingStatus()
+    .then(applyRecordingState)
+    .catch(e => logger.warn('Recording-Snapshot fehlgeschlagen:', e?.message || e));
+}
+
+/**
+ * Bibliothek neu zeichnen, wenn der Screen sichtbar ist (gedrosselt —
+ * Remux-Progress-Events kommen im Sekundentakt). Wird in Unit 2
+ * (Aufnahmen-Bibliothek) mit der Render-Logik gefüllt.
+ */
+function updateRecordingsScreenIfVisible() {
+  const now = Date.now();
+  if (now - recordingsScreenRenderTs < 400) return;
+  recordingsScreenRenderTs = now;
+}
 
 const overlayBar = document.getElementById('overlayBar');
 const nav = document.getElementById('overlayNav');
@@ -1855,6 +2048,7 @@ async function selectTvChannel(ch, options = {}) {
         url: ch.url,
         name: ch.name,
         logo: ch.logo || '',
+        channelId: ch.id,
         epg: epgTitle,
         epgStart: epgStart,
         epgEnd: epgEnd,
@@ -2496,6 +2690,24 @@ tvView.addEventListener('ipc-message', e => {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
     else if (e.args[0].action === 'request-epg') sendEpgUpdate();
+    // ── Aufnahme-Requests aus tv.html (Phase 1c) ──
+    else if (e.args[0].action === 'recording-status') pushRecordingStatusToTvView();
+    else if (e.args[0].action === 'recording-start') {
+      const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+      if (!ch) return;
+      const epgStopMs = currentEpgStopMs(epgListForChannel(ch), Date.now());
+      startRecordingFromRequest({
+        channelId: ch.id,
+        channelName: ch.name,
+        epgTitle: currentEpgTitle(ch),
+        untilEpgEnd: !!e.args[0].payload?.untilEpgEnd,
+        epgStopMs,
+      }).catch(err => showTvToast('Aufnahme konnte nicht gestartet werden: ' + (err?.message || err)));
+    } else if (e.args[0].action === 'recording-stop') {
+      const recId = e.args[0].payload?.recId;
+      if (typeof recId !== 'string' || !recId) return;
+      stopRecordingById(recId).catch(err => showTvToast('Aufnahme konnte nicht gestoppt werden: ' + (err?.message || err)));
+    }
   }
 });
 
@@ -3136,3 +3348,51 @@ window.electronAPI.onTvSourcesChanged(sources => {
     renderTvChannels();
   }
 });
+
+// ═══ Aufnahmen (Phase 1c): Engine-Events ═══
+// Der Renderer ist der einzige Konsumpunkt der recording:*-Events und
+// verteilt sie an Chrome (tv.html), Bibliothek und Auto-Stopp-Timer.
+window.electronAPI.onRecordingStatus(data => {
+  // phase-Events: {recId, phase, percent?, remainingSec?}
+  if (!data || typeof data !== 'object') return;
+  if (data.phase === 'remuxing' && data.recId) {
+    remuxProgressMap.set(data.recId, {
+      percent: typeof data.percent === 'number' ? data.percent : null,
+      remainingSec: typeof data.remainingSec === 'number' ? data.remainingSec : null,
+      ts: Date.now(),
+    });
+    updateRecordingsScreenIfVisible();
+  } else if (data.phase === 'done' && data.recId) {
+    remuxProgressMap.delete(data.recId);
+    refreshRecordingSnapshot();
+  } else if (data.phase === 'recording' || data.phase === 'stopping') {
+    refreshRecordingSnapshot();
+  }
+});
+window.electronAPI.onRecordingProgress(data => {
+  // {recId, recordingSec, bytesWritten, attempt} — UI-Zwischenanzeige nutzt
+  // nur die Laufzeit; die Status-Spalte der Bibliothek liest den Snapshot.
+  if (!data || typeof data !== 'object' || !data.recId) return;
+  refreshRecordingSnapshotThrottled();
+});
+window.electronAPI.onRecordingReconnecting(data => {
+  // Reconnect-Hinweis als Toast (User sieht, dass die Aufnahme weiterläuft)
+  if (data && typeof data === 'object' && typeof data.attempt === 'number' && data.attempt > 1) {
+    showTvToast('Stream unterbrochen — Aufnahme reconnectet …');
+  }
+});
+window.electronAPI.onRecordingChanged(data => {
+  // Statuswechsel einer Aufnahme (failed/aborted/completed) → Bibliothek + Chip
+  if (data && typeof data === 'object' && data.recId) remuxProgressMap.delete(data.recId);
+  refreshRecordingSnapshot();
+});
+
+// Gedrosselter Snapshot-Refresh (Progress-Events im Sekundentakt)
+let recordingSnapshotTimer = null;
+function refreshRecordingSnapshotThrottled() {
+  if (recordingSnapshotTimer) return;
+  recordingSnapshotTimer = setTimeout(() => {
+    recordingSnapshotTimer = null;
+    refreshRecordingSnapshot();
+  }, 5000);
+}

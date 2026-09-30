@@ -153,14 +153,25 @@ ipcRenderer.on('tv-player-command', (_event, data) => {
 });
 
 // Bridge: page postMessage → host renderer (for tv-player channel commands)
+// Phase 1c: zusätzlich Aufnahme-Requests (recording-start/stop/status).
+// Start/Stop-Payloads sind kleine Objekte (untilEpgEnd-Flag, recId) und werden
+// im Host validiert (renderer → recording:*-IPC → Engine-Validierung).
 window.addEventListener('message', e => {
   if (
     e.source === window &&
     e.origin === window.location.origin &&
     e.data &&
-    e.data.source === 'tv-player' &&
-    ['channel-next', 'channel-prev', 'request-epg'].includes(e.data.action)
+    e.data.source === 'tv-player'
   ) {
-    ipcRenderer.sendToHost('tv-channel', { source: 'tv-player', action: e.data.action });
+    if (
+      e.data.action === 'channel-next' ||
+      e.data.action === 'channel-prev' ||
+      e.data.action === 'request-epg' ||
+      e.data.action === 'recording-start' ||
+      e.data.action === 'recording-stop' ||
+      e.data.action === 'recording-status'
+    ) {
+      ipcRenderer.sendToHost('tv-channel', { source: 'tv-player', action: e.data.action, payload: e.data });
+    }
   }
 });
