@@ -15,6 +15,11 @@ const {
   validateReleaseMetadata,
   validateVersion,
 } = require('./lib/ipc-validation.js');
+const { RecorderService } = require('./lib/recorder/RecorderService.js');
+const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorder/ipc.js');
+
+// Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
+let recorder = null;
 const {
   MAX_PLAYLIST_BYTES,
   httpUrl,
@@ -525,6 +530,35 @@ app.whenReady().then(() => {
       .catch(e => logger.error('ffmpeg/ffprobe Nachladen crashte:', e.message));
   } else {
     logger.info('ffmpeg/ffprobe OK (Release', health.release + ')');
+  }
+
+  // ── Aufnahme-Engine (Konzept §2.5) ──
+  // Start nur bei gesunden Binaries; bei Defekt bleibt Aufnahme deaktiviert
+  // (Fehlerdialog oben meldet das bereits sichtbar). Recovery (remux-pending
+  // → nachholender Remux) läuft asynchron nach Fenster-Start.
+  if (health.ok) {
+    try {
+      const storageRoot = ensureDefaultStorageRoot(logger);
+      recorder = new RecorderService({ appRoot: __dirname, storageRoot });
+      registerRecorderIpc({ ipcMain, recorder, mainWindow });
+      recorder
+        .recover({
+          afterRemux: ({ meta }) => {
+            mainWindow?.webContents.send('recording:changed', { recId: meta.id, meta });
+          },
+        })
+        .then(result => {
+          if (result.reaped.length) {
+            logger.warn(`Aufnahme-Recovery: ${result.reaped.length} Zombie-Aufnahme(n) → aborted`);
+          }
+          if (result.recovered.length) {
+            logger.info(`Aufnahme-Recovery: ${result.recovered.length} Remux nachgeholt`);
+          }
+        })
+        .catch(e => logger.error('Aufnahme-Recovery fehlgeschlagen:', e.message));
+    } catch (e) {
+      logger.error('Aufnahme-Engine konnte nicht gestartet werden:', e.message);
+    }
   }
 });
 

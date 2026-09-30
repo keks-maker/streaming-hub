@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.8 (2026-09-30)
+- New: Aufnahme-Engine im Main-Prozess (lib/recorder/, Konzept §2.3/§2.5) — RecordJob (ffmpeg-Subprozess, HLS-Zwischenform mit wachsender index.m3u8, Reconnect-Robustheit mit Backoff), RemuxJob (HLS→MP4 stream-copy mit `-progress`-Fortschritt in Prozent + Restdauer), RecorderService (Start/Stop, Duplikat-Schutz pro Kanal, Parallelitäts-Limit 3, Start-Checks ffmpeg/Speicherort/Platz), RecordingStore (Metadaten-Schema Konzept §5, atomare Writes, Recovery).
+- New: IPC-Brücke recording:start/stop/list/status + Progress-Events (recording:progress, recording:status, recording:reconnecting, recording:changed); preload.exposes electronAPI.startRecording/stopRecording/listRecordings/getRecordingStatus + onRecording* — Renderer-Karte (Record-Button, Bibliothek) konsumiert nur.
+- New: Recovery beim App-Start — Remux-Abbrüche (remux-pending) werden nachgeholt, Zombie-Aufnahmen (recording ohne Job) werden zu aborted; Remux-Fehler bleiben remux-pending und werden beim nächsten Start erneut versucht.
+- Technical: Empirisch verifizierte HLS-Zwischenform (Probe 2026-09-30): temp_file+omit_endlist+append_list nummeriert Segmente über Reconnects fortlaufend; ohne #EXT-X-ENDLIST hängt der Remux (HLS-Demuxer wartet auf Live-Daten) — Stop sichert ENDLIST defensiv selbst; out_time_ms von ffmpeg ist Mikrosekunden (Namensfalle im Progress-Parsing).
+- Technical: Aufnahmen liegen unter <Speicherort>/Aufnahmen/<recId>/ (Default ~/Videos/Streaming Hub); fertige MP4 nach Konzept §5 benannt (<Kanal>_<Titel>_<YYYY-MM-DD_HHMM>.mp4, Kollisions-Suffix -2/-3); Meta-Datei <recId>.recording.json überlebt das Aufräumen der Zwischenform.
+- Tests: 71/71 grün — 38 neue Unit-Tests (State-Machine RecordJob mit Fake-ffmpeg, Dateinamen-Kollision, Metadaten-Schema, Remux-Progress-Berechnung inkl. out_time-µs-Falle, Duplikat-Schutz, Parallelitäts-Limit, Recovery/Zombies) + Integrationstest gegen lokalen HLS-Stream (echtes ffmpeg: Aufnahme wächst → Stop → Remux → ffprobe-Verifikation Dauer/Streams, Zwischendateien weg).
+
 ## 0.5.7 (2026-09-30)
 - Fix: macOS-App-Bundle wird wieder mit castlabs EVS/VMP signiert (Kind "streaming") — die Widevine-CDM registriert sich nur in EVS-signierten Bundles. Ohne Signatur schlugen seit der 0.5.0-Umstellung auf das native Bundle alle DRM-Dienste fehl (Netflix E100, Disney+, Prime).
 - Change: install.sh signiert das Wrapper-Bundle nach der Assembly und verifiziert die Signatur (sign-pkg + verify-pkg als Install-Gate); fehlendes castlabs-evs erzeugt eine deutliche Warnung statt eines stillen DRM-Ausfalls.

@@ -68,4 +68,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Backup / Restore
   backupSettings: () => ipcRenderer.invoke('backup-settings'),
   restoreSettings: () => ipcRenderer.invoke('restore-settings'),
+
+  // Aufnahme (Konzept §2.5) — Renderer konsumiert nur
+  startRecording: request => ipcRenderer.invoke('recording:start', request),
+  stopRecording: recId => ipcRenderer.invoke('recording:stop', recId),
+  listRecordings: () => ipcRenderer.invoke('recording:list'),
+  getRecordingStatus: () => ipcRenderer.invoke('recording:status'),
+  onRecordingProgress: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:progress', handler);
+    return () => ipcRenderer.removeListener('recording:progress', handler);
+  },
+  onRecordingStatus: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:status', handler);
+    return () => ipcRenderer.removeListener('recording:status', handler);
+  },
+  onRecordingReconnecting: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:reconnecting', handler);
+    return () => ipcRenderer.removeListener('recording:reconnecting', handler);
+  },
+  onRecordingChanged: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:changed', handler);
+    return () => ipcRenderer.removeListener('recording:changed', handler);
+  },
 });
