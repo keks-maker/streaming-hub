@@ -1343,6 +1343,209 @@ body {
   padding: 24px 0;
 }
 
+/* ═══ Aufnahmen-Bibliothek (Phase 1c) — Muster: History-Overlay ═══ */
+.recordings-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  z-index: 80;
+  align-items: center;
+  justify-content: center;
+}
+
+.recordings-overlay.open {
+  display: flex;
+}
+
+.recordings-panel {
+  background: rgba(18,18,26,0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 640px;
+  max-width: 92vw;
+  max-height: 76vh;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  animation: modalIn 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.recordings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.recordings-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recordings-close,
+.recordings-refresh {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+
+.recordings-close:hover,
+.recordings-refresh:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+.recordings-list {
+  padding: 0 20px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recordings-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.recording-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.recording-entry:hover {
+  background: rgba(255,255,255,0.07);
+}
+
+.recording-entry-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.recording-entry-logo-fallback {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(108,92,231,0.25);
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.recording-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.recording-entry-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recording-entry-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.recording-entry-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
+.recording-entry-status.completed { color: #10b981; }
+.recording-entry-status.failed, .recording-entry-status.aborted { color: #ef4444; }
+.recording-entry-status.recording { color: #ef4444; }
+.recording-entry-status.remux-pending { color: #f59e0b; }
+
+.recording-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.recording-entry-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .15s;
+  background: rgba(167,139,250,0.15);
+  color: #a78bfa;
+}
+
+.recording-entry-btn:hover { background: rgba(167,139,250,0.28); }
+
+.recording-entry-btn.danger {
+  background: rgba(229,9,20,0.15);
+  color: #e50914;
+}
+
+.recording-entry-btn.danger:hover { background: rgba(229,9,20,0.25); }
+.recording-entry-btn:disabled { opacity: .4; cursor: default; }
+
+/* Wiedergabe-Overlay (bestehendes dashboard-player-Muster) */
+.recording-player {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recording-player video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .history-entry {
   display: flex;
   align-items: center;

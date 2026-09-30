@@ -94,4 +94,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('recording:changed', handler);
     return () => ipcRenderer.removeListener('recording:changed', handler);
   },
+
+  // Aufnahme-UI (Phase 1c): Bibliothek + Settings
+  getRecordingFile: recId => ipcRenderer.invoke('recording:get-file', recId),
+  deleteRecording: recId => ipcRenderer.invoke('recording:delete', recId),
+  getRecordingStorageRoot: () => ipcRenderer.invoke('recording:get-storage-root'),
+  setRecordingStorageRoot: root => ipcRenderer.invoke('recording:set-storage-root', root),
+  pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
+  checkFfmpegStatus: () => ipcRenderer.invoke('recording:ffmpeg-status'),
 });

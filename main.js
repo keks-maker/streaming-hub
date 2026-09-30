@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseXMLTV, parseM3UFull } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -20,6 +20,49 @@ const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorde
 
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
 let recorder = null;
+
+// Wiedergabe-Protokoll der Aufnahmen (Phase 1c, Karte t_bafa7928):
+// rec://<recId>/<datei> streamt Dateien aus dem Aufnahmen-Root. hls.js kann
+// von einer file://-Seite keine file://-Segmente per XHR laden — rec:// ist
+// ein privilegiertes Scheme (supportFetchAPI + stream), jailt auf den Root
+// und erlaubt nur die Zwischenform (.m3u8/.ts) und fertige MP4s.
+const REC_SCHEME = 'rec';
+const REC_ALLOWED_EXTENSIONS = /^[\w.-]+\.(m3u8|ts|mp4)$/i;
+const REC_JOB_DIR_PATTERN = /^rec_[A-Za-z0-9._-]+$/;
+
+function registerRecordingProtocol({ protocol, getRoot }) {
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: REC_SCHEME,
+      privileges: { standard: true, stream: true, supportFetchAPI: true, bypassCSP: false },
+    },
+  ]);
+  function handler(request, callback) {
+    try {
+      const url = new URL(request.url);
+      const recId = decodeURIComponent(url.hostname || '');
+      const rel = decodeURIComponent(url.pathname || '').replace(/^\/+/, '');
+      if (!REC_JOB_DIR_PATTERN.test(recId) || !REC_ALLOWED_EXTENSIONS.test(rel)) {
+        callback({ error: -6 }); // ERR_FILE_NOT_FOUND
+        return;
+      }
+      const root = path.resolve(getRoot());
+      const filePath = path.resolve(root, 'Aufnahmen', recId, rel);
+      if (!filePath.startsWith(path.resolve(root, 'Aufnahmen') + path.sep)) {
+        callback({ error: -6 });
+        return;
+      }
+      callback({ path: filePath });
+    } catch (_) {
+      callback({ error: -6 });
+    }
+  }
+  return { handler, scheme: REC_SCHEME };
+}
+
+// Privileg-Registrierung MUSS vor app ready passieren (Electron-Forderung);
+// der Handler selbst wird in whenReady via protocol.handle verdrahtet.
+const recordingProtocol = registerRecordingProtocol({ protocol, getRoot: () => (recorder ? recorder.storageRoot : '') });
 const {
   MAX_PLAYLIST_BYTES,
   httpUrl,
@@ -541,6 +584,55 @@ app.whenReady().then(() => {
       const storageRoot = ensureDefaultStorageRoot(logger);
       recorder = new RecorderService({ appRoot: __dirname, storageRoot });
       registerRecorderIpc({ ipcMain, recorder, mainWindow });
+      // Wiedergabeprotokoll rec:// (Bibliothek, Phase 1c)
+      protocol.handle(recordingProtocol.scheme, recordingProtocol.handler);
+      // Bibliotheks-IPC (Phase 1c): Dateiinfo + Löschen
+      ipcMain.handle('recording:get-file', (event, recId) => {
+        requireMainRenderer(event);
+        if (typeof recId !== 'string' || !REC_JOB_DIR_PATTERN.test(recId)) {
+          throw new Error('Ungültige Aufnahme-ID');
+        }
+        const meta = recorder.store.readMeta(recId);
+        if (!meta) throw new Error('Aufnahme nicht gefunden: ' + recId);
+        const lib = path.join(recorder.storageRoot, 'Aufnahmen');
+        const jobDir = path.join(lib, recId);
+        const playlist = path.join(jobDir, 'index.m3u8');
+        const base = `rec://${recId}`;
+        if (meta.status === 'recording' && fs.existsSync(playlist)) {
+          // Laufende Aufnahme: HLS-Zwischenform live abspielbar
+          return { kind: 'hls', url: `${base}/index.m3u8` };
+        }
+        if (meta.outputFile && fs.existsSync(meta.outputFile)) {
+          return { kind: 'mp4', url: `${base}/${encodeURIComponent(path.basename(meta.outputFile))}` };
+        }
+        throw new Error('Keine abspielbare Datei für diese Aufnahme');
+      });
+      ipcMain.handle('recording:delete', async (event, recId) => {
+        requireMainRenderer(event);
+        if (typeof recId !== 'string' || !REC_JOB_DIR_PATTERN.test(recId)) {
+          throw new Error('Ungültige Aufnahme-ID');
+        }
+        if (recorder.getJob(recId)) throw new Error('Aufnahme läuft noch — erst stoppen');
+        const meta = recorder.store.readMeta(recId);
+        if (!meta) throw new Error('Aufnahme nicht gefunden: ' + recId);
+        const lib = path.join(recorder.storageRoot, 'Aufnahmen');
+        const jobDir = path.join(lib, recId);
+        // 1) MP4 löschen (falls vorhanden)
+        if (meta.outputFile && fs.existsSync(meta.outputFile)) {
+          try { fs.rmSync(meta.outputFile, { force: true }); } catch (e) {
+            throw new Error(`MP4 konnte nicht gelöscht werden: ${e.message}`);
+          }
+        }
+        // 2) Job-Verzeichnis (Zwischenform + Meta-Datei)
+        if (fs.existsSync(jobDir)) {
+          try { fs.rmSync(jobDir, { recursive: true, force: true }); } catch (e) {
+            throw new Error(`Aufnahmeverzeichnis konnte nicht gelöscht werden: ${e.message}`);
+          }
+        }
+        // 3) Index-Eintrag entfernen
+        recorder.store.removeFromIndex(recId);
+        return { success: true };
+      });
       recorder
         .recover({
           afterRemux: ({ meta }) => {

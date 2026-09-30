@@ -249,13 +249,15 @@ function refreshRecordingSnapshot() {
 
 /**
  * Bibliothek neu zeichnen, wenn der Screen sichtbar ist (gedrosselt —
- * Remux-Progress-Events kommen im Sekundentakt). Wird in Unit 2
- * (Aufnahmen-Bibliothek) mit der Render-Logik gefüllt.
+ * Remux-Progress-Events kommen im Sekundentakt).
  */
 function updateRecordingsScreenIfVisible() {
   const now = Date.now();
-  if (now - recordingsScreenRenderTs < 400) return;
+  if (now - recordingsScreenRenderTs < 500) return;
   recordingsScreenRenderTs = now;
+  if (recordingsOverlay && recordingsOverlay.classList.contains('open')) {
+    renderRecordingsScreen();
+  }
 }
 
 const overlayBar = document.getElementById('overlayBar');
@@ -2357,6 +2359,210 @@ function toggleHistory() {
   }
 }
 
+// ═══ Aufnahmen-Bibliothek (Phase 1c, Konzept §3.3) ═══
+// Neuer Screen „Aufnahmen“ (Muster: History-Overlay). Einträge mit Kanal-Logo,
+// Titel, Kanal, Datum/Uhrzeit, Dauer, Status, Wiedergabe, Löschen.
+// Bewusst KEINE Dateigröße (Konzept-Beschluss). Status-Spalte:
+// „Konvertiere… N % · noch ~Xs“ (Remux-Progress), „Laufende Aufnahme“
+// (live über die HLS-Zwischenform abspielbar), „Fertig“, „Fehlgeschlagen“.
+const recordingsOverlay = document.getElementById('recordingsOverlay');
+const recordingsList = document.getElementById('recordingsList');
+const recordingsClose = document.getElementById('recordingsClose');
+const recordingsRefresh = document.getElementById('recordingsRefresh');
+const recordingPlayer = document.getElementById('recordingPlayer');
+const recordingPlayerVideo = document.getElementById('recordingPlayerVideo');
+const recordingPlayerClose = document.getElementById('recordingPlayerClose');
+
+let recordingPlaybackUrl = null; // für native-<video>-Fallback (MP4)
+
+function recordingStatusText(meta) {
+  if (meta.status === 'recording') return 'Laufende Aufnahme';
+  if (meta.status === 'remux-pending') {
+    const p = remuxProgressMap.get(meta.id);
+    if (p && typeof p.percent === 'number') {
+      const rest = Number.isFinite(p.remainingSec) ? ` · noch ~${formatDuration(p.remainingSec)}` : '';
+      return `Konvertiere… ${Math.round(p.percent)} %${rest}`;
+    }
+    return 'Konvertiere…';
+  }
+  if (meta.status === 'completed') return 'Fertig';
+  if (meta.status === 'aborted') return 'Abgebrochen';
+  return 'Fehlgeschlagen';
+}
+
+function recordingChannelLogo(chName) {
+  const ch = tvChannels.find(c => (c.name || '') === chName);
+  return ch && ch.logo ? safeResourceUrl(ch.logo, { allowRelative: false }) : '';
+}
+
+function formatRecordingDate(meta) {
+  const start = meta.startedAt ? new Date(meta.startedAt) : null;
+  if (!start || Number.isNaN(start.getTime())) return '';
+  return start.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+    ' · ' + start.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
+
+function recordingDurationText(meta) {
+  if (meta.status === 'recording') {
+    const started = meta.startedAt ? new Date(meta.startedAt).getTime() : null;
+    const sec = started ? Math.max(0, (Date.now() - started) / 1000) : 0;
+    return formatDuration(sec);
+  }
+  return Number.isFinite(meta.durationSec) && meta.durationSec ? formatDuration(meta.durationSec) : '—';
+}
+
+function renderRecordingsScreen() {
+  window.electronAPI.listRecordings().then(entries => {
+    recordingsList.innerHTML = '';
+    if (!entries || !entries.length) {
+      recordingsList.innerHTML = '<div class="recordings-empty">Noch keine Aufnahmen.</div>';
+      return;
+    }
+    // Neuere zuerst (Index-Reihenfolge), active recordings oben halten:
+    const sorted = [...entries].sort((a, b) => {
+      if (a.status === 'recording' && b.status !== 'recording') return -1;
+      if (b.status === 'recording' && a.status !== 'recording') return 1;
+      return 0;
+    });
+    for (const meta of sorted) {
+      const row = document.createElement('div');
+      row.className = 'recording-entry';
+
+      const logoSrc = recordingChannelLogo(meta.channelName);
+      const logo = logoSrc
+        ? Object.assign(document.createElement('img'), { className: 'recording-entry-logo', alt: '' })
+        : Object.assign(document.createElement('div'), {
+            className: 'recording-entry-logo-fallback',
+            textContent: (meta.channelName || '?').slice(0, 1).toUpperCase(),
+          });
+      if (logoSrc) logo.src = logoSrc;
+      row.appendChild(logo);
+
+      const body = document.createElement('div');
+      body.className = 'recording-entry-body';
+      const title = meta.epgTitle || 'Aufnahme';
+      const durationText = recordingDurationText(meta);
+      body.innerHTML =
+        `<div class="recording-entry-title">${escapeHtml(title)}</div>` +
+        `<div class="recording-entry-meta">${escapeHtml(meta.channelName || 'Unbekannter Kanal')} · ` +
+        `${escapeHtml(formatRecordingDate(meta))} · ${escapeHtml(durationText)}</div>` +
+        `<div class="recording-entry-status ${escapeHtml(meta.status)}">${escapeHtml(recordingStatusText(meta))}</div>`;
+      row.appendChild(body);
+
+      const actions = document.createElement('div');
+      actions.className = 'recording-entry-actions';
+
+      const playBtn = document.createElement('button');
+      playBtn.className = 'recording-entry-btn';
+      playBtn.textContent = '▶ Wiedergabe';
+      const playable = meta.status === 'completed' || meta.status === 'recording';
+      playBtn.disabled = !playable;
+      if (playable) playBtn.addEventListener('click', () => openRecordingPlayback(meta));
+      actions.appendChild(playBtn);
+
+      const stopBtn = document.createElement('button');
+      stopBtn.className = 'recording-entry-btn';
+      stopBtn.textContent = '⏹ Stoppen';
+      stopBtn.style.display = meta.status === 'recording' ? '' : 'none';
+      if (meta.status === 'recording') {
+        stopBtn.addEventListener('click', () => {
+          stopRecordingById(meta.id).catch(err =>
+            showTvToast('Aufnahme konnte nicht gestoppt werden: ' + (err?.message || err)));
+        });
+      }
+      actions.appendChild(stopBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'recording-entry-btn danger';
+      delBtn.textContent = 'Löschen';
+      delBtn.disabled = meta.status === 'recording';
+      if (meta.status !== 'recording') {
+        delBtn.addEventListener('click', async () => {
+          delBtn.disabled = true;
+          try {
+            await window.electronAPI.deleteRecording(meta.id);
+            renderRecordingsScreen();
+          } catch (err) {
+            showTvToast('Löschen fehlgeschlagen: ' + (err?.message || err));
+            delBtn.disabled = false;
+          }
+        });
+      }
+      actions.appendChild(delBtn);
+
+      row.appendChild(actions);
+      recordingsList.appendChild(row);
+    }
+  }).catch(e => {
+    recordingsList.innerHTML = `<div class="recordings-empty">Aufnahmen konnten nicht geladen werden: ${escapeHtml(e?.message || String(e))}</div>`;
+  });
+}
+
+function openRecordingsScreen() {
+  recordingsOverlay.classList.add('open');
+  renderRecordingsScreen();
+}
+
+function closeRecordingsScreen() {
+  recordingsOverlay.classList.remove('open');
+  closeRecordingPlayback();
+}
+
+/**
+ * Wiedergabe über bestehenden Player (Overlay mit <video>): fertige MP4 via
+ * rec:// direkt; laufende Aufnahme über die HLS-Zwischenform (hls.js ist auf
+ * dieser Seite global geladen).
+ */
+async function openRecordingPlayback(meta) {
+  try {
+    const file = await window.electronAPI.getRecordingFile(meta.id);
+    closeRecordingPlayback();
+    recordingPlayer.style.display = 'flex';
+    if (file.kind === 'hls' && typeof Hls !== 'undefined' && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: false });
+      recordingPlaybackHls = hls;
+      hls.loadSource(file.url);
+      hls.attachMedia(recordingPlayerVideo);
+      recordingPlayerVideo.play().catch(() => {});
+    } else {
+      recordingPlayerVideo.src = file.url;
+      recordingPlaybackUrl = file.url;
+      recordingPlayerVideo.play().catch(() => {});
+    }
+  } catch (e) {
+    showTvToast('Wiedergabe nicht möglich: ' + (e?.message || e));
+  }
+}
+
+let recordingPlaybackHls = null;
+
+function closeRecordingPlayback() {
+  if (recordingPlaybackHls) {
+    try { recordingPlaybackHls.destroy(); } catch (_e) { /* schon weg */ }
+    recordingPlaybackHls = null;
+  }
+  recordingPlayerVideo.pause();
+  recordingPlayerVideo.removeAttribute('src');
+  recordingPlayerVideo.load();
+  recordingPlaybackUrl = null;
+  recordingPlayer.style.display = 'none';
+}
+
+recordingsClose.addEventListener('click', closeRecordingsScreen);
+recordingsRefresh.addEventListener('click', renderRecordingsScreen);
+recordingsOverlay.addEventListener('click', e => {
+  if (e.target === recordingsOverlay) closeRecordingsScreen();
+});
+recordingPlayerClose.addEventListener('click', closeRecordingPlayback);
+
+function toggleRecordings() {
+  if (recordingsOverlay.classList.contains('open')) closeRecordingsScreen();
+  else openRecordingsScreen();
+}
+
+const recordingsBtn = document.getElementById('recordingsBtn');
+if (recordingsBtn) recordingsBtn.addEventListener('click', toggleRecordings);
+
 function sendEpgUpdate() {
   if (!tvActiveChannelId) return;
   const ch = tvChannels.find(c => c.id === tvActiveChannelId);
@@ -2929,6 +3135,10 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
       closeHistory();
       return true;
     }
+    if (recordingsOverlay.classList.contains('open')) {
+      closeRecordingsScreen();
+      return true;
+    }
     if (tvChannelManagerOverlay.classList.contains('open')) {
       closeTvChannelManager();
       return true;
@@ -2966,6 +3176,12 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
 
   if (ctrlKey && (key === 'h' || key === 'H')) {
     toggleHistory();
+    return true;
+  }
+
+  // Aufnahmen-Bibliothek (Phase 1c): Strg+R bzw. Toolbar-Button
+  if ((ctrlKey && (key === 'r' || key === 'R')) || key === 'Strg+R') {
+    toggleRecordings();
     return true;
   }
 

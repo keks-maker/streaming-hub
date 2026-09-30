@@ -3,7 +3,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: http: https:; connect-src 'self' http: https:; frame-src https:; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: http: https: rec:; connect-src 'self' http: https: rec:; frame-src https:; object-src 'none'; base-uri 'self';">
   <title>Streaming Hub</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -20,6 +20,12 @@
       <div class="overlay-update-slot" id="overlayUpdateSlot"></div>
     </nav>
     <div class="overlay-actions">
+      <button class="add-btn" id="recordingsBtn" title="Aufnahmen (Strg+R)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
       <button class="add-btn" id="historyBtn" title="Verlauf (Strg+H)">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="9"/>
@@ -170,6 +176,28 @@
     </div>
     <span class="nav-reveal-hint" aria-hidden="true">⌃</span>
     <span class="version-tag" id="versionTag"></span>
+  </div>
+
+  <!-- Recordings Overlay (Aufnahmen-Bibliothek, Phase 1c) -->
+  <div class="recordings-overlay" id="recordingsOverlay">
+    <div class="recordings-panel">
+      <div class="recordings-header">
+        <span>Aufnahmen</span>
+        <div class="recordings-header-actions">
+          <button class="recordings-refresh" id="recordingsRefresh" title="Aktualisieren">↻</button>
+          <button class="recordings-close" id="recordingsClose">&times;</button>
+        </div>
+      </div>
+      <div class="recordings-list" id="recordingsList">
+        <div class="recordings-empty">Noch keine Aufnahmen.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recording Player Overlay (Wiedergabe über bestehenden Player-Stil) -->
+  <div class="recording-player" id="recordingPlayer" style="display:none">
+    <button class="dashboard-player-close" id="recordingPlayerClose" type="button" aria-label="Wiedergabe schließen">&times;</button>
+    <video id="recordingPlayerVideo" controls autoplay playsinline></video>
   </div>
 
   <!-- Shortcuts Overlay -->
