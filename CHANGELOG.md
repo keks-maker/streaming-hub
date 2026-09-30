@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.6 (2026-09-30)
+- Fix: macOS-Updater startet den Fork mit ELECTRON_RUN_AS_NODE und protokolliert Spawn-, stdout- und stderr-Fehler.
+- Fix: Dirty-Trees werden mit checkout --force deterministisch aktualisiert; Apply-Fehler erscheinen sichtbar im UI.
+- Fix: Updater-Phasen werden in app.getPath('logs')/updater.log geschrieben.
+
 ## 0.5.5 (2026-09-30)
 - Change: Minimierte Navbar auf 12px halbiert, damit darüberliegende Web-Inhalte wie das YouTube-Suchfeld frei bleiben.
 - Change: Padding der minimierten Navbar auf 0 gesetzt — gerenderte Höhe exakt 12px statt 17px.

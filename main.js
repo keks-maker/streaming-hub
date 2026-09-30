@@ -361,9 +361,18 @@ ipcMain.handle('apply-update', async (event, version) => {
       return { success: false, error: e.message };
     }
   }
+  const updaterLogDir = app.getPath('logs');
+  const updaterLogPath = path.join(updaterLogDir, 'updater.log');
+  fs.mkdirSync(updaterLogDir, { recursive: true });
+  const updaterLog = fs.createWriteStream(updaterLogPath, { flags: 'a' });
+  updaterLog.write(`\n=== Update gestartet ${new Date().toISOString()} v${updateVersion} ===\n`);
   const proc = fork(path.join(__dirname, 'updater.js'), [__dirname], {
     stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', STREAMING_HUB_UPDATER_LOG: updaterLogPath },
   });
+  proc.stdout?.on('data', chunk => updaterLog.write(`[stdout] ${chunk}`));
+  proc.stderr?.on('data', chunk => updaterLog.write(`[stderr] ${chunk}`));
+  proc.on('error', error => updaterLog.write(`[spawn-error] ${error.stack || error.message}\n`));
   return new Promise(resolve => {
     const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 180000);
     const onMsg = msg => {
@@ -372,6 +381,14 @@ ipcMain.handle('apply-update', async (event, version) => {
       } else if (msg.type === 'applied') {
         clearTimeout(timer);
         proc.removeListener('message', onMsg);
+        if (msg.error) {
+          dialog.showMessageBox(mainWindow, {
+            type: 'error',
+            title: 'Update fehlgeschlagen',
+            message: 'Das Update konnte nicht angewendet werden.',
+            detail: msg.error,
+          }).catch(() => {});
+        }
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => {
@@ -382,10 +399,12 @@ ipcMain.handle('apply-update', async (event, version) => {
       }
     };
     proc.on('message', onMsg);
-    proc.on('exit', () => {
+    proc.on('exit', (code, signal) => {
       clearTimeout(timer);
       proc.removeListener('message', onMsg);
-      resolve({ success: false, error: 'prozess unerwartet beendet' });
+      updaterLog.write(`[exit] code=${code} signal=${signal}\n`);
+      updaterLog.end();
+      resolve({ success: false, error: `Updater unerwartet beendet (code=${code}, signal=${signal || 'none'})` });
     });
     proc.send({ type: 'apply', version: updateVersion });
   });

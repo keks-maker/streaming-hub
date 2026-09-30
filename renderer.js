@@ -2984,8 +2984,10 @@ async function handleUpdateButtonClick() {
     if (!result.success) {
       hideUpdateOverlay();
       updateBtn.disabled = false;
-      updateBtn.title = `Fehlgeschlagen: ${result.error}`;
-      setTimeout(() => setUpdateState('available'), 5000);
+      updateBtn.title = 'Update fehlgeschlagen';
+      updateNotice.hidden = false;
+      updateNotice.textContent = `Update fehlgeschlagen: ${result.error || 'Unbekannter Fehler'}`;
+      setUpdateState('available');
     }
   }
 }

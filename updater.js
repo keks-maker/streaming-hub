@@ -14,6 +14,28 @@ const path = require('path');
 const os = require('os');
 const { mergeTvsources } = require('./lib/tvsources-merge.js');
 
+const updaterLogPath = process.env.STREAMING_HUB_UPDATER_LOG;
+function updaterLog(level, message, details) {
+  const line = `[${new Date().toISOString()}] [${level}] ${message}${details ? ` ${details}` : ''}\n`;
+  if (updaterLogPath) {
+    try { fs.mkdirSync(path.dirname(updaterLogPath), { recursive: true }); fs.appendFileSync(updaterLogPath, line); } catch (_) {}
+  }
+  if (level === 'ERROR') console.error(line.trim()); else console.log(line.trim());
+}
+function runSync(command, options) {
+  updaterLog('INFO', `exec: ${command}`);
+  try {
+    const output = execSync(command, options);
+    if (output) updaterLog('STDOUT', String(output));
+    return output;
+  } catch (error) {
+    if (error.stdout) updaterLog('STDOUT', String(error.stdout));
+    if (error.stderr) updaterLog('STDERR', String(error.stderr));
+    updaterLog('ERROR', `exec fehlgeschlagen: ${command}`, error.message);
+    throw error;
+  }
+}
+
 if (process.platform === 'darwin') {
   const macPathEntries = [
     path.join(os.homedir(), '.local/bin'),
@@ -42,12 +64,22 @@ function git(args, timeout) {
   const argv = Array.isArray(args)
     ? args
     : args.match(/"[^"]*"|'[^']*'|\S+/g).map(value => value.replace(/^['"]|['"]$/g, ''));
-  return execFileSync('git', argv, {
-    cwd: appDir,
-    encoding: 'utf-8',
-    timeout: timeout || 15000,
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
+  updaterLog('INFO', `git: ${argv.join(' ')}`);
+  try {
+    const output = execFileSync('git', argv, {
+      cwd: appDir,
+      encoding: 'utf-8',
+      timeout: timeout || 15000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    if (output) updaterLog('STDOUT', output);
+    return output;
+  } catch (error) {
+    if (error.stdout) updaterLog('STDOUT', String(error.stdout));
+    if (error.stderr) updaterLog('STDERR', String(error.stderr));
+    updaterLog('ERROR', 'git fehlgeschlagen', error.message);
+    throw error;
+  }
 }
 
 function backupUserFiles() {
@@ -249,6 +281,7 @@ process.on('message', msg => {
       process.send({ type: 'result', error: e.message });
     }
   } else if (msg.type === 'apply') {
+    updaterLog('INFO', `Apply gestartet: v${msg.version}`);
     try {
       // Defense-in-Depth: Version strikt validieren, bevor sie in
       // Shell-Befehle interpoliert wird (kommt via IPC vom Renderer).
@@ -257,7 +290,7 @@ process.on('message', msg => {
       }
 
       process.send({ type: 'progress', step: 'Build-Werkzeuge prüfen…', percent: 2 });
-      execSync('npm --version', {
+      runSync('npm --version', {
         cwd: appDir,
         encoding: 'utf-8',
         timeout: 15000,
@@ -272,17 +305,8 @@ process.on('message', msg => {
 
       process.send({ type: 'progress', step: `Version v${msg.version} wird angewendet…`, percent: 30 });
 
-      // Nur stashen, wenn es tatsächlich lokale Änderungen gibt
-      let stashed = false;
-      try {
-        const status = git('status --porcelain', 5000);
-        if (status.trim()) {
-          git('stash push --include-untracked -m "streaming-hub-update"', 15000);
-          stashed = true;
-        }
-      } catch (e) {
-        /* stash error – continue */
-      }
+      // Dirty-Tree-Inhalte werden bewusst durch checkout --force ersetzt.
+      // User-Dateien wurden zuvor separat gesichert und danach wiederhergestellt.
 
       git(['checkout', '--force', `v${msg.version}`], 30000);
 
@@ -300,22 +324,8 @@ process.on('message', msg => {
         }
       });
 
-      // Gemergten JSON-Stand sichern, bevor der zeilenbasierte stash pop laufen kann
-      snapshotMergedJson();
-
-      // Stash anwenden (falls vorhanden und nicht durch restore überschrieben)
-      if (stashed) {
-        try {
-          git('stash pop', 15000);
-        } catch (e) {
-          // Konflikte möglich – Stash bleibt erhalten, User kann manuell lösen
-          process.send({
-            type: 'progress',
-            step: '⚠ Lokale Änderungen konnten nicht automatisch übernommen werden (Konflikte). Stash bleibt erhalten: git stash pop',
-            percent: 50,
-          });
-        }
-      }
+      // Kein stash/pop: lokale Codeänderungen dürfen den Apply nicht blockieren.
+      // checkout --force hat den Zielstand bereits deterministisch hergestellt.
 
       // stash pop kann zeilenbasierte Konflikt-Marker in die JSON-Dateien schreiben →
       // gemergten Stand wiederherstellen (nur falls Marker vorhanden sind)
@@ -333,14 +343,14 @@ process.on('message', msg => {
       } catch (e) {}
 
       process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
-      execSync('npm install --include=dev --ignore-scripts', {
+      runSync('npm install --include=dev --ignore-scripts', {
         cwd: appDir,
         encoding: 'utf-8',
         timeout: 180000,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       process.send({ type: 'progress', step: 'Laufzeitdateien werden gebaut…', percent: 85 });
-      execSync('npm run build:all', {
+      runSync('npm run build:all', {
         cwd: appDir,
         encoding: 'utf-8',
         timeout: 180000,
@@ -360,6 +370,7 @@ process.on('message', msg => {
       process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
       process.send({ type: 'applied' });
     } catch (e) {
+      updaterLog('ERROR', 'Apply fehlgeschlagen', e.stack || e.message);
       process.send({ type: 'applied', error: e.message });
     }
   }
