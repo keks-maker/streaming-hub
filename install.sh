@@ -304,6 +304,21 @@ info "Baue Laufzeitdateien …"
 npm run build:all
 
 # ------------------------------------------------------------------
+# ffmpeg/ffprobe (Aufnahme-Feature, Konzept §2.2 — Spike-Ergebnis 2026-09)
+# ------------------------------------------------------------------
+# Die Binaries werden MIT der App ausgeliefert (statische Builds, Release
+# b6.1.1 = ffmpeg 7.0.2, SHA-256-gepinnt in lib/ffmpeg.js) — kein
+# "bitte ffmpeg via Homebrew/apt nachinstallieren". Vorhandene, gesunde
+# Binaries bleiben unangetastet (schneller Pfad); fehlende werden geladen.
+info "Prüfe gebündelte ffmpeg/ffprobe-Binaries …"
+node "$INSTALL_DIR/bin/ensure-ffmpeg.js" || error "ffmpeg-Bündelung fehlgeschlagen.
+
+  Die Aufnahme-Funktion benötigt ffmpeg/ffprobe im App-Verzeichnis
+  ($INSTALL_DIR/bin/). Ursache siehe Ausgabe oben (Netzwerk/Prüfsumme).
+  Lösung: Installer erneut ausführen oder beschädigte Dateien in
+  $INSTALL_DIR/bin/ löschen."
+
+# ------------------------------------------------------------------
 # Desktop-Eintrag
 # ------------------------------------------------------------------
 if [ "$OS" = "Linux" ]; then

@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { mergeTvsources } = require('./lib/tvsources-merge.js');
+const { ensureBinaries } = require('./lib/ffmpeg.js');
 
 const updaterLogPath = process.env.STREAMING_HUB_UPDATER_LOG;
 function updaterLog(level, message, details) {
@@ -260,7 +261,7 @@ function getCurrentVersion() {
   }
 }
 
-process.on('message', msg => {
+process.on('message', async msg => {
   if (msg.type === 'check') {
     try {
       const currentVersion = getCurrentVersion() || msg.currentVersion;
@@ -367,6 +368,19 @@ process.on('message', msg => {
           throw new Error(`Laufzeit-Build-Artefakt fehlt oder ist veraltet: ${output}`);
         }
       });
+
+      // ffmpeg/ffprobe (Konzept §2.2): Nach jedem Update verifizieren — Binary
+      // vorhanden + ausführbar + `ffmpeg -version` liefert Output. Läuft hier
+      // mit node (ELECTRON_RUN_AS_NODE), ohne App-Start. Fehlende/desynchrone
+      // Binaries werden automatisch nachgeladen (Selbstheilung), ein
+      // Prüfsummen-/Netzwerkfehler bricht das Update sichtbar ab.
+      process.send({ type: 'progress', step: 'ffmpeg/ffprobe werden verifiziert…', percent: 92 });
+      const ffmpegResult = await ensureBinaries(appDir);
+      if (!ffmpegResult.ok) {
+        throw new Error(`ffmpeg/ffprobe nach Update nicht bereit: ${ffmpegResult.error}`);
+      }
+      updaterLog('INFO', `ffmpeg/ffprobe OK (${ffmpegResult.ffmpeg.action}/${ffmpegResult.ffprobe.action})`);
+
       process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
       process.send({ type: 'applied' });
     } catch (e) {

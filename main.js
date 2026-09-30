@@ -499,6 +499,33 @@ app.whenReady().then(() => {
   components.whenReady()
     .then(() => logger.info('Widevine CDM status:', components.status()))
     .catch(() => logger.warn('Component updater failed (expected without sandbox), using system Widevine if available'));
+
+  // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
+  // "vorhanden + ausführbar + -version ok". Fehlschlag wird als sichtbarer
+  // Fehlerdialog gemeldet — Aufnahme-Features degradieren erkennbar statt still.
+  // Die Nachbereitung (Download) läuft zusätzlich asynchron, damit ein
+  // vorübergehender Netzwerkfehler die Session nicht blockiert.
+  const { checkHealth, ensureBinaries } = require('./lib/ffmpeg.js');
+  const health = checkHealth(__dirname);
+  if (!health.ok) {
+    const detail = `ffmpeg/ffprobe fehlen oder sind defekt: ${health.missing.join(', ')}`;
+    logger.error(detail, '— Aufnahme-Funktionen sind deaktiviert.');
+    dialog.showErrorBox(
+      'Streaming Hub — Aufnahme nicht verfügbar',
+      `${detail}\n\nDie Aufnahme-Funktion benötigt die mitgelieferten ffmpeg/ffprobe-Binaries.\n\n` +
+        'Die App versucht jetzt, sie automatisch nachzuladen. Falls das fehlschlägt ' +
+        '(z. B. ohne Internetverbindung): App erneut starten oder Installation reparieren.\n\n' +
+        'Alle anderen Funktionen laufen weiter.',
+    );
+    ensureBinaries(__dirname)
+      .then(result => {
+        if (result.ok) logger.info('ffmpeg/ffprobe nachgeladen, Aufnahme-Funktionen wieder verfügbar.');
+        else logger.error('ffmpeg/ffprobe Nachladen fehlgeschlagen:', result.error);
+      })
+      .catch(e => logger.error('ffmpeg/ffprobe Nachladen crashte:', e.message));
+  } else {
+    logger.info('ffmpeg/ffprobe OK (Release', health.release + ')');
+  }
 });
 
 app.on('window-all-closed', () => app.quit());

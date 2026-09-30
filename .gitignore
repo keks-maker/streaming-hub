@@ -13,3 +13,5 @@ Weiterentwicklung/
 .aider*
 
 .update-state.json
+/bin/*
+!/bin/ensure-ffmpeg.js

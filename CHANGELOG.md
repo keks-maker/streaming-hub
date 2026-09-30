@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7 (2026-09-30)
+- New: ffmpeg/ffprobe werden mit der App ausgeliefert (Aufnahme-Vorbereitung, Konzept §2.2) — statische Builds aus dem ffmpeg-static-Release b6.1.1 (ffmpeg 7.0.2), SHA-256-gepinnt, Ablage im App-Stamm unter `bin/`.
+- New: `install.sh` stellt ffmpeg/ffprobe nach dem Build bereit (Sichtbar-Fehler bei Fehlschlag statt stiller Installation).
+- New: Updater verifiziert nach jedem Update Binaries + `ffmpeg -version` und lädt fehlende Binaries nach (Selbstheilung); Fehlschlag bricht das Update sichtbar ab.
+- New: App-Start-Check mit Fehlerdialog bei defekten/fehlenden Binaries; Aufnahme-Features degradieren erkennbar, Rest der App läuft weiter.
+- Spike: logind-Inhibit-Befund für Linux-Shutdown-Verhalten dokumentiert (docs/StreamingHub-Aufnahme-Konzept.md §2.2/§3.2/§6) — Electron legt unter Linux keinen logind-Inhibitor an; shutdown-Blockierung ist ohne eigenes DBus-Inhibit nicht möglich.
+
 ## 0.5.6 (2026-09-30)
 - Fix: macOS-Updater startet den Fork mit ELECTRON_RUN_AS_NODE und protokolliert Spawn-, stdout- und stderr-Fehler.
 - Fix: Dirty-Trees werden mit checkout --force deterministisch aktualisiert; Apply-Fehler erscheinen sichtbar im UI.

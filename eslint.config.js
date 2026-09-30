@@ -65,7 +65,7 @@ export default [
   },
   // ── Main process (Node.js) ──
   {
-    files: ['main.js', 'preload.js', 'updater.js', 'logger.js', 'lib/**/*.js', 'tests/**/*.js', 'scripts/**/*.js'],
+    files: ['main.js', 'preload.js', 'updater.js', 'logger.js', 'lib/**/*.js', 'bin/**/*.js', 'tests/**/*.js', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

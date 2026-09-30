@@ -4,7 +4,7 @@
   "workspaces": [
     "packages/typed-core"
   ],
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {
@@ -29,7 +29,7 @@
     "build:renderer": "node scripts/build-renderer.js",
     "build:all": "npm run build:typed-core && npm run build:renderer",
     "watch": "node scripts/watch-renderer.js",
-    "test": "npm run test:updater && npm test --workspace packages/typed-core && node --test tests/user-storage.test.js tests/backup.test.js tests/input-validation.test.js tests/ipc-validation.test.js",
+    "test": "npm run test:updater && npm test --workspace packages/typed-core && node --test tests/user-storage.test.js tests/backup.test.js tests/input-validation.test.js tests/ipc-validation.test.js tests/ffmpeg.test.js",
     "test:updater": "node --test tests/tvsources-merge.test.js tests/post-update-reconcile.test.js",
     "dev:watch": "npm run build:all && (node scripts/watch-renderer.js &) && electron . --dev"
   },

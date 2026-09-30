@@ -29,7 +29,15 @@ Die ffmpeg-Verfügbarkeit ist **kein optionaler Bonus, sondern Bestandteil der L
 - ffmpeg wird **mit der App gebündelt** (bevorzugt: electron-builder `extraResources` mit plattformspezifischen statischen Builds; Alternative: `ffmpeg-static` npm-Paket). Der genaue Weg wird im Phase-1-Spike mit dem bestehenden electron-builder/castlabs-Setup verifiziert (asar + asarUnpack sind bereits im Spiel).
 - **Install:** `install.sh` (Linux) und die Mac-Build/Update-Artefakte müssen die Binary für die Zielplattform enthalten — kein „bitte ffmpeg via Homebrew/apt nachinstallieren".
 - **Update:** Jedes Update-Artefakt bringt die (ggf. aktualisierte) Binary mit; der bestehende Update-Prozess verifiziert sie nach dem Update (vorhanden + ausführbar + Versionscheck).
-- **Selbstheilung beim App-Start:** Prüfung „ffmpeg vorhanden und ausführbar?" — bei Fehlschlag klare Fehlermeldung in der App (Aufnahme-Features sichtbar degradiert, mit Hinweis auf Neuinstallation), kein stilles Versagen.
+- **Selbstheilung beim App-Start:** Prüfung „ffmpeg vorhanden und ausführbar?“ — bei Fehlschlag klare Fehlermeldung in der App (Aufnahme-Features sichtbar degradiert, mit Hinweis auf Neuinstallation), kein stilles Versagen.
+
+**Spike-Ergebnis (30.09.2026, empirisch verifiziert — Karte „Phase 1a“):**
+
+- **Gewählter Weg: eigener Loader (`lib/ffmpeg.js`) über die statischen Builds der ffmpeg-static-Releases** (Release `b6.1.1` = ffmpeg/ffprobe **7.0.2-static**, johnvansickle-Builds, GitHub-Release-Assets). Integrität über im Code festgepinnte SHA-256-Prüfsummen je Plattform (linux-x64, darwin-arm64, darwin-x64; GitHub-Release-Assets sind unveränderlich) — der Upstream veröffentlicht selbst keine Checksummen. Ablageort: `<App-Stamm>/bin/ffmpeg|ffprobe` (im Git-Clone also Update-sicher über install.sh/Updater).
+- **`ffmpeg-static` als npm-Paket ist für unsere Lieferkette ungeeignet (Beweis):** Das Paket lädt die Binary in einem `install`-Postinstall-Script — install.sh **und** updater.js laufen beide mit `npm install --ignore-scripts`; im Spike empirisch bestätigt, dass Postinstalls dann nie laufen. Der eigene Loader umgeht das deterministisch (Download + Prüfsumme + `ffmpeg -version`-Smoke-Test + atomares Einspielen).
+- **`extraResources`/electron-builder bleibt Nebenebenpfad:** Die etablierten Lieferwege sind (a) `install.sh` = Git-Clone + npm + Castlabs-Electron (Linux **und** macOS, das Mac-App-Bundle symlinked auf das Repo) und (b) der In-App-Updater = `git checkout <Tag>`. AppImages (electron-builder) entpacken nach `resources/app` — der relative Pfad `<App-Stamm>/bin/` funktioniert in allen drei Kontexten ohne Zusatzkonfiguration.
+- **Implementiert (v0.5.7):** `lib/ffmpeg.js` (Loader: Health-Check, SHA-256, Download, Smoke-Test, Mindestversion ≥ 7.0.0) · `bin/ensure-ffmpeg.js` (CLI-Wrapper für install.sh/Updater) · `install.sh` ruft nach `build:all` den Ensure-Schritt mit sichtbarem Abbruch bei Fehlschlag · updater.js verifiziert nach jedem Update („Binary vorhanden + ausführbar + `-version` liefert Output“) und lädt fehlende Binaries nach — Fehlschlag bricht das Update sichtbar ab · main.js prüft beim App-Start und zeigt bei Defekt einen Fehlerdialog (Rest der App läuft weiter). Unit-Tests: `tests/ffmpeg.test.js` (node --test).
+- **Mac-Verifikation ausstehend (Gerät offline):** Der Darwin-Download-Pfad ist Code-identisch und über die festgepinnten Checksummen abgesichert (`ffmpeg-darwin-arm64.gz`/`ffprobe-darwin-arm64.gz` existieren im Release, SHA-256 erfasst); der Abschluss-Beweis (Binary im laufenden Mac-App-Verbund, `-version` ok) wird beim nächsten Mac-Online-Fenster nachgezogen.
 
 ### 2.3 Aufnahmeformat: HLS-Zwischenform + MP4-Remux
 
@@ -82,9 +90,16 @@ IPC-Brücke zum Renderer: `recording:start`, `recording:stop`, `recording:list`,
 - Tray-Menü: „● Aufnahme läuft · Das Erste — Tagesschau · 12:34 min" (je Aufnahme), Stopp-Action, „Aufnahmen-Ordner öffnen", App öffnen.
 - **Fenster schließen ≠ App beenden**, solange Aufnahmen laufen → App geht in den Tray (Electron `window-all-closed`-Muster, Doku-verified).
 - **Shutdown-Unterbrechung:**
-  - **macOS:** `powerMonitor` feuert `shutdown` — App zeigt: „Es läuft eine Aufnahme — trotzdem herunterfahren?" (electron-Doku: Event auf macOS/Windows vorhanden).
-  - **Linux:** `powerMonitor` hat **kein** `shutdown`-Event (Doku-verified). Verifikations-Spike: `powerSaveBlocker('prevent-app-suspension')` setzt unter Linux einen logind-Inhibitor — testen, ob der `systemctl poweroff` abfangen kann. Falls nicht: In-App-Warnung statt echtem Blocker (mit User abwägen).
+  - **macOS:** `powerMonitor` feuert `shutdown` — App zeigt: „Es läuft eine Aufnahme — trotzdem herunterfahren?“ (electron-Doku: Event auf macOS/Windows vorhanden).
+  - **Linux:** `powerMonitor` hat **kein** `shutdown`-Event (Doku-verified). **Spike-Befund (30.09.2026, empirisch — Karte „Phase 1a“, Protokoll unten):** `powerSaveBlocker('prevent-app-suspension')` legt unter Linux **keinen** logind-Inhibitor an und kann einen Shutdown **nicht** abfangen. Der Weg scheidet damit aus; ein eigener DBus-Inhibit-Call (oder In-App-Warnung) bleibt als Alternative — mit User abwägen.
   - Grenze auf beiden OS: hartes `shutdown -h now` per Terminal ist nicht abfangbar — der Schutz gilt für den normalen grafischen Shutdown-Fluss.
+
+  **Spike-Protokoll (Linux, Castlabs-Electron v42.0.0+wvcus, headless-Host mit Xvfb):**
+  1. Elektron-Probe mit `powerSaveBlocker.start('prevent-app-suspension')` → API meldet `id=0, isStarted=true`.
+  2. `systemd-inhibit --list` + `/run/systemd/inhibit/` währenddessen: **„No inhibitors.“** (0 Dateien) — logind sieht nichts.
+  3. `dbus-monitor` während des Starts: Elektron ruft **keinen** `org.freedesktop.login1.Manager.Inhibit`-Call auf; es profragt nur `org.freedesktop.PowerManagement`, `org.gnome.SessionManager` und `org.freedesktop.portal.Desktop` per `NameHasOwner` (Verfügbarkeits-Probes).
+  4. Gegenprobe aus einer GUI-(=active)Session: die logind-API selbst ist polkit-gated — `org.freedesktop.login1.inhibit-block-shutdown` erlaubt `allow_active`/`allow_inactive` = `yes`, `allow_any` = `no` (Policy `/usr/share/polkit-1/actions/org.freedesktop.login1.policy`). Ein gültiger Inhibit-Call aus einer App-Session ist also grundsätzlich möglich — nur tut Elektron ihn für `prevent-app-suspension` nicht.
+  5. Qualifikation: getestet wurde headless (Xvfb, SSH-Session → `allow_inactive`-Pfad); der native Shutdown-Fluss (GUI-Logout-Dialog) wurde auf dem Testgerät nicht ausgeführt. Der Befund „kein Inhibitor auf logind-Ebene“ ist jedoch mechanismisch (dbus-monitor) und nicht an die Session-Art gebunden.
 
 ### 3.3 Aufnahmen-Bibliothek (Phase 1)
 
@@ -146,10 +161,10 @@ Erweiterung der EPG-Ansicht um eine **Kanal-Detailansicht**: Kanal wählen → v
 
 | Aspekt | macOS | Linux |
 |---|---|---|
-| ffmpeg-Binary | gebündelt (Spike: extraResources vs. ffmpeg-static) | gebündelt (Spike) |
+| ffmpeg-Binary | **gebündelt via `lib/ffmpeg.js` (Spike-Ergebnis: statische Builds aus ffmpeg-static-Release b6.1.1, SHA-256-gepinnt, `<App-Stamm>/bin/`)** | **identisch (gleicher Loader)** |
 | Record-Button, Bibliothek, HLS-Zwischenform, Remux-Progress | identisch | identisch |
-| powerSaveBlocker | `prevent-app-suspension` | `prevent-app-suspension` |
-| Shutdown-Warnung | `powerMonitor.shutdown` nativ | Spike nötig (logind-Inhibitor) |
+| powerSaveBlocker | `prevent-app-suspension` | `prevent-app-suspension` (legt **keinen** logind-Inhibitor an — Spike 30.09.2026) |
+| Shutdown-Warnung | `powerMonitor.shutdown` nativ | **Spike-Ergebnis: powerSaveBlocker blockiert keinen Shutdown** → eigener DBus-Inhibit-Call oder In-App-Warnung (Entscheid mit User offen) |
 | Tray-Icon | MenuBar | AppIndicator (Electron automatisch) |
 | Speicherort-Default | `~/Videos/Streaming Hub/` | `~/Videos/Streaming Hub/` |
 
