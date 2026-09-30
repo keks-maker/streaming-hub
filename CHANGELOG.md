@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.5 (2026-09-30)
+- Change: Minimierte Navbar auf 12px halbiert, damit darüberliegende Web-Inhalte wie das YouTube-Suchfeld frei bleiben.
+- Change: Padding der minimierten Navbar auf 0 gesetzt — gerenderte Höhe exakt 12px statt 17px.
+
 ## 0.5.4 (2026-09-30)
 - Change: Minimierte Navbar nutzt die eingeblendete Navbar-Breite und einen transparenteren Frosted-Glass-Look.
 
