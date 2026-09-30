@@ -363,6 +363,37 @@ else
   elif [ -f "$APP_RESOURCES/electron.icns" ]; then
     cp "$APP_RESOURCES/electron.icns" "$APP_RESOURCES/AppIcon.icns"
   fi
+
+  # ------------------------------------------------------------------
+  # EVS/VMP-Signierung — die castlabs-Widevine-CDM registriert sich nur
+  # in Bundles mit gültiger EVS-"streaming"-Signatur. Ohne sie: Netflix
+  # E100, Disney+-Fehler 83, Prime 403 (CDM init fail).
+  # sign-pkg erwartet ein Verzeichnis, das die *.app enthält (glob auf
+  # {dir}/*.app) — isoliertes Staging-Verzeichnis, damit keine fremde
+  # App aus ~/Applications erwischt wird.
+  # ------------------------------------------------------------------
+  EVS_PY="${EVS_PYTHON:-$HOME/evs-venv/bin/python3}"
+  if [ ! -x "$EVS_PY" ]; then
+    EVS_PY="$(command -v python3 || true)"
+  fi
+  if [ -n "$EVS_PY" ] && "$EVS_PY" -c "import castlabs_evs" >/dev/null 2>&1; then
+    info "EVS/VMP-Signierung des App-Bundles (Widevine) …"
+    EVS_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/streaming-hub-evs.XXXXXX")"
+    ln -sfn "$APP_BUNDLE" "$EVS_STAGE/Streaming Hub.app"
+    if ! "$EVS_PY" -m castlabs_evs.vmp sign-pkg "$EVS_STAGE"; then
+      rm -rf "$EVS_STAGE"
+      error "EVS sign-pkg fehlgeschlagen — Widevine wird nicht funktionieren (siehe Ausgabe oben)."
+    fi
+    if ! "$EVS_PY" -m castlabs_evs.vmp verify-pkg "$EVS_STAGE"; then
+      rm -rf "$EVS_STAGE"
+      error "EVS verify-pkg fehlgeschlagen — Signatur ungültig, Widevine wird nicht funktionieren."
+    fi
+    rm -rf "$EVS_STAGE"
+    info "EVS-Signatur gültig (verify-pkg: streaming)."
+  else
+    warn "castlabs-evs nicht gefunden — DRM-Dienste (Netflix/Disney+/Prime) werden NICHT funktionieren."
+    warn "Einrichtung: python3 -m pip install castlabs-evs  &&  evs-account signup && evs-account confirm-signup"
+  fi
   info "App-Bundle: $APP_BUNDLE"
 fi
 

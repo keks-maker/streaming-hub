@@ -1,6 +1,9 @@
 # Changelog
 
 ## 0.5.7 (2026-09-30)
+- Fix: macOS-App-Bundle wird wieder mit castlabs EVS/VMP signiert (Kind "streaming") — die Widevine-CDM registriert sich nur in EVS-signierten Bundles. Ohne Signatur schlugen seit der 0.5.0-Umstellung auf das native Bundle alle DRM-Dienste fehl (Netflix E100, Disney+, Prime).
+- Change: install.sh signiert das Wrapper-Bundle nach der Assembly und verifiziert die Signatur (sign-pkg + verify-pkg als Install-Gate); fehlendes castlabs-evs erzeugt eine deutliche Warnung statt eines stillen DRM-Ausfalls.
+- Technical: electron-builder afterPack-Hook (scripts/evs-afterPack.js) für Bundle-Builds portiert; sign-pkg läuft über ein Staging-Verzeichnis, da das Tool die App per {dir}/*.app-Glob sucht.
 - New: ffmpeg/ffprobe werden mit der App ausgeliefert (Aufnahme-Vorbereitung, Konzept §2.2) — statische Builds aus dem ffmpeg-static-Release b6.1.1 (ffmpeg 7.0.2), SHA-256-gepinnt, Ablage im App-Stamm unter `bin/`.
 - New: `install.sh` stellt ffmpeg/ffprobe nach dem Build bereit (Sichtbar-Fehler bei Fehlschlag statt stiller Installation).
 - New: Updater verifiziert nach jedem Update Binaries + `ffmpeg -version` und lädt fehlende Binaries nach (Selbstheilung); Fehlschlag bricht das Update sichtbar ab.
