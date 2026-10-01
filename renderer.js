@@ -266,8 +266,8 @@ function updateRecordingsScreenIfVisible() {
   const now = Date.now();
   if (now - recordingsScreenRenderTs < 500) return;
   recordingsScreenRenderTs = now;
-  if (recordingsOverlay && recordingsOverlay.classList.contains('open')) {
-    renderRecordingsScreen();
+  if (currentDashboardGroup === 'recording') {
+    renderRecordingDashboard();
   }
 }
 
@@ -362,7 +362,9 @@ const dashboardPlayerClose = document.getElementById('dashboardPlayerClose');
 const dashboardTvManage = document.getElementById('dashboardTvManage');
 const overlayLocation = document.getElementById('overlayLocation');
 const backBtn = document.getElementById('backBtn');
-const pipBtn = document.getElementById('pipBtn');
+// Fix-Set 4: settings-/pip-Buttons sind aus der Navbar entfernt; die Elemente
+// existieren nicht mehr im DOM — die Verkabelung hier bleibt bewusst bestehen,
+// behandelt null (Funktion schlummert im Hintergrund).
 const shortcutsOverlay = document.getElementById('shortcutsOverlay');
 const historyOverlay = document.getElementById('historyOverlay');
 const historyBtn = document.getElementById('historyBtn');
@@ -799,6 +801,7 @@ function renderStartDashboard() {
   if (settingsPanel.parentNode !== settingsPanelPlaceholder.parentNode)
     settingsPanelPlaceholder.parentNode.insertBefore(settingsPanel, settingsPanelPlaceholder.nextSibling);
   dashboardView.classList.remove('settings-dashboard');
+  dashboardView.classList.remove('recordings-dashboard');
   dashboardEyebrow.textContent = 'Streaming Hub';
   dashboardTitle.textContent = 'Was möchtest du sehen?';
   dashboardCount.textContent = '';
@@ -811,6 +814,10 @@ function renderStartDashboard() {
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
+    // Fix-Set 4: Aufnahmen als eigene Kachel zwischen Mediatheken und
+    // Einstellungen; art = generiertes Kachel-Bild (assets/recordings-tile.png)
+    // im Stil der übrigen Section-Kachel-Familie.
+    { key: 'recording', label: 'Aufnahmen', icon: null, color: '#fb923c' },
     { key: 'settings', label: 'Einstellungen', icon: null, color: '#64748b' },
   ];
   sections.forEach(section => {
@@ -819,7 +826,7 @@ function renderStartDashboard() {
     tile.type = 'button';
     tile.dataset.section = section.key;
     tile.style.setProperty('--tile-color', section.color);
-    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
+    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.key === 'recording' ? '<span class="rec-dot" aria-hidden="true"></span>' : section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
     tile.addEventListener('click', () => {
       overlayBar.classList.remove('nav-collapsed');
       showDashboard(section.key);
@@ -845,20 +852,24 @@ function renderDashboard(groupKey) {
   overlayBar.classList.remove('start-page');
   placeUpdateButton(overlayUpdateSlot);
   dashboardView.classList.toggle('settings-dashboard', groupKey === 'settings');
+  dashboardView.classList.toggle('recordings-dashboard', groupKey === 'recording');
   const isTv = groupKey === 'livetv';
   const isSettings = groupKey === 'settings';
+  const isRecording = groupKey === 'recording';
   const items = isTv || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
-  const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+  const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : isRecording ? 'Aufnahmen' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
   dashboardEyebrow.textContent = isSettings
     ? 'Streaming Hub'
     : isTv
       ? 'Live Fernsehen'
-      : groupKey === 'mediathek'
-        ? 'Deine Mediatheken'
-        : 'Deine Streamingdienste';
+      : isRecording
+        ? 'Deine Aufnahmen'
+        : groupKey === 'mediathek'
+          ? 'Deine Mediatheken'
+          : 'Deine Streamingdienste';
   dashboardTitle.textContent = title;
   dashboardTvActions.hidden = !isTv;
-  dashboardCount.textContent = isTv || isSettings ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
+  dashboardCount.textContent = isTv || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
   dashboardGrid.setAttribute('aria-label', title);
   settingsPanelHost.hidden = groupKey !== 'settings';
   dashboardGrid.innerHTML = '';
@@ -875,6 +886,9 @@ function renderDashboard(groupKey) {
     if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
   } else if (isTv) {
     renderLiveTvDashboard();
+  } else if (isRecording) {
+    // Aufnahmen-Dashboard (Fix-Set 4): reguläre View, kein Overlay
+    renderRecordingDashboard();
   } else if (!items.length) {
     dashboardEmpty.textContent = 'Keine Dienste konfiguriert.';
     dashboardEmpty.style.display = '';
@@ -910,7 +924,9 @@ function showDashboard(groupKey) {
           ? 'LiveTV'
           : groupKey === 'mediathek'
             ? 'Mediatheken'
-            : 'Streaming';
+            : groupKey === 'recording'
+              ? 'Aufnahmen'
+              : 'Streaming';
   overlayBar.classList.add('always-visible');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   if (tvSidebarOpen) closeTvSidebar();
@@ -936,6 +952,9 @@ function renderNav() {
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png' },
+    // Fix-Set 4: Aufnahmen in der Navbar — accessor-icon + Label, gleicher
+    // nav-section-item-Stil wie Mediatheken (kein Action-Button).
+    { key: 'recording', label: 'Aufnahmen', icon: 'recordings-nav@2x.png' },
   ];
 
   groups.forEach(group => {
@@ -1088,6 +1107,7 @@ function navigateTo(svc) {
   if (dashboardView) {
     dashboardView.style.display = 'none';
     dashboardView.classList.remove('settings-dashboard');
+    dashboardView.classList.remove('recordings-dashboard');
   }
   welcomeScreen.style.display = 'none';
   overlayBar.classList.add('nav-collapsed');
@@ -2473,10 +2493,9 @@ function toggleHistory() {
 // Bewusst KEINE Dateigröße (Konzept-Beschluss). Status-Spalte:
 // „Konvertiere… N % · noch ~Xs“ (Remux-Progress), „Laufende Aufnahme“
 // (live über die HLS-Zwischenform abspielbar), „Fertig“, „Fehlgeschlagen“.
-const recordingsOverlay = document.getElementById('recordingsOverlay');
-const recordingsList = document.getElementById('recordingsList');
-const recordingsClose = document.getElementById('recordingsClose');
-const recordingsRefresh = document.getElementById('recordingsRefresh');
+// Fix-Set 4 (User-Ergänzung): recordings-Overlay entfernt — die alten
+// Overlay-Konstanten existieren nicht mehr; die Bibliothek rendert in den
+// Dashboard-Bereich (renderRecordingsInto).
 const recordingPlayer = document.getElementById('recordingPlayer');
 const recordingPlayerVideo = document.getElementById('recordingPlayerVideo');
 const recordingPlayerClose = document.getElementById('recordingPlayerClose');
@@ -2552,7 +2571,8 @@ function recordingDurationText(meta) {
   return Number.isFinite(meta.durationSec) && meta.durationSec ? formatDuration(meta.durationSec) : '—';
 }
 
-function renderRecordingsScreen() {
+function renderRecordingsInto(listEl) {
+  const recordingsList = listEl;
   window.electronAPI.listRecordings().then(entries => {
     recordingsList.innerHTML = '';
     if (!entries || !entries.length) {
@@ -2622,7 +2642,7 @@ function renderRecordingsScreen() {
           delBtn.disabled = true;
           try {
             await window.electronAPI.deleteRecording(meta.id);
-            renderRecordingsScreen();
+            renderRecordingDashboard();
           } catch (err) {
             showTvToast('Löschen fehlgeschlagen: ' + (err?.message || err));
             delBtn.disabled = false;
@@ -2639,14 +2659,33 @@ function renderRecordingsScreen() {
   });
 }
 
+// Fix-Set 4 (User-Ergänzung 01.10):
+// Bibliothekseinstieg läuft über Startdashboard-Kachel „Aufnahmen“ und den
+// Navbar-Eintrag; das alte recordings-Overlay ist entfernt.
 function openRecordingsScreen() {
-  recordingsOverlay.classList.add('open');
-  renderRecordingsScreen();
+  showDashboard('recording');
 }
 
-function closeRecordingsScreen() {
-  recordingsOverlay.classList.remove('open');
-  closeRecordingPlayback();
+function renderRecordingDashboard() {
+  const panel = document.createElement('div');
+  panel.className = 'recordings-dashboard-panel';
+  const header = document.createElement('div');
+  header.className = 'recordings-dashboard-header';
+  header.innerHTML = `<span class="recordings-dashboard-title">Aufnahmen</span>`;
+  const refresh = document.createElement('button');
+  refresh.className = 'recordings-refresh';
+  refresh.id = 'recordingsRefresh';
+  refresh.title = 'Aktualisieren';
+  refresh.textContent = '↻';
+  refresh.addEventListener('click', renderRecordingDashboard);
+  header.appendChild(refresh);
+  panel.appendChild(header);
+  const list = document.createElement('div');
+  list.className = 'recordings-list recordings-dashboard-list';
+  panel.appendChild(list);
+  renderRecordingsInto(list);
+  dashboardGrid.innerHTML = '';
+  dashboardGrid.appendChild(panel);
 }
 
 /**
@@ -2708,24 +2747,14 @@ function closeRecordingPlayback() {
   recordingPlayer.style.display = 'none';
 }
 
-recordingsClose.addEventListener('click', closeRecordingsScreen);
-recordingsRefresh.addEventListener('click', renderRecordingsScreen);
-recordingsOverlay.addEventListener('click', e => {
-  if (e.target === recordingsOverlay) closeRecordingsScreen();
-});
 recordingPlayerClose.addEventListener('click', closeRecordingPlayback);
 
-function toggleRecordings() {
-  if (recordingsOverlay.classList.contains('open')) closeRecordingsScreen();
-  else openRecordingsScreen();
-}
+const recordingsBtn = document.getElementById('recordingsBtn'); // entfernt (Fix-Set 4)
+if (recordingsBtn) recordingsBtn.addEventListener('click', () => showDashboard('recording'));
 
-const recordingsBtn = document.getElementById('recordingsBtn');
-if (recordingsBtn) recordingsBtn.addEventListener('click', toggleRecordings);
-
-// Tray → App: „Aufnahmen-Bibliothek“ im Tray-Menü öffnet den Screen
+// Tray → App: „Aufnahmen-Bibliothek“ im Tray-Menü öffnet den Dashboard-Bereich
 window.electronAPI.onOpenRecordings?.(() => {
-  openRecordingsScreen();
+  showDashboard('recording');
 });
 
 // Shutdown-Warnung (Linux, User-Beschluss 30.09: In-App-Warnung statt Block):
@@ -3130,26 +3159,9 @@ function scheduleMediaCheck() {
 setInterval(pollMediaTitle, 3000);
 
 // Buttons
-pipBtn.addEventListener('click', () => {
-  const url = webview.getURL();
-  if (!url || url === 'about:blank') return;
-
-  // In TV mode, extract the actual stream URL for PiP
-  if (currentProvider === '__tv__') {
-    const params = new URLSearchParams(url.split('?')[1] || '');
-    const streamUrl = params.get('channel');
-    if (streamUrl) {
-      window.electronAPI.togglePip(streamUrl);
-      return;
-    }
-  }
-  window.electronAPI.togglePip(url);
-});
-
-window.electronAPI.onPipState(state => {
-  pipActive = state;
-  pipBtn.classList.toggle('active', state);
-});
+// Fix-Set 4: PiP-Button aus der Navbar entfernt (Funktion nicht unterstützt —
+// Verkabelung schläft im Hintergrund; window.electronAPI.togglePip bleibt
+// erreichbar über Tastatur-Shortcut in main.js, sobald PiP unterstützt wird).
 
 historyBtn.addEventListener('click', toggleHistory);
 historyClose.addEventListener('click', closeHistory);
@@ -3306,10 +3318,6 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
       closeHistory();
       return true;
     }
-    if (recordingsOverlay.classList.contains('open')) {
-      closeRecordingsScreen();
-      return true;
-    }
     if (tvChannelManagerOverlay.classList.contains('open')) {
       closeTvChannelManager();
       return true;
@@ -3350,9 +3358,9 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
     return true;
   }
 
-  // Aufnahmen-Bibliothek (Phase 1c): Strg+R bzw. Toolbar-Button
-  if ((ctrlKey && (key === 'r' || key === 'R')) || key === 'Strg+R') {
-    toggleRecordings();
+  // Aufnahmen-Dashboard (Fix-Set 4): Strg+R öffnet den Dashboard-Bereich
+  if (ctrlKey && (key === 'r' || key === 'R')) {
+    showDashboard('recording');
     return true;
   }
 
@@ -3609,7 +3617,6 @@ setTimeout(checkForUpdates, 4000);
 
 // ── Backup / Restore ──
 
-const settingsBtn = document.getElementById('settingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsPanelHost = document.getElementById('settingsPanelHost');
 const settingsPanelPlaceholder = document.createComment('settings-panel-placeholder');
@@ -3634,7 +3641,7 @@ document.querySelectorAll('input[name="tvMode"]').forEach(r => {
   });
 });
 
-settingsBtn.addEventListener('click', () => showDashboard('settings'));
+// settingsBtn (Fix-Set 4 entfernt, Dashboard-Kachel abdeckt Einstellungen)
 settingsTvSourcesBtn.addEventListener('click', openTvModal);
 settingsTvChannelsBtn.addEventListener('click', openTvChEditor);
 settingsEpgRefreshBtn.addEventListener('click', refreshEpg);

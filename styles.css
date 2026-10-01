@@ -113,7 +113,7 @@ body {
 }
 
 .dashboard-view.start-page .dashboard-grid {
-  grid-template-columns: repeat(4, minmax(220px, 280px));
+  grid-template-columns: repeat(5, minmax(200px, 262px));
   justify-content: center;
   gap: 22px;
 }
@@ -287,6 +287,49 @@ body {
   background: #1a222e;
   box-shadow: 46px 24px 0 -3px #67e8f9, 92px 48px 0 -3px #fda4af;
 }
+
+/* Aufnahmen (Fix-Set 4): Kachel-Art ist ein generiertes Bild im Stil der
+   Familie (amber, Kartenspiel + REC-Dot + Timeline) — als background-image
+   auf .dashboard-section-tile-art; die CSS-Form-Extras bleiben aus. */
+.dashboard-section-recording .dashboard-section-tile-art {
+  background: url('assets/icons/recordings-tile.png') center / cover no-repeat,
+              linear-gradient(145deg, #3c2a12, #241a12 62%, #16110c);
+}
+.dashboard-section-recording .dashboard-section-tile-art-shape,
+.dashboard-section-recording .dashboard-section-tile-art-detail { display: none; }
+.dashboard-section-recording .rec-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f43f5e;
+  box-shadow: 0 0 14px rgba(244, 63, 94, .75), inset 0 1px 0 rgba(255,255,255,.25);
+}
+
+/* Fix-Set 4: Aufnahmen als reguläres Dashboard (kein Overlay) — Panel-Stil
+   analog settings-dashboard, Liste = bisherige recordings-list-Zeilen. */
+.recordings-dashboard-panel {
+  grid-column: 1 / -1;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 22px;
+  border-radius: 24px;
+  background: rgba(22, 27, 38, .78);
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+.recordings-dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.recordings-dashboard-title {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+.recordings-dashboard-list { display: block; }
+.recordings-dashboard-list .recording-entry { border-radius: 14px; }
 
 .dashboard-section-tile-icon {
   position: relative;
@@ -2904,6 +2947,7 @@ body {
 .overlay-bar.has-back .back-btn { opacity:1 !important; pointer-events:auto !important; }
 .back-btn:disabled { opacity:.35 !important; pointer-events:none !important; }
 .settings-dashboard .dashboard-grid { display:block; max-width:1000px; }
+.recordings-dashboard .dashboard-grid { display:block; max-width:1000px; }
 .settings-dashboard .dashboard-grid > .settings-panel { width:100%; max-width:none; background:rgba(22,27,38,.78); border:1px solid rgba(255,255,255,.1); }
 .settings-dashboard .dashboard-view { overflow:auto; }
 .overlay-bar:not(.is-fullscreen) .settings-btn {

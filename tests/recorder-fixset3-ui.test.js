@@ -73,9 +73,11 @@ test('FIX A: overlay-actions (Aufnahmen-Button) auf always-visible Top-Bar sicht
   );
 });
 
-test('FIX A: Strg+R-Shortcut und recordingsBtn-Handler vorhanden (bleiben erhalten)', () => {
-  assert.ok(rendererJs.includes('toggleRecordings();'), 'Strg+R-Handler fehlt');
-  assert.ok(rendererJs.includes("getElementById('recordingsBtn')"), 'recordingsBtn-Verkabelung fehlt');
+test('FIX A: Strg+R öffnet Aufnahmen-Dashboard (Fix-Set 4: kein Overlay mehr)', () => {
+  assert.ok(
+    /ctrlKey && \(key === 'r' \|\| key === 'R'\)\) \{\s*\n\s*showDashboard\('recording'\)/.test(rendererJs),
+    'Strg+R muss showDashboard("recording") aufrufen',
+  );
 });
 
 // ── FIX B/D: Tooltips + Verwaltung vs Start-Dialog ──

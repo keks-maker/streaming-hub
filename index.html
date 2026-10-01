@@ -20,29 +20,15 @@
       <div class="overlay-update-slot" id="overlayUpdateSlot"></div>
     </nav>
     <div class="overlay-actions">
-      <button class="add-btn" id="recordingsBtn" title="Aufnahmen (Strg+R)">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
-        </svg>
-      </button>
       <button class="add-btn" id="historyBtn" title="Verlauf (Strg+H)">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="9"/>
           <polyline points="12,7 12,12 16,14"/>
         </svg>
       </button>
-      <button class="settings-btn" id="settingsBtn" title="Einstellungen">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </button>
-      <button class="pip-btn" id="pipBtn" title="Bild-in-Bild (Strg+P)">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <rect x="11" y="9" width="9" height="6" rx="1"/>
-        </svg>
-      </button>
+      <!-- Fix-Set 4: settings-btn/pip-btn aus der Navbar entfernt — Einstellungen
+           gibt es als Dashboard-Kachel, PiP wird aktuell nicht unterstützt
+           (Funktion schlummert im Hintergrund, Strg+P-Handler bleibt). -->
     </div>
   </div>
 
@@ -178,22 +164,9 @@
     <span class="version-tag" id="versionTag"></span>
   </div>
 
-  <!-- Recordings Overlay (Aufnahmen-Bibliothek, Phase 1c) -->
-  <div class="recordings-overlay" id="recordingsOverlay">
-    <div class="recordings-panel">
-      <div class="recordings-header">
-        <span>Aufnahmen</span>
-        <div class="recordings-header-actions">
-          <button class="recordings-refresh" id="recordingsRefresh" title="Aktualisieren">↻</button>
-          <button class="recordings-close" id="recordingsClose">&times;</button>
-        </div>
-      </div>
-      <div class="recordings-list" id="recordingsList">
-        <div class="recordings-empty">Noch keine Aufnahmen.</div>
-      </div>
-    </div>
-  </div>
-
+  <!-- Aufnahmen-Dashboard (Fix-Set 4): regulärer Dashboard-Bereich, kein Overlay.
+       Das alte recordings-overlay-Markup wurde entfernt; die Wiedergabe läuft
+       weiter über recordingPlayer (Video-Host). -->
   <!-- Recording Player Overlay (Wiedergabe über bestehenden Player-Stil) -->
   <div class="recording-player" id="recordingPlayer" style="display:none">
     <button class="dashboard-player-close" id="recordingPlayerClose" type="button" aria-label="Wiedergabe schließen">&times;</button>
