@@ -229,6 +229,13 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   cd "$INSTALL_DIR"
   git fetch --tags --force origin 2>/dev/null || git fetch --tags origin
   LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+  # Tag-Nachzieh-Absicherung: Wenn nach dem Fetch immer noch kein Tag lokal
+  # liegt (partieller Fetch/abweichende Refspecs), gezielt nachholen — sonst
+  # fällt die Versionsanzeige auf ein altes Tag (User-Befund 01.10.).
+  if [ -z "$LATEST_TAG" ]; then
+    git fetch origin '+refs/tags/*:refs/tags/*' --force 2>/dev/null || true
+    LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+  fi
   # Stash lokale Änderungen (history/services/tvsources), force-checkout, restore
   git stash --include-untracked 2>/dev/null || true
   if [ -n "$LATEST_TAG" ]; then
@@ -246,7 +253,10 @@ else
   fi
   info "Klone Repository nach $INSTALL_DIR …"
   mkdir -p "$(dirname "$INSTALL_DIR")"
-  git clone "$REPO_URL" "$INSTALL_DIR"
+  # --no-single-branch: Der Clone braucht die vollen Historie+Tags, damit
+  # git tag/describe nach Updates die richtige Version melden (ein
+  # single-branch-Clone ohne Tags zeigte sonst alte Versionen an).
+  git clone --no-single-branch "$REPO_URL" "$INSTALL_DIR"
   cd "$INSTALL_DIR"
 fi
 

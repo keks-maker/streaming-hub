@@ -3522,7 +3522,10 @@ async function handleUpdateButtonClick() {
       updateBtn.disabled = false;
       updateBtn.title = 'Update fehlgeschlagen';
       updateNotice.hidden = false;
-      updateNotice.textContent = `Update fehlgeschlagen: ${result.error || 'Unbekannter Fehler'}`;
+      // Nur die erste Fehlerzeile im Toast — die vollständige Meldung inkl.
+      // Handlungsanweisung zeigt der Fehlerdialog aus dem Main-Prozess.
+      const firstErrorLine = String(result.error || 'Unbekannter Fehler').split('\n')[0];
+      updateNotice.textContent = `Update fehlgeschlagen: ${firstErrorLine}`;
       setUpdateState('available');
     }
   }

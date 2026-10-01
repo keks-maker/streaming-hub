@@ -1,4 +1,12 @@
-// v0.4.83 – robuster Update-Prozess mit 3-way-Merge für tvsources.json
+// v0.5.12 – Build-Tools (npm/node) startkontext-unabhängig finden
+//
+// Neu in v0.5.12: Bei GUI-Start (Finder/Launchpad) hat der Prozess unter macOS
+// nur den System-Mini-PATH — npm/node lagen außerhalb und jedes In-App-Update
+// brach mit "npm: command not found" ab (S-Klasse-Fix, Karte t_9f74c461).
+// ensureBuildTools() löst npm/node jetzt über lib/node-path.js (Kandidaten-
+// verzeichnisse + Login-Shell-PATH + STREAMING_HUB_NODE_DIR-Override) und
+// setzt den konkreten Pfad in die PATH-Option aller runSync-Aufrufe. Der
+// frühe darwin-only PATH-Ausgleich hier entfällt zugunsten dieser Auflösung.
 //
 // Neu in v0.4.83: restoreUserFiles() überschrieb tvsources.json nach dem Checkout
 // mit dem alten Geräte-Stand → im Release enthaltene channelOverrides (z. B. MDR
@@ -11,9 +19,9 @@ const logger = require('./logger.js');
 const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { mergeTvsources } = require('./lib/tvsources-merge.js');
 const { ensureBinaries } = require('./lib/ffmpeg.js');
+const { buildToolEnv, findNpmTool, describeToolProblem } = require('./lib/node-path.js');
 
 const updaterLogPath = process.env.STREAMING_HUB_UPDATER_LOG;
 function updaterLog(level, message, details) {
@@ -35,22 +43,6 @@ function runSync(command, options) {
     updaterLog('ERROR', `exec fehlgeschlagen: ${command}`, error.message);
     throw error;
   }
-}
-
-if (process.platform === 'darwin') {
-  const macPathEntries = [
-    path.join(os.homedir(), '.local/bin'),
-    path.join(os.homedir(), '.volta/bin'),
-    path.join(os.homedir(), '.asdf/shims'),
-    '/opt/homebrew/bin',
-    '/usr/local/bin',
-    '/usr/bin',
-    '/bin',
-    '/usr/sbin',
-    '/sbin',
-    ...String(process.env.PATH || '').split(path.delimiter),
-  ].filter(Boolean);
-  process.env.PATH = [...new Set(macPathEntries)].join(path.delimiter);
 }
 
 const appDir = process.argv[2] || process.cwd();
@@ -241,6 +233,28 @@ function restoreUserFiles(onWarning) {
   if (onWarning) onWarning(warn);
 }
 
+/**
+ * Build-Tools (npm/node) vor dem Apply auflösen — startkontext-unabhängig
+ * (GUI-Start hat unter macOS nur den System-Mini-PATH). Bei Erfolg liegt in
+ * toolEnv ein Environment mit dem konkreten bin-Verzeichnis am Anfang des
+ * PATH; bei Misserfolg eine verständliche Fehlermeldung mit Handlungsanweisung.
+ */
+let toolEnv = null;
+
+function ensureBuildTools() {
+  const tools = findNpmTool();
+  if (!tools) {
+    const message = describeToolProblem(
+      'Das In-App-Update kann nicht starten: Build-Werkzeuge (npm/node) wurden nicht gefunden.',
+    );
+    updaterLog('ERROR', 'ensureBuildTools: npm/node nicht gefunden');
+    throw new Error(message);
+  }
+  updaterLog('INFO', `Build-Tools gefunden: npm=${tools.npm} node=${tools.node || '—'}`);
+  toolEnv = buildToolEnv(process.env);
+  return tools;
+}
+
 function cmpVersions(a, b) {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
@@ -252,19 +266,16 @@ function cmpVersions(a, b) {
   return 0;
 }
 
-function getCurrentVersion() {
-  try {
-    const raw = git('describe --tags --abbrev=0', 10000).trim();
-    return raw.replace(/^v/i, '');
-  } catch (e) {
-    return null;
-  }
-}
-
 process.on('message', async msg => {
   if (msg.type === 'check') {
     try {
-      const currentVersion = getCurrentVersion() || msg.currentVersion;
+      // Maßgeblich ist die LAUFENDE App-Version (app.getVersion via main.js),
+      // nicht der Checkout-Stand: Wurde der Checkout extern aktualisiert
+      // (install.sh), während eine ältere Instanz läuft, darf die UI das
+      // Update trotzdem anbieten — der Apply bringt Checkout + Build auf den
+      // Zielstand und startet neu. Sonst zeigte die App für immer "v0.5.10"
+      // an, obwohl der Checkout längst auf dem neuen Tag war.
+      const currentVersion = msg.currentVersion;
       const out = git('ls-remote --tags origin', 15000);
       const tags = new Set();
       for (const line of out.split('\n')) {
@@ -291,15 +302,28 @@ process.on('message', async msg => {
       }
 
       process.send({ type: 'progress', step: 'Build-Werkzeuge prüfen…', percent: 2 });
+      ensureBuildTools();
       runSync('npm --version', {
         cwd: appDir,
         encoding: 'utf-8',
         timeout: 15000,
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: toolEnv,
       });
 
       process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 5 });
       git('fetch --tags --force origin', 60000);
+
+      // Tag-Nachzieh-Absicherung (User-Befund 01.10.): Liegt der Ziel-Tag nach
+      // dem Fetch immer noch nicht lokal vor (partieller Fetch, abweichende
+      // Refspecs), gezielt nachziehen — der Checkout würde sonst ins Leere
+      // laufen und die Versionsanzeige könnte auf ein altes Tag fallen.
+      try {
+        git(['rev-parse', '--verify', '--quiet', `v${msg.version}^{commit}`], 5000);
+      } catch (_) {
+        updaterLog('INFO', `Tag v${msg.version} lokal nicht gefunden — fetch --tags wird wiederholt`);
+        git('fetch origin --tags --force', 60000);
+      }
 
       // User-Daten sichern (services.json, tvsources.json, history.json)
       backupUserFiles();
@@ -349,6 +373,7 @@ process.on('message', async msg => {
         encoding: 'utf-8',
         timeout: 180000,
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: toolEnv,
       });
       process.send({ type: 'progress', step: 'Laufzeitdateien werden gebaut…', percent: 85 });
       runSync('npm run build:all', {
@@ -356,6 +381,7 @@ process.on('message', async msg => {
         encoding: 'utf-8',
         timeout: 180000,
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: toolEnv,
       });
       const runtimeArtifacts = [
         ['renderer.js', 'dist/renderer.js'],

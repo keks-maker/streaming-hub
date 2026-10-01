@@ -5,8 +5,9 @@ const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog,
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { fork, execSync } = require('child_process');
+const { fork } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
+const { resolveAppVersion } = require('./lib/app-version.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
@@ -933,16 +934,12 @@ ipcMain.on('webview-keydown', (event, data) => {
 
 ipcMain.handle('get-app-version', event => {
   requireMainRenderer(event);
-  try {
-    const raw = execSync('git describe --tags --abbrev=0', {
-      cwd: __dirname,
-      encoding: 'utf-8',
-      timeout: 5000,
-    }).trim();
-    return raw.replace(/^v/i, '');
-  } catch (e) {
-    return app.getVersion();
-  }
+  // Nie eine falsche (ältere) Version anzeigen: erst exaktes HEAD-Tag, dann
+  // package.json (wird im Release-Workflow mitgebump't), dann Electron-Fallback.
+  // (Bisher: git describe --tags --abbrev=0 — beschrieb ohne lokale Tags den
+  // neuen Commit mit dem nächsten erreichbaren ALTEN Tag → Anzeige „v0.5.10"
+  // trotz v0.5.11-Code. User-Befund 01.10.)
+  return resolveAppVersion(__dirname, app.getVersion()).version;
 });
 
 ipcMain.on('toggle-fullscreen', event => {
