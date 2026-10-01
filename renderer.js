@@ -3627,7 +3627,9 @@ const cleanupUpdateStatus = window.electronAPI.onUpdateStatus(status => {
     setUpdateState('uptodate');
   } else if (status.type === 'error') {
     hideUpdateOverlay();
-    setUpdateState('uptodate');
+    updateAvailableVersion = null;
+    updateCheckError = status.error || status.message || 'Unbekannter Fehler';
+    setUpdateState('error');
   } else if (status.type === 'progress') {
     updateBtn._percent = status.percent;
     if (status.step) {

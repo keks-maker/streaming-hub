@@ -116,65 +116,6 @@ function writeMergedTvsources(sources) {
   fs.writeFileSync(dataPath('tvsources.json'), JSON.stringify(sources, null, 2) + '\n', 'utf-8');
 }
 
-// JSON-Dateien nach dem Merge sichern: Falls der anschließende `git stash pop`
-// zeilenbasierte Konflikt-Marker in eine dieser Dateien schreibt (bis v0.4.82
-// unmöglich, weil restore dort exakt den Stash-Inhalt reproduzierte), werden sie
-// aus dieser Kopie wiederhergestellt.
-function snapshotMergedJson() {
-  const snapDir = path.join(backupDir, '.merged-snapshot');
-  try {
-    fs.mkdirSync(snapDir, { recursive: true });
-    for (const f of userFiles) {
-      const src = dataPath(f);
-      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(snapDir, f));
-    }
-  } catch (e) {
-    logger.error('Snapshot der gemergten Dateien fehlgeschlagen:', e.message);
-  }
-}
-
-function restoreMergedJsonSnapshot() {
-  const snapDir = path.join(backupDir, '.merged-snapshot');
-  try {
-    if (!fs.existsSync(snapDir)) return;
-    for (const f of userFiles) {
-      const snap = path.join(snapDir, f);
-      if (!fs.existsSync(snap)) continue;
-      try {
-        JSON.parse(fs.readFileSync(snap, 'utf-8')); // nur gültige Snapshots verwenden
-        fs.copyFileSync(snap, dataPath(f));
-      } catch (e) {
-        logger.error(`Snapshot für ${f} ungültig, überspringe:`, e.message);
-      }
-    }
-    fs.rmSync(snapDir, { recursive: true, force: true });
-  } catch (e) {
-    logger.error('Snapshot-Wiederherstellung fehlgeschlagen:', e.message);
-  }
-}
-
-/**
- * Prüft JSON-Dateien auf Git-Konflikt-Marker (nach stash pop) und repariert sie
- * aus dem Snapshot der gemergten Dateien.
- */
-function repairConflictMarkersIfAny() {
-  let found = false;
-  for (const f of userFiles) {
-    const dest = dataPath(f);
-    if (!fs.existsSync(dest)) continue;
-    const content = fs.readFileSync(dest, 'utf-8');
-    if (content.startsWith('<<<<<<<') || content.includes('\n<<<<<<<')) {
-      found = true;
-      logger.error(`Konflikt-Marker in ${f} nach stash pop erkannt`);
-    }
-  }
-  if (found) {
-    restoreMergedJsonSnapshot();
-    return true;
-  }
-  return false;
-}
-
 /**
  * User-Dateien nach dem Checkout wiederherstellen.
  * tvsources.json: 3-way-Merge (User-Daten + Release-Fixes, siehe lib/tvsources-merge.js).
@@ -232,8 +173,7 @@ function restoreUserFiles(onWarning) {
     }
   }
 
-  // Hinweis: Backup-Verzeichnis wird erst am Ende von 'apply' aufgeräumt,
-  // damit der Konflikt-Marker-Snapshot den stash pop überlebt.
+  // Hinweis: Backup-Verzeichnis wird erst am Ende von 'apply' aufgeräumt.
   if (onWarning) onWarning(warn);
 }
 
@@ -305,16 +245,17 @@ function verifyMacBundle(bundle, stageRoot) {
   }
 }
 
-function installMacBundle(bundle, supportDir) {
+function installMacBundle(bundle, supportDir, options = {}) {
   const source = path.join(bundle, 'Contents', 'Resources', 'app');
   if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) {
     throw new Error('Release-App enthält kein Contents/Resources/app-Verzeichnis');
   }
-  const applications = path.join(os.homedir(), 'Applications');
+  const applications = options.applicationsDir || path.join(os.homedir(), 'Applications');
   const wrapper = path.join(applications, 'Streaming Hub.app');
   const staging = `${supportDir}.update-staging-${process.pid}`;
   const rollback = `${supportDir}.update-rollback-${process.pid}`;
   const wrapperRollback = `${wrapper}.update-rollback-${process.pid}`;
+  let wrapperBuildStarted = false;
   fs.rmSync(staging, { recursive: true, force: true });
   fs.rmSync(rollback, { recursive: true, force: true });
   fs.rmSync(wrapperRollback, { recursive: true, force: true });
@@ -323,8 +264,10 @@ function installMacBundle(bundle, supportDir) {
   try {
     if (fs.existsSync(supportDir)) fs.renameSync(supportDir, rollback);
     fs.renameSync(staging, supportDir);
+    if (options.afterSupportSwap) options.afterSupportSwap({ supportDir, rollback });
     fs.mkdirSync(applications, { recursive: true });
     if (fs.existsSync(wrapper)) fs.renameSync(wrapper, wrapperRollback);
+    wrapperBuildStarted = true;
     fs.cpSync(bundle, wrapper, { recursive: true, dereference: true });
     const resources = path.join(wrapper, 'Contents', 'Resources');
     const appLink = path.join(resources, 'app');
@@ -337,7 +280,7 @@ function installMacBundle(bundle, supportDir) {
   } catch (error) {
     fs.rmSync(supportDir, { recursive: true, force: true });
     if (fs.existsSync(rollback)) fs.renameSync(rollback, supportDir);
-    fs.rmSync(wrapper, { recursive: true, force: true });
+    if (wrapperBuildStarted) fs.rmSync(wrapper, { recursive: true, force: true });
     if (fs.existsSync(wrapperRollback)) fs.renameSync(wrapperRollback, wrapper);
     throw error;
   } finally {
