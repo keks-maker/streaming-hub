@@ -30,7 +30,7 @@
     "build:all": "npm run build:typed-core && npm run build:renderer",
     "watch": "node scripts/watch-renderer.js",
     "test": "npm run test:updater && npm test --workspace packages/typed-core && node --test tests/user-storage.test.js tests/backup.test.js tests/input-validation.test.js tests/ipc-validation.test.js tests/ffmpeg.test.js tests/recorder-meta.test.js tests/recorder-store.test.js tests/recorder-remux.test.js tests/recorder-job.test.js tests/recorder-service.test.js tests/recorder-integration.test.js tests/recorder-ui-model.test.js tests/recorder-tray.test.js tests/recorder-set-storage-root.test.js tests/recorder-retry-dedup.test.js",
-    "test:updater": "node --test tests/tvsources-merge.test.js tests/post-update-reconcile.test.js",
+    "test:updater": "node --test tests/tvsources-merge.test.js tests/post-update-reconcile.test.js tests/node-path.test.js tests/app-version.test.js",
     "dev:watch": "npm run build:all && (node scripts/watch-renderer.js &) && electron . --dev"
   },
   "build": {
