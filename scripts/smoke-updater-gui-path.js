@@ -1,9 +1,7 @@
-// Headless-Smoke (S-Klasse t_9f74c461): kompletter updater.js-Apply-Pfad
-// unter simuliertem GUI-Start-PATH (/usr/bin:/bin:/usr/sbin:/sbin).
-// Spiegelt das fork()-Setup aus main.js apply-update: ELECTRON_RUN_AS_NODE=1,
-// IPC-message 'apply' → Checkout eines Tags in einer Sandbox-Repo → npm
-// install/build übersprungen? NEIN — echtes npm, echte Builds (build:all).
-// ffmpeg-Ensure läuft gegen gepinnte Referenzen (Downloads erlaubt).
+// Headless-Smoke: Release-Discovery unter simuliertem GUI-Start-PATH.
+// Prüft die echte GitHub-Releases-API; Git-Tags und Checkout sind absichtlich
+// kein Teil des macOS-Updatepfads mehr. Der aktuelle package.json-Stand 0.5.16
+// muss gegenüber dem höchsten gültigen Asset-Release 0.5.3 "up to date" sein.
 'use strict';
 
 const { fork } = require('child_process');
@@ -70,21 +68,22 @@ async function main() {
       clearTimeout(timer);
       reject(new Error(`updater exit code=${code} signal=${signal}`));
     });
-    child.send({ type: 'apply', version: '0.5.12' });
+    child.send({ type: 'check', currentVersion: '0.5.16' });
   });
 
-  const log = fs.readFileSync(path.join(tmp, 'updater.log'), 'utf-8');
+  const logPath = path.join(tmp, 'updater.log');
+  const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8') : '(kein Apply-Log bei Discovery erwartet)';
   console.log('--- updater.log (Tail) ---');
   console.log(log.split('\n').slice(-14).join('\n'));
 
   if (result.error) {
-    console.error('[smoke] APPLY FEHLGESCHLAGEN:', result.error);
+    console.error('[smoke] RELEASE-DISCOVERY FEHLGESCHLAGEN:', result.error);
+    process.exitCode = 1;
+  } else if (result.latest !== '0.5.3' || result.hasUpdate !== false) {
+    console.error('[smoke] unerwartetes Ergebnis:', result);
     process.exitCode = 1;
   } else {
-    console.log('[smoke] APPLY ERFOLGREICH');
-    // Beweis: Checkout stand auf dem Tag
-    const describe = sh('git describe --tags', { cwd: appDir }).trim();
-    console.log('[smoke] sandbox-stand nach apply:', describe);
+    console.log(`[smoke] RELEASE-DISCOVERY OK: höchster gültiger Release v${result.latest}, package.json v0.5.16 ist up to date`);
   }
   child.kill();
   setTimeout(() => process.exit(process.exitCode || 0), 500);

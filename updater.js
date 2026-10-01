@@ -20,8 +20,8 @@ const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { mergeTvsources } = require('./lib/tvsources-merge.js');
-const { ensureBinaries } = require('./lib/ffmpeg.js');
-const { buildToolEnv, findNpmTool, describeToolProblem } = require('./lib/node-path.js');
+const os = require('os');
+const { fetchReleaseCandidates, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
 const updaterLogPath = process.env.STREAMING_HUB_UPDATER_LOG;
 function updaterLog(level, message, details) {
@@ -233,185 +233,103 @@ function restoreUserFiles(onWarning) {
   if (onWarning) onWarning(warn);
 }
 
-/**
- * Build-Tools (npm/node) vor dem Apply auflösen — startkontext-unabhängig
- * (GUI-Start hat unter macOS nur den System-Mini-PATH). Bei Erfolg liegt in
- * toolEnv ein Environment mit dem konkreten bin-Verzeichnis am Anfang des
- * PATH; bei Misserfolg eine verständliche Fehlermeldung mit Handlungsanweisung.
- */
-let toolEnv = null;
+const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
 
-function ensureBuildTools() {
-  const tools = findNpmTool();
-  if (!tools) {
-    const message = describeToolProblem(
-      'Das In-App-Update kann nicht starten: Build-Werkzeuge (npm/node) wurden nicht gefunden.',
-    );
-    updaterLog('ERROR', 'ensureBuildTools: npm/node nicht gefunden');
-    throw new Error(message);
+async function downloadAsset(url, destination) {
+  const response = await fetch(url, {
+    headers: { Accept: 'application/octet-stream', 'User-Agent': 'Streaming-Hub' },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(300000),
+  });
+  if (!response.ok || !response.body) throw new Error(`Release-Asset Download ${response.status}`);
+  const declared = Number(response.headers.get('content-length') || 0);
+  if (declared > MAX_UPDATE_BYTES) throw new Error('Release-Asset ist zu groß');
+  const file = fs.createWriteStream(destination, { flags: 'wx', mode: 0o600 });
+  const reader = response.body.getReader();
+  let received = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > MAX_UPDATE_BYTES) throw new Error('Release-Asset ist zu groß');
+      if (!file.write(value)) await new Promise((resolve, reject) => { file.once('drain', resolve); file.once('error', reject); });
+    }
+    await new Promise((resolve, reject) => { file.once('finish', resolve); file.once('error', reject); file.end(); });
+    if (declared && received !== declared) throw new Error('Unvollständiger Release-Asset-Download');
+  } catch (error) {
+    file.destroy();
+    throw error;
   }
-  updaterLog('INFO', `Build-Tools gefunden: npm=${tools.npm} node=${tools.node || '—'}`);
-  toolEnv = buildToolEnv(process.env);
-  return tools;
 }
 
-function cmpVersions(a, b) {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const va = pa[i] || 0,
-      vb = pb[i] || 0;
-    if (va !== vb) return va - vb;
+function findAppBundle(root) {
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const candidate = path.join(root, entry.name);
+    if (entry.isDirectory() && entry.name.endsWith('.app')) return candidate;
+    if (entry.isDirectory()) {
+      const nested = findAppBundle(candidate);
+      if (nested) return nested;
+    }
   }
-  return 0;
+  return null;
+}
+
+function installMacBundle(bundle, supportDir) {
+  const applications = path.join(os.homedir(), 'Applications');
+  const wrapper = path.join(applications, 'Streaming Hub.app');
+  fs.mkdirSync(applications, { recursive: true });
+  fs.rmSync(wrapper, { recursive: true, force: true });
+  fs.cpSync(bundle, wrapper, { recursive: true });
+  const resources = path.join(wrapper, 'Contents', 'Resources');
+  const appLink = path.join(resources, 'app');
+  fs.mkdirSync(resources, { recursive: true });
+  fs.rmSync(appLink, { recursive: true, force: true });
+  fs.symlinkSync(supportDir, appLink, 'dir');
+  updaterLog('INFO', `Release-App installiert: ${wrapper}; Resources/app -> ${supportDir}`);
 }
 
 process.on('message', async msg => {
   if (msg.type === 'check') {
     try {
-      // Maßgeblich ist die LAUFENDE App-Version (app.getVersion via main.js),
-      // nicht der Checkout-Stand: Wurde der Checkout extern aktualisiert
-      // (install.sh), während eine ältere Instanz läuft, darf die UI das
-      // Update trotzdem anbieten — der Apply bringt Checkout + Build auf den
-      // Zielstand und startet neu. Sonst zeigte die App für immer "v0.5.10"
-      // an, obwohl der Checkout längst auf dem neuen Tag war.
-      const currentVersion = msg.currentVersion;
-      const out = git('ls-remote --tags origin', 15000);
-      const tags = new Set();
-      for (const line of out.split('\n')) {
-        const m = line.match(/refs\/tags\/v?(\d+\.\d+\.\d+)/);
-        if (m) tags.add(m[1]);
-      }
-      const sorted = [...tags].sort(cmpVersions);
-      const latest = sorted[sorted.length - 1] || null;
-      process.send({
-        type: 'result',
-        latest,
-        hasUpdate: latest ? cmpVersions(latest, currentVersion) > 0 : false,
-      });
+      const candidates = await fetchReleaseCandidates();
+      const latest = candidates[candidates.length - 1] || null;
+      const currentVersion = String(msg.currentVersion || '');
+      process.send({ type: 'result', latest: latest?.version || null, hasUpdate: !!latest && cmpVersions(latest.version, currentVersion) > 0 });
     } catch (e) {
       process.send({ type: 'result', error: e.message });
     }
   } else if (msg.type === 'apply') {
-    updaterLog('INFO', `Apply gestartet: v${msg.version}`);
+    updaterLog('INFO', `Release-Apply gestartet: v${msg.version}`);
+    let zipPath;
+    let extractDir;
     try {
-      // Defense-in-Depth: Version strikt validieren, bevor sie in
-      // Shell-Befehle interpoliert wird (kommt via IPC vom Renderer).
-      if (!/^\d+\.\d+\.\d+$/.test(String(msg.version || ''))) {
-        throw new Error('ungültige Versionsnummer: ' + msg.version);
-      }
-
-      process.send({ type: 'progress', step: 'Build-Werkzeuge prüfen…', percent: 2 });
-      ensureBuildTools();
-      runSync('npm --version', {
-        cwd: appDir,
-        encoding: 'utf-8',
-        timeout: 15000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: toolEnv,
-      });
-
-      process.send({ type: 'progress', step: 'Aktualisierungen abrufen…', percent: 5 });
-      git('fetch --tags --force origin', 60000);
-
-      // Tag-Nachzieh-Absicherung (User-Befund 01.10.): Liegt der Ziel-Tag nach
-      // dem Fetch immer noch nicht lokal vor (partieller Fetch, abweichende
-      // Refspecs), gezielt nachziehen — der Checkout würde sonst ins Leere
-      // laufen und die Versionsanzeige könnte auf ein altes Tag fallen.
-      try {
-        git(['rev-parse', '--verify', '--quiet', `v${msg.version}^{commit}`], 5000);
-      } catch (_) {
-        updaterLog('INFO', `Tag v${msg.version} lokal nicht gefunden — fetch --tags wird wiederholt`);
-        git('fetch origin --tags --force', 60000);
-      }
-
-      // User-Daten sichern (services.json, tvsources.json, history.json)
+      if (!/^\d+\.\d+\.\d+$/.test(String(msg.version || ''))) throw new Error('ungültige Versionsnummer: ' + msg.version);
+      const candidates = await fetchReleaseCandidates();
+      const release = candidates.find(candidate => candidate.version === msg.version);
+      if (!release) throw new Error(`Kein gültiger GitHub-Release für v${msg.version} gefunden`);
       backupUserFiles();
-
-      process.send({ type: 'progress', step: `Version v${msg.version} wird angewendet…`, percent: 30 });
-
-      // Dirty-Tree-Inhalte werden bewusst durch checkout --force ersetzt.
-      // User-Dateien wurden zuvor separat gesichert und danach wiederhergestellt.
-
-      git(['checkout', '--force', `v${msg.version}`], 30000);
-
-      // User-Daten nach dem Checkout wiederherstellen:
-      //  - tvsources.json: 3-way-Merge (User-Favoriten/Overrides + Release-Fixes)
-      //  - services.json/history.json: Overwrite wie bisher
-      //  - Merge-Warnungen (z. B. Struktur-Konflikt) erscheinen als eigener Progress-Step
-      restoreUserFiles(warnings => {
-        for (const w of warnings) {
-          process.send({
-            type: 'progress',
-            step: `⚠ ${w}`,
-            percent: 50,
-          });
-        }
-      });
-
-      // Kein stash/pop: lokale Codeänderungen dürfen den Apply nicht blockieren.
-      // checkout --force hat den Zielstand bereits deterministisch hergestellt.
-
-      // stash pop kann zeilenbasierte Konflikt-Marker in die JSON-Dateien schreiben →
-      // gemergten Stand wiederherstellen (nur falls Marker vorhanden sind)
-      if (repairConflictMarkersIfAny()) {
-        process.send({
-          type: 'progress',
-          step: '⚠ Konflikt-Marker durch lokale Änderungen erkannt – gemergte Dateien wiederhergestellt',
-          percent: 50,
-        });
-      }
-
-      // Aufgeräumt wird erst jetzt: Backup + Snapshot haben ihren Zweck erfüllt
-      try {
-        fs.rmSync(backupDir, { recursive: true, force: true });
-      } catch (e) {}
-
-      process.send({ type: 'progress', step: 'Abhängigkeiten werden installiert…', percent: 65 });
-      runSync('npm install --include=dev --ignore-scripts', {
-        cwd: appDir,
-        encoding: 'utf-8',
-        timeout: 180000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: toolEnv,
-      });
-      process.send({ type: 'progress', step: 'Laufzeitdateien werden gebaut…', percent: 85 });
-      runSync('npm run build:all', {
-        cwd: appDir,
-        encoding: 'utf-8',
-        timeout: 180000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: toolEnv,
-      });
-      const runtimeArtifacts = [
-        ['renderer.js', 'dist/renderer.js'],
-        ['packages/typed-core/src/index.ts', 'packages/typed-core/dist/index.js'],
-      ];
-      runtimeArtifacts.forEach(([source, output]) => {
-        const sourcePath = path.join(appDir, source);
-        const outputPath = path.join(appDir, output);
-        if (!fs.existsSync(outputPath) || fs.statSync(outputPath).mtimeMs < fs.statSync(sourcePath).mtimeMs) {
-          throw new Error(`Laufzeit-Build-Artefakt fehlt oder ist veraltet: ${output}`);
-        }
-      });
-
-      // ffmpeg/ffprobe (Konzept §2.2): Nach jedem Update verifizieren — Binary
-      // vorhanden + ausführbar + `ffmpeg -version` liefert Output. Läuft hier
-      // mit node (ELECTRON_RUN_AS_NODE), ohne App-Start. Fehlende/desynchrone
-      // Binaries werden automatisch nachgeladen (Selbstheilung), ein
-      // Prüfsummen-/Netzwerkfehler bricht das Update sichtbar ab.
-      process.send({ type: 'progress', step: 'ffmpeg/ffprobe werden verifiziert…', percent: 92 });
-      const ffmpegResult = await ensureBinaries(appDir);
-      if (!ffmpegResult.ok) {
-        throw new Error(`ffmpeg/ffprobe nach Update nicht bereit: ${ffmpegResult.error}`);
-      }
-      updaterLog('INFO', `ffmpeg/ffprobe OK (${ffmpegResult.ffmpeg.action}/${ffmpegResult.ffprobe.action})`);
-
+      process.send({ type: 'progress', step: 'Release-Asset wird heruntergeladen…', percent: 15 });
+      const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-update-'));
+      zipPath = path.join(tempRoot, release.asset.name);
+      extractDir = path.join(tempRoot, 'extract');
+      fs.mkdirSync(extractDir);
+      await downloadAsset(release.asset.browserDownloadUrl, zipPath);
+      process.send({ type: 'progress', step: 'Release-App wird installiert…', percent: 70 });
+      runSync(`unzip -q ${JSON.stringify(zipPath)} -d ${JSON.stringify(extractDir)}`, { timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'] });
+      const bundle = findAppBundle(extractDir);
+      if (!bundle) throw new Error('Release-Asset enthält keine macOS-App (.app)');
+      installMacBundle(bundle, appDir);
+      restoreUserFiles();
+      fs.rmSync(backupDir, { recursive: true, force: true });
       process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
       process.send({ type: 'applied' });
     } catch (e) {
-      updaterLog('ERROR', 'Apply fehlgeschlagen', e.stack || e.message);
+      updaterLog('ERROR', 'Release-Apply fehlgeschlagen', e.stack || e.message);
       process.send({ type: 'applied', error: e.message });
+    } finally {
+      if (zipPath) fs.rmSync(path.dirname(zipPath), { recursive: true, force: true });
     }
   }
 });
