@@ -2480,8 +2480,41 @@ const recordingsRefresh = document.getElementById('recordingsRefresh');
 const recordingPlayer = document.getElementById('recordingPlayer');
 const recordingPlayerVideo = document.getElementById('recordingPlayerVideo');
 const recordingPlayerClose = document.getElementById('recordingPlayerClose');
+const recordingPlayerError = document.getElementById('recordingPlayerError');
 
 let recordingPlaybackUrl = null; // für native-<video>-Fallback (MP4)
+
+// Fix-Set 4 (Karte t_18d3dbb2): Media-Loader-/Dekode-Fehler einer Aufnahme
+// waren unsichtbar — der Chromium-Media-Stack bricht bei korruptem
+// h264-Elementarstream still ab (User-Symptom: Wiedergabe zeigt ~1 s und
+// stockt, Seek zeigt dasselbe Frame, keine Meldung). Dem Media-Element
+// liegt hier ein fertiger Container zugrunde; Decode-Fehler einzelner
+// Frames lösen KEIN 'error'-Event aus (nur Ladepfad-Fehler tun das),
+// deshalb zusätzlich decoding-monitor auf 'decoding-error'.
+const MEDIA_ERROR_CODE_TEXTS = {
+  1: 'Wiedergabe abgebrochen (Ladevorgang unterbrochen).',
+  2: 'Wiedergabe abgebrochen (Netzwerkfehler).',
+  3: 'Wiedergabe abgebrochen (Dekodierung nicht möglich).',
+  4: 'Die Aufnahme ist nicht lesbar — der Video-Stream dieser Datei wird als beschädigt gemeldet.',
+};
+
+function hideRecordingPlayerError() {
+  if (recordingPlayerError) {
+    recordingPlayerError.hidden = true;
+    recordingPlayerError.textContent = '';
+  }
+}
+
+function showRecordingPlayerError(message) {
+  logger.warn('[recording playback] ' + message);
+  if (!recordingPlayerError) {
+    showTvToast(message);
+    return;
+  }
+  recordingPlayerError.textContent = message;
+  recordingPlayerError.hidden = false;
+  showTvToast(message);
+}
 
 function recordingStatusText(meta) {
   if (meta.status === 'recording') return 'Laufende Aufnahme';
@@ -2625,6 +2658,7 @@ async function openRecordingPlayback(meta) {
   try {
     const file = await window.electronAPI.getRecordingFile(meta.id);
     closeRecordingPlayback();
+    hideRecordingPlayerError();
     recordingPlayer.style.display = 'flex';
     if (file.kind === 'hls' && typeof Hls !== 'undefined' && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: false });
@@ -2642,6 +2676,23 @@ async function openRecordingPlayback(meta) {
   }
 }
 
+// Media-Element-Fehlermonitor des Aufnahmen-Players (Fix-Set 4). 'error'
+// feuert nur beim LADEN (MediaError, code 1-4); Dekode-Fehler mitten im
+// laufenden Stream melden sich als 'decoding-error'-Event (Chromium).
+// Beide Kanäle zeigen dieselbe Nutzer-Botschaft statt stummem Freeze.
+recordingPlayerVideo.addEventListener('error', () => {
+  const mediaError = recordingPlayerVideo.error;
+  if (!mediaError) return;
+  const detail = MEDIA_ERROR_CODE_TEXTS[mediaError.code] || 'Wiedergabe abgebrochen.';
+  showRecordingPlayerError(detail + ' (Fehlercode ' + mediaError.code + ')');
+});
+
+if (typeof recordingPlayerVideo.addEventListener === 'function') {
+  recordingPlayerVideo.addEventListener('decoding-error', () => {
+    showRecordingPlayerError('Fehler beim Dekodieren des Video-Streams — Teile der Aufnahme können nicht angezeigt werden.');
+  });
+}
+
 let recordingPlaybackHls = null;
 
 function closeRecordingPlayback() {
@@ -2653,6 +2704,7 @@ function closeRecordingPlayback() {
   recordingPlayerVideo.removeAttribute('src');
   recordingPlayerVideo.load();
   recordingPlaybackUrl = null;
+  hideRecordingPlayerError();
   recordingPlayer.style.display = 'none';
 }
 
