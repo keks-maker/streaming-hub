@@ -595,7 +595,7 @@
       function startEpgPolling() {
         stopEpgPolling();
         epgPollTimer = setInterval(function() {
-          window.postMessage({ source: 'tv-player', action: 'request-epg' }, window.location.origin);
+          sendToHostOrSelf({ source: 'tv-player', action: 'request-epg' });
         }, 30000); // alle 30 Sekunden
       }
       function stopEpgPolling() {
@@ -931,7 +931,22 @@
       function sendRecordingRequest(action, payload) {
         var msg = { source: 'tv-player', action: 'recording-' + action };
         if (payload) for (var k in payload) { if (Object.prototype.hasOwnProperty.call(payload, k)) msg[k] = payload[k]; }
-        try { window.postMessage(msg, window.location.origin); } catch (_) {}
+        sendToHostOrSelf(msg);
+      }
+
+      // ── tv-player → Host-Bridge (F-FB-07, t_9372a4b3) ──
+      // Die tvView wird via loadURL('file://…') geladen; unter Electron 42 ist
+      // der Origin eines file://-Guests "null" — window.postMessage(msg,
+      // window.location.origin) wirft dort "Invalid target origin 'null'" und
+      // die Nachricht verließ tv.html NIE (Record-Button tot, EPG-Poll tot,
+      // Status-Request tot). Zielführend: targetOrigin '*' (eigenes Window,
+      // kein Cross-Origin-Leak) mit Empfangs-Gate im preload (action-
+      // Whitelist, siehe preload-content.js). '*' ist bewusst NUR für diese
+      // internen tv-player-Nachrichten erlaubt — fremde Seiten im tvView
+      // gibt es nicht (loadURL nur auf die eigene tv.html).
+      function sendToHostOrSelf(msg) {
+        try { window.postMessage(msg, '*'); return; } catch (_) {}
+        try { window.postMessage(msg); } catch (_) {}
       }
 
       // Aktive Aufnahme auf DEM aktuellen Kanal (kanalgebundener Button-Zustand)
@@ -1393,7 +1408,7 @@
       );
       // Aufnahmen (Phase 1c): Host nach dem aktuellen Status fragen — der
       // tv-player-command-Bridge-Pfad antwortet via recording-status-Push.
-      window.postMessage({ source: 'tv-player', action: 'recording-status' }, window.location.origin);
+      sendToHostOrSelf({ source: 'tv-player', action: 'recording-status' });
 
       function handleHostMessage(data) {
         if (!data) return;
@@ -1454,8 +1469,12 @@
       });
 
       // Backward-compatible message listener for page-originated commands.
+      // Origin-Check bewusstlos auf "gleiches Fenster" beschränkt (F-FB-07,
+      // t_9372a4b3): file://-Guests haben origin "null" — ein Vergleich gegen
+      // window.location.origin würde NIE matchen. Das Gate für Aktionen sitzt
+      // im preload-content.js (Whitelist) und im Host (recorder-Validierung).
       window.addEventListener('message', function(e) {
-        if (e.source !== window || e.origin !== window.location.origin || !e.data) return;
+        if (e.source !== window || !e.data) return;
         handleHostMessage(e.data);
       });
 

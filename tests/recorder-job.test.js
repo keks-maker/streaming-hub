@@ -22,11 +22,15 @@ const MODE = ${JSON.stringify('__MODE__')};
 const segIdx = args.indexOf('-hls_segment_filename');
 const segPattern = segIdx !== -1 ? args[segIdx + 1] : null;
 const playlist = args[args.length - 1];
+// Versuch-eigenes Segment (F-FB-09-Logik im Fake nachempfunden): das echte
+// ffmpeg schreibt seit dem Fix mit attempt-eigenem Präfix — der Fake liest
+// das Präfix aus dem Muster und hängt den passenden Eintrag an.
+const segName = segPattern ? segPattern.split('/').pop() : 'seg_%05d.ts';
 function appendSegment() {
   fs.writeFileSync(segPattern.replace('%05d', '00000'), Buffer.alloc(2048));
   let existing = '';
   try { existing = fs.readFileSync(playlist, 'utf-8'); } catch (_) {}
-  fs.writeFileSync(playlist, existing + '#EXTINF:1.0,\\nseg_00000.ts\\n');
+  fs.writeFileSync(playlist, existing + '#EXTINF:1.0,\\n' + segName.replace('%05d', '00000') + '\\n');
 }
 if (MODE === 'instant-exit') { console.error('fake: stream unreachable'); process.exit(1); }
 if (MODE === 'run-forever') {

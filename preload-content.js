@@ -83,9 +83,12 @@ script.textContent = `
   }
 
   // Notify preload when a video starts playing (for Media Session polling trigger)
+  // targetOrigin '*' statt window.location.origin: file://-Guests haben origin
+  // "null" — der Origin-String wirft dort "Invalid target origin 'null'"
+  // (gleiche Wurzel wie F-FB-07). Eigenes Window → kein Cross-Origin-Leak.
   document.addEventListener('play', function(e) {
     if (e.target.tagName === 'VIDEO') {
-      window.postMessage({ type: '__media-play' }, window.location.origin);
+      try { window.postMessage({ type: '__media-play' }, '*'); } catch (_) {}
     }
   }, true);
 })();
@@ -156,13 +159,14 @@ ipcRenderer.on('tv-player-command', (_event, data) => {
 // Phase 1c: zusätzlich Aufnahme-Requests (recording-start/stop/status).
 // Start/Stop-Payloads sind kleine Objekte (untilEpgEnd-Flag, recId) und werden
 // im Host validiert (renderer → recording:*-IPC → Engine-Validierung).
+// F-FB-07 (t_9372a4b3): Der alte Gate `e.origin === window.location.origin`
+// matcht auf file://-Guests NIE — dort ist origin der String "null" (und die
+// Iso-Welt sieht location.origin ebenfalls als "null"/leer). Das Gate ist
+// deshalb: gleiches Fenster (e.source) + action-Whitelist. Das schützt gegen
+// fremde Seiten im tvView (gibt es nicht — loadURL nur auf tv.html) und
+// gegen manipulationierte Payloads (Host validiert recording-Requests).
 window.addEventListener('message', e => {
-  if (
-    e.source === window &&
-    e.origin === window.location.origin &&
-    e.data &&
-    e.data.source === 'tv-player'
-  ) {
+  if (e.source === window && e.data && e.data.source === 'tv-player') {
     if (
       e.data.action === 'channel-next' ||
       e.data.action === 'channel-prev' ||

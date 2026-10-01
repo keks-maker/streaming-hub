@@ -242,6 +242,68 @@ test('Recovery: Zombie (recording ohne Job) wird zu aborted', async () => {
   assert.equal(service.store.readMeta(recId).status, 'aborted');
 });
 
+test('Recovery: aborted mit Zwischenform wird nachremuxt (F-FB-08, t_9372a4b3)', async () => {
+  // QA Sz.8a: Hard-Kill mit aktiver Aufnahme → Neustart: Job sauber aborted,
+  // aber die HLS-Zwischenform wurde nie remuxt (kein MP4). Erwartung: die
+  // Recovery erkennt den nicht-remuxten Zwischenstand und holt den Remux nach.
+  const { service, storageRoot } = makeService();
+  const recId = 'rec_20261001_hardkill';
+  const jobDir = path.join(storageRoot, 'Aufnahmen', recId);
+  fs.mkdirSync(jobDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(jobDir, 'index.m3u8'),
+    '#EXTM3U\\n#EXT-X-TARGETDURATION:1\\n#EXTINF:2.0,\\nseg_00000.ts\\n#EXTINF:1.9,\\nseg_00001.ts\\n',
+  );
+  fs.writeFileSync(path.join(jobDir, 'seg_00000.ts'), Buffer.alloc(1024));
+  fs.writeFileSync(path.join(jobDir, 'seg_00001.ts'), Buffer.alloc(1024));
+  const meta = {
+    id: recId,
+    channelId: 'ard',
+    channelName: 'ARD',
+    epgTitle: 'Tagesschau',
+    startedAt: '2026-10-01T09:00:00',
+    stoppedAt: '2026-10-01T09:04:42',
+    status: 'aborted', // Hard-Kill-Hinterlassenschaft (reapOrphans)
+    sourceUrl: 'https://stream.example/live.m3u8',
+  };
+  service.store.writeMeta(meta);
+  service.store.upsertIndex(meta);
+
+  let afterRemuxMeta = null;
+  const result = await service.recover({ afterRemux: async ({ meta: m }) => (afterRemuxMeta = m) });
+  assert.equal(result.recovered.length, 1, 'aborted+Zwischenform wird als resumable erkannt');
+  assert.equal(result.recovered[0].status, 'completed');
+  assert.ok(afterRemuxMeta);
+  assert.equal(afterRemuxMeta.id, recId);
+  assert.equal(afterRemuxMeta.remuxInterrupted, false, 'Diagnostik-Flag nach Remux zurückgesetzt');
+  assert.ok(fs.existsSync(afterRemuxMeta.outputFile), 'MP4 entsteht');
+  // Zwischenform geräumt wie beim normalen Remux
+  assert.ok(!fs.existsSync(path.join(jobDir, 'index.m3u8')), 'Zwischenform nach Recovery-Remux weg');
+  const indexEntry = service.store.listAll().find(e => e.id === recId);
+  assert.equal(indexEntry.status, 'completed');
+});
+
+test('Recovery: aborted OHNE Zwischenform bleibt aborted (nichts zu holen)', async () => {
+  const { service, storageRoot } = makeService();
+  const recId = 'rec_20261001_emptykill';
+  const jobDir = path.join(storageRoot, 'Aufnahmen', recId);
+  fs.mkdirSync(jobDir, { recursive: true });
+  // Leerer Job-Ordner: kein index.m3u8 (Kill vor dem ersten Segment)
+  const meta = {
+    id: recId,
+    channelId: 'zdf',
+    channelName: 'ZDF',
+    startedAt: '2026-10-01T09:00:00',
+    status: 'aborted',
+    sourceUrl: 'https://stream.example/live.m3u8',
+  };
+  service.store.writeMeta(meta);
+  service.store.upsertIndex(meta);
+  const result = await service.recover();
+  assert.equal(result.recovered.length, 0, 'ohne Zwischenform gibt es nichts nachzuholen');
+  assert.equal(service.store.readMeta(recId).status, 'aborted', 'bleibt aborted');
+});
+
 test('Recovery: Remux-Fehler lässt remux-pending bestehen (nächster Start retry)', async () => {
   const { service, storageRoot } = makeService();
   const recId = 'rec_20260930_broken1';

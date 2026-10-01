@@ -31,11 +31,16 @@ test('Metadaten-Status-Maschine: erlaubte Übergänge (Konzept §5)', () => {
   assert.equal(assertTransition('remux-pending', 'completed'), true);
   assert.equal(assertTransition('remux-pending', 'failed'), true);
   assert.equal(assertTransition('failed', 'completed'), true); // nachholender Remux
+  // F-FB-08 (t_9372a4b3): Hard-Kill-Hinterlassenschaft (aborted + Zwischenform)
+  // wird in der Recovery nachträglich remuxt → completed.
+  assert.equal(assertTransition('aborted', 'completed'), true); // Recovery-Remux
 });
 
 test('Metadaten-Status-Maschine: verbotene Übergänge werfen', () => {
   assert.throws(() => assertTransition('completed', 'remux-pending'));
-  assert.throws(() => assertTransition('aborted', 'completed'));
+  assert.throws(() => assertTransition('aborted', 'failed'));
+  assert.throws(() => assertTransition('aborted', 'recording'));
+  assert.throws(() => assertTransition('aborted', 'remux-pending'));
   assert.throws(() => assertTransition('remux-pending', 'recording'));
   assert.throws(() => assertTransition('unbekannt', 'completed'));
   assert.ok(RECORDING_STATUSES.includes('remux-pending'));

@@ -30,6 +30,22 @@ test('writes user data atomically below the user-data directory', () => {
   assert.deepEqual(fs.readdirSync(fixture.userData), ['history.json']);
 });
 
+test('recordingSettings persistiert (F-FB-06, t_9372a4b3)', () => {
+  // Ohne STORAGE_FILES-Eintrag warf writeJson('recordingSettings', …)
+  // "Unbekannter Storage-Typ" — der Speicherort-Wechsel in den Settings
+  // wirkte nur in-memory und war nach App-Neustart weg.
+  const fixture = makeStorage();
+  fixture.storage.writeJson('recordingSettings', { storageRoot: '/tmp/qa_storage' });
+  assert.deepEqual(fixture.storage.readJson('recordingSettings', null), {
+    storageRoot: '/tmp/qa_storage',
+  });
+  assert.equal(
+    fs.existsSync(path.join(fixture.userData, 'recording-settings.json')),
+    true,
+    'recording-settings.json liegt im userData (überlebt App-Neustart)',
+  );
+});
+
 test('reports malformed user data instead of silently overwriting it', () => {
   const fixture = makeStorage();
   fs.mkdirSync(fixture.userData, { recursive: true });

@@ -63,7 +63,20 @@ function registerRecordingProtocol({ protocol, getRoot }) {
   protocol.registerSchemesAsPrivileged([
     {
       scheme: REC_SCHEME,
-      privileges: { standard: true, stream: true, supportFetchAPI: true, bypassCSP: false },
+      // corsEnabled: true (QA F-FB-04-Rest, t_9372a4b3): Fetches aus Pages mit
+      // file://-Origin (Origin "null") an ein privates, non-CORS-fähiges
+      // Scheme schneidet Chromium VOR dem Handler ab ("Failed to fetch") —
+      // hls.js (XHR/fetch auf .m3u8 + .ts) erreicht rec:// dadurch nie. Das
+      // Privileg erlaubt CORS-Fetches aufs Scheme; der Inhalt bleibt lokal
+      // auf den Aufnahmen-Root gejailt (Zeichen-Whitelist + Pfad-Kontainment
+      // im Handler unten, 18/18-Traversal-Smoke bleibt wirksam).
+      privileges: {
+        standard: true,
+        stream: true,
+        supportFetchAPI: true,
+        bypassCSP: false,
+        corsEnabled: true,
+      },
     },
   ]);
   // Electron-42 protocol.handle-Konvention: der Handler liefert ein
@@ -672,13 +685,29 @@ app.whenReady().then(() => {
         const lib = path.join(recorder.storageRoot, 'Aufnahmen');
         const jobDir = path.join(lib, recId);
         const playlist = path.join(jobDir, 'index.m3u8');
-        const base = `rec://${recId}`;
         if (meta.status === 'recording' && fs.existsSync(playlist)) {
-          // Laufende Aufnahme: HLS-Zwischenform live abspielbar
-          return { kind: 'hls', url: `${base}/index.m3u8` };
+          // Laufende Aufnahme: HLS-Zwischenform live abspielbar (hls.js-Pfad
+          // mit corsEnabled-Scheme — im Isolat + App verifiziert)
+          return { kind: 'hls', url: `${REC_SCHEME}://${recId}/index.m3u8` };
         }
         if (meta.outputFile && fs.existsSync(meta.outputFile)) {
-          return { kind: 'mp4', url: `${base}/${encodeURIComponent(path.basename(meta.outputFile))}` };
+          // Fertige MP4: Media-Element-Ladepfad ist ein anderer als der
+          // Fetch-Pfad — <video src="rec://…"> schlägt auch mit corsEnabled
+          // fehl (MEDIA_ELEMENT_ERROR code=4, QA-Privilegien-Matrix F-FB-04).
+          // Die MP4 liegt innerhalb des App-gebundenen Aufnahmen-Roots; aus
+          // der file://-Page des Players lädt eine file://-URL dieselbe Datei
+          // nativ (QA-Gegenprobe: dieselbe MP4 via file:// spielt einwandfrei).
+          // Die rec://-Jails (Whitelist + Kontainment) schützen weiterhin den
+          // Fetch-Pfad; hier zusätzlich: Pfad muss unterm Bibliotheks-Root
+          // liegen und .mp4 sein.
+          const resolved = path.resolve(meta.outputFile);
+          if (
+            resolved.toLowerCase().endsWith('.mp4') &&
+            resolved.startsWith(path.resolve(lib) + path.sep)
+          ) {
+            return { kind: 'mp4', url: `file://${resolved.split(path.sep).map(encodeURIComponent).join('/')}` };
+          }
+          throw new Error('Ungültiger MP4-Pfad für diese Aufnahme');
         }
         throw new Error('Keine abspielbare Datei für diese Aufnahme');
       });
