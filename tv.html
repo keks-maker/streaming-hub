@@ -285,6 +285,9 @@
       text-overflow: ellipsis; max-width: 46vw;
     }
     .tv-rec-chip:hover { background: rgba(220,38,38,0.32); }
+    /* Fix-Set 3 · Punkt 5: Beenden-Zustand — Dot friert, Text wird gedimmt */
+    .tv-rec-chip.stopping { cursor: default; opacity: 0.85; }
+    .tv-rec-chip.stopping .tv-rec-dot { animation: none; opacity: 0.45; }
     .tv-rec-dot {
       width: 10px; height: 10px; border-radius: 50%;
       background: #ef4444; flex-shrink: 0;
@@ -294,9 +297,10 @@
     .tv-rec-time { font-variant-numeric: tabular-nums; }
     .tv-rec-channel { font-weight: 600; color: rgba(255,255,255,0.82); }
     .tv-rec-title { font-weight: 500; color: rgba(255,255,255,0.55); }
-    /* Aufnahmeknopf: rot bei aktiver Aufnahme auf diesem Kanal */
-    .tv-btn.recording { color: #ef4444; }
-    .tv-btn.recording:hover { color: #f87171; }
+    /* Aufnahmeknopf (Fix-Set 3 · Punkt 4): WEISS = Start bereit, ROT =
+       Aufnahme läuft auf diesem Kanal (blinkt sanft, Klick stoppt direkt) */
+    .tv-btn.recording { color: #ef4444; animation: tv-rec-blink 1.6s ease-in-out infinite; }
+    .tv-btn.recording:hover { color: #f87171; animation: none; }
     /* Start-Dialog (Aufnahme „ab jetzt“ / bis Sendungsende) */
     .tv-rec-menu {
       position: fixed; z-index: 30;
@@ -313,6 +317,13 @@
     }
     .tv-rec-menu-item:hover { background: rgba(255,255,255,0.08); }
     .tv-rec-menu-item.recording { color: #f87171; font-weight: 600; }
+    .tv-rec-menu-item.tv-rec-stopping {
+      color: rgba(248,113,113,0.55);
+      font-weight: 500;
+      cursor: default;
+      pointer-events: none;
+    }
+    .tv-rec-menu-item.tv-rec-stopping:hover { background: transparent; }
     .tv-rec-menu-note {
       font-size: 12px; color: #64748b; padding: 6px 12px 4px;
     }
@@ -375,19 +386,22 @@
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
       </button>
       <span class="tv-live-badge" id="tvLiveBadge" style="display:none;color:#10b981;font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #10b981;border-radius:6px;">LIVE</span>
-      <!-- Aufnahme (Phase 1c): Button neben tvLiveBtn, rote Optik.
-           Klick 1 öffnet den Start-Dialog, Klick 2 stoppt. Auf dem Kanal mit
-           aktiver Aufnahme zeigt er den Status; Klick → Details/Stoppen. -->
-      <button class="tv-btn" id="tvRecordBtn" title="Aufnahme starten (R)" aria-label="Aufnahme">
+      <!-- Aufnahme (Phase 1c / Fix-Set 3 Punkt 2): Record-Button im
+           Schulter-Chrome. WEISSer Kreis-im-Kreis = startbereit (Klick öffnet
+           den Start-Dialog „ab jetzt"/„bis zum Ende der Sendung"); ROT mit
+           Stopp-Quadrat = auf diesem Kanal läuft eine Aufnahme (Klick stoppt
+           sie direkt). Immer sichtbar + Tooltips auf Chip UND Button. -->
+      <button class="tv-btn" id="tvRecordBtn" title="Aufnahme starten" aria-label="Aufnahme">
         <svg viewBox="0 0 24 24" id="tvRecordIconIdle"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>
         <svg viewBox="0 0 24 24" id="tvRecordIconActive" style="display:none"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/></svg>
       </button>
       <!-- REC-Anzeige: Teil des Chrome, blendet mit .tv-controls ein/aus.
-           Zeigt die LAUFENDE Aufnahme, auch wenn ein anderer Kanal läuft. -->
-      <span class="tv-rec-chip" id="tvRecChip" style="display:none" title="Aufnahme-Details / Stoppen">
+           Fix-Set 3 · Punkt 4: Klick öffnet die Verwaltung der LAUFENDEN
+           Aufnahmen (nicht den Start-Dialog des aktiven Kanals). -->
+      <span class="tv-rec-chip" id="tvRecChip" style="display:none" title="Laufende Aufnahme: Klicken zum Verwalten/Beenden">
         <span class="tv-rec-dot" aria-hidden="true"></span>
         <span>REC</span>
-        <span class="tv-rec-time" id="tvRecTime">00:00</span>
+        <span class="tv-rec-time" id="tvRecTime">00:00:00</span>
         <span class="tv-rec-channel" id="tvRecChannel"></span>
         <span class="tv-rec-title" id="tvRecTitle"></span>
       </span>
@@ -397,11 +411,14 @@
     </div>
   </div>
 
-  <!-- Aufnahme-Start-Dialog („ab jetzt“ / „bis zum Ende der Sendung“) -->
+  <!-- Aufnahme-Start-Dialog („ab jetzt“ / „bis zum Ende der Sendung“);
+       Fix-Set 3 · Punkt 4: tvRecEntries = dynamische Liste der LAUFENDEN
+       Aufnahmen (REC-Chip öffnet im Verwalten-Modus, Stop-Klick pro Eintrag;
+       im Stopp-Übergang: „Wird beendet…"-Feedback). -->
   <div class="tv-rec-menu" id="tvRecMenu">
     <button class="tv-rec-menu-item" id="tvRecStartNow">⏺ Aufnahme ab jetzt starten</button>
     <button class="tv-rec-menu-item" id="tvRecStartUntilEnd" style="display:none">⏺ Bis zum Ende der Sendung</button>
-    <button class="tv-rec-menu-item recording" id="tvRecStop" style="display:none">⏹ Aufnahme stoppen</button>
+    <div id="tvRecEntries"></div>
     <div class="tv-rec-menu-note" id="tvRecMenuNote"></div>
   </div>
 
@@ -919,7 +936,10 @@
       const recMenu = document.getElementById('tvRecMenu');
       const recStartNowBtn = document.getElementById('tvRecStartNow');
       const recStartUntilEndBtn = document.getElementById('tvRecStartUntilEnd');
-      const recStopBtn = document.getElementById('tvRecStop');
+      // Fix-Set 3 · Punkt 4: tvRecStop (statischer „Aufnahme stoppen"-
+      // Menüpunkt) wird durch die DYNAMISCHE Aufnahmen-Liste ersetzt — der
+      // Container recMenuEntries liegt im Menü, jedes Element ist ein Stop.
+      const recMenuEntries = document.getElementById('tvRecEntries');
       const recMenuNote = document.getElementById('tvRecMenuNote');
 
       // Letzter recording:status-Snapshot des Hosts: { active: [...], remuxing: [...] }
@@ -967,10 +987,52 @@
       }
 
       function recTick() {
-        if (!recordingStatus.active || !recordingStatus.active.length) return;
-        var shown = recordingStatus.active[0];
-        recTimeEl.textContent = formatTime(recElapsedSec(shown));
+        var list = recordingStatus.active || [];
+        var shown = list.length ? list[0] : null;
+        if (!shown) { stopRecTick(); return; }
+        // Fix-Set 3 · Punkt 5: stopping-RecId → der Chip zeigt „Wird beendet…"
+        // statt einer Uhr (der Wert würde sonst bis zum Remux-Done stehen).
+        if (isRecStopping(shown.recId)) { updateChipStopping(shown.recId); return; }
+        // 1-s-Auflösung (Fix-Set 3, Punkt 3): Der Engine-Snapshot kommt nur alle
+        // 5 s (SIZE_TICK_MS); die Laufzeit wird deshalb JEDEN Tick aus dem
+        // Startzeitpunkt selbst fortgeschrieben (recordingSec ist nur Anker).
+        var elapsed = recElapsedSec(shown);
+        if (typeof shown.recordingSec === 'number' && shown.recordingSec > 0 && recTickAnchor.recId === shown.recId) {
+          // Anchor: letzter Engine-Wert → Offset gegen weiterreichende Drift.
+          elapsed = shown.recordingSec + Math.max(0, (Date.now() - recTickAnchor.recordingTs) / 1000);
+        }
+        recTimeEl.textContent = formatRecTime(elapsed);
       }
+
+      // ═══ Aufnahme (Fix-Set 3): REC-Chip-Uhr ═══
+      // formatTime (hier: Material für DVR) ist MM:SS-basiert und kürzt unter
+      // 1 h ohne Stundenfeld — der Chip braucht verpflichtend hh:mm:ss, damit
+      // >59 min nicht optisch „ kaum gewachsen" wirkt (User-Meldung Punkt 3).
+      function formatRecTime(totalSec) {
+        if (!totalSec || !isFinite(totalSec)) totalSec = 0;
+        var t = Math.max(0, Math.floor(totalSec));
+        var h = Math.floor(t / 3600);
+        var m = Math.floor((t % 3600) / 60);
+        var s = t % 60;
+        var pad = function(n) { return String(n).padStart(2, '0'); };
+        return pad(h) + ':' + pad(m) + ':' + pad(s);
+      }
+
+      // Anchor zwischen Engine-Wert + lokalem Ticker (recTick)
+      var recTickAnchor = { recId: null, recordingSec: 0, recordingTs: 0 };
+
+      function recordRecTickAnchorFrom(status) {
+        var list = status && status.active;
+        if (list && list.length) {
+          var shown = list[0];
+          if (typeof shown.recordingSec === 'number' && shown.recordingSec > 0) {
+            recTickAnchor = { recId: shown.recId, recordingSec: shown.recordingSec, recordingTs: Date.now() };
+            return;
+          }
+        }
+        recTickAnchor = { recId: null, recordingSec: 0, recordingTs: 0 };
+      }
+
       function startRecTick() {
         stopRecTick();
         recTickTimer = setInterval(recTick, 1000);
@@ -983,13 +1045,14 @@
       // Zustand anwenden: Button-Optik (kanalbezogen) + Chip (laufende Aufnahme)
       function applyRecordingState(status) {
         recordingStatus = status && typeof status === 'object' ? status : { active: [], remuxing: [] };
+        recordRecTickAnchorFrom(recordingStatus);
         var list = recordingStatus.active || [];
         var activeHere = activeRecordingForCurrentChannel();
         var shown = list.length ? list[0] : null;
 
         if (activeHere) {
           recordBtn.classList.add('recording');
-          recordBtn.title = 'Aufnahme stoppen (R)';
+          recordBtn.title = 'Aufnahme stoppen (R) — läuft seit ' + formatRecTime(recElapsedSec(activeHere));
           recordIconIdle.style.display = 'none';
           recordIconActive.style.display = 'block';
         } else {
@@ -1001,37 +1064,117 @@
 
         if (shown) {
           recChip.style.display = 'flex';
+          recChip.classList.remove('stopping');
+          recChip.title = 'Laufende Aufnahme: Klicken zum Verwalten/Beenden';
           recChannelEl.textContent = '· ' + (shown.channelName || 'Kanal');
           recTitleEl.textContent = shown.epgTitle ? '— ' + shown.epgTitle : '';
+          // Fix-Set 3 · Punkt 3: hh:mm:ss (formatRecTime), ohne Engine-Refresh
+          // durch dry-run gesetzt, damit der Ticker (recTick) fortlaufen kann.
+          if (!recTickTimer) { startRecTick(); } else { recTick(); }
+        } else if (Object.keys(recStopping).length) {
+          // Fix-Set 3 · Punkt 5: Aufnahme bereits aus der Aktiv-Liste (Snapshot
+          // kam zwischen Stop-Klick und done-Phase) — Chip bleibt als
+          // Beenden-Feedback sichtbar, bis 'done' den Stopp souverän aufräumt.
+          updateChipStopping(Object.keys(recStopping)[0]);
         } else {
           recChip.style.display = 'none';
+          recChip.classList.remove('stopping');
           stopRecTick();
         }
-        if (shown && !recTickTimer) startRecTick();
-        else if (shown) recTick();
         if (recMenu.classList.contains('open')) updateRecMenuItems();
       }
 
+      // ═══ Aufnahme (Fix-Set 3 · Punkt 5): Stopp-Feedback ═══
+      // Die Engine sendet beim User-Stop zuerst {phase:'stopping'} (ffmpeg
+      // schreibt sauber, danach Remux) — das macht GUI-seitig Sekunden
+      // Funkstille.(tv.html zeigt daher zwischen „recording“ und „done“
+      // einen Beenden-Zustand im Chip und im Start-Dialog an.)
+      var recStopping = {}; // recId → true (wird von recording:'stopping'/'done' Events verwaltet)
+      function setRecStopping(recId, on) {
+        if (on) recStopping[recId] = true;
+        else delete recStopping[recId];
+      }
+      function isRecStopping(recId) { return !!recStopping[recId]; }
+
+      /**
+       * Fix-Set 3 · Punkt 5: Der zeigt laufende Aufnahme im Chip geht in den
+       * Beenden-Zustand: roter Punkt friert an, Label „Wird beendet…". Der
+       * Übergang zu „done" (Remux fertig, MP4 bereit) räumt über
+       * applyRecordingState wieder auf.
+       */
+      function updateChipStopping(recId) {
+        var a = (recordingStatus.active || []).find(function(x) { return x.recId === recId; });
+        recChip.style.display = 'flex';
+        recChannelEl.textContent = '· ' + (a && a.channelName || 'Kanal');
+        recTitleEl.textContent = 'Aufnahme wird beendet…';
+        recTimeEl.textContent = '——:——:——';
+        recChip.classList.add('stopping');
+        recChip.title = 'Aufnahme wird beendet — die fertige MP4 erscheint in der Aufnahmen-Bibliothek';
+      }
+
+      // Fix-Set 3 · Punkt 4: Im 'manage'-Modus listet das Menü ALLE laufenden
+      // Aufnahmen (jede mit eigenem Stop-Entry). Im 'start'-Modus gilt der
+      // alte kanalbezogene Dialog. Stopp-Feedback (Punkt 5): wegbrechende
+      // Aufnahmen erscheinen als „Wird beendet…" (disabled).
       function updateRecMenuItems() {
+        var list = (recordingStatus.active || []).filter(function(a) {
+          return !isRecStopping(a.recId);
+        });
+        var stoppingIds = Object.keys(recStopping).filter(function(id) {
+          return (recordingStatus.active || []).some(function(a) { return a.recId === id; });
+        });
+        var modus = recMenuMode;
+
+        // Start-Entries nur im 'start'-Modus ANBIETEN (nie aus dem REC-Chip).
         var activeHere = activeRecordingForCurrentChannel();
-        var anyActive = recordingStatus.active && recordingStatus.active.length;
-        recStopBtn.style.display = activeHere ? '' : 'none';
-        recStartNowBtn.style.display = activeHere ? 'none' : '';
-        recStartUntilEndBtn.style.display = (!activeHere && recChannelCtx.epgStopMs) ? '' : 'none';
+        var startMode = modus === 'start' && !activeHere;
+        recStartNowBtn.style.display = startMode ? '' : 'none';
+        recStartUntilEndBtn.style.display = (startMode && recChannelCtx.epgStopMs) ? '' : 'none';
+
+        // Fix-Set 3 · Punkt 4: dynamische Aufnahmen-Einträge (jede aktive
+        // Aufnahme ist von hier stoppbar — auch der andere Kanal).
+        recMenuEntries.innerHTML = '';
+        list.forEach(function(a) {
+          var entry = document.createElement('button');
+          entry.className = 'tv-rec-menu-item recording';
+          entry.textContent = '⏹ ' + (a.channelName || 'Kanal') +
+            (a.epgTitle ? ' — ' + a.epgTitle : '') + ' · ' + formatRecTime(recElapsedSec(a)) + ' beenden';
+          entry.title = 'Aufnahme auf „' + (a.channelName || 'diesem Kanal') + '" stoppen';
+          entry.addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            closeRecMenu();
+            sendRecordingRequest('stop', { recId: a.recId });
+          });
+          recMenuEntries.appendChild(entry);
+        });
+        stoppingIds.forEach(function(id) {
+          var a = (recordingStatus.active || []).find(function(x) { return x.recId === id; }) || {};
+          var entry = document.createElement('div');
+          entry.className = 'tv-rec-menu-item recording tv-rec-stopping';
+          entry.textContent = '◌ ' + (a.channelName || 'Kanal') + ' — Aufnahme wird beendet…';
+          recMenuEntries.appendChild(entry);
+        });
+
         recMenuNote.textContent = '';
-        if (activeHere) {
-          recMenuNote.textContent = '● REC ' + formatTime(recElapsedSec(activeHere)) +
+        if (activeHere && modus === 'start') {
+          recMenuNote.textContent = '● REC ' + formatRecTime(recElapsedSec(activeHere)) +
             ' · ' + (activeHere.channelName || 'Kanal') + (activeHere.epgTitle ? ' — ' + activeHere.epgTitle : '');
-        } else if (anyActive) {
+        } else if (modus === 'start' && (recordingStatus.active || []).length && !activeHere) {
           recMenuNote.textContent = 'Es läuft bereits eine andere Aufnahme.';
-        } else if (!recChannelCtx.epgStopMs) {
+        } else if (startMode && !recChannelCtx.epgStopMs) {
           recMenuNote.textContent = 'Kein EPG verfügbar — Aufnahme „ab jetzt“.';
+        } else if (modus === 'manage' && !list.length && !stoppingIds.length) {
+          recMenuNote.textContent = 'Keine laufenden Aufnahmen.';
         }
       }
 
       function closeRecMenu() { recMenu.classList.remove('open'); }
-      function openRecMenu() {
-        var r = recordBtn.getBoundingClientRect();
+      // Fix-Set 3 · Punkt 4: mode 'start' = Start-Dialog (Record-Button),
+      // 'manage' = Verwaltung der laufenden Aufnahmen (REC-Chip).
+      var recMenuMode = 'start';
+      function openRecMenu(mode) {
+        recMenuMode = mode === 'manage' ? 'manage' : 'start';
+        var r = (recMenuMode === 'manage' ? recChip : recordBtn).getBoundingClientRect();
         recMenu.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
         recMenu.style.bottom = Math.max(8, window.innerHeight - r.top + 8) + 'px';
         recMenu.style.left = 'auto';
@@ -1043,12 +1186,25 @@
 
       recordBtn.addEventListener('click', function(ev) {
         ev.stopPropagation();
+        var activeHere = activeRecordingForCurrentChannel();
+        // Fix-Set 3 · Punkt 4 (Akzeptanz: Klick-auf-rot = Stop-Flow): Läuft
+        // auf diesem Kanal bereits eine Aufnahme, stoppt der Record-Button
+        // SIE DIREKT — kein Umweg über den Start-Dialog.
+        if (activeHere) {
+          setRecStopping(activeHere.recId, true);
+          sendRecordingRequest('stop', { recId: activeHere.recId });
+          updateChipStopping(activeHere.recId);
+          return;
+        }
         if (recMenu.classList.contains('open')) { closeRecMenu(); return; }
-        openRecMenu();
+        openRecMenu('start');
       });
+      // Fix-Set 3 · Punkt 4: Der REC-Chip gehört zur VERWALTUNG. Er öffnet das
+      // Menü im „Verwalten"-Modus: erst Einträge der LAUFENDEN Aufnahmen
+      // (Stoppen), kein Start-Dialog des aktiven Kanals.
       recChip.addEventListener('click', function(ev) {
         ev.stopPropagation();
-        openRecMenu();
+        openRecMenu('manage');
       });
       recStartNowBtn.addEventListener('click', function(ev) {
         ev.stopPropagation();
@@ -1059,12 +1215,6 @@
         ev.stopPropagation();
         closeRecMenu();
         sendRecordingRequest('start', { untilEpgEnd: true });
-      });
-      recStopBtn.addEventListener('click', function(ev) {
-        ev.stopPropagation();
-        var activeHere = activeRecordingForCurrentChannel();
-        closeRecMenu();
-        if (activeHere) sendRecordingRequest('stop', { recId: activeHere.recId });
       });
       recMenu.addEventListener('click', function(ev) { ev.stopPropagation(); });
       document.addEventListener('click', closeRecMenu);
@@ -1461,6 +1611,21 @@
         } else if (data.type === 'recording-status') {
           // Snapshot der laufenden Aufnahmen (aktive + Remux) vom Host.
           applyRecordingState(data.status);
+        } else if (data.type === 'recording-phase') {
+          // Fix-Set 3 · Punkt 5: stopping → Chip-Beenden-Zustand, done → Snapshot
+          // (Chip verschwindet, Bibliothek zeigt Konvertier-Status).
+          var p = data.phase || {};
+          if (p.recId && p.phase === 'stopping') {
+            setRecStopping(p.recId, true);
+            if (!(recordingStatus.active || []).length) {
+              // Kein weiterer Snapshot: Chip bleibt offen mit Beenden-Zustand
+              updateChipStopping(p.recId);
+              stopRecTick();
+            }
+          } else if (p.recId && p.phase === 'done') {
+            setRecStopping(p.recId, false);
+            if (recMenu.classList.contains('open')) updateRecMenuItems();
+          }
         }
       }
 

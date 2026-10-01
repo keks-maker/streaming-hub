@@ -167,6 +167,17 @@ function pushRecordingStatusToTvView() {
 }
 
 /**
+ * Fix-Set 3 · Punkt 5: Phase-Notizen (stopping/done) an den TV-Player —
+ * der Chip geht dort in den Beenden-Zustand („Wird beendet…"), statt bis
+ * zum Remux-Abschluss eine eingefrorene Uhr zu zeigen.
+ */
+function pushRecordingPhaseToTvView(payload) {
+  try {
+    tvView.send('tv-player-command', { type: 'recording-phase', phase: payload });
+  } catch (_e) { /* tvView noch nicht bereit */ }
+}
+
+/**
  * Auto-Stopp „Bis zum Ende der Sendung“ (Konzept §3.1): hält pro Aufnahme
  * einen Timer, der bei EPG-Ende recording:stop auslöst. Timer werden bei jedem
  * Status-Update neu synchronisiert (Aufnahme weg → Timer weg).
@@ -3696,8 +3707,12 @@ window.electronAPI.onRecordingStatus(data => {
   } else if (data.phase === 'done' && data.recId) {
     remuxProgressMap.delete(data.recId);
     refreshRecordingSnapshot();
+    // Fix-Set 3 · Punkt 5: done → tv.html räumt den Beenden-Zustand auf
+    pushRecordingPhaseToTvView(data);
   } else if (data.phase === 'recording' || data.phase === 'stopping') {
     refreshRecordingSnapshot();
+    // Fix-Set 3 · Punkt 5: Phase an tv.html weiterleiten (Chip-Beenden-Zustand)
+    pushRecordingPhaseToTvView(data);
   }
 });
 window.electronAPI.onRecordingProgress(data => {
@@ -3716,6 +3731,14 @@ window.electronAPI.onRecordingChanged(data => {
   // Statuswechsel einer Aufnahme (failed/aborted/completed) → Bibliothek + Chip
   if (data && typeof data === 'object' && data.recId) remuxProgressMap.delete(data.recId);
   refreshRecordingSnapshot();
+  // Fix-Set 3 · Punkt 5: MP4-Fertig-Meldung schließt den Stopp-Flow ab —
+  // der Beenden-Chip geht mit dieser Meldung in den normalen Zustand über.
+  const status = data?.meta?.status;
+  if (status === 'completed') {
+    showTvToast('Aufnahme beendet — MP4 bereit: ' + (data.meta?.epgTitle || data.meta?.channelName || 'Aufnahme'));
+  } else if (status === 'failed') {
+    showTvToast('Aufnahme fehlgeschlagen: ' + (data.meta?.lastError || 'unbekannter Fehler'));
+  }
 });
 
 // Gedrosselter Snapshot-Refresh (Progress-Events im Sekundentakt)

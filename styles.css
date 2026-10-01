@@ -2796,7 +2796,29 @@ body {
 .nav-settings-item { display:flex !important; position:static !important; width:auto !important; min-width:132px; height:48px !important; opacity:1 !important; transform:none !important; pointer-events:auto !important; margin-left:8px; padding:0 16px; gap:9px; background:transparent; border-radius:16px; color:rgba(255,255,255,.62); }
 .nav-settings-item:hover,.nav-settings-item:focus-visible,.nav-settings-item.active { color:#fff; background:rgba(255,255,255,.1); outline:none; }
 .nav-settings-item .nav-section-icon { font-size:20px; }
-.overlay-actions { display:none !important; }
+/* Fix-Set 3 · Punkt 1: Aufnahmen-Bibliothek braucht einen IMMER-SICHTBAREN
+   Einstieg (Repro: frische App, ohne Tray). Der Zugang über Strg+R/Tray
+   allein wurde vom User nicht gefunden. Regression-Warnung: Dieser Block
+   (overlay-actions unsichtbar) stammt aus dem Navbar-Rework v0.5.4 und
+   versteckt AUCH Verlauf/PiP-Buttons; er bleibt für collapsed/fullscreen,
+   aber auf immer-sichtbaren Dashboards kommen die Buttons zurück.
+   (Hinweis: .overlay-bar.start-page bleibt display:none — die Buttons
+   erscheinen daher überall dort, wo die Top-Bar sichtbar ist.) */
+.overlay-bar.always-visible .overlay-actions {
+  display: flex !important;
+  position: absolute;
+  right: 14px;
+  top: 16px;
+  z-index: 3;
+}
+.overlay-bar.always-visible .overlay-actions .add-btn,
+.overlay-bar.always-visible .overlay-actions .pip-btn {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.overlay-bar.nav-collapsed:not(.is-fullscreen) .overlay-actions,
+.overlay-bar.is-fullscreen .overlay-actions { display: none !important; }
 .overlay-location { display:none !important; }
 .nav-reveal-hint { display:block; position:absolute; left:50%; bottom:-18px; transform:translateX(-50%); width:44px; height:18px; color:rgba(255,255,255,.5); font-size:14px; line-height:16px; text-align:center; background:rgba(24,27,36,.38); border:1px solid rgba(255,255,255,.1); border-top:0; border-radius:0 0 10px 10px; }
 .overlay-bar:not(.nav-collapsed):not(.is-fullscreen) .overlay-nav { opacity:1; pointer-events:auto; transform:translateX(-50%); }
