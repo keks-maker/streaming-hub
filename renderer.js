@@ -3519,6 +3519,9 @@ function setUpdateState(state) {
     updateBtn.title = 'Update auf dem neuesten Stand';
     updateBtn.disabled = false;
     updateBtn.classList.add('uptodate');
+  } else if (state === 'error') {
+    updateBtn.title = `Update-Prüfung fehlgeschlagen: ${updateCheckError || 'Unbekannter Fehler'} – erneut versuchen`;
+    updateBtn.disabled = false;
   } else if (state === 'available') {
     updateBtn.title = `Update v${updateAvailableVersion} verfügbar – Klicken zum Installieren`;
     updateBtn.disabled = false;
@@ -3544,13 +3547,13 @@ async function checkForUpdates({ quiet = false } = {}) {
       setUpdateState('available');
     } else {
       updateAvailableVersion = null;
-      setUpdateState('uptodate');
+      setUpdateState(result.error ? 'error' : 'uptodate');
     }
     return result;
   } catch (error) {
     updateAvailableVersion = null;
     updateCheckError = error.message;
-    setUpdateState('uptodate');
+    setUpdateState('error');
     return { hasUpdate: false, error: error.message };
   } finally {
     updateChecking = false;
