@@ -106,9 +106,20 @@ const REQUEST = {
 test('start(): Validierung lehnt schlechte Anfragen ab', async () => {
   const { service } = makeService();
   await assert.rejects(() => service.start({ ...REQUEST, sourceUrl: 'ftp://x' }), /http/);
-  await assert.rejects(() => service.start({ ...REQUEST, channelId: 'böser/pfad!' }), /Kanal-ID/);
+  await assert.rejects(() => service.start({ ...REQUEST, channelId: 'boeser\u0000pfad' }), /Kanal-ID/);
   await assert.rejects(() => service.start({ ...REQUEST, channelId: '', channelName: '' }), /channelId oder channelName/);
   await assert.rejects(() => service.start(null), /Anfrage/);
+});
+
+test('start(): reale Kanal-IDs mit @ und Leerzeichen sind erlaubt (F-FB-02)', async () => {
+  // QA F-FB-02: M3U-Parser-IDs aus EXTINF-Namen und iptv-org-IDs enthalten
+  // Leerzeichen/'@' — der frühere Zeicheninventar-Check blockte den
+  // Record-Start im UI für den praktischen Normalfall.
+  const { service } = makeService();
+  const first = await service.start({ ...REQUEST, channelId: 'DasErste.de@HD' });
+  const second = await service.start({ ...REQUEST, channelId: 'Kanal 21', channelName: 'Kanal 21' });
+  await service.stop(second.recId);
+  await service.stop(first.recId);
 });
 
 test('start(): ffmpeg-Health-Gate (defekte Binaries → Fehler)', async () => {

@@ -44,7 +44,15 @@ let trayController = null;
 // ein privilegiertes Scheme (supportFetchAPI + stream), jailt auf den Root
 // und erlaubt nur die Zwischenform (.m3u8/.ts) und fertige MP4s.
 const REC_SCHEME = 'rec';
-const REC_ALLOWED_EXTENSIONS = /^[\w.-]+\.(m3u8|ts|mp4)$/i;
+// Dateinamen der Aufnahmen werden aus Kanal-/Titelnamen gebaut (safeNamePart,
+// lib/recorder/meta.js) und enthalten daher Leerzeichen, '@', Unicode — der
+// frühere [\w.-]-Inventar hat jede reale MP4 mit 404 bedient (QA-Repro im
+// Smoke-Test zu F-FB-05). Die Whitelist verbietet deshalb genau die Zeichen,
+// die safeNamePart ebenfalls entfernt: Pfad-Trenner, Windows-Reservierte und
+// Steuerzeichen; Traversal ('../') scheitert an der Zeichenklasse UND an der
+// Pfad-Kontainment-Prüfung unten.
+// eslint-disable-next-line no-control-regex -- Steuerzeichen sind hier genau das Ausschlussziel
+const REC_ALLOWED_EXTENSIONS = /^[^\\/:*?"<>|\u0000-\u001f\u007f]+\.(m3u8|ts|mp4)$/i;
 const REC_JOB_DIR_PATTERN = /^rec_[A-Za-z0-9._-]+$/;
 
 function isNetworkishPath(p) {
@@ -58,24 +66,53 @@ function registerRecordingProtocol({ protocol, getRoot }) {
       privileges: { standard: true, stream: true, supportFetchAPI: true, bypassCSP: false },
     },
   ]);
-  function handler(request, callback) {
+  // Electron-42 protocol.handle-Konvention: der Handler liefert ein
+  // Response-Objekt (oder Promise<Response>) — das alte
+  // registerFileProtocol-callback({ path }) existiert hier nicht mehr und
+  // führte zu "TypeError: callback is not a function" bei jedem
+  // Wiedergabe-Klick (QA F-FB-04/05). Dateiinhalte werden als Node-Stream in
+  // die Response gegeben; der Content-Type je Endung sorgt dafür, dass
+  // <video> (MP4) und hls.js (.m3u8/.ts) die Daten korrekt dekodieren.
+  const REC_CONTENT_TYPES = {
+    '.m3u8': 'application/vnd.apple.mpegurl',
+    '.ts': 'video/mp2t',
+    '.mp4': 'video/mp4',
+  };
+  function notFound() {
+    return new Response(null, { status: 404 });
+  }
+  async function handler(request) {
+    if (request.method !== 'GET') return new Response(null, { status: 405 });
     try {
       const url = new URL(request.url);
       const recId = decodeURIComponent(url.hostname || '');
       const rel = decodeURIComponent(url.pathname || '').replace(/^\/+/, '');
       if (!REC_JOB_DIR_PATTERN.test(recId) || !REC_ALLOWED_EXTENSIONS.test(rel)) {
-        callback({ error: -6 }); // ERR_FILE_NOT_FOUND
-        return;
+        return notFound();
       }
       const root = path.resolve(getRoot());
       const filePath = path.resolve(root, 'Aufnahmen', recId, rel);
       if (!filePath.startsWith(path.resolve(root, 'Aufnahmen') + path.sep)) {
-        callback({ error: -6 });
-        return;
+        return notFound();
       }
-      callback({ path: filePath });
-    } catch (_) {
-      callback({ error: -6 });
+      const stat = await fs.promises.stat(filePath);
+      if (!stat.isFile()) return notFound();
+      const headers = { 'Content-Type': REC_CONTENT_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream' };
+      // Content-Length nur für die fertige MP4: Die HLS-Zwischenform
+      // (.m3u8/.ts) wächst während der Aufnahme — ein veralteter
+      // Content-Length-Wert würde fetch/hls.js auf eine Antwort warten
+      // lassen, die nie komplett eintrifft.
+      if (filePath.toLowerCase().endsWith('.mp4')) {
+        headers['Content-Length'] = String(stat.size);
+      }
+      return new Response(fs.createReadStream(filePath), { status: 200, headers });
+    } catch (e) {
+      // ENOENT ist der Normalfall (Zwischenform nach Remux geräumt, während
+      // noch ein Player-Lauf drauf zeigt); alles andere sichtbar loggen.
+      if (e && e.code !== 'ENOENT') {
+        logger.error(`[rec://] ${request.url}: ${e.message}`);
+      }
+      return notFound();
     }
   }
   return { handler, scheme: REC_SCHEME };
@@ -704,12 +741,16 @@ app.whenReady().then(() => {
           freeBytes: storageFreeBytes(resolved),
         };
       });
-      // ffmpeg-Diagnose (Konzept §3.4): Version/ok/Fehler für die Settings
+      // ffmpeg-Diagnose (Konzept §3.4): Version/ok/Fehler für die Settings.
+      // Meldet zusätzlich die SHA-256 der installierten ffmpeg-Binary und den
+      // Release-Tag (QA F-FB-03: Abweichungen von der Pinnung sichtbar machen;
+      // UI-Anzeige später möglich — nur API, kein UI-Zwang).
       ipcMain.handle('recording:ffmpeg-status', event => {
         requireMainRenderer(event);
-        const { checkHealth } = require('./lib/ffmpeg.js');
+        const { checkHealth, sha256File, FFMPEG_STATIC_RELEASE } = require('./lib/ffmpeg.js');
         const health = checkHealth(__dirname);
         let version = null;
+        let sha256 = null;
         if (health.ok) {
           try {
             const { execFileSync } = require('child_process');
@@ -718,12 +759,18 @@ app.whenReady().then(() => {
           } catch (_) {
             version = null;
           }
+          try {
+            sha256 = sha256File(health.ffmpegPath);
+          } catch (_) {
+            sha256 = null;
+          }
         }
         return {
           ok: health.ok,
           missing: health.missing,
-          release: health.release || null,
+          release: health.release || FFMPEG_STATIC_RELEASE || null,
           version,
+          sha256,
         };
       });
       // Default-Speicherort (für Reset-Button der Settings)

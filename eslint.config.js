@@ -55,6 +55,7 @@ export default [
         process: 'readable',
         addEventListener: 'readable',
         removeEventListener: 'readable',
+        CustomEvent: 'readable',
       },
     },
     rules: {
@@ -90,6 +91,9 @@ export default [
         AbortController: 'readable',
         EventSource: 'readable',
         FormData: 'readable',
+        // protocol.handle liefert fetch-API-Responses aus dem Main-Prozess
+        // (rec://-Handler, Konzept Aufnahme §4) — Node-Global.
+        Response: 'readable',
       },
     },
     rules: {
