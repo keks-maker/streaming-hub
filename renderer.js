@@ -119,6 +119,31 @@ function currentEpgTitle(ch) {
   return cur ? decodeEntities(cur.title) : '';
 }
 
+/**
+ * A-Fail R2-FB-01 (t_d6ee955e): EPG-Status-Kontext eines Kanals (vier
+ * formatierte Felder) — geteilt zwischen selectTvChannel (URL-Params),
+ * sendEpgUpdate/pushEpgToTvView (Duplikatblöcke) und der neuen
+ * channel-context-Antwort (pushChannelContextToTvView).
+ */
+function buildEpgContextForChannel(ch, now = new Date()) {
+  const epgList = epgListForChannel(ch);
+  let epgTitle = '',
+    epgStart = '',
+    epgEnd = '',
+    epgNext = '';
+  const currentIdx = epgList.findIndex(e => parseEpgTime(e.start) <= now && parseEpgTime(e.stop) >= now);
+  if (currentIdx !== -1) {
+    const cur = epgList[currentIdx];
+    epgTitle = decodeEntities(cur.title);
+    epgStart = formatEpgTime(cur.start);
+    epgEnd = formatEpgTime(cur.stop);
+    if (currentIdx + 1 < epgList.length) {
+      epgNext = decodeEntities(epgList[currentIdx + 1].title);
+    }
+  }
+  return { epgTitle, epgStart, epgEnd, epgNext };
+}
+
 /** Kleine Einblendung (Inline-Meldung im tvView-Bereich). */
 function showTvToast(message) {
   try {
@@ -163,6 +188,35 @@ function pushRecordingStatusToTvView() {
     });
   } catch (_e) {
     // tvView noch nicht bereit / about:blank — nächster Snapshot folgt
+  }
+}
+
+/**
+ * A-Fail R2-FB-01 (t_d6ee955e): Antwort auf channel-context aus tv.html —
+ * dieselbe Struktur wie der switch-channel-Pfad in selectTvChannel, aber OHNE
+ * channelList (nicht anzeigen). tv.html wendet daraus NUR recChannelCtx +
+ * dvrBarMode an (kein zweiter HLS-Load).
+ */
+function pushChannelContextToTvView() {
+  const ch = tvChannels.find(c => c.id === tvActiveChannelId);
+  if (!ch) return;
+  const ctx = buildEpgContextForChannel(ch);
+  try {
+    tvView.send('tv-player-command', {
+      type: 'switch-channel',
+      url: ch.url,
+      name: ch.name,
+      logo: ch.logo || '',
+      channelId: ch.id,
+      epg: ctx.epgTitle,
+      epgStart: ctx.epgStart,
+      epgEnd: ctx.epgEnd,
+      epgNext: ctx.epgNext,
+      dvr: dvrBarMode(),
+      contextOnly: true,
+    });
+  } catch (_e) {
+    // tvView noch nicht bereit — nach did-finish-load folgt der normale Pfad
   }
 }
 
@@ -2236,6 +2290,12 @@ async function selectTvChannel(ch, options = {}) {
       encodeURIComponent(epgEnd) +
       '&epgNext=' +
       encodeURIComponent(epgNext) +
+      // A-Fail R2-FB-01 (t_d6ee955e): channelId als URL-Param mitschicken.
+      // tv.html liest ihn beim Initial-Load in setupChannel → recChannelCtx;
+      // ohne ihn bleibt der kanalgebundene Record-Button weiß trotz laufender
+      // Aufnahme auf diesem Kanal (Start-Dialog statt Stop-Flow).
+      '&channelId=' +
+      encodeURIComponent(ch.id) +
       '&hls=' +
       encodeURIComponent('file://' + appPath + '/node_modules/hls.js/dist/hls.min.js');
     if (tvViewReady) {
@@ -3096,6 +3156,12 @@ tvView.addEventListener('ipc-message', e => {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
     else if (e.args[0].action === 'request-epg') sendEpgUpdate();
+    // A-Fail R2-FB-01 (t_d6ee955e): tv.html fragt nach Kanal-Kontext (direct
+    // nach dem TV-Initial-Load, falls Selector/setupChannel ohne channelId
+    // lief). Antwort: dieselbe switch-channel-Message wie der isTvPage-Pfad —
+    // tv.html ruft setupChannel damit NOCH NICHT auf, sondern aktualisiert
+    // NUR recChannelCtx (pure context apply, kein zweiter HLS-Load).
+    else if (e.args[0].action === 'channel-context') pushChannelContextToTvView();
     // ── Aufnahme-Requests aus tv.html (Phase 1c) ──
     else if (e.args[0].action === 'recording-status') pushRecordingStatusToTvView();
     else if (e.args[0].action === 'recording-start') {

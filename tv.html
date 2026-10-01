@@ -1556,6 +1556,12 @@
         params.get('epg'), params.get('epgStart'), params.get('epgEnd'), params.get('epgNext'),
         params.get('channelId') || ''
       );
+      // A-Fail R2-FB-01 (t_d6ee955e): Fallback für die Lücke zwischen tv.html
+      // DOM ready und dem ersten Renderer-Channel-Push (reload/restore-Race):
+      // Die Setup-Route fragt den Renderer nach dem Kanal-Kontext, der
+      // Renderer antwortet mit einem vollen switch-channel (inkl. channelId)
+      // → recChannelCtx besetzt, Record-Button kanalgebunden korrekt.
+      sendToHostOrSelf({ source: 'tv-player', action: 'channel-context' });
       // Aufnahmen (Phase 1c): Host nach dem aktuellen Status fragen — der
       // tv-player-command-Bridge-Pfad antwortet via recording-status-Push.
       sendToHostOrSelf({ source: 'tv-player', action: 'recording-status' });
@@ -1563,6 +1569,23 @@
       function handleHostMessage(data) {
         if (!data) return;
         if (data.type === 'switch-channel') {
+          // A-Fail R2-FB-01 (t_d6ee955e): contextOnly = NUR Re-Kontext nach dem
+          // Initial-Load (channel-context-Anfrage) — kein HLS-Neustart, nur
+          // recChannelCtx/DVR-Modus aktualisieren (kein setupChannel-Replay).
+          if (data.contextOnly) {
+            recChannelCtx = {
+              channelId: typeof data.channelId === 'string' ? data.channelId : '',
+              channelName: typeof data.name === 'string' ? data.name : 'TV',
+              epgStopMs: null,
+            };
+            if (data.dvr === 'on' || data.dvr === 'off') {
+              dvrBarMode = data.dvr;
+              applyDvrBarMode();
+            }
+            applyRecordingState(recordingStatus);
+            updateEpgBar(data.epg, data.epgStart, data.epgEnd, data.epgNext);
+            return;
+          }
           setupChannel(data.url, data.name, data.logo, data.epg,
             data.epgStart, data.epgEnd, data.epgNext, data.channelId);
           if (data.dvr === 'on' || data.dvr === 'off') {

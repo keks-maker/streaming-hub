@@ -171,6 +171,9 @@ window.addEventListener('message', e => {
       e.data.action === 'channel-next' ||
       e.data.action === 'channel-prev' ||
       e.data.action === 'request-epg' ||
+      // A-Fail R2-FB-01 (t_d6ee955e): tv.html fragt nach dem Kanal-Kontext
+      // direkt nach dem Initial-Load (Reload/Restore-Race-Fallback).
+      e.data.action === 'channel-context' ||
       e.data.action === 'recording-start' ||
       e.data.action === 'recording-stop' ||
       e.data.action === 'recording-status'
