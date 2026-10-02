@@ -95,6 +95,8 @@ test('t_f36663be: RecordJob-Start mit startOffsetSec setzt -ss VOR -i (Argument-
       meta: baseMeta(),
       expectedSegmentSec: 2,
       startOffsetSec: 120,
+      // Fix-Set 9: Legacy-Pfad deterministisch (kein Netz-Zugriff im Test)
+      fetchPlaylist: async () => { throw new Error('offline (Test)'); },
     });
     job.on('started', payload => {
       assert.equal(payload.startOffsetSec, 120);
@@ -153,6 +155,8 @@ test('t_f36663be: Degrade-Detektor feuert bei "could not seek" (Meldung 4)', asy
       ffmpegPath: fakeFfmpeg,
       meta: baseMeta(),
       startOffsetSec: 7200, // > DVR-Fenster
+      // Fix-Set 9: Legacy-Pfad deterministisch (kein Netz-Zugriff im Test)
+      fetchPlaylist: async () => { throw new Error('offline (Test)'); },
     });
     job.on('seek-degraded', payload => {
       assert.equal(payload.requestedOffsetSec, 7200);
@@ -182,6 +186,7 @@ test('t_f36663be: RecordJob ohne Offset feuert KEIN seek-degraded', async () => 
     ffmpegPath: fakeFfmpeg,
     meta: baseMeta(),
     startOffsetSec: 0,
+    fetchPlaylist: async () => { throw new Error('offline (Test)'); },
   });
   job.on('seek-degraded', () => { fired = true; });
   job.start();
