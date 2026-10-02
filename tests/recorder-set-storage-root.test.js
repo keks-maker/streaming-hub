@@ -1,5 +1,8 @@
 'use strict';
 
+// Tests nutzen Fake-Bundles unter <appRoot>/bin — System-ffmpeg-Präferenz aus.
+process.env.STREAMING_HUB_FFMPEG = 'bundled';
+
 // Tests: RecorderService.setStorageRoot (Phase 1c, Karte t_bafa7928; §3.4)
 // Speicherort-Wechsel zur Laufzeit: Validierung vor Wechsel, Schutz bei
 // laufenden Aufnahmen, Store-Neuaufbau.

@@ -1,5 +1,8 @@
 'use strict';
 
+// Tests nutzen Fake-Bundles unter <appRoot>/bin — System-ffmpeg-Präferenz aus.
+process.env.STREAMING_HUB_FFMPEG = 'bundled';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -152,4 +155,60 @@ test('ensureBinary akzeptiert pin-identischen Bestand ohne Download (schneller P
   assert.equal(result.action, 'ok');
   assert.equal(result.sha256, sha);
   assert.ok(result.version);
+});
+
+// ── Versions-Parser + System-Binary-Präferenz ──
+
+test('parseVersion versteht Bundle- und Distro-/Git-Tag-Versionen (n9.0.2)', () => {
+  const { parseVersion } = require('../lib/ffmpeg.js');
+  assert.deepEqual(parseVersion('ffmpeg version 7.0.2-static https://johnvansickle.com'), [7, 0, 2]);
+  assert.deepEqual(parseVersion('ffmpeg version n9.0.2 Copyright (c) 2000-2026'), [9, 0, 2]);
+  assert.equal(parseVersion('kein Treffer'), null);
+});
+
+test('System-Binary (Linux): brauchbares ≥7.0 wird bevorzugt, abstürzendes oder altes nicht', { skip: process.platform !== 'linux' }, () => {
+  const lib = require('../lib/ffmpeg.js');
+  const saved = { PATH: process.env.PATH, MODE: process.env.STREAMING_HUB_FFMPEG };
+  const mkSys = (version, body) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-sysbin-'));
+    for (const tool of ['ffmpeg', 'ffprobe']) {
+      fs.writeFileSync(
+        path.join(dir, tool),
+        `#!/bin/sh\nif [ "$1" = "-version" ]; then echo "${tool} version ${version}"; exit 0; fi\n${body}\n`,
+        { mode: 0o755 },
+      );
+    }
+    return dir;
+  };
+  try {
+    delete process.env.STREAMING_HUB_FFMPEG;
+    const run = sysDir => {
+      process.env.PATH = `${sysDir}:/usr/bin:/bin`;
+      const fixture = makeFakeApp();
+      lib.__clearResolveCacheForTests();
+      return { fixture, health: lib.checkHealth(fixture.root), path: lib.resolveBinaryPath('ffmpeg', fixture.root) };
+    };
+
+    const good = mkSys('n9.0.2', 'exit 1'); // reguläres Exit ≠ 0 bei Verbindungsfehler
+    const g = run(good);
+    assert.equal(g.path, path.join(good, 'ffmpeg'));
+    assert.equal(g.health.ffmpegPath, path.join(good, 'ffmpeg'));
+
+    const crashing = mkSys('n9.0.2', 'kill -SEGV $$');
+    const c = run(crashing);
+    assert.equal(c.path, binaryPath('ffmpeg', c.fixture.root), 'abstürzendes System-Binary → Bundle');
+
+    const old = mkSys('6.1.1', 'exit 1');
+    const o = run(old);
+    assert.equal(o.path, binaryPath('ffmpeg', o.fixture.root), 'zu altes System-Binary → Bundle');
+
+    process.env.STREAMING_HUB_FFMPEG = 'bundled';
+    const b = run(good);
+    assert.equal(b.path, binaryPath('ffmpeg', b.fixture.root), 'Schalter bundled → Bundle');
+  } finally {
+    process.env.PATH = saved.PATH;
+    if (saved.MODE === undefined) delete process.env.STREAMING_HUB_FFMPEG;
+    else process.env.STREAMING_HUB_FFMPEG = saved.MODE;
+    lib.__clearResolveCacheForTests();
+  }
 });

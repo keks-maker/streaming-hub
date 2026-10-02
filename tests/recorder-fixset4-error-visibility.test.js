@@ -1,5 +1,8 @@
 'use strict';
 
+// Tests nutzen Fake-Bundles unter <appRoot>/bin — System-ffmpeg-Präferenz aus.
+process.env.STREAMING_HUB_FFMPEG = 'bundled';
+
 // Tests: Fix-Set 4 (Karte t_18d3dbb2)
 // Player-Fehleranzeige bei nicht lesbarer/korrupter Aufnahme-MP4:
 // 1) MP4-Player-Overlay hat Fehlerbanner + aria/notification-Semantik
@@ -144,7 +147,7 @@ test('FIX: normalizeMeta normiert decodeErrors/decodeErrorSample', () => {
 test('FIX: RecorderService führt Decode-Verify nach Remux aus und persistiert', () => {
   const svc = fs.readFileSync(path.join(ROOT, 'lib/recorder/RecorderService.js'), 'utf8');
   assert.match(svc, /decodeCheckMp4/, 'Decode-Verify-Import fehlt');
-  const remuxBlock = /decodeCheckMp4\(ffmpegLib\.binaryPath\('ffmpeg', this\.appRoot\), outputPath(?:,\s*\d+,\s*onChild)?\)/.test(svc);
+  const remuxBlock = /decodeCheckMp4\(ffmpegLib\.resolveBinaryPath\('ffmpeg', this\.appRoot\), outputPath(?:,\s*\d+,\s*onChild)?\)/.test(svc);
   assert.ok(remuxBlock, 'Decode-Verify-Aufruf nach dem Remux fehlt');
   assert.match(svc, /decodeErrors,\s*\n\s*decodeErrorSample,/, 'Persistierung der Verify-Felder fehlt');
   // Entscheidend: Kein Status-Fallback — Datei bleibt completed.

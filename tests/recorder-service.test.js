@@ -1,5 +1,8 @@
 'use strict';
 
+// Tests nutzen Fake-Bundles unter <appRoot>/bin — System-ffmpeg-Präferenz aus.
+process.env.STREAMING_HUB_FFMPEG = 'bundled';
+
 // Tests: RecorderService — Duplikat-Schutz, Parallelitäts-Limit, Recovery,
 // Dateinamen-Kollision, Remux-After-Stop (Karte t_17ee2ca5; Konzept §3.1/§4.4/§5)
 

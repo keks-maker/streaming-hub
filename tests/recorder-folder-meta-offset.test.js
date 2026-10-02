@@ -1,3 +1,5 @@
+// Tests nutzen Fake-Bundles unter <appRoot>/bin — System-ffmpeg-Präferenz aus.
+process.env.STREAMING_HUB_FFMPEG = 'bundled';
 // Karte t_f36663be —Aufnahme v0.5.19 Befunde:
 // 1. Temp-Ordner-Remnant: nach Remux wird der rec_*-Job-Ordner KOMPLETT
 //    entfernt, Meta-Datei migriert parallel zur MP4 (Bibliotheks-Layer).

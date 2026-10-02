@@ -1,5 +1,8 @@
 'use strict';
 
+// Tests nutzen Fake-Bundles unter <appRoot>/bin — System-ffmpeg-Präferenz aus.
+process.env.STREAMING_HUB_FFMPEG = 'bundled';
+
 // E2E-Interrupt-Beweis (Akzeptanz Karte t_695bf150): hart gequitteter Job
 // (finalizeForQuit) → RecorderService.Recovery remuxt die Nachholaufnahme
 // beim nächsten Start → MP4 + completed + Index sauber (F-FB-10).

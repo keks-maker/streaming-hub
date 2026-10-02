@@ -1,5 +1,8 @@
 'use strict';
 
+// Tests nutzen Fake-Bundles unter <appRoot>/bin — System-ffmpeg-Präferenz aus.
+process.env.STREAMING_HUB_FFMPEG = 'bundled';
+
 // Tests: Quit-Cleanup / Orphan-Janitor (Karte t_695bf150)
 //
 // Akzeptanz der Karte:
