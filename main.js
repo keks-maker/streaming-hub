@@ -146,6 +146,7 @@ const {
   tvSource: validateTvSource,
   tvSourceUpdates: validateTvSourceUpdates,
 } = require('./lib/input-validation.js');
+const { updateMode } = require('./lib/update-mode.js');
 
 if (process.platform === 'darwin') {
   const macPathEntries = [
@@ -322,6 +323,7 @@ const UPDATE_API_BASE = process.env.STREAMING_HUB_UPDATE_URL || 'https://api.git
 const UPDATE_OWNER = 'keks-maker';
 const UPDATE_REPO = 'streaming-hub';
 const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
+const UPDATE_APPLY_TIMEOUT_MS = 15 * 60 * 1000;
 const UPDATE_RELEASE_PATH = `/keks-maker/streaming-hub/releases/download/`;
 
 async function updateApi(path) {
@@ -427,7 +429,7 @@ function startUpdater() {
         }
       },
     };
-  } else {
+  } else if (updateMode() === 'mac-release') {
     const updaterPath = path.join(__dirname, 'updater.js');
     if (fs.existsSync(updaterPath)) {
       updaterProcess = fork(updaterPath, [__dirname]);
@@ -444,9 +446,15 @@ ipcMain.handle('check-for-update', async event => {
     if (!autoUpdater) return { hasUpdate: false, error: 'kein updater' };
     return autoUpdater.check();
   }
+  if (updateMode() === 'unsupported') {
+    return { hasUpdate: false, error: 'Updates sind auf dieser Plattform nicht verfügbar' };
+  }
   if (!updaterProcess) return { hasUpdate: false, error: 'kein update-prozess' };
   return new Promise(resolve => {
-    const timer = setTimeout(() => resolve({ hasUpdate: false, error: 'timeout' }), 20000);
+    const timer = setTimeout(() => {
+      updaterProcess?.removeListener('message', onMsg);
+      resolve({ hasUpdate: false, error: 'timeout' });
+    }, 20000);
     const onMsg = msg => {
       if (msg.type !== 'result') return;
       clearTimeout(timer);
@@ -482,6 +490,9 @@ ipcMain.handle('apply-update', async (event, version) => {
       return { success: false, error: e.message };
     }
   }
+  if (updateMode() === 'unsupported') {
+    return { success: false, error: 'Updates sind auf dieser Plattform nicht verfügbar' };
+  }
   const updaterLogDir = app.getPath('logs');
   const updaterLogPath = path.join(updaterLogDir, 'updater.log');
   fs.mkdirSync(updaterLogDir, { recursive: true });
@@ -495,7 +506,16 @@ ipcMain.handle('apply-update', async (event, version) => {
   proc.stderr?.on('data', chunk => updaterLog.write(`[stderr] ${chunk}`));
   proc.on('error', error => updaterLog.write(`[spawn-error] ${error.stack || error.message}\n`));
   return new Promise(resolve => {
-    const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 180000);
+    // Muss über dem Download-Timeout des Updaters (300 s) plus Entpacken,
+    // Signatur- und Integritätsprüfung liegen. Bei Ablauf wird der Updater
+    // beendet, damit er nicht unbemerkt im Hintergrund weiterinstalliert.
+    const timer = setTimeout(() => {
+      proc.removeListener('message', onMsg);
+      try {
+        proc.kill('SIGKILL');
+      } catch (_) {}
+      resolve({ success: false, error: 'timeout' });
+    }, UPDATE_APPLY_TIMEOUT_MS);
     const onMsg = msg => {
       if (msg.type === 'progress') {
         mainWindow?.webContents.send('update-status', { type: 'progress', step: msg.step, percent: msg.percent });
