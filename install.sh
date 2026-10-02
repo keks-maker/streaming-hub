@@ -14,6 +14,8 @@ set -euo pipefail
 
 REPO_URL="${STREAMING_HUB_REPO_URL:-https://github.com/keks-maker/streaming-hub.git}"
 RAW_BASE="${STREAMING_HUB_RAW_BASE:-https://raw.githubusercontent.com/keks-maker/streaming-hub/main}"
+RELEASES_API_URL="${STREAMING_HUB_RELEASES_API_URL:-https://api.github.com/repos/keks-maker/streaming-hub/releases}"
+INSTALL_SOURCE="${STREAMING_HUB_SOURCE:-release}"
 MIN_NODE_MAJOR=22
 MIN_NODE_MINOR=12
 
@@ -22,6 +24,18 @@ info()  { echo -e "${GREEN}→${NC} $*"; }
 warn()  { echo -e "${YELLOW}⚠${NC} $*"; }
 error() { echo -e "${RED}✗${NC} $*"; exit 1; }
 header(){ echo -e "${CYAN}==${NC} $* ${CYAN}==${NC}"; }
+
+for arg in "$@"; do
+  case "$arg" in
+    --source=git) INSTALL_SOURCE="git" ;;
+    --source=release) INSTALL_SOURCE="release" ;;
+    *) error "Unbekannte Option: $arg (verwende --source=git oder --source=release)." ;;
+  esac
+done
+case "$INSTALL_SOURCE" in
+  release|git) ;;
+  *) error "Ungültige Quelle: $INSTALL_SOURCE (erlaubt: release, git)." ;;
+esac
 
 # ------------------------------------------------------------------
 # Sudo / Root-Erkennung
@@ -123,9 +137,9 @@ if [ "$OS" = "Linux" ] && ! curl -fsSL --connect-timeout 5 "https://github.com" 
 fi
 
 # ------------------------------------------------------------------
-# git installieren
+# git installieren (nur im expliziten Entwicklungs-/Checkout-Modus)
 # ------------------------------------------------------------------
-if ! command -v git &>/dev/null; then
+if [ "$INSTALL_SOURCE" = "git" ] && ! command -v git &>/dev/null; then
   if [ "$OS" = "Linux" ]; then
     info "Installiere git …"
     $UPDATE_CMD
@@ -223,110 +237,160 @@ if [ -z "${INSTALL_DIR:-}" ]; then
   fi
 fi
 
-if [ -d "$INSTALL_DIR/.git" ]; then
-  # Bereits installiert – pull
-  info "Aktualisiere vorhandene Installation in $INSTALL_DIR …"
-  cd "$INSTALL_DIR"
-  git fetch --tags --force origin 2>/dev/null || git fetch --tags origin
-  LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
-  # Tag-Nachzieh-Absicherung: Wenn nach dem Fetch immer noch kein Tag lokal
-  # liegt (partieller Fetch/abweichende Refspecs), gezielt nachholen — sonst
-  # fällt die Versionsanzeige auf ein altes Tag (User-Befund 01.10.).
-  if [ -z "$LATEST_TAG" ]; then
-    git fetch origin '+refs/tags/*:refs/tags/*' --force 2>/dev/null || true
-    LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+RELEASE_MODE=0
+RELEASE_VERSION=""
+RELEASE_APP=""
+RELEASE_TMP=""
+trap 'if [ -n "${RELEASE_TMP:-}" ]; then rm -rf "$RELEASE_TMP"; fi' EXIT
+if [ "$INSTALL_SOURCE" = "git" ]; then
+  if [ "$OS" = "Darwin" ]; then
+    info "Entwicklungs-/Checkout-Modus aktiviert (--source=git)."
   fi
-  # Stash lokale Änderungen (history/services/tvsources), force-checkout, restore
-  git stash --include-untracked 2>/dev/null || true
-  if [ -n "$LATEST_TAG" ]; then
-    git checkout --force "$LATEST_TAG" 2>/dev/null || { git checkout master && git pull; }
+  if [ -d "$INSTALL_DIR/.git" ]; then
+    info "Aktualisiere vorhandene Git-Installation in $INSTALL_DIR …"
+    cd "$INSTALL_DIR"
+    git fetch --tags --force origin 2>/dev/null || git fetch --tags origin
+    git stash --include-untracked 2>/dev/null || true
+    git checkout --force master 2>/dev/null || git checkout --force main
+    git pull --ff-only
+    git stash pop 2>/dev/null || true
   else
-    git pull
-  fi
-  git stash pop 2>/dev/null || true
-else
-  # Neuinstallation
-  if [ -d "$INSTALL_DIR" ]; then
-    warn "Verzeichnis $INSTALL_DIR existiert, ist aber kein Git-Repo."
-    warn "Bitte entfernen oder leeren: rm -rf $INSTALL_DIR"
-    exit 1
-  fi
-  info "Klone Repository nach $INSTALL_DIR …"
-  mkdir -p "$(dirname "$INSTALL_DIR")"
-  # --no-single-branch: Der Clone braucht die vollen Historie+Tags, damit
-  # git tag/describe nach Updates die richtige Version melden (ein
-  # single-branch-Clone ohne Tags zeigte sonst alte Versionen an).
-  git clone --no-single-branch "$REPO_URL" "$INSTALL_DIR"
-  cd "$INSTALL_DIR"
-fi
-
-# ------------------------------------------------------------------
-# npm-Abhängigkeiten
-# ------------------------------------------------------------------
-info "Installiere npm-Abhängigkeiten …"
-cd "$INSTALL_DIR"
-
-npm install --include=dev --ignore-scripts
-
-ELECTRON_DIR="node_modules/electron"
-DIST_DIR="$ELECTRON_DIR/dist"
-PATH_FILE="$ELECTRON_DIR/path.txt"
-if [ "$OS" = "Darwin" ]; then
-  ELECTRON_EXECUTABLE="Electron.app/Contents/MacOS/Electron"
-else
-  ELECTRON_EXECUTABLE="electron"
-fi
-
-if [ ! -f "$DIST_DIR/$ELECTRON_EXECUTABLE" ]; then
-  info "Lade Electron-Binary (Castlabs, $ELECTRON_PLATFORM/$ELECTRON_ARCH) …"
-  ZIP_PATH=$(node -e "
-    const { downloadArtifact } = require('@electron/get');
-    downloadArtifact({
-      version: require('./$ELECTRON_DIR/package').version,
-      artifactName: 'electron',
-      mirrorOptions: { mirror: 'https://github.com/castlabs/electron-releases/releases/download/' },
-      platform: '$ELECTRON_PLATFORM',
-      arch: '$ELECTRON_ARCH'
-    }).then(p => console.log(p));
-  ") || true
-
-  if [ -n "$ZIP_PATH" ] && [ -f "$ZIP_PATH" ]; then
-    info "Extrahiere Electron-Binary …"
-    mkdir -p "$DIST_DIR"
-    if [ "$OS" = "Darwin" ]; then
-      tar -xkf "$ZIP_PATH" -C "$DIST_DIR"
-    else
-      unzip -qo "$ZIP_PATH" -d "$DIST_DIR"
+    if [ -d "$INSTALL_DIR" ]; then
+      warn "Verzeichnis $INSTALL_DIR existiert, ist aber kein Git-Repo."
+      warn "Bitte entfernen oder leeren: rm -rf $INSTALL_DIR"
+      exit 1
     fi
-    printf "%s" "$ELECTRON_EXECUTABLE" > "$PATH_FILE"
-    chmod +x "$DIST_DIR/$ELECTRON_EXECUTABLE" 2>/dev/null || true
-    info "Electron-Binary bereit ($ZIP_PATH)"
+    info "Klone Repository nach $INSTALL_DIR …"
+    mkdir -p "$(dirname "$INSTALL_DIR")"
+    git clone "$REPO_URL" "$INSTALL_DIR"
+    cd "$INSTALL_DIR"
+  fi
+else
+  if [ "$OS" != "Darwin" ]; then
+    error "GitHub-Release-Assets sind macOS-Apps. Unter Linux explizit --source=git verwenden."
+  fi
+  RELEASE_TMP="$(mktemp -d "${TMPDIR:-/tmp}/streaming-hub-release.XXXXXX")"
+  RELEASE_LIB="$RELEASE_TMP/github-releases.js"
+  RELEASE_HELPER="$RELEASE_TMP/select-release.js"
+  curl -fsSL "$RAW_BASE/lib/github-releases.js" -o "$RELEASE_LIB" || error "Release-Kriterien konnten nicht geladen werden."
+  cat > "$RELEASE_HELPER" <<'NODE'
+'use strict';
+const { fetchReleaseCandidates } = require(process.argv[2]);
+const apiUrl = process.argv[3];
+fetchReleaseCandidates(fetch, apiUrl).then(candidates => {
+  const candidate = candidates.at(-1);
+  if (!candidate) process.exitCode = 2;
+  else process.stdout.write(JSON.stringify(candidate));
+}).catch(error => {
+  console.error(error.message);
+  process.exitCode = 1;
+});
+NODE
+  RELEASE_JSON="$(node "$RELEASE_HELPER" "$RELEASE_LIB" "$RELEASES_API_URL")" || error "Kein gültiges GitHub-Release gefunden (draft/prerelease, Semver-Tag oder Asset fehlen). Es gibt keinen Fallback auf Git-Tags."
+  RELEASE_VERSION="$(node -p 'JSON.parse(process.argv[1]).version' "$RELEASE_JSON")"
+  RELEASE_URL="$(node -p 'JSON.parse(process.argv[1]).asset.browserDownloadUrl' "$RELEASE_JSON")"
+  RELEASE_ZIP="$RELEASE_TMP/Streaming.Hub-${RELEASE_VERSION}-mac.zip"
+  RELEASE_STAGE="$RELEASE_TMP/extracted"
+  info "Installiere GitHub-Release v$RELEASE_VERSION …"
+  curl -fL --retry 3 --proto '=https' --tlsv1.2 "$RELEASE_URL" -o "$RELEASE_ZIP" || error "Release-Asset konnte nicht geladen werden."
+  mkdir -p "$RELEASE_STAGE"
+  unzip -q "$RELEASE_ZIP" -d "$RELEASE_STAGE" || error "Release-Asset ist kein gültiges ZIP-Archiv."
+  RELEASE_APP="$(find "$RELEASE_STAGE" -type d -name '*.app' -print -quit)"
+  [ -n "$RELEASE_APP" ] || error "Release-Asset enthält kein macOS-App-Bundle."
+
+  EVS_PY="${EVS_PYTHON:-$HOME/evs-venv/bin/python3}"
+  if [ ! -x "$EVS_PY" ]; then EVS_PY="$(command -v python3 || true)"; fi
+  if [ -n "$EVS_PY" ] && "$EVS_PY" -c "import castlabs_evs" >/dev/null 2>&1; then
+    info "Prüfe EVS/VMP-Signatur des Release-Assets …"
+    "$EVS_PY" -m castlabs_evs.vmp verify-pkg "$(dirname "$RELEASE_APP")" || error "EVS-Signaturprüfung des Release-Assets fehlgeschlagen."
   else
-    error "Electron-Binary konnte nicht geladen werden.
+    info "Prüfe codesign-Signatur des Release-Assets …"
+    codesign --verify --deep --strict "$RELEASE_APP" || error "Keine gültige macOS-Signatur im Release-Asset."
+  fi
+
+  RELEASE_APP_SOURCE="$RELEASE_APP/Contents/Resources/app"
+  [ -d "$RELEASE_APP_SOURCE" ] || error "Release-App enthält kein Contents/Resources/app-Verzeichnis."
+  mkdir -p "$(dirname "$INSTALL_DIR")"
+  RELEASE_USER_BACKUP="$RELEASE_TMP/user-backup"
+  mkdir -p "$RELEASE_USER_BACKUP"
+  for user_file in services.json tvsources.json history.json; do
+    [ -f "$INSTALL_DIR/$user_file" ] && cp -p "$INSTALL_DIR/$user_file" "$RELEASE_USER_BACKUP/$user_file"
+  done
+  rm -rf "$INSTALL_DIR"
+  mkdir -p "$INSTALL_DIR"
+  ditto "$RELEASE_APP_SOURCE" "$INSTALL_DIR"
+  for user_file in services.json tvsources.json history.json; do
+    [ -f "$RELEASE_USER_BACKUP/$user_file" ] && cp -p "$RELEASE_USER_BACKUP/$user_file" "$INSTALL_DIR/$user_file"
+  done
+  RELEASE_MODE=1
+  cd "$INSTALL_DIR"
+fi
+
+# ------------------------------------------------------------------
+# npm-Abhängigkeiten und Build (nur Git-Quellmodus; Releases sind bereits gebaut)
+# ------------------------------------------------------------------
+if [ "$RELEASE_MODE" = "0" ]; then
+  info "Installiere npm-Abhängigkeiten …"
+  cd "$INSTALL_DIR"
+
+  npm install --include=dev --ignore-scripts
+
+  ELECTRON_DIR="node_modules/electron"
+  DIST_DIR="$ELECTRON_DIR/dist"
+  PATH_FILE="$ELECTRON_DIR/path.txt"
+  if [ "$OS" = "Darwin" ]; then
+    ELECTRON_EXECUTABLE="Electron.app/Contents/MacOS/Electron"
+  else
+    ELECTRON_EXECUTABLE="electron"
+  fi
+
+  if [ ! -f "$DIST_DIR/$ELECTRON_EXECUTABLE" ]; then
+    info "Lade Electron-Binary (Castlabs, $ELECTRON_PLATFORM/$ELECTRON_ARCH) …"
+    ZIP_PATH=$(node -e "
+      const { downloadArtifact } = require('@electron/get');
+      downloadArtifact({
+        version: require('./$ELECTRON_DIR/package').version,
+        artifactName: 'electron',
+        mirrorOptions: { mirror: 'https://github.com/castlabs/electron-releases/releases/download/' },
+        platform: '$ELECTRON_PLATFORM',
+        arch: '$ELECTRON_ARCH'
+      }).then(p => console.log(p));
+    ") || true
+
+    if [ -n "$ZIP_PATH" ] && [ -f "$ZIP_PATH" ]; then
+      info "Extrahiere Electron-Binary …"
+      mkdir -p "$DIST_DIR"
+      if [ "$OS" = "Darwin" ]; then
+        tar -xkf "$ZIP_PATH" -C "$DIST_DIR"
+      else
+        unzip -qo "$ZIP_PATH" -d "$DIST_DIR"
+      fi
+      printf "%s" "$ELECTRON_EXECUTABLE" > "$PATH_FILE"
+      chmod +x "$DIST_DIR/$ELECTRON_EXECUTABLE" 2>/dev/null || true
+      info "Electron-Binary bereit ($ZIP_PATH)"
+    else
+      error "Electron-Binary konnte nicht geladen werden.
   Siehe Fehlerausgabe oben. Mögliche Ursachen:
   - Keine Internetverbindung
   - Castlabs-Mirror nicht erreichbar (https://github.com/castlabs/electron-releases)
   - Netzwerk oder Zertifikate prüfen"
+    fi
   fi
-fi
 
-info "Baue Laufzeitdateien …"
-npm run build:all
+  info "Baue Laufzeitdateien …"
+  npm run build:all
 
-# ------------------------------------------------------------------
-# ffmpeg/ffprobe (Aufnahme-Feature, Konzept §2.2 — Spike-Ergebnis 2026-09)
-# ------------------------------------------------------------------
-# Die Binaries werden MIT der App ausgeliefert (statische Builds, Release
-# b6.1.1 = ffmpeg 7.0.2, SHA-256-gepinnt in lib/ffmpeg.js) — kein
-# "bitte ffmpeg via Homebrew/apt nachinstallieren". Vorhandene, gesunde
-# Binaries bleiben unangetastet (schneller Pfad); fehlende werden geladen.
-info "Prüfe gebündelte ffmpeg/ffprobe-Binaries …"
-node "$INSTALL_DIR/bin/ensure-ffmpeg.js" || error "ffmpeg-Bündelung fehlgeschlagen.
+  # ------------------------------------------------------------------
+  # ffmpeg/ffprobe (Aufnahme-Feature)
+  # ------------------------------------------------------------------
+  info "Prüfe gebündelte ffmpeg/ffprobe-Binaries …"
+  node "$INSTALL_DIR/bin/ensure-ffmpeg.js" || error "ffmpeg-Bündelung fehlgeschlagen.
 
   Die Aufnahme-Funktion benötigt ffmpeg/ffprobe im App-Verzeichnis
   ($INSTALL_DIR/bin/). Ursache siehe Ausgabe oben (Netzwerk/Prüfsumme).
   Lösung: Installer erneut ausführen oder beschädigte Dateien in
   $INSTALL_DIR/bin/ löschen."
+fi
 
 # ------------------------------------------------------------------
 # Desktop-Eintrag
@@ -358,7 +422,11 @@ else
   APP_VERSION=$(node -p "require('./package.json').version")
   mkdir -p "$HOME/Applications"
   rm -rf "$APP_BUNDLE"
-  ditto "$DIST_DIR/Electron.app" "$APP_BUNDLE"
+  if [ "$RELEASE_MODE" = "1" ]; then
+    ditto "$RELEASE_APP" "$APP_BUNDLE"
+  else
+    ditto "$DIST_DIR/Electron.app" "$APP_BUNDLE"
+  fi
   APP_PLIST="$APP_BUNDLE/Contents/Info.plist"
   plutil -replace CFBundleName -string "Streaming Hub" "$APP_PLIST"
   plutil -replace CFBundleDisplayName -string "Streaming Hub" "$APP_PLIST"
@@ -367,6 +435,7 @@ else
   plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_PLIST"
   plutil -replace CFBundleIconFile -string "AppIcon.icns" "$APP_PLIST"
   plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_PLIST"
+  rm -rf "$APP_RESOURCES/app"
   ln -s "$INSTALL_DIR" "$APP_RESOURCES/app"
   if [ -f "$INSTALL_DIR/assets/icon.icns" ]; then
     cp "$INSTALL_DIR/assets/icon.icns" "$APP_RESOURCES/AppIcon.icns"

@@ -43,3 +43,13 @@ test('Release-Abfrage paginiert mit 100 Einträgen und sortiert alle gültigen K
   ]);
   assert.equal(candidates.at(-1).version, '9.0.0');
 });
+
+test('Release-Abfrage akzeptiert eine alternative API-Basis für Installer-Smoke-Tests', async () => {
+  const urls = [];
+  const candidates = await fetchReleaseCandidates(async url => {
+    urls.push(url);
+    return { ok: true, json: async () => urls.length === 1 ? [{ tag_name: 'v1.2.3', draft: false, prerelease: false, assets: [asset('1.2.3')] }] : [] };
+  }, 'https://mock.example/releases');
+  assert.equal(candidates.at(-1).version, '1.2.3');
+  assert.deepEqual(urls, ['https://mock.example/releases?per_page=100&page=1']);
+});
