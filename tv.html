@@ -389,8 +389,13 @@
         <button class="tv-btn" id="tvAudioBtn" title="Audiospur">🔊</button>
         <div class="tv-audio-dropdown" id="tvAudioDropdown"></div>
       </div>
+      <!-- Fix-Set 10 (Karte t_28a3bff2): Der Live-Button hatte EXAKT das
+           REC-Symbol (Ring mit zentriertem Punkt) — neben dem Record-Button
+           optisch nicht unterscheidbar (User-Screenshot v0.5.22). Neues Icon:
+           Pfeil → gefüllter Punkt („Springe zum Live-Punkt“); Aufnahme bleibt
+           das EINZIGE Ring-mit-Punkt-Icon in der Leiste. -->
       <button class="tv-btn" id="tvLiveBtn" title="Zur Live-Kante (L)" style="display:none">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+        <svg viewBox="0 0 24 24" id="tvLiveIcon"><line x1="2" y1="12" x2="11" y2="12"/><polyline points="7,6 13,12 7,18"/><circle cx="18.5" cy="12" r="4" fill="currentColor" stroke="none"/></svg>
       </button>
       <span class="tv-live-badge" id="tvLiveBadge" style="display:none;color:#10b981;font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #10b981;border-radius:6px;">LIVE</span>
       <!-- Aufnahme (Phase 1c / Fix-Set 3 Punkt 2): Record-Button im
