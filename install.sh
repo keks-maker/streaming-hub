@@ -442,7 +442,10 @@ else
   rm -rf "$APP_BUNDLE_STAGE"
   if [ "$RELEASE_MODE" = "1" ]; then
     ditto "$RELEASE_APP" "$APP_BUNDLE_STAGE"
-    APP_LINK_TARGET="$RELEASE_INSTALL_STAGE"
+    # Das Release-Staging wird nach dem Signieren nach INSTALL_DIR verschoben
+    # und der Temp-Pfad danach vom EXIT-Trap gelöscht; der Symlink muss deshalb
+    # dauerhaft auf das finale Installationsverzeichnis zeigen.
+    APP_LINK_TARGET="$INSTALL_DIR"
   else
     ditto "$DIST_DIR/Electron.app" "$APP_BUNDLE_STAGE"
     APP_LINK_TARGET="$INSTALL_DIR"

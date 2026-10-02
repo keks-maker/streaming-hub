@@ -1,6 +1,13 @@
 # Changelog
 
 
+## 0.5.18 (2026-10-02) — macOS-Release-Bundle und Installer-Root-Cause-Fixes
+
+- Fix: Der macOS-Wrapper verlinkt `Resources/app` im Release-Modus auf das finale `INSTALL_DIR` statt auf das nach der Installation gelöschte Release-Staging-Verzeichnis.
+- Fix: `@streaming-hub/typed-core` ist als Workspace-Abhängigkeit in den Root-Dependencies registriert und wird dadurch in Release-ZIPs unter `app/node_modules` mit ausgeliefert.
+- Tests: Vollständige Updater-/Release-/typed-core-Suite, `build:all`, EVS-Signaturprüfung und macOS-Sandbox-/Require-Verifikation.
+
+
 ## 0.5.17 (2026-10-02) — Release-basierter macOS-Updater und Installer
 
 - Updater und Installer beziehen macOS-Releases und Assets direkt von GitHub statt aus dem Repository-Arbeitsbaum.
