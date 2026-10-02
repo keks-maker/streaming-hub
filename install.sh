@@ -457,14 +457,19 @@ else
   plutil -replace CFBundleIdentifier -string "com.streaming-hub.app" "$APP_STAGE_PLIST"
   plutil -replace CFBundleVersion -string "$APP_VERSION" "$APP_STAGE_PLIST"
   plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_STAGE_PLIST"
-  plutil -replace CFBundleIconFile -string "AppIcon.icns" "$APP_STAGE_PLIST"
   plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_STAGE_PLIST"
   rm -rf "$APP_STAGE_RESOURCES/app"
   ln -s "$APP_LINK_TARGET" "$APP_STAGE_RESOURCES/app"
-  if [ -f "$APP_LINK_TARGET/assets/icon.icns" ]; then
-    cp "$APP_LINK_TARGET/assets/icon.icns" "$APP_STAGE_RESOURCES/AppIcon.icns"
-  elif [ -f "$APP_STAGE_RESOURCES/electron.icns" ]; then
-    cp "$APP_STAGE_RESOURCES/electron.icns" "$APP_STAGE_RESOURCES/AppIcon.icns"
+  # Icon-Konsistenz: CFBundleIconFile darf nur auf eine existierende Datei in
+  # Resources zeigen. Die Logik (Quelle assets/icon.icns aus dem Install-Staging,
+  # Fallback auf Builder-.icns, Pointer-Garantie) liegt testbar in
+  # scripts/stage-mac-icon.js (Regressionstest: tests/mac-icon-consistency.test.js).
+  # Wichtig: RELEASE_INSTALL_STAGE als Quelle — nicht $APP_LINK_TARGET/$INSTALL_DIR,
+  # das wird erst NACH dem Signieren ersetzt (Regression aus v0.5.18, e5def7a).
+  MAC_ICON_SCRIPT="$(pwd)/scripts/stage-mac-icon.js"
+  [ -f "$MAC_ICON_SCRIPT" ] || MAC_ICON_SCRIPT="$INSTALL_DIR/scripts/stage-mac-icon.js"
+  if ! node "$MAC_ICON_SCRIPT" "$APP_BUNDLE_STAGE" "$APP_LINK_TARGET" "$RELEASE_INSTALL_STAGE"; then
+    error "App-Icon konnte nicht konsistent ins Bundle gestagt werden; bestehende Installation bleibt erhalten."
   fi
 
   # ------------------------------------------------------------------
