@@ -131,12 +131,13 @@ test('Quit: finalizeForQuit ist idempotent (zweiter Aufruf alreadyFinalized)', a
   assert.equal(second.pid, null);
 });
 
-test('Quit: stop({ quitFast }) nutzt die verkürzte Grace (Quit-Pfad im Tray-Flow)', async () => {
-  const svcSource = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'RecordJob.js'), 'utf8');
-  assert.match(svcSource, /STOP_QUIT_GRACE_MS\s*=\s*2000/, 'Quit-Grace-Konstante vorhanden');
-  assert.match(svcSource, /quitFast \? STOP_QUIT_GRACE_MS : STOP_GRACE_MS/, 'Grace-Auswahl quit-abhängig');
-  // Non-Stop invariants: reguläres Verhalten unverändert
-  assert.match(svcSource, /stop\(\{ reason = 'user', quitFast = false \} = \{\}\)/);
+test('Quit: quitFast ist entfernt — stop() hat keine Quit-Parameter mehr (toter Code ausgeräumt)', async () => {
+  const jobSource = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'RecordJob.js'), 'utf8');
+  assert.doesNotMatch(jobSource, /quitFast/, 'kein quitFast-Residuum in RecordJob');
+  assert.doesNotMatch(jobSource, /STOP_QUIT_GRACE_MS/, 'keine tote Quit-Grace-Konstante');
+  // Nicht-Quit-Verhalten unverändert: reguläre Grace-Konstante dominant
+  assert.match(jobSource, /STOP_GRACE_MS = 10000/);
+  assert.match(jobSource, /stop\(\{ reason = 'user' \} = \{\}\)/);
 });
 
 // ── RecorderService.quitSweep ──
@@ -230,4 +231,110 @@ test('Janitor: listProcesses liefert pid/ppid/args-Zeilen', () => {
   assert.ok(init, 'PID 1 dabei');
   assert.equal(init.ppid, 0);
   assert.equal(typeof init.args, 'string');
+});
+
+// ── Review R1: Quit-Cleanup-Lücken (Runden-Fixes) ──
+
+test('Review R1: TrayController nutzt app.quit() — kein app.exit() verblieben', () => {
+  const traySource = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'TrayController.js'), 'utf8');
+  // app.exit() feuert KEIN before-quit → der Quit-Sweep würde im
+  // macOS-Shutdown-Zweig nie laufen (Orphan-Pfad). Verboten. Bewusst gegen
+  // den CODE gematcht (Zeilenanfang = echte Ausdrücke, Kommentare ausgeschlossen).
+  const codeLines = traySource.split('\n').filter(l => !/^\s*\/\//.test(l));
+  assert.doesNotMatch(codeLines.join('\n'), /app\.exit\(/, 'app.exit ist im Quit-Pfad verboten (kein before-quit)');
+  assert.match(codeLines.join('\n'), /\.then\(\(\) => app\.quit\(\)\)/, 'macOS-Shutdown-Zweig endet in app.quit()');
+});
+
+test('Review R1: quitSweep bedient in-flight stop() via finalizeForQuit (Registry-Fenster)', async () => {
+  // Szenario: stop() hat den Job bereits awaited weggenommen (jobs.delete
+  // läuft erst NACH dem await — aber der Sweep-Scan kann zwischen Abruf und
+  // await fallen). Beweis: finalizeForQuit auf dem Job-Objekt wird gerufen
+  // und liefert das Aborted-Payload an den awaiting stop()-Resolver.
+  const { svc } = makeRecorderService();
+  const storageRoot = svc.storageRoot;
+  const dir = path.join(storageRoot, 'rec_20261002_r1stop');
+  fs.mkdirSync(dir, { recursive: true });
+
+  const svcSource = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'RecorderService.js'), 'utf8');
+  assert.match(svcSource, /_stopsInProgress/, 'stop()>Registry-Sichtbarkeit existiert');
+  assert.match(svcSource, /_quitRequested = true/, 'Quit-Guard wird im Sweep gesetzt');
+  assert.match(svcSource, /if \(this\._quitRequested\) \{[\s\S]{0,700}return meta;/, 'stop()-Continuation opfert den Remux dem Quit');
+
+  // In-Flight-Vertrag deterministisch (ohne exec-Race): stop() marked den
+  // RecId als awaiting (_stopsInProgress), der Job bleibt bis NACH dem
+  // await in jobs registriert — der Sweep scannt beide Fenster. Ein Job in
+  // BEIDEN Registries wird genau EINMAL finalisiert (alreadyFinalized-
+  // Idempotenz), die Stops-Loop entdeckt ihn, falls der Job-Scan ihn
+  // verpasst (Registry-Fenster).
+  const calls = [];
+  const fakeJob = {
+    recId: 'rec_20261002_r1stop',
+    finalizeForQuit() {
+      calls.push('finalize');
+      return { pid: 4242, alreadyFinalized: calls.length > 1 };
+    },
+  };
+  svc.jobs.set(fakeJob.recId, fakeJob);
+  svc._stopsInProgress.set(fakeJob.recId, fakeJob); // in-flight stop() (Vertrag aus stop())
+  const killed = svc.quitSweep();
+  assert.equal(calls.length, 1, 'finalizeForQuit genau einmal (Jobs-Loop bedient, Stops-Loop idempotent)');
+  assert.ok(killed.some(k => k.kind === 'record' && k.recId === fakeJob.recId), 'in-flight Job via Sweep finalisiert');
+  assert.equal(svc.jobs.size, 0, 'Registry geleert');
+});
+
+test('Review R1b: Stops-Loop zeigt in-flight Job, den der Jobs-Loop verpasst', () => {
+  // Starkes Registry-Fenster: Job NUR in _stopsInProgress (stop() hat ihn
+  // schon aus jobs gerutscht — await läuft, Continuation noch nicht).
+  const { svc } = makeRecorderService();
+  const calls = [];
+  const fakeJob = {
+    recId: 'rec_20261002_r1stop2',
+    finalizeForQuit() {
+      calls.push('finalize');
+      return { pid: 919, alreadyFinalized: false };
+    },
+  };
+  svc.jobs.set(fakeJob.recId, fakeJob);
+  svc._stopsInProgress.set(fakeJob.recId, fakeJob);
+  // Simuliere das Fenster: stop() hat den Job bereits entfernt (await),
+  // der Sweep-Job-Scan sah ihn nicht mehr:
+  svc.jobs.delete(fakeJob.recId);
+  const killed = svc.quitSweep();
+  assert.equal(calls.length, 1, 'Stops-Loop greift — finalizeForQuit gerufen');
+  assert.ok(killed.some(k => k.kind === 'record' && k.recId === fakeJob.recId), 'Fenster-Job finalisiert statt versickert');
+});
+
+test('Review R1: stop()-Continuation startet nach Quit keinen Remux mehr (Quit-Race-Guard)', async () => {
+  // Deterministischer Beweis des Kern-Rest-Holes: Wenn quitSweep genau
+  // zwischen job.stop()-Resolve und der Remux-Continuation läuft, darf
+  // KEIN Remux gespawnt werden. Wir simulieren: job.stop() resolvet
+  // sofort (Kernel), danach feuern wir quitSweep, bevor die Continuation
+  // drankommt — via quitFastloser Sequenz: stop() awaiten, quitSweep(),
+  // dann _remuxAfterStop-weg natürlich nie erreicht.
+  const { svc } = makeRecorderService();
+  svc._quitRequested = true; // Quit gelaufen (sweep-artige Kernel-Setzung)
+  // stop() mit Fake-Job, _remuxAfterStop stubben, um Spawn verhindern UND
+  // Beweis zu führen, dass es NIEMAL gerufen wird:
+  let remuxCalled = 0;
+  const fakeJob = {
+    recId: 'rec_20261002_r1guard',
+    meta: { id: 'rec_20261002_r1guard', status: 'recording' },
+    stop: async () => ({ meta: { id: 'rec_20261002_r1guard', status: 'aborted' }, reason: 'abort' }),
+  };
+  svc.jobs.set(fakeJob.recId, fakeJob);
+  svc._remuxAfterStop = async () => {
+    remuxCalled += 1;
+    return { id: fakeJob.recId, status: 'completed' };
+  };
+  const out = await svc.stop(fakeJob.recId);
+  assert.equal(remuxCalled, 0, 'Remux wurde dem Quit geopfert (kein Spawn im Registry-Fenster)');
+  assert.equal(out.status, 'aborted', 'Meta bleibt aborted → Recovery beim nächsten Start');
+});
+
+test('Review R1: Remux-interne Probe läuft registriert (onChild an probeMp4 in runRemux)', () => {
+  const remuxSource = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'RemuxJob.js'), 'utf8');
+  // probeMp4-Aufruf in der succeed()-Continuation reichert onChild durch:
+  assert.match(remuxSource, /probeMp4\(ffprobePath, outputPath, 15000, onChild\)/, 'interne Probe erhält onChild');
+  // Gesamt witnessed: alle 3 Spawn-Stellen bleiben registriert.
+  assert.strictEqual((remuxSource.match(/typeof onChild === 'function'/g) || []).length, 3);
 });
