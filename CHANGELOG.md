@@ -1,6 +1,13 @@
 # Changelog
 
 
+## 0.5.17 (2026-10-02) — Release-basierter macOS-Updater und Installer
+
+- Updater und Installer beziehen macOS-Releases und Assets direkt von GitHub statt aus dem Repository-Arbeitsbaum.
+- Signaturprüfung ist fail-closed; der macOS-App-Build verwendet `asar: false`, damit Layout und Signaturprüfung mit der EVS/castlabs-Pipeline übereinstimmen.
+- Rollback-, Bundle- und Release-Asset-Verträge sind erweitert und testverifiziert.
+
+
 ## 0.5.16 (2026-10-01) — Fix-Set 5: Record-Button channelId-Verlust nach tv.html-Reload repariert
 
 - Fix (kritisch, QA A-Fail R2-FB-01, Re-Test-2): Nach einem tv.html-Reload (Dashboard → zurück zum selben Kanal über Kachel/Navbar/Back) blieb der Record-Button WEISS mit „Aufnahme starten (R)"-Tooltip, obwohl die Aufnahme auf dem aktiven Kanal lief — Klick öffnete den Start-Dialog (Zweit-Aufnahme möglich) statt den Stop-Flow. Root-Cause: der loadURL-Pfad in selectTvChannel (Cold-Load nach switchWebview(false) → about:blank) baute die tv.html-URL ohne channelId-Param; die tv.html-Init-Route `setupChannel(..., params.get('channelId') || '')` setzte recChannelCtx.channelId = '' → activeRecordingForCurrentChannel fand nichts (der REC-Chip/Verwalten-Pfad ist zustandsunabhängig und funktionierte korrekt weiter).
