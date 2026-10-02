@@ -74,6 +74,18 @@ Homebrew-Installation (https://brew.sh/):
 
 Andernfalls müssen Node.js und npm vorher installiert sein. Windows wird von `install.sh` nicht unterstützt.
 
+### macOS-Release-Layout und Signaturprüfung
+
+Neue GitHub-macOS-ZIPs werden mit `asar: false` gebaut. Ihr Inhalt ist deshalb
+`Streaming Hub.app/Contents/Resources/app/` als echtes Verzeichnis; das entspricht
+dem Checkout-Installer und dem In-App-Updater (`Contents/Resources/app`). Bereits
+veröffentlichte 0.5.x-ZIPs mit `app.asar` werden von Installer und Updater per
+`@electron/asar` in dasselbe Verzeichnislayout entpackt. Der Installer baut
+Wrapper und Plist zunächst in einem Staging-Bundle und ersetzt die bestehende
+Installation erst nach erfolgreicher EVS- oder `codesign`-Prüfung.
+Fehlt EVS, ist `codesign` nicht verfügbar oder schlägt die finale Prüfung fehl,
+bricht der Installer ab und lässt den bisherigen Stand unverändert.
+
 ## Projektstruktur
 
 ```

@@ -246,15 +246,25 @@ function verifyMacBundle(bundle, stageRoot) {
 }
 
 function installMacBundle(bundle, supportDir, options = {}) {
-  const source = path.join(bundle, 'Contents', 'Resources', 'app');
-  if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) {
-    throw new Error('Release-App enthält kein Contents/Resources/app-Verzeichnis');
-  }
+  const resources = path.join(bundle, 'Contents', 'Resources');
+  const unpackedSource = path.join(resources, 'app');
+  const asarSource = path.join(resources, 'app.asar');
   const applications = options.applicationsDir || path.join(os.homedir(), 'Applications');
   const wrapper = path.join(applications, 'Streaming Hub.app');
   const staging = `${supportDir}.update-staging-${process.pid}`;
   const rollback = `${supportDir}.update-rollback-${process.pid}`;
   const wrapperRollback = `${wrapper}.update-rollback-${process.pid}`;
+  let source = unpackedSource;
+  let legacyAsarDir = null;
+  if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) {
+    if (!fs.existsSync(asarSource) || !fs.statSync(asarSource).isFile()) {
+      throw new Error('Release-App enthält weder Contents/Resources/app noch app.asar');
+    }
+    legacyAsarDir = `${staging}.legacy-asar`;
+    source = path.join(legacyAsarDir, 'app');
+    fs.rmSync(legacyAsarDir, { recursive: true, force: true });
+    runSync(`npx --yes @electron/asar@3.4.1 extract ${JSON.stringify(asarSource)} ${JSON.stringify(source)}`, { timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'] });
+  }
   let wrapperBuildStarted = false;
   fs.rmSync(staging, { recursive: true, force: true });
   fs.rmSync(rollback, { recursive: true, force: true });
@@ -285,6 +295,7 @@ function installMacBundle(bundle, supportDir, options = {}) {
     throw error;
   } finally {
     fs.rmSync(staging, { recursive: true, force: true });
+    if (legacyAsarDir) fs.rmSync(legacyAsarDir, { recursive: true, force: true });
   }
 }
 

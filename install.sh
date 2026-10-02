@@ -241,7 +241,13 @@ RELEASE_MODE=0
 RELEASE_VERSION=""
 RELEASE_APP=""
 RELEASE_TMP=""
-trap 'if [ -n "${RELEASE_TMP:-}" ]; then rm -rf "$RELEASE_TMP"; fi' EXIT
+RELEASE_INSTALL_STAGE=""
+APP_BUNDLE_STAGE=""
+cleanup_staging() {
+  if [ -n "${RELEASE_TMP:-}" ]; then rm -rf "$RELEASE_TMP"; fi
+  if [ -n "${APP_BUNDLE_STAGE:-}" ]; then rm -rf "$APP_BUNDLE_STAGE"; fi
+}
+trap cleanup_staging EXIT
 if [ "$INSTALL_SOURCE" = "git" ]; then
   if [ "$OS" = "Darwin" ]; then
     info "Entwicklungs-/Checkout-Modus aktiviert (--source=git)."
@@ -309,21 +315,32 @@ NODE
   fi
 
   RELEASE_APP_SOURCE="$RELEASE_APP/Contents/Resources/app"
-  [ -d "$RELEASE_APP_SOURCE" ] || error "Release-App enthält kein Contents/Resources/app-Verzeichnis."
+  if [ -d "$RELEASE_APP_SOURCE" ]; then
+    : # Neue Releases mit asar:false verwenden das erwartete Verzeichnis.
+  elif [ -f "$RELEASE_APP/Contents/Resources/app.asar" ]; then
+    # Bereits veröffentlichte 0.5.x-ZIPs enthalten noch app.asar. Für
+    # Rückwärtskompatibilität entpacken wir sie in dasselbe Staging-Layout.
+    info "Entpacke legacy app.asar in das Installations-Staging …"
+    RELEASE_APP_SOURCE="$RELEASE_TMP/app-unpacked"
+    npx --yes @electron/asar@3.4.1 extract "$RELEASE_APP/Contents/Resources/app.asar" "$RELEASE_APP_SOURCE" || error "Legacy app.asar konnte nicht entpackt werden."
+  else
+    error "Release-App enthält weder Contents/Resources/app noch app.asar."
+  fi
+  # So zerstört ein fehlendes codesign/EVS die bestehende Installation nicht.
   mkdir -p "$(dirname "$INSTALL_DIR")"
+  RELEASE_INSTALL_STAGE="$RELEASE_TMP/install-stage"
+  mkdir -p "$RELEASE_INSTALL_STAGE"
   RELEASE_USER_BACKUP="$RELEASE_TMP/user-backup"
   mkdir -p "$RELEASE_USER_BACKUP"
   for user_file in services.json tvsources.json history.json; do
     [ -f "$INSTALL_DIR/$user_file" ] && cp -p "$INSTALL_DIR/$user_file" "$RELEASE_USER_BACKUP/$user_file"
   done
-  rm -rf "$INSTALL_DIR"
-  mkdir -p "$INSTALL_DIR"
-  ditto "$RELEASE_APP_SOURCE" "$INSTALL_DIR"
+  ditto "$RELEASE_APP_SOURCE" "$RELEASE_INSTALL_STAGE"
   for user_file in services.json tvsources.json history.json; do
-    [ -f "$RELEASE_USER_BACKUP/$user_file" ] && cp -p "$RELEASE_USER_BACKUP/$user_file" "$INSTALL_DIR/$user_file"
+    [ -f "$RELEASE_USER_BACKUP/$user_file" ] && cp -p "$RELEASE_USER_BACKUP/$user_file" "$RELEASE_INSTALL_STAGE/$user_file"
   done
   RELEASE_MODE=1
-  cd "$INSTALL_DIR"
+  cd "$RELEASE_INSTALL_STAGE"
 fi
 
 # ------------------------------------------------------------------
@@ -421,35 +438,38 @@ else
   APP_RESOURCES="$APP_BUNDLE/Contents/Resources"
   APP_VERSION=$(node -p "require('./package.json').version")
   mkdir -p "$HOME/Applications"
-  rm -rf "$APP_BUNDLE"
+  APP_BUNDLE_STAGE="$HOME/Applications/.Streaming Hub.app.stage.$$"
+  rm -rf "$APP_BUNDLE_STAGE"
   if [ "$RELEASE_MODE" = "1" ]; then
-    ditto "$RELEASE_APP" "$APP_BUNDLE"
+    ditto "$RELEASE_APP" "$APP_BUNDLE_STAGE"
+    APP_LINK_TARGET="$RELEASE_INSTALL_STAGE"
   else
-    ditto "$DIST_DIR/Electron.app" "$APP_BUNDLE"
+    ditto "$DIST_DIR/Electron.app" "$APP_BUNDLE_STAGE"
+    APP_LINK_TARGET="$INSTALL_DIR"
   fi
-  APP_PLIST="$APP_BUNDLE/Contents/Info.plist"
-  plutil -replace CFBundleName -string "Streaming Hub" "$APP_PLIST"
-  plutil -replace CFBundleDisplayName -string "Streaming Hub" "$APP_PLIST"
-  plutil -replace CFBundleIdentifier -string "com.streaming-hub.app" "$APP_PLIST"
-  plutil -replace CFBundleVersion -string "$APP_VERSION" "$APP_PLIST"
-  plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_PLIST"
-  plutil -replace CFBundleIconFile -string "AppIcon.icns" "$APP_PLIST"
-  plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_PLIST"
-  rm -rf "$APP_RESOURCES/app"
-  ln -s "$INSTALL_DIR" "$APP_RESOURCES/app"
-  if [ -f "$INSTALL_DIR/assets/icon.icns" ]; then
-    cp "$INSTALL_DIR/assets/icon.icns" "$APP_RESOURCES/AppIcon.icns"
-  elif [ -f "$APP_RESOURCES/electron.icns" ]; then
-    cp "$APP_RESOURCES/electron.icns" "$APP_RESOURCES/AppIcon.icns"
+  APP_STAGE_RESOURCES="$APP_BUNDLE_STAGE/Contents/Resources"
+  APP_STAGE_PLIST="$APP_BUNDLE_STAGE/Contents/Info.plist"
+  plutil -replace CFBundleName -string "Streaming Hub" "$APP_STAGE_PLIST"
+  plutil -replace CFBundleDisplayName -string "Streaming Hub" "$APP_STAGE_PLIST"
+  plutil -replace CFBundleIdentifier -string "com.streaming-hub.app" "$APP_STAGE_PLIST"
+  plutil -replace CFBundleVersion -string "$APP_VERSION" "$APP_STAGE_PLIST"
+  plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_STAGE_PLIST"
+  plutil -replace CFBundleIconFile -string "AppIcon.icns" "$APP_STAGE_PLIST"
+  plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_STAGE_PLIST"
+  rm -rf "$APP_STAGE_RESOURCES/app"
+  ln -s "$APP_LINK_TARGET" "$APP_STAGE_RESOURCES/app"
+  if [ -f "$APP_LINK_TARGET/assets/icon.icns" ]; then
+    cp "$APP_LINK_TARGET/assets/icon.icns" "$APP_STAGE_RESOURCES/AppIcon.icns"
+  elif [ -f "$APP_STAGE_RESOURCES/electron.icns" ]; then
+    cp "$APP_STAGE_RESOURCES/electron.icns" "$APP_STAGE_RESOURCES/AppIcon.icns"
   fi
 
   # ------------------------------------------------------------------
   # EVS/VMP-Signierung — die castlabs-Widevine-CDM registriert sich nur
   # in Bundles mit gültiger EVS-"streaming"-Signatur. Ohne sie: Netflix
   # E100, Disney+-Fehler 83, Prime 403 (CDM init fail).
-  # sign-pkg erwartet ein Verzeichnis, das die *.app enthält (glob auf
-  # {dir}/*.app) — isoliertes Staging-Verzeichnis, damit keine fremde
-  # App aus ~/Applications erwischt wird.
+  # Die Prüfung läuft auf dem vollständig veränderten Staging-Bundle,
+  # bevor INSTALL_DIR oder das bestehende Finder-Bundle ersetzt werden.
   # ------------------------------------------------------------------
   EVS_PY="${EVS_PYTHON:-$HOME/evs-venv/bin/python3}"
   if [ ! -x "$EVS_PY" ]; then
@@ -458,22 +478,39 @@ else
   if [ -n "$EVS_PY" ] && "$EVS_PY" -c "import castlabs_evs" >/dev/null 2>&1; then
     info "EVS/VMP-Signierung des App-Bundles (Widevine) …"
     EVS_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/streaming-hub-evs.XXXXXX")"
-    ln -sfn "$APP_BUNDLE" "$EVS_STAGE/Streaming Hub.app"
+    ln -sfn "$APP_BUNDLE_STAGE" "$EVS_STAGE/Streaming Hub.app"
     if ! "$EVS_PY" -m castlabs_evs.vmp sign-pkg "$EVS_STAGE"; then
       rm -rf "$EVS_STAGE"
-      error "EVS sign-pkg fehlgeschlagen — Widevine wird nicht funktionieren (siehe Ausgabe oben)."
+      error "EVS sign-pkg fehlgeschlagen — Installation abgebrochen; bestehende Installation bleibt erhalten."
     fi
     if ! "$EVS_PY" -m castlabs_evs.vmp verify-pkg "$EVS_STAGE"; then
       rm -rf "$EVS_STAGE"
-      error "EVS verify-pkg fehlgeschlagen — Signatur ungültig, Widevine wird nicht funktionieren."
+      error "EVS verify-pkg fehlgeschlagen — Installation abgebrochen; bestehende Installation bleibt erhalten."
     fi
     rm -rf "$EVS_STAGE"
     info "EVS-Signatur gültig (verify-pkg: streaming)."
   else
-    warn "castlabs-evs nicht gefunden — DRM-Dienste (Netflix/Disney+/Prime) werden NICHT funktionieren."
-    warn "Einrichtung: python3 -m pip install castlabs-evs  &&  evs-account signup && evs-account confirm-signup"
+    info "EVS nicht verfügbar — prüfe finale codesign-Signatur des App-Bundles …"
+    if ! command -v codesign >/dev/null 2>&1; then
+      error "Installation abgebrochen: weder castlabs-evs noch codesign verfügbar; bestehende Installation bleibt erhalten."
+    fi
+    if ! codesign --verify --deep --strict "$APP_BUNDLE_STAGE"; then
+      error "Installation abgebrochen: finale codesign-Signatur ungültig; bestehende Installation bleibt erhalten."
+    fi
+    info "codesign-Signatur gültig."
   fi
-  info "App-Bundle: $APP_BUNDLE"
+
+  # Erst nach erfolgreicher Prüfung werden Support-Verzeichnis und Wrapper
+  # ersetzt. Bis hierhin wurde die bestehende Installation nicht verändert.
+  if [ "$RELEASE_MODE" = "1" ]; then
+    rm -rf "$INSTALL_DIR"
+    mv "$RELEASE_INSTALL_STAGE" "$INSTALL_DIR"
+    RELEASE_INSTALL_STAGE=""
+  fi
+  rm -rf "$APP_BUNDLE"
+  mv "$APP_BUNDLE_STAGE" "$APP_BUNDLE"
+  APP_BUNDLE_STAGE=""
+  APP_RESOURCES="$APP_BUNDLE/Contents/Resources"
 fi
 
 # ------------------------------------------------------------------

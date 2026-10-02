@@ -38,11 +38,7 @@
     "productName": "Streaming Hub",
     "electronDist": "node_modules/electron/dist",
     "afterPack": "scripts/evs-afterPack.js",
-    "asar": true,
-    "asarUnpack": [
-      "start.sh",
-      "start.cmd"
-    ],
+    "asar": false,
     "directories": {
       "output": "release"
     },
