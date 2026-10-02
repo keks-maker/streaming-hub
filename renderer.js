@@ -779,7 +779,7 @@ function renderLiveTvTile(ch) {
     <span class="dashboard-tile-glow"></span>
     <span class="dashboard-tile-icon">
       <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((ch.name || '?').slice(0, 1).toUpperCase())}</span>
-      <img src="${ch.logo || ''}" alt="" loading="lazy">
+      <img alt="" loading="lazy">
     </span>
     <span class="dashboard-tile-content">
       <span class="dashboard-tile-name">${escapeHtml(ch.name)}</span>
@@ -790,6 +790,8 @@ function renderLiveTvTile(ch) {
   `;
   const image = tile.querySelector('img');
   const icon = tile.querySelector('.dashboard-tile-icon');
+  const logoSrc = safeResourceUrl(ch.logo);
+  if (logoSrc) image.src = logoSrc;
   image.addEventListener('error', () => {
     image.remove();
     icon.classList.add('has-error');
@@ -2474,7 +2476,7 @@ function showEpgDetail(data) {
     const svc = services.find(s => s.id === mediathek.serviceId);
     const medBtn = document.createElement('button');
     medBtn.className = 'epg-action-btn epg-mediathek-btn';
-    medBtn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> In ${svc ? svc.name : 'Mediathek'} ansehen`;
+    medBtn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> In ${svc ? escapeHtml(svc.name) : 'Mediathek'} ansehen`;
     medBtn.addEventListener('click', () => {
       closeEpgDetail();
       closeEpgView();

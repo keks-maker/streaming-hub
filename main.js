@@ -141,12 +141,14 @@ const {
   httpUrl,
   remoteHttpUrl,
   readResponseText,
+  MAX_EPG_BYTES,
   service: validateService,
   text: validateText,
   tvSource: validateTvSource,
   tvSourceUpdates: validateTvSourceUpdates,
 } = require('./lib/input-validation.js');
 const { updateMode } = require('./lib/update-mode.js');
+const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
 
 if (process.platform === 'darwin') {
   const macPathEntries = [
@@ -786,7 +788,11 @@ app.whenReady().then(() => {
         if (!meta) throw new Error('Aufnahme nicht gefunden: ' + recId);
         const lib = path.join(recorder.storageRoot, 'Aufnahmen');
         const jobDir = path.join(lib, recId);
-        // 1) MP4 löschen (falls vorhanden)
+        // 1) MP4 löschen (falls vorhanden) — nur innerhalb der Bibliothek
+        //    (manipulierte Meta darf keine fremden Dateien löschen)
+        if (meta.outputFile && !paths.isInsideDir(lib, meta.outputFile)) {
+          throw new Error('Ungültiger MP4-Pfad für diese Aufnahme');
+        }
         if (meta.outputFile && fs.existsSync(meta.outputFile)) {
           try { fs.rmSync(meta.outputFile, { force: true }); } catch (e) {
             throw new Error(`MP4 konnte nicht gelöscht werden: ${e.message}`);
@@ -1121,6 +1127,11 @@ ipcMain.handle('add-tv-source', (event, input) => {
   requireMainRenderer(event);
   const source = validateTvSource(input);
   const sources = loadTvSources();
+  // Datei-Quellen nur über den Dateiauswahldialog (oder bereits bekannte Pfade) —
+  // sonst könnte ein beliebiger Pfad persistiert und später lesbar werden.
+  if (source.type === 'file' && !resolveAllowedM3uPath(source.url, selectedM3uFiles, sources)) {
+    throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
+  }
   // Existierende Quelle mit gleicher URL wiedererkennen → ID + Overrides erhalten
   const existing = sources.find(s => s.url === source.url);
   if (existing) {
@@ -1161,9 +1172,16 @@ ipcMain.handle('remove-tv-source', (event, id) => {
 ipcMain.handle('update-tv-source', (event, id, updates) => {
   requireMainRenderer(event);
   const sourceId = validateText(id, 'Quellen-ID', 200);
-  const source = validateTvSourceUpdates(updates);
   const sources = loadTvSources();
   const idx = sources.findIndex(s => s.id === sourceId);
+  const source = validateTvSourceUpdates(updates, idx !== -1 ? sources[idx].type : undefined);
+  if (
+    source.url !== undefined &&
+    (source.type || (idx !== -1 ? sources[idx].type : undefined)) === 'file' &&
+    !resolveAllowedM3uPath(source.url, selectedM3uFiles, sources)
+  ) {
+    throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
+  }
   if (idx !== -1) {
     sources[idx] = { ...sources[idx], ...source };
     saveTvSources(sources);
@@ -1204,11 +1222,8 @@ ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
       content = await readResponseText(response, MAX_PLAYLIST_BYTES);
       baseUrl = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
     } else {
-      const selectedPath = path.resolve(input);
-      if (!selectedM3uFiles.has(selectedPath))
-        throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
-      const realPath = fs.realpathSync.native(selectedPath);
-      if (!selectedM3uFiles.has(realPath)) throw new Error('Dateipfad ist nicht mehr gültig');
+      const realPath = resolveAllowedM3uPath(input, selectedM3uFiles, loadTvSources());
+      if (!realPath) throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
       const stat = fs.statSync(realPath);
       if (!stat.isFile() || !/\.m3u8?$/i.test(realPath)) throw new Error('Nur M3U-Dateien sind erlaubt');
       if (stat.size > MAX_PLAYLIST_BYTES) throw new Error('Datei ist zu groß');
@@ -1296,7 +1311,7 @@ ipcMain.handle('fetch-epg', async (event, url) => {
       epgUrl = remoteHttpUrl(new URL(location, epgUrl).toString(), 'EPG-Redirect-Ziel');
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const xml = await readResponseText(response, Infinity);
+    const xml = await readResponseText(response, MAX_EPG_BYTES);
     const entries = parseXMLTV(xml);
     if (!entries.length) throw new Error('Die XMLTV-Datei enthält keine gültigen Sendungen');
     return entries;

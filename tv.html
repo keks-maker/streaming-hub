@@ -1937,9 +1937,11 @@
       // nächsten Kanalwahl (statt nach 6s zu verschwinden), nennt den Sender und
       // weist auf den Senderwechsel hin (Pfeiltasten / Senderliste).
       function showFatalError(msg) {
+        // Kanalname und Meldung stammen teils aus fremden M3U/Stream-Daten → kein Roh-HTML
+        const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         errorDiv.innerHTML =
-          '<div style="font-size:24px;font-weight:600;margin-bottom:8px">' + msg + '</div>' +
-          '<div style="font-size:15px;opacity:.85">Sender: ' + (channelNameEl.textContent || 'TV') +
+          '<div style="font-size:24px;font-weight:600;margin-bottom:8px">' + esc(msg) + '</div>' +
+          '<div style="font-size:15px;opacity:.85">Sender: ' + esc(channelNameEl.textContent || 'TV') +
           ' · Pfeiltasten ↑/↓ oder Senderliste (T) zum Wechseln</div>';
         errorDiv.style.whiteSpace = 'normal';
         errorDiv.style.display = 'block';

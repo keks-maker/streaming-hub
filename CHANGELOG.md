@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Qualitätsprüfung (Recorder, Updater, Eingabevalidierung)
+
+- Fix (Recorder): Retry-Budget und Backoff werden nach einem stabilen Lauf (≥ 30 s) zurückgesetzt — lange Aufnahmen mit vereinzelten Netz-Aussetzern enden nicht mehr als `failed` ohne Remux.
+- Fix (Recorder): Reconnect-Attempts (≥ 2) seeken nicht mehr erneut um den DVR-Offset zurück (vermeidet duplizierte Stunden bzw. „could not seek“).
+- Fix (Recorder): `failed`-Jobs räumen ihren afterRemux-Callback; `stop()` auf einem bereits beendeten Job lässt keinen Geister-Eintrag zurück.
+- Fix (Updater): kein Updater-Prozess/Check/Apply auf Plattformen ohne Release-Pfad (Linux/Windows aus dem Quellcode); Apply-Timeout 15 min (über Download-Timeout), Updater wird bei Timeout beendet, Check-Listener-Leak behoben.
+- Fix: Datei-basierte TV-Quellen funktionieren nach App-Neustart wieder; Teil-Updates von Datei-Quellen werden korrekt validiert; Datei-Quellen nur über Dateiauswahl.
+- Fix (Sicherheit): XSS über Sendernamen in `tv.html`-Fehleranzeige; Logo-Attribut-Injektion in der Live-TV-Kachel; `recording:delete` löscht nur noch innerhalb der Bibliothek; EPG-Download auf 200 MB begrenzt.
+- Tests: vier bisher nicht in `npm test` eingebundene Tests aufgenommen; neue Regressionstests.
+
 ## 0.5.25 (2026-10-02) — Favoriten-Zapping für FullScreenPlayer (#2)
 
 - Fix #2: `getNextChannelId` in `packages/typed-core/src/tv.ts` zappt mit ArrowUp/ArrowDown ausschließlich über Favoriten in Sidebar-Reihenfolge. Nicht-Favoriten springen zum nächstgelegenen Favoriten in Pfeilrichtung; Wrap-around bleibt erhalten. Die On-Screen-Senderliste verwendet dieselbe Reihenfolge.
