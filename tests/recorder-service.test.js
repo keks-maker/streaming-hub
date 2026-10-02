@@ -148,7 +148,7 @@ test('start(): Parallelitäts-Limit (Konzept §4.4)', async () => {
   await service.stop(again.recId);
 });
 
-test('stop(): Remux läuft, Status completed, Zwischenform weg, Meta-Datei bleibt', async () => {
+test('stop(): Remux läuft, Status completed, Job-Ordner ENTFERNT (Karte t_f36663be)', async () => {
   const { service, storageRoot } = makeService();
   const events = [];
   service.on('recording:status', s => events.push(s));
@@ -162,10 +162,14 @@ test('stop(): Remux läuft, Status completed, Zwischenform weg, Meta-Datei bleib
   assert.ok(fs.existsSync(finalMeta.outputFile));
   assert.ok(finalMeta.durationSec >= 1);
   assert.ok(finalMeta.fileSizeBytes > 0);
-  // Zwischenform geräumt, Meta-Datei bleibt (Konzept §2.3: nur .ts + Playlist löschen)
+  // Karte t_f36663be, Akzeptanz 1: Nach dem Remux ist der rec_*-Ordner KOMPLETT
+  // weg (kein leerer Remnant im Aufnahmen-Root); die Meta-Datei lebt migriert
+  // parallel zur MP4 (Aufnahmen/<recId>.recording.json).
   const jobDir = path.join(storageRoot, 'Aufnahmen', started.recId);
-  assert.ok(!fs.existsSync(path.join(jobDir, 'index.m3u8')));
-  assert.ok(fs.existsSync(path.join(jobDir, `${started.recId}.recording.json`)));
+  assert.ok(!fs.existsSync(jobDir), 'Job-Ordner vollständig entfernt');
+  const migratedMeta = path.join(storageRoot, 'Aufnahmen', `${started.recId}.recording.json`);
+  assert.ok(fs.existsSync(migratedMeta), 'Meta-Datei migriert parallel zur MP4');
+  assert.equal(service.store.readMeta(started.recId)?.status, 'completed');
   const entry = service.store.listAll().find(e => e.id === started.recId);
   assert.ok(entry, 'Index-Eintrag vorhanden');
   assert.equal(entry.status, 'completed');

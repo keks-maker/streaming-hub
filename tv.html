@@ -317,6 +317,15 @@
     }
     .tv-rec-menu-item:hover { background: rgba(255,255,255,0.08); }
     .tv-rec-menu-item.recording { color: #f87171; font-weight: 600; }
+    /* Karte t_f36663be (dev-Entscheid, dokumentiert): Option „Ab
+       Bildposition" bei Δ < 30 s NICHT ausblenden, sondern disabled
+       (ausgegraut) — einheitliches Dialog-Layout in beiden Zuständen. */
+    .tv-rec-menu-item.tv-rec-disabled {
+      color: rgba(226,232,240,0.35);
+      cursor: default;
+      pointer-events: none;
+    }
+    .tv-rec-menu-item.tv-rec-disabled:hover { background: transparent; }
     .tv-rec-menu-item.tv-rec-stopping {
       color: rgba(248,113,113,0.55);
       font-weight: 500;
@@ -416,7 +425,13 @@
        Aufnahmen (REC-Chip öffnet im Verwalten-Modus, Stop-Klick pro Eintrag;
        im Stopp-Übergang: „Wird beendet…"-Feedback). -->
   <div class="tv-rec-menu" id="tvRecMenu">
-    <button class="tv-rec-menu-item" id="tvRecStartNow">⏺ Aufnahme ab jetzt starten</button>
+    <!-- Karte t_f36663be: drei EINHEITLICHE Start-Optionen in beiden
+         Zuständen (Live-Bild + Rückstand). „Ab Bildposition" ist bei
+         Δ < 30 s disabled (ausgegraut) statt ausgeblendet — einheitliches
+         Layout, keine Sprünge; der User sieht, dass die Option existiert. -->
+    <button class="tv-rec-menu-item" id="tvRecStartAtPosition">⏺ Ab Bildposition starten</button>
+    <button class="tv-rec-menu-item" id="tvRecStartShow">⏺ Aktuell angezeigte Sendung aufnehmen</button>
+    <button class="tv-rec-menu-item" id="tvRecStartNow">⏺ Ab jetzt starten (am Live-Bild)</button>
     <button class="tv-rec-menu-item" id="tvRecStartUntilEnd" style="display:none">⏺ Bis zum Ende der Sendung</button>
     <div id="tvRecEntries"></div>
     <div class="tv-rec-menu-note" id="tvRecMenuNote"></div>
@@ -936,6 +951,9 @@
       const recMenu = document.getElementById('tvRecMenu');
       const recStartNowBtn = document.getElementById('tvRecStartNow');
       const recStartUntilEndBtn = document.getElementById('tvRecStartUntilEnd');
+      // Karte t_f36663be: „Ab Bildposition" + „Aktuell angezeigte Sendung"
+      const recStartAtPositionBtn = document.getElementById('tvRecStartAtPosition');
+      const recStartShowBtn = document.getElementById('tvRecStartShow');
       // Fix-Set 3 · Punkt 4: tvRecStop (statischer „Aufnahme stoppen"-
       // Menüpunkt) wird durch die DYNAMISCHE Aufnahmen-Liste ersetzt — der
       // Container recMenuEntries liegt im Menü, jedes Element ist ein Stop.
@@ -1128,8 +1146,34 @@
         // Start-Entries nur im 'start'-Modus ANBIETEN (nie aus dem REC-Chip).
         var activeHere = activeRecordingForCurrentChannel();
         var startMode = modus === 'start' && !activeHere;
+        recStartShowBtn.style.display = startMode ? '' : 'none';
         recStartNowBtn.style.display = startMode ? '' : 'none';
         recStartUntilEndBtn.style.display = (startMode && recChannelCtx.epgStopMs) ? '' : 'none';
+        // Karte t_f36663be: Δ-Berechnung playbackTime ↔ Live-Kante.
+        // Δ < 30 s → „Ab Bildposition" disabled (ausgegraut); sonst enabled
+        // mit Label „(−hh:mm)".
+        var dvrDelta = 0;
+        if (dvrState.enabled && !dvrState.isLive) {
+          dvrDelta = Math.max(0, Math.round(dvrState.windowEnd - video.currentTime));
+        }
+        if (startMode) {
+          if (dvrDelta >= 30) {
+            recStartAtPositionBtn.style.display = '';
+            recStartAtPositionBtn.classList.remove('tv-rec-disabled');
+            recStartAtPositionBtn.textContent = '⏺ Ab Bildposition starten (Startet ' +
+              formatRecTime(dvrDelta) + ' zurück)';
+          } else {
+            recStartAtPositionBtn.style.display = '';
+            recStartAtPositionBtn.classList.add('tv-rec-disabled');
+            recStartAtPositionBtn.textContent = '⏺ Ab Bildposition starten';
+            recStartAtPositionBtn.title = 'Bereits am Live-Bild — nichts zurückzuspringen';
+          }
+        } else {
+          recStartAtPositionBtn.style.display = 'none';
+        }
+        // Live-Hinweis­zeile (Meldung 1, wortgleich): immer bei Start-Dialog,
+        // wenn am Live-Bild (Δ < 30 s) — dort startet die Aufnahme am Live-Bild.
+        var showLiveHint = startMode && dvrDelta < 30;
 
         // Fix-Set 3 · Punkt 4: dynamische Aufnahmen-Einträge (jede aktive
         // Aufnahme ist von hier stoppbar — auch der andere Kanal).
@@ -1161,8 +1205,10 @@
             ' · ' + (activeHere.channelName || 'Kanal') + (activeHere.epgTitle ? ' — ' + activeHere.epgTitle : '');
         } else if (modus === 'start' && (recordingStatus.active || []).length && !activeHere) {
           recMenuNote.textContent = 'Es läuft bereits eine andere Aufnahme.';
-        } else if (startMode && !recChannelCtx.epgStopMs) {
-          recMenuNote.textContent = 'Kein EPG verfügbar — Aufnahme „ab jetzt“.';
+        } else if (showLiveHint) {
+          // Meldung 1 (wortgleich, User-Freigabe): Startet immer am Live-Bild.
+          recMenuNote.textContent = 'Hinweis: Startet immer am aktuellen Live-Bild.';
+          if (!recChannelCtx.epgStopMs) recMenuNote.textContent += ' Kein EPG verfügbar.';
         } else if (modus === 'manage' && !list.length && !stoppingIds.length) {
           recMenuNote.textContent = 'Keine laufenden Aufnahmen.';
         }
@@ -1209,7 +1255,56 @@
       recStartNowBtn.addEventListener('click', function(ev) {
         ev.stopPropagation();
         closeRecMenu();
+        // Karte t_f36663be: Standard-Aufnahme ab Live-Bild (startOffsetSec 0).
         sendRecordingRequest('start', {});
+      });
+      // Karte t_f36663be, Option „Ab Bildposition“: DVR-Rückstand des Players
+      // als startOffsetSec schicken (Empfänger: renderer recording-start).
+      recStartAtPositionBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        closeRecMenu();
+        var dvrDelta = dvrState.enabled && !dvrState.isLive
+          ? Math.max(0, Math.round(dvrState.windowEnd - video.currentTime))
+          : 0;
+        if (dvrDelta < 30) return; // disabled-Fall (pointer-events fängt das,
+        // aber defensiv: kein Off-Chance-Start am Live-Bild)
+        sendRecordingRequest('start', { startOffsetSec: dvrDelta });
+      });
+      // Karte t_f36663be, Option 2 „Aktuell angezeigte Sendung aufnehmen“:
+      // EPG-Startzeit der laufenden Sendung als DVR-Rückstand; Autostopp
+      // am EPG-Ende (identifizierte Sendung). Player-Bild bleibt UNVERÄNDERT
+      // (die Rec-Engine seekt, nicht der Player).
+      recStartShowBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        closeRecMenu();
+        // Identifizierte Sendung: aktueller EPG-Eintrag (start/stop) dieses Kanals
+        var nowMs = Date.now();
+        var show = null;
+        for (var ei = 0; ei < epgEntries.length; ei++) {
+          var ent = epgEntries[ei];
+          var sMs = parseEpgTime(ent.start).getTime();
+          var eMs = parseEpgTime(ent.stop).getTime();
+          if (sMs <= nowMs && eMs > nowMs) { show = { startMs: sMs, stopMs: eMs, title: ent.title }; break; }
+        }
+        if (!show) {
+          // EPG nicht erkennbar (wortgegebener Fallback-Dialog vom User):
+          // kleiner 2-Button-Dialog statt stiller Live-Start.
+          openRecShowUnavailableDialog();
+          return;
+        }
+        var offsetSec = Math.max(0, Math.round((nowMs - show.startMs) / 1000));
+        // DVR-Fenster-Check (.Δ > window → Meldung-3-Fallback-Dialog):
+        var windowDepth = dvrState.enabled ? (dvrState.windowEnd - dvrState.windowStart) : 0;
+        if (offsetSec > windowDepth) {
+          openRecOutOfWindowDialog(offsetSec, windowDepth, show);
+          return;
+        }
+        sendRecordingRequest('start', {
+          startOffsetSec: offsetSec,
+          epgTitleOverride: show.title || null,
+          untilEpgEnd: true,
+          epgEndMsOverride: show.stopMs,
+        });
       });
       recStartUntilEndBtn.addEventListener('click', function(ev) {
         ev.stopPropagation();
@@ -1218,6 +1313,71 @@
       });
       recMenu.addEventListener('click', function(ev) { ev.stopPropagation(); });
       document.addEventListener('click', closeRecMenu);
+
+      // ═══ Karte t_f36663be: Fallback-Dialoge ═══
+      // Meldung 3 (wortgleich, User-Freigabe): EPG-Start > DVR-Fenster.
+      // Meldung EPG-unavailable: Sendung nicht identifizierbar.
+      // Beide: kleine Modal-Variante des rec-Menüs (gleiche Optik, kein
+      // ganzseitiger Overlay — TV-Edit-Parität, „Back"-Taste schließt).
+      function openRecFallbackDialog(opts) {
+        var overlay = document.createElement('div');
+        overlay.style.cssText =
+          'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(2,6,23,0.72);' +
+          'display:flex;align-items:center;justify-content:center;z-index:1000;';
+        var box = document.createElement('div');
+        box.className = 'tv-rec-menu';
+        box.classList.add('open');
+        box.style.cssText = 'position:relative;right:auto;bottom:auto;left:auto;top:auto;max-width:520px;padding:6px;';
+        var msg = document.createElement('div');
+        msg.style.cssText = 'padding:10px 14px;font-size:14px;color:#e2e8f0;line-height:1.5;white-space:pre-line;';
+        msg.textContent = opts.message;
+        box.appendChild(msg);
+        for (const btn of opts.buttons) {
+          var b = document.createElement('button');
+          b.className = 'tv-rec-menu-item';
+          b.textContent = btn.label;
+          b.addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            overlay.remove();
+            btn.onClick && btn.onClick();
+          });
+          box.appendChild(b);
+        }
+        overlay.appendChild(box);
+        overlay.addEventListener('click', function(ev) {
+          if (ev.target === overlay) overlay.remove();
+        });
+        document.body.appendChild(overlay);
+      }
+
+      function openRecShowUnavailableDialog() {
+        openRecFallbackDialog({
+          message: 'Sendung kann nicht erkannt werden — Aufnahme ab jetzt (Live-Bild)?',
+          buttons: [
+            { label: 'Ab jetzt aufnehmen', onClick: () => sendRecordingRequest('start', {}) },
+            { label: 'Abbrechen' },
+          ],
+        });
+      }
+
+      function openRecOutOfWindowDialog(offsetSec, windowDepth, show) {
+        var fmt = function(sec) {
+          if (!isFinite(sec) || sec <= 0) return '0:00';
+          var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+          return (h > 0 ? h + ':' : '') + String(m).padStart(2, '0') + ' min';
+        };
+        // Meldung 3 (wortgleich, User-Freigabe): Zurückspulen nicht möglich.
+        openRecFallbackDialog({
+          message:
+            'Zurückspulen nicht möglich — Das TV-Signal enthält die letzten ' +
+            (isFinite(windowDepth) && windowDepth > 0 ? '~' + fmt(windowDepth) : 'wenige Minuten') +
+            '. Ihre Bildposition (' + fmt(offsetSec) + ') liegt außerhalb — aber Aufnahme ist ab jetzt möglich.',
+          buttons: [
+            { label: 'Ja, aufnehmen (am Live-Bild)', onClick: () => sendRecordingRequest('start', {}) },
+            { label: 'Abbrechen' },
+          ],
+        });
+      }
 
       // ── Channel list overlay ──
       function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

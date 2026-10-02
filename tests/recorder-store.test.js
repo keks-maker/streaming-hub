@@ -44,7 +44,11 @@ test('writeMeta lehnt invalid IDs ab (Pfad-Tricks)', () => {
   const { store } = makeStore();
   assert.throws(() => store.writeMeta({ ...baseMeta, id: '../evil' }));
   assert.throws(() => store.writeMeta({ ...baseMeta, id: 'anders' }));
-  assert.equal(store.readMeta('../evil'), null);
+  // readMeta fragt beide Lagen; beide Wege müssen ohne Wurf null liefern
+  // (Pfad-.validate beaches aber: migratedMetaPath/map wirft selbst — der
+  // Read-Weg fängt die Wurf-Erwartung NICHT mehr, recId muss validiert
+  // werden VOR dem Layer-Versuch).
+  assert.equal(store.readMeta('rec_20260930_zzzz-not-there'), null);
 });
 
 test('Index: upsert/remove/list round-trip', () => {

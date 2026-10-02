@@ -94,6 +94,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('recording:changed', handler);
     return () => ipcRenderer.removeListener('recording:changed', handler);
   },
+  // Karte t_f36663be (Meldung 4): DVR-Rückstand > Fenster → Degrade-Hinweis
+  onRecordingSeekDegraded: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:seek-degraded', handler);
+    return () => ipcRenderer.removeListener('recording:seek-degraded', handler);
+  },
 
   // Aufnahme-UI (Phase 1c): Bibliothek + Settings
   getRecordingFile: recId => ipcRenderer.invoke('recording:get-file', recId),

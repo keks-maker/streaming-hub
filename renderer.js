@@ -270,7 +270,15 @@ function disarmAutoStopFor(recId) {
  * laufenden Sendung (EPG) als Auto-Stopp; ohne EPG verhält sich der Request
  * wie „ab jetzt“ (Hinweis kommt bereits aus dem tv.html-Dialog).
  */
-async function startRecordingFromRequest({ channelId, channelName, epgTitle, epgDescription, untilEpgEnd = false, epgStopMs = null } = {}) {
+async function startRecordingFromRequest({
+  channelId,
+  channelName,
+  epgTitle,
+  epgDescription,
+  untilEpgEnd = false,
+  epgStopMs = null,
+  startOffsetSec = 0,
+} = {}) {
   const ch = channelId ? tvChannels.find(c => c.id === channelId) : null;
   const url = ch?.url;
   if (!url) throw new Error('Kein Stream für die Aufnahme verfügbar');
@@ -280,6 +288,8 @@ async function startRecordingFromRequest({ channelId, channelName, epgTitle, epg
     channelName: channelName || ch?.name || null,
     epgTitle: epgTitle || null,
     epgDescription: epgDescription || null,
+    // Karte t_f36663be (Engine C): DVR-Rückstand in Sekunden — 0 = Live-Head.
+    startOffsetSec: Number.isFinite(startOffsetSec) && startOffsetSec > 0 ? Math.floor(startOffsetSec) : 0,
   });
   if (untilEpgEnd && epgStopMs && result?.recId) {
     armAutoStopFor(result.recId, epgStopMs);
@@ -3168,12 +3178,18 @@ tvView.addEventListener('ipc-message', e => {
       const ch = tvChannels.find(c => c.id === tvActiveChannelId);
       if (!ch) return;
       const epgStopMs = currentEpgStopMs(epgListForChannel(ch), Date.now());
+      // Karte t_f36663be, Item 2 (Option D = B + C): tv.html liefert den
+      // DVR-Rückstand (startOffsetSec, aus der Scrub-/EPG-Position) im Request
+      // mit. 0/undefined = Live-Head (Bestandsverhalten).
+      const rawOffset = Number(e.args[0].payload?.startOffsetSec);
+      const startOffsetSec = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
       startRecordingFromRequest({
         channelId: ch.id,
         channelName: ch.name,
         epgTitle: currentEpgTitle(ch),
         untilEpgEnd: !!e.args[0].payload?.untilEpgEnd,
         epgStopMs,
+        startOffsetSec,
       }).catch(err => showTvToast('Aufnahme konnte nicht gestartet werden: ' + (err?.message || err)));
     } else if (e.args[0].action === 'recording-stop') {
       const recId = e.args[0].payload?.recId;
@@ -3856,6 +3872,16 @@ window.electronAPI.onRecordingReconnecting(data => {
   if (data && typeof data === 'object' && typeof data.attempt === 'number' && data.attempt > 1) {
     showTvToast('Stream unterbrochen — Aufnahme reconnectet …');
   }
+});
+// Karte t_f36663be (Meldung 4, wortgleich freigegeben): DVR-Rückstand >
+// Fenster → Aufnahme läuft am frühersten DVR-Segment weiter; kein Abbruch.
+window.electronAPI.onRecordingSeekDegraded?.(data => {
+  if (!data || typeof data !== 'object') return;
+  showTvToast(
+    'Aufnahme gestartet — aber ab Live-Bild. Ihre Bildposition lag außerhalb des DVR-Fensters. ' +
+      'Die Aufnahme beginnt am aktuellen Live-Bild.',
+  );
+  logger.warn('[recorder] Start-Degrade:', data.message || '');
 });
 window.electronAPI.onRecordingChanged(data => {
   // Statuswechsel einer Aufnahme (failed/aborted/completed) → Bibliothek + Chip

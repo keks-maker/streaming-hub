@@ -728,13 +728,19 @@ app.whenReady().then(() => {
             throw new Error(`MP4 konnte nicht gelöscht werden: ${e.message}`);
           }
         }
-        // 2) Job-Verzeichnis (Zwischenform + Meta-Datei)
+        // 2) Job-Verzeichnis löschen — nach t_f36663be existiert es bei
+        //    COMPLETED-Aufnahmen regulär NICHT mehr (post-Remux-Komplett-
+        //    Räumung); bei remux-pending/failed (Zwischenstände) ist es da
+        //    und enthält auch die Legacy-Meta-Datei.
         if (fs.existsSync(jobDir)) {
           try { fs.rmSync(jobDir, { recursive: true, force: true }); } catch (e) {
             throw new Error(`Aufnahmeverzeichnis konnte nicht gelöscht werden: ${e.message}`);
           }
         }
-        // 3) Index-Eintrag entfernen
+        // 3) Meta-Datei in BEIDEN Lagen entfernen (migriert + Legacy) —
+        //    Deckt den Fall "completed ohne JobDir" NACH t_f36663be ab.
+        recorder.store.removeMeta(recId);
+        // 4) Index-Eintrag entfernen
         recorder.store.removeFromIndex(recId);
         return { success: true };
       });
@@ -823,6 +829,13 @@ app.whenReady().then(() => {
           }
         })
         .catch(e => logger.error('Aufnahme-Recovery fehlgeschlagen:', e.message));
+
+      // Karte t_f36663be (Meldung 4): DVR-Rückstand > Fenster während des
+      // Starts → main wandelt das Engine-Event in einen Renderer-Broadcast
+      // (Toast/Dialog „Aufnahme läuft am frühersten DVR-Segment weiter").
+      recorder.on('recording:seek-degraded', payload => {
+        mainWindow?.webContents.send('recording:seek-degraded', payload);
+      });
 
       // Tray (Konzept §3.2): Icon-Wechsel, Menü je Aufnahme, Ordner öffnen,
       // Shutdown-/Beenden-Verhalten. Erst nach Recorder-Setup.
