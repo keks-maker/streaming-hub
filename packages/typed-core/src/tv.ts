@@ -33,18 +33,12 @@ export function isFavorite(ch: TvChannel, sources: TvSource[]): boolean {
 
 // ─── Zapping-Reihenfolge (W3) ──────────────────────────────────
 //
-// ArrowUp/Down zappt konsistent über ALLE Sender des aktiven Quellservices
-// (Favoriten sind kein eigenes Zapping-Universum mehr). Favoriten folgen dabei
-// ihrer explizit gespeicherten Reihenfolge; nicht favorisierte Sender behalten
-// die Reihenfolge der geladenen Sender. Der aktive Sender ist damit immer Teil
-// der Reihenfolge – Zapping startet dort, wo man gerade ist.
+// ArrowUp/Down zappt ausschließlich über die Favoriten des aktiven
+// Quellservices. Die Reihenfolge stammt aus der Favoriten-Sidebar.
 export function buildZapOrder(channels: TvChannel[], sources: TvSource[]): string[] {
   const source = channels.length ? sources.find(s => s.id === channels[0]!.sourceId) : undefined;
   const channelIds = new Set(channels.map(ch => ch.id));
-  const favoriteIds = (source?.favorites ?? []).filter(id => channelIds.has(id));
-  const favoriteSet = new Set(favoriteIds);
-  const regular = channels.filter(ch => !favoriteSet.has(ch.id)).map(ch => ch.id);
-  return [...favoriteIds, ...regular];
+  return (source?.favorites ?? []).filter(id => channelIds.has(id));
 }
 
 export function filterChannels(
@@ -125,13 +119,24 @@ export function getNextChannelId(
   const sourceId = current.sourceId;
   if (!sourceId) return null;
   const sourceChannels = channels.filter(ch => ch.sourceId === sourceId);
-  // W3: immer über ALLE Sender des Quellservices zapfen (Favoriten zuerst,
-  // Reihenfolge wie Sidebar) – nie still versagen, wenn der aktive Sender
-  // kein Favorit ist.
+  // W3: ausschließlich über Favoriten in Sidebar-Reihenfolge zapfen.
   const order = buildZapOrder(sourceChannels, sources);
+  if (!order.length) return null;
   const idx = order.indexOf(currentId);
-  if (idx === -1) return null;
-  return order[(idx + dir + order.length) % order.length] ?? null;
+  const step = dir < 0 ? -1 : 1;
+  if (idx !== -1) {
+    return order[(idx + step + order.length) % order.length] ?? null;
+  }
+
+  // Ein aktiver Nicht-Favorit wird in Pfeilrichtung nach dem nächsten
+  // Favoriten durchsucht; die Suche läuft am Anfang/Ende wieder weiter.
+  const currentIndex = sourceChannels.findIndex(ch => ch.id === currentId);
+  if (currentIndex === -1) return null;
+  for (let offset = 1; offset <= sourceChannels.length; offset++) {
+    const candidate = sourceChannels[(currentIndex + step * offset + sourceChannels.length) % sourceChannels.length];
+    if (candidate && order.includes(candidate.id)) return candidate.id;
+  }
+  return null;
 }
 
 export function applyChannelOverrides(

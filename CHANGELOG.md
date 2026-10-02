@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.25 (2026-10-02) — Favoriten-Zapping für FullScreenPlayer (#2)
+
+- Fix #2: `getNextChannelId` in `packages/typed-core/src/tv.ts` zappt mit ArrowUp/ArrowDown ausschließlich über Favoriten in Sidebar-Reihenfolge. Nicht-Favoriten springen zum nächstgelegenen Favoriten in Pfeilrichtung; Wrap-around bleibt erhalten. Die On-Screen-Senderliste verwendet dieselbe Reihenfolge.
+
+
 ## 0.5.23 (2026-10-02) — Fix-Set 10: Live-Button-Icon entdoppelt (REC-Verwechslung) · DVR-Aufnahme am Sendungsanfang startet jetzt wirklich (Master→Variant-Planung)
 
 - Fix (Befund A, User-Screenshot v0.5.22): In der Player-Leiste standen **zwei optisch identische Ring-mit-Punkt-Icons** zwischen Audio-Button und Vollbild-Pfeil. Identifikation: **Kreis 1 = `tvRecordBtn`** (Aufnahme — Ring mit Punkt, weiß → rot bei Aufnahme); **Kreis 2 = `tvLiveBtn`** („Zur Live-Kante“, DVR — erscheint, sobald der User von der Live-Kante wegnavigiert). Beide SVGs waren bis auf Radien-Detail identisch → Verwechslungsgefahr. Fix: Der Live-Button behält seine Funktion, bekommt aber ein **deutlich unterscheidbares Icon** (Pfeil → gefüllter Punkt = „Springe zum Live-Punkt“); der Aufnahme-Button bleibt das **einzige** Ring-mit-Punkt-Icon in der Leiste. Vorher/nachher-Screenshot beigelegt (Karte t_28a3bff2).

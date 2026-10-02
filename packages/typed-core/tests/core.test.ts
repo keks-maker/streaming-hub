@@ -295,64 +295,72 @@ it('buildChannelList', () => {
     { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
   ];
-  // W3: Liste enthaelt ALLE Sender des Quellservices, Favorit zuerst;
+  // W3: Liste enthaelt ausschließlich Favoriten in Sidebar-Reihenfolge.
   // aktiver Sender (ch1, Favorit) steht an Index 0.
   const result = buildChannelList(channels[0]!, channels, sources);
-  expect(result.channels.map(c => c.id)).toEqual(['ch1', 'ch2']);
+  expect(result.channels.map(c => c.id)).toEqual(['ch1']);
   expect(result.currentIndex).toBe(0);
 });
 
-it('getNextChannelId', () => {
-  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0 }];
+it('getNextChannelId – zappt nur über Favoriten in Sidebar-Reihenfolge', () => {
+  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['ch3', 'ch1'] }];
   const channels = [
     { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch3', name: 'RTL', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch4', name: 'VOX', url: 'x', group: 'G', sourceId: 'src1' },
   ];
-  expect(getNextChannelId('ch1', channels, sources, 1)).toBe('ch2');
-  expect(getNextChannelId('ch2', channels, sources, 1)).toBe('ch1');
-  expect(getNextChannelId('ch2', channels, sources, -1)).toBe('ch1');
+  expect(getNextChannelId('ch3', channels, sources, 1)).toBe('ch1');
+  expect(getNextChannelId('ch1', channels, sources, 1)).toBe('ch3');
+  expect(getNextChannelId('ch3', channels, sources, -1)).toBe('ch1');
+  expect(getNextChannelId('ch1', channels, sources, -1)).toBe('ch3');
 });
 
-it('getNextChannelId – zappt über alle Sender, Favoriten zuerst (W3)', () => {
+it('getNextChannelId – Nicht-Favorit springt zum nächsten Favoriten in Pfeilrichtung', () => {
+  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['ch1', 'ch4'] }];
+  const channels = [
+    { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch3', name: 'RTL', url: 'x', group: 'G', sourceId: 'src1' },
+    { id: 'ch4', name: 'VOX', url: 'x', group: 'G', sourceId: 'src1' },
+  ];
+  expect(getNextChannelId('ch2', channels, sources, 1)).toBe('ch4');
+  expect(getNextChannelId('ch3', channels, sources, -1)).toBe('ch1');
+});
+
+it('getNextChannelId – Wrap-around und keine Favoriten', () => {
   const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['ch2'] }];
   const channels = [
     { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch3', name: 'RTL', url: 'x', group: 'G', sourceId: 'src1' },
   ];
-  // Reihenfolge: Favoriten zuerst (ch2), dann Rest in Listenreihenfolge (ch1, ch3)
-  expect(getNextChannelId('ch2', channels, sources, 1)).toBe('ch1');
-  expect(getNextChannelId('ch1', channels, sources, 1)).toBe('ch3');
-  expect(getNextChannelId('ch3', channels, sources, 1)).toBe('ch2'); // Wrap-around
-  expect(getNextChannelId('ch2', channels, sources, -1)).toBe('ch3');
+  expect(getNextChannelId('ch1', channels, sources, -1)).toBe('ch2');
+  expect(getNextChannelId('ch3', channels, sources, 1)).toBe('ch2');
+  const noFavorites = [{ id: 'src1', name: 'Src', url: 'x', order: 0 }];
+  expect(getNextChannelId('ch1', channels, noFavorites, 1)).toBeNull();
 });
 
-it('buildZapOrder – Favoritenreihenfolge, Rest in Listenreihenfolge', () => {
-  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['c', 'a'] }];
+it('buildZapOrder – enthält ausschließlich gültige Favoriten in Sidebar-Reihenfolge', () => {
+  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['c', 'missing', 'a'] }];
   const channels = [
     { id: 'a', name: 'A', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'b', name: 'B', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'c', name: 'C', url: 'x', group: 'G', sourceId: 'src1' },
-    { id: 'd', name: 'D', url: 'x', group: 'G', sourceId: 'src1' },
   ];
-  // Die Sortierreihenfolge aus dem Favoriten-Sortiermodus wird überall genutzt.
-  expect(buildZapOrder(channels, sources)).toEqual(['c', 'a', 'b', 'd']);
-  // Leere Favoriten => unverändert die Listenreihenfolge
-  const noFav: typeof sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0 }];
-  expect(buildZapOrder(channels, noFav)).toEqual(['a', 'b', 'c', 'd']);
+  expect(buildZapOrder(channels, sources)).toEqual(['c', 'a']);
 });
 
-it('buildChannelList – enthält alle Sender des Quellservices (W3)', () => {
-  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['ch2'] }];
+it('buildChannelList – On-Screen-Liste nutzt dieselbe Favoritenreihenfolge', () => {
+  const sources = [{ id: 'src1', name: 'Src', url: 'x', order: 0, favorites: ['ch2', 'ch3'] }];
   const channels = [
     { id: 'ch1', name: 'ARD', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch2', name: 'ZDF', url: 'x', group: 'G', sourceId: 'src1' },
     { id: 'ch3', name: 'RTL', url: 'x', group: 'G', sourceId: 'src1' },
   ];
-  // Aktiver Sender ist KEIN Favorit => Liste + Index trotzdem korrekt
   const result = buildChannelList(channels[0]!, channels, sources);
-  expect(result.channels.map(c => c.id)).toEqual(['ch2', 'ch1', 'ch3']);
-  expect(result.currentIndex).toBe(1);
+  expect(result.channels.map(c => c.id)).toEqual(['ch2', 'ch3']);
+  expect(result.currentIndex).toBe(-1);
 });
 
 it('applyChannelOverrides', () => {
