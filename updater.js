@@ -20,6 +20,11 @@ const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { mergeTvsources } = require('./lib/tvsources-merge.js');
+const {
+  copyBundleTree,
+  verifyBundleIntegrity,
+  recoverStaleUpdateDirs,
+} = require('./lib/bundle-install.js');
 const os = require('os');
 const { fetchReleaseCandidates, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
@@ -246,14 +251,31 @@ function verifyMacBundle(bundle, stageRoot) {
 }
 
 function installMacBundle(bundle, supportDir, options = {}) {
+  // S-Klasse-Fix (Karte t_ea243f43): Der alte Apply-Schritt nutzte
+  // fs.cpSync(..., { dereference: true }) — das rekonstruiert relative
+  // Bundle-Symlinks als absolute Pfade ins temporäre Update-Verzeichnis.
+  // Nach dem Temp-Cleanup waren die Links tot → dyld SIGABRT beim Start.
+  // Neu: copyBundleTree erhält Symlinks verbatim; die komplette neue
+  // Installation wird zuerst am Staging-Punkt gebaut UND verifiziert
+  // (Post-Install-Gate), erst danach per rename getauscht. Bricht irgendein
+  // Schritt ab, bleibt der alte Stand unberührt (fail-safe) — ein Abbruch
+  // löscht die Installation nie mehr kalt weg.
   const resources = path.join(bundle, 'Contents', 'Resources');
   const unpackedSource = path.join(resources, 'app');
   const asarSource = path.join(resources, 'app.asar');
   const applications = options.applicationsDir || path.join(os.homedir(), 'Applications');
   const wrapper = path.join(applications, 'Streaming Hub.app');
   const staging = `${supportDir}.update-staging-${process.pid}`;
+  // Staging-Parent-Ordner, damit der Wrapper-Staging-Basename '.app' bleibt —
+  // castlabs EVS verify-pkg findet das Bundle sonst nicht (empirisch belegt).
+  const wrapperStagingRoot = path.join(applications, `.update-stage-${process.pid}`);
+  const wrapperStaging = path.join(wrapperStagingRoot, path.basename(wrapper));
   const rollback = `${supportDir}.update-rollback-${process.pid}`;
   const wrapperRollback = `${wrapper}.update-rollback-${process.pid}`;
+  const recovery = recoverStaleUpdateDirs(supportDir, wrapper);
+  if (recovery.restored.length) {
+    updaterLog('INFO', `Selbstheilung: zurückgeholt aus Rollback: ${recovery.restored.join(', ')}`);
+  }
   let source = unpackedSource;
   let legacyAsarDir = null;
   if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) {
@@ -265,36 +287,96 @@ function installMacBundle(bundle, supportDir, options = {}) {
     fs.rmSync(legacyAsarDir, { recursive: true, force: true });
     runSync(`npx --yes @electron/asar@3.4.1 extract ${JSON.stringify(asarSource)} ${JSON.stringify(source)}`, { timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'] });
   }
-  let wrapperBuildStarted = false;
+  fs.mkdirSync(path.dirname(supportDir), { recursive: true });
+  fs.mkdirSync(applications, { recursive: true });
+  // Stale Ordner desselben Laufs räumen, dann komplett am Staging-Punkt bauen.
   fs.rmSync(staging, { recursive: true, force: true });
   fs.rmSync(rollback, { recursive: true, force: true });
+  fs.rmSync(wrapperStaging, { recursive: true, force: true });
+  fs.rmSync(wrapperStagingRoot, { recursive: true, force: true });
   fs.rmSync(wrapperRollback, { recursive: true, force: true });
-  fs.mkdirSync(path.dirname(supportDir), { recursive: true });
-  fs.cpSync(source, staging, { recursive: true, dereference: true });
+  const codesignGateDefault = process.platform === 'darwin';
   try {
+    // 1) Neues Support-Verzeichnis (App-Code) im Staging bauen.
+    copyBundleTree(source, staging);
+    // 2) Kompletten App-Wrapper im Staging bauen (Symlinks bleiben verbatim
+    //    relativ — z. B. "Versions/Current -> A" innerhalb des Frameworks).
+    copyBundleTree(bundle, wrapperStaging);
+    const wrapperResources = path.join(wrapperStaging, 'Contents', 'Resources');
+    // 3a) Signatur- + dyld-Gate am reinen Bundle (VOR dem Resources/app-Symlink,
+    //     damit keine Prüfung auf App-Code außerhalb des Bundles läuft).
+    //     Signaturprüfung über verifyMacBundle (EVS bevorzugt) — codesign
+    //     --deep --strict ist für Castlabs-EVS-Bundles nicht gültig
+    //     ("code has no resources but signature indicates they must be
+    //     present", empirisch am Release-zip bestätigt).
+    if (process.platform === 'darwin' || process.env.EVS_PYTHON) {
+      verifyMacBundle(wrapperStaging, applications);
+    }
+    const preGate = verifyBundleIntegrity(wrapperStaging, {
+      symlinks: true,
+      resolvable: true,
+      frameworks: true,
+      otool: options.otool !== undefined ? options.otool : codesignGateDefault,
+    });
+    if (!preGate.ok) throw new Error(`Integritätsprüfung des Staging-Bundles fehlgeschlagen: ${preGate.errors.join('; ')}`);
+    const appLink = path.join(wrapperResources, 'app');
+    fs.mkdirSync(wrapperResources, { recursive: true });
+    fs.rmSync(appLink, { recursive: true, force: true });
+    // Bewusstes Design: Resources/app -> Support-Verzeichnis (App-Code außer-
+    // halb des Bundles, damit der Code-Checkout update-sicher bleibt).
+    fs.symlinkSync(supportDir, appLink, 'dir');
+    // 3b) Post-Install-Integritäts-Gate am STAGING-Punkt — schlägt es fehl, ist
+    //     noch nichts am Ziel angefasst.
+    const gate = verifyBundleIntegrity(wrapperStaging, {
+      symlinks: true,
+      resolvable: false, // Resources/app zeigt auf den finalen supportDir, der existiert erst nach dem Swap
+      frameworks: true,
+      allowedAbsoluteTargets: [supportDir],
+    });
+    if (!gate.ok) throw new Error(`Integritätsprüfung des Staging-Bundles fehlgeschlagen: ${gate.errors.join('; ')}`);
+    // 4) Swap: alter Stand → Rollback (rename, kein rm!), neuer Stand → Ziel.
     if (fs.existsSync(supportDir)) fs.renameSync(supportDir, rollback);
     fs.renameSync(staging, supportDir);
     if (options.afterSupportSwap) options.afterSupportSwap({ supportDir, rollback });
-    fs.mkdirSync(applications, { recursive: true });
     if (fs.existsSync(wrapper)) fs.renameSync(wrapper, wrapperRollback);
-    wrapperBuildStarted = true;
-    fs.cpSync(bundle, wrapper, { recursive: true, dereference: true });
-    const resources = path.join(wrapper, 'Contents', 'Resources');
-    const appLink = path.join(resources, 'app');
-    fs.mkdirSync(resources, { recursive: true });
-    fs.rmSync(appLink, { recursive: true, force: true });
-    fs.symlinkSync(supportDir, appLink, 'dir');
+    fs.renameSync(wrapperStaging, wrapper);
+    fs.rmSync(wrapperStagingRoot, { recursive: true, force: true });
+    // 5) End-Verifikation am ZIEL: alle Symlinks auflösbar, Frameworks vorhanden.
+    const finalGate = verifyBundleIntegrity(wrapper, {
+      symlinks: true,
+      resolvable: true,
+      frameworks: true,
+      // codesign wurde bereits am reinen Staging-Bundle geprüft (3a); hier nicht
+      // erneut, damit codesign --deep nicht über den Resources/app-Symlink auf
+      // App-Code außerhalb des Bundles läuft.
+      codesign: false,
+      otool: options.otool !== undefined ? options.otool : codesignGateDefault,
+      allowedAbsoluteTargets: [supportDir],
+    });
+    if (!finalGate.ok) throw new Error(`Integritätsprüfung am Ziel fehlgeschlagen: ${finalGate.errors.join('; ')}`);
+    // 6) Erst nach erfolgreicher Verifikation wird der alte Stand entfernt —
+    //    inklusive stale Artefakten früherer abgebrochener Läufe.
     fs.rmSync(rollback, { recursive: true, force: true });
     fs.rmSync(wrapperRollback, { recursive: true, force: true });
+    const sweep = require('./lib/bundle-install.js').sweepStaleUpdateDirs(supportDir, wrapper);
+    if (sweep.removed.length) {
+      updaterLog('INFO', `Stale Update-Artefakte geräumt: ${sweep.removed.join(', ')}`);
+    }
     updaterLog('INFO', `Release-App installiert: ${wrapper}; Resources/app -> ${supportDir}`);
   } catch (error) {
-    fs.rmSync(supportDir, { recursive: true, force: true });
-    if (fs.existsSync(rollback)) fs.renameSync(rollback, supportDir);
-    if (wrapperBuildStarted) fs.rmSync(wrapper, { recursive: true, force: true });
-    if (fs.existsSync(wrapperRollback)) fs.renameSync(wrapperRollback, wrapper);
+    updaterLog('ERROR', 'Apply fehlgeschlagen — alter Stand wird wiederhergestellt', error.message);
+    if (fs.existsSync(rollback)) {
+      if (fs.existsSync(supportDir)) fs.rmSync(supportDir, { recursive: true, force: true });
+      fs.renameSync(rollback, supportDir);
+    }
+    if (fs.existsSync(wrapperRollback)) {
+      if (fs.existsSync(wrapper)) fs.rmSync(wrapper, { recursive: true, force: true });
+      fs.renameSync(wrapperRollback, wrapper);
+    }
     throw error;
   } finally {
     fs.rmSync(staging, { recursive: true, force: true });
+    fs.rmSync(wrapperStaging, { recursive: true, force: true });
     if (legacyAsarDir) fs.rmSync(legacyAsarDir, { recursive: true, force: true });
   }
 }
@@ -352,4 +434,4 @@ process.on('message', async msg => {
 });
 }
 
-module.exports = { findAppBundle, installMacBundle, verifyMacBundle };
+module.exports = { findAppBundle, installMacBundle, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };

@@ -615,6 +615,37 @@ app.whenReady().then(() => {
   } catch (e) {
     logger.error('Nach-Update-Reconciliation fehlgeschlagen (Start läuft weiter):', e.message);
   }
+  // Selbstheilungs-Netz (Karte t_ea243f43, Schritt 5): Beim Start prüfen, ob
+  // die eigene Bundle-Integrität intakt ist (keine toten/externen Symlinks,
+  // Frameworks vorhanden). Bei Schaden NIEMALS still weiterlaufen — sauberer
+  // Fehlerdialog mit Reparaturanleitung. (Toter Electron-Framework-Symlink
+  // verhindert sogar diesen Code-Pfad — deshalb zusätzlich Updater-seitige
+  // Recovery über recoverStaleUpdateDirs beim nächsten Update-Lauf.)
+  if (process.platform === 'darwin') {
+    try {
+      const { verifyBundleIntegrity } = require('./lib/bundle-install.js');
+      const exeBundle = path.resolve(path.dirname(app.getPath('exe')), '..', '..');
+      const gate = verifyBundleIntegrity(exeBundle, {
+        symlinks: true,
+        resolvable: true,
+        frameworks: true,
+        allowedAbsoluteTargets: [path.join(os.homedir(), 'Library', 'Application Support', 'Streaming Hub')],
+      });
+      if (!gate.ok) {
+        logger.error('Bundle-Integrität beim Start beschädigt:', gate.errors.join('; '));
+        dialog.showErrorBox(
+          'Streaming Hub — Installation beschädigt',
+          'Die App-Installation ist beschädigt (defekte interne Verweise).\n\n' +
+            'Bitte die App über install.sh neu installieren:\n\n' +
+            '  curl -fsSL <Installations-URL> | sh\n\n' +
+            'oder das Update in den Einstellungen erneut ausführen.\n\n' +
+            `Details: ${gate.errors.join('; ').slice(0, 400)}`
+        );
+      }
+    } catch (e) {
+      logger.warn('Bundle-Integritätscheck beim Start fehlgeschlagen (Start läuft weiter):', e.message);
+    }
+  }
   startUpdater();
   createWindow();
   components.whenReady()
