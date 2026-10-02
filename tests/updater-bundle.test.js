@@ -1,3 +1,4 @@
+process.env.STREAMING_HUB_UPDATER_SKIP_SIGNATURE = '1';
 'use strict';
 
 const test = require('node:test');
@@ -86,6 +87,7 @@ test('installMacBundle rollt nach Fehler direkt nach Support-Swap vollständig z
 });
 
 test('Signaturfehler bricht vor Installation ab und lässt den alten Stand unverändert', () => {
+  delete process.env.STREAMING_HUB_UPDATER_SKIP_SIGNATURE; // Gate MUSS hier failen (Dummy ohne Signatur)
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-updater-test-'));
   try {
     const bundle = path.join(root, 'Streaming Hub.app');

@@ -1,3 +1,4 @@
+process.env.STREAMING_HUB_UPDATER_SKIP_SIGNATURE = '1';
 'use strict';
 
 // Regressionstests für den S-Klasse-Updater-Fix (Karte t_ea243f43).

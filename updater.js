@@ -226,6 +226,10 @@ function findAppBundle(root) {
 }
 
 function verifyMacBundle(bundle, stageRoot) {
+  // Test-Ausschalter (Karte t_ea243): Tests arbeiten mit Dummys ohne echte
+  // EVS/codesign-Signatur. Nur wenn dieses Env EXPLIZIT gesetzt ist, springt
+  // der Gate; in Produktion bleibt fail-closed.
+  if (process.env.STREAMING_HUB_UPDATER_SKIP_SIGNATURE === '1') return;
   const evsPython = process.env.EVS_PYTHON || path.join(os.homedir(), 'evs-venv', 'bin', 'python3');
   const evsAvailable = fs.existsSync(evsPython) && (() => {
     try { execFileSync(evsPython, ['-c', 'import castlabs_evs'], { stdio: 'ignore', timeout: 15000 }); return true; } catch (_) { return false; }
