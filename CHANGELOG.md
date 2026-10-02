@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.21 (2026-10-02) — DRM/L1-Fix: dev-Klon-Binary wird ab Install EVS-signiert (S-Klasse)
+
+- Fix (S-Klasse, User-Befund 02.10. „in der .20 ist das Streaming geschützter Inhalte kaputt“): Die Developer-Klon-Binary `node_modules/electron/dist/Electron.app` war **nicht** EVS/VMP-signiert (codesign: adhoc/linker-signed, TeamIdentifier not set) — castlabs' Widevine-CDM verweigert L1-Provisioning auf unsignierten Bundles (Netflix E100, Prime 403, CDM init fail). Ursache: `afterPack` (scripts/evs-afterPack.js) signiert nur die Release-Area-Kopie (`release/mac-arm64/…`), während `postinstall` die castlabs-Zip-Dist unangetastet beließ — Release-Builds waren grün (verify-pkg „streaming“ ✓), der User-Test im dev-Klon lief auf invalidem Basis-Binary.
+- Fix: `scripts/evs-dev-sign.js` (neu) als postinstall-Schritt nach dem electron-Download: stagt `Electron.app` als `Streaming Hub.app` (castlabs signiert gegen das im Signier-Profil registrierte Bundle „Streaming Hub“), führt `castlabs_evs.vmp sign-pkg` aus, kopiert nur `Electron Framework.sig` zurück (die Signatur bindet an die Framework-Binary, nicht an den Bundle-Ordnernamen) und verifiziert via verify-pkg (Symlink-Staging) — Ergebnis „streaming, NNN days left“. Ausgabe-Präfix `[EVS-dev]` konsistent mit install.sh. Review-Härtungen (R1): Idempotenz-Skip läuft über dasselbe Symlink-Staging (verify am rohen Electron.app-Pfad wäre toter Code — skip-pkg matcht das Bundle am Finder-Namen); die dist-.sig wird VOR dem Austausch gesichert und bei Verify-Fail wirklich zurückgerollt (bzw. neu erzeugtes .sig entfernt); alle Exits laufen nach dem Staging-`finally` (kein ~250-MB-Tempdir-Leak bei Fehlschlägen); sign-pkg/verify-Fail beendet den Hook mit Exit-Code 1 (npm-Fail sichtbar) ohne je eine fehlgeschlagene Signatur zu hinterlassen.
+- Regel: Gerät gilt als DRM-kaputt, wenn entweder Release-verify-pkg ODER dev-Klon-Binary-verify-pkg fehlschlägt — der Orchestrator prüft beide bei jedem Release (systemweite Regel).
+- Fail-closed im dev-Hook bei Signier-/Verify-Fehlern (Exit 1, dist im Ausgangszustand); mit Warnung (Exit 0) nur, wenn castlabs_evs generell nicht installierbar ist — release/install.sh bleibt fail-closed unverändert; npm-Layout-Kontrakt (Bundle-Name Electron.app in path.txt + electron/index.js) bleibt unangetastet.
+
 
 ## 0.5.18 (2026-10-02) — macOS-Release-Bundle und Installer-Root-Cause-Fixes
 
