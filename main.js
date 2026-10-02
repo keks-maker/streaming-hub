@@ -19,6 +19,7 @@ const {
 const { RecorderService } = require('./lib/recorder/RecorderService.js');
 const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorder/ipc.js');
 const { TrayController } = require('./lib/recorder/TrayController.js');
+const { sweepOrphans } = require('./lib/orphan-sweep.js');
 const paths = require('./lib/recorder/paths.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 
@@ -672,6 +673,18 @@ app.whenReady().then(() => {
         }
       }
       recorder = new RecorderService({ appRoot: __dirname, storageRoot });
+      // Orphan-Janitor (Karte t_695bf150, Sweep beim App-Start): Bereinigt
+      // App-eigene verwaiste ffmpeg/ffprobe-Prozesse (PPID 1 / toter Parent)
+      // vom letzten Crash bzw. von einem Quit-Race — QA-Befund: Orphan lief
+      // 15,5 h und schrieb 22 GB Zwischenform. Der Sweep zielt exakt auf
+      // <appRoot>/bin/-(ffmpeg|ffprobe)-Instanzen; fremde ffmpegs (User-
+      // Workflows, QA-Harness in /tmp) bleiben unangetastet.
+      try {
+        const swept = sweepOrphans({ appRoot: __dirname });
+        if (swept.length) logger.warn(`Orphan-Janitor: ${swept.length} verwaiste ffmpeg/ffprobe-Prozesse beendet`, swept);
+      } catch (e) {
+        logger.warn('Orphan-Janitor fehlgeschlagen (App startet weiter):', e.message);
+      }
       registerRecorderIpc({ ipcMain, recorder, mainWindow });
       // Wiedergabeprotokoll rec:// (Bibliothek, Phase 1c)
       protocol.handle(recordingProtocol.scheme, recordingProtocol.handler);
@@ -864,6 +877,25 @@ app.on('window-all-closed', () => {
     return;
   }
   app.quit();
+});
+
+// Quit-Cleanup (Karte t_695bf150): JEDER Quit-Weg (Cmd+Q/Dock ohne Tray-
+// Umweg, app.quit() aus Tray/powerMonitor/Updater-Relaunch) läuft durch
+// before-quit — hier werden laufende Aufnahmen SYNCHRON abgewürgt
+// (RecordJob.finalizeForQuit: SIGKILL auf ffmpeg + Meta → aborted +
+// ENDLIST in der Zwischenplaylist) und Background-Childs (Remux/probe/
+// decode) über die PID-Registry gekillt. Der vorlaggende E2E-Befund
+// (Orphan mit PPID 1 schrieb 22 GB / 15,5 h) entsteht genau hier nicht
+// mehr: Nodeprozess und seine Childs sterben im selben Quit-Sweep.
+// Recovery-Remux (RecorderService.recover) holt die Aufnahme beim
+// nächsten Start nach (F-FB-10).
+app.on('before-quit', () => {
+  if (!recorder) return;
+  try {
+    recorder.quitSweep();
+  } catch (e) {
+    logger.error('Quit-Cleanup fehlgeschlagen (Beenden läuft weiter):', e.message);
+  }
 });
 app.on('will-quit', () => globalShortcut.unregisterAll());
 

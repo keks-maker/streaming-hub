@@ -144,7 +144,7 @@ test('FIX: normalizeMeta normiert decodeErrors/decodeErrorSample', () => {
 test('FIX: RecorderService führt Decode-Verify nach Remux aus und persistiert', () => {
   const svc = fs.readFileSync(path.join(ROOT, 'lib/recorder/RecorderService.js'), 'utf8');
   assert.match(svc, /decodeCheckMp4/, 'Decode-Verify-Import fehlt');
-  const remuxBlock = /decodeCheckMp4\(ffmpegLib\.binaryPath\('ffmpeg', this\.appRoot\), outputPath\)/.test(svc);
+  const remuxBlock = /decodeCheckMp4\(ffmpegLib\.binaryPath\('ffmpeg', this\.appRoot\), outputPath(?:,\s*\d+,\s*onChild)?\)/.test(svc);
   assert.ok(remuxBlock, 'Decode-Verify-Aufruf nach dem Remux fehlt');
   assert.match(svc, /decodeErrors,\s*\n\s*decodeErrorSample,/, 'Persistierung der Verify-Felder fehlt');
   // Entscheidend: Kein Status-Fallback — Datei bleibt completed.
