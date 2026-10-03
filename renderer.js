@@ -20,6 +20,7 @@ const {
   selectEpgWindowEntries,
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
+const { createSettingsView } = require('./settings-view.js');
 const {
   formatDuration,
   currentEpgStopMs,
@@ -907,7 +908,7 @@ function renderStartDashboard() {
   placeUpdateButton(dashboardUpdateSlot, true);
 }
 
-function renderDashboard(groupKey) {
+function renderDashboard(groupKey, opts = {}) {
   if (!dashboardView) return;
   if (groupKey === 'start') {
     renderStartDashboard();
@@ -948,6 +949,7 @@ function renderDashboard(groupKey) {
     document.querySelector('input[name="tvMode"][value="' + tvMode + '"]').checked = true;
     settingsPanel.hidden = false;
     settingsPanelHost.appendChild(settingsPanel);
+    settingsView.showPage(opts.page);
     // Aufnahmen-Settings (Phase 1c): Speicherort + ffmpeg-Diagnose laden
     if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
   } else if (isTv) {
@@ -965,7 +967,7 @@ function renderDashboard(groupKey) {
   welcomeScreen.style.display = 'none';
 }
 
-function showDashboard(groupKey) {
+function showDashboard(groupKey, opts = {}) {
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
   currentProvider = '';
@@ -980,7 +982,7 @@ function showDashboard(groupKey) {
   tvView.style.opacity = '0';
   tvView.style.pointerEvents = 'none';
   webview = contentView;
-  renderDashboard(groupKey);
+  renderDashboard(groupKey, opts);
   overlayLocation.textContent =
     groupKey === 'start'
       ? 'Startseite'
@@ -1352,7 +1354,7 @@ const settingsInputColor = document.getElementById('settingsInputColor');
 const settingsInputGroup = document.getElementById('settingsInputGroup');
 const settingsAddSave = document.getElementById('settingsAddSave');
 
-settingsAddDienstBtn.addEventListener('click', () => {
+function toggleSettingsAddForm() {
   const isOpen = settingsAddForm.style.display !== 'none';
   settingsAddForm.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) {
@@ -1362,7 +1364,9 @@ settingsAddDienstBtn.addEventListener('click', () => {
     settingsInputColor.value = '#6c5ce7';
     settingsInputName.focus();
   }
-});
+}
+settingsAddDienstBtn.addEventListener('click', toggleSettingsAddForm);
+document.getElementById('settingsAddMediathekBtn').addEventListener('click', toggleSettingsAddForm);
 
 settingsInputName.addEventListener('keydown', e => {
   if (e.key === 'Enter') settingsInputUrl.focus();
@@ -3708,6 +3712,7 @@ setTimeout(checkForUpdates, 4000);
 
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsPanelHost = document.getElementById('settingsPanelHost');
+const settingsView = createSettingsView(settingsPanel);
 const settingsPanelPlaceholder = document.createComment('settings-panel-placeholder');
 settingsPanel.parentNode.insertBefore(settingsPanelPlaceholder, settingsPanel);
 const settingsStatus = document.getElementById('settingsStatus');

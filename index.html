@@ -259,99 +259,181 @@
     </div>
   </div>
 
-  <!-- Settings dashboard panel -->
+  <!-- Settings dashboard panel: Seitenleiste (settings-view.js) + genau eine Seite -->
   <section class="settings-panel" id="settingsPanel" aria-labelledby="settingsTitle" hidden>
     <div class="modal-header">
       <h2 class="modal-title" id="settingsTitle">Einstellungen</h2>
     </div>
-    <div class="modal-body settings-body">
-        <button class="settings-action-btn" id="backupBtn">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Backup erstellen
-        </button>
-        <button class="settings-action-btn" id="restoreBtn">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          Backup einspielen
-        </button>
+    <div class="settings-shell">
+      <nav class="settings-nav" id="settingsNav" aria-label="Einstellungen"></nav>
+      <div class="settings-content">
+        <div class="settings-pages">
 
-        <div class="settings-divider"></div>
-
-        <div class="settings-section">
-          <div class="settings-section-header">
-            <span class="settings-section-title">Dienste verwalten</span>
-            <button class="settings-add-dienst-btn" id="settingsAddDienstBtn" title="Dienst hinzufügen">+</button>
-          </div>
-
-          <div class="settings-service-group">
-            <span class="settings-service-group-label">Streamingdienste</span>
-            <div class="service-list" id="settingsServiceListStreaming"></div>
-          </div>
-
-          <div class="settings-service-group">
-            <span class="settings-service-group-label">Mediatheken</span>
-            <div class="service-list" id="settingsServiceListMediathek"></div>
-          </div>
-
-          <div class="settings-add-form" id="settingsAddForm" style="display:none">
-            <input class="modal-input" id="settingsInputName" type="text" placeholder="Name">
-            <input class="modal-input" id="settingsInputUrl" type="url" placeholder="URL (z.B. https://www.netflix.com)">
-            <input class="modal-input" id="settingsInputIcon" type="text" placeholder="Icon (URL oder Dateiname)">
-            <div class="settings-add-row">
-              <input class="modal-color" id="settingsInputColor" type="color" value="#6c5ce7">
-              <select class="settings-group-select" id="settingsInputGroup">
-                <option value="streaming">Streamingdienst</option>
-                <option value="mediathek">Mediathek</option>
-              </select>
-              <button class="modal-btn modal-btn-save" id="settingsAddSave">Hinzufügen</button>
+          <section class="settings-page" data-settings-page="general" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Allgemein</h3>
+              <p class="settings-page-desc">Sicherung und Wiederherstellung deiner Einstellungen.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Backup</h4>
+              <p class="settings-card-desc">Dienste, TV-Quellen und Verlauf als Datei sichern oder aus einer Sicherung wiederherstellen.</p>
+              <div class="settings-row">
+                <span class="settings-row-label">Sicherung erstellen</span>
+                <button class="settings-action-btn" id="backupBtn">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Backup erstellen
+                </button>
+              </div>
+              <div class="settings-row">
+                <span class="settings-row-label">Sicherung einspielen</span>
+                <button class="settings-action-btn" id="restoreBtn">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Backup einspielen
+                </button>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="livetv-sources" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">LiveTV: Quellen</h3>
+              <p class="settings-page-desc">Playlists und Sender-Quellen für LiveTV.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">TV-Quellen</h4>
+              <p class="settings-card-desc">Quellen hinzufügen, ändern oder entfernen.</p>
+              <div class="settings-row">
+                <span class="settings-row-label">Quellenverwaltung</span>
+                <button class="settings-action-btn" id="settingsTvSourcesBtn" type="button">TV-Quellen verwalten</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="livetv-channels" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">LiveTV: Sender</h3>
+              <p class="settings-page-desc">Favoriten, Reihenfolge, EPG-Zuweisungen, Logos und URLs deiner Sender.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Senderverwaltung</h4>
+              <p class="settings-card-desc">Öffnet den Sender-Editor.</p>
+              <div class="settings-row">
+                <span class="settings-row-label">Sender bearbeiten</span>
+                <button class="settings-action-btn" id="settingsTvChannelsBtn" type="button">Sender bearbeiten</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="livetv-epg" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">LiveTV: EPG</h3>
+              <p class="settings-page-desc">Programminformationen der Sender.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Programmführer</h4>
+              <p class="settings-card-desc">Lädt die EPG-Daten neu.</p>
+              <div class="settings-row">
+                <span class="settings-row-label">EPG-Daten</span>
+                <button class="settings-action-btn" id="settingsEpgRefreshBtn" type="button">EPG aktualisieren</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="livetv-playback" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">LiveTV: Wiedergabe</h3>
+              <p class="settings-page-desc">Wie LiveTV abgespielt wird.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">TV-Modus</h4>
+              <p class="settings-card-desc">Eigene Sender mit Seitenleiste oder der MagentaTV-Webplayer.</p>
+              <div class="settings-row settings-row-stack">
+                <label class="tv-mode-label">
+                  <input type="radio" name="tvMode" value="free" checked> FreeTV (Sidebar + eigene Sender)
+                </label>
+                <label class="tv-mode-label">
+                  <input type="radio" name="tvMode" value="magenta"> MagentaTV (web.magentatv.de)
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="livetv-recordings" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">LiveTV: Aufnahmen</h3>
+              <p class="settings-page-desc">Speicherort der Aufnahmen und Status von ffmpeg.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Speicherort</h4>
+              <p class="settings-card-desc">Netzwerkpfade sind erlaubt.</p>
+              <div class="settings-rec-path-row">
+                <input class="modal-input" id="recPathInput" type="text" placeholder="Speicherort für Aufnahmen" autocomplete="off" spellcheck="false">
+                <button class="settings-action-btn" id="recPathPickBtn" type="button" title="Ordner auswählen">📁</button>
+              </div>
+              <div class="settings-rec-hint" id="recPathHint"></div>
+              <div class="settings-rec-warn" id="recPathWarn" style="display:none"></div>
+              <div class="settings-tv-actions">
+                <button class="settings-action-btn" id="recPathSaveBtn" type="button">Speicherort übernehmen</button>
+                <button class="settings-action-btn" id="recPathResetBtn" type="button">Standard (~Videos/Streaming Hub)</button>
+              </div>
+            </div>
+            <div class="settings-card">
+              <h4 class="settings-card-title">ffmpeg</h4>
+              <p class="settings-card-desc">Voraussetzung für Aufnahmen.</p>
+              <div class="settings-rec-ffmpeg" id="recFfmpegStatus">ffmpeg-Status wird geprüft …</div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="streaming" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Streaming</h3>
+              <p class="settings-page-desc">Streamingdienste verwalten.</p>
+            </header>
+            <div class="settings-card">
+              <div class="settings-section-header">
+                <h4 class="settings-card-title">Streamingdienste</h4>
+                <button class="settings-add-dienst-btn" id="settingsAddDienstBtn" title="Dienst hinzufügen" aria-label="Dienst hinzufügen">+</button>
+              </div>
+              <div class="service-list" id="settingsServiceListStreaming"></div>
+              <div data-add-form-slot>
+                <div class="settings-add-form" id="settingsAddForm" style="display:none">
+                  <input class="modal-input" id="settingsInputName" type="text" placeholder="Name">
+                  <input class="modal-input" id="settingsInputUrl" type="url" placeholder="URL (z.B. https://www.netflix.com)">
+                  <input class="modal-input" id="settingsInputIcon" type="text" placeholder="Icon (URL oder Dateiname)">
+                  <div class="settings-add-row">
+                    <input class="modal-color" id="settingsInputColor" type="color" value="#6c5ce7">
+                    <select class="settings-group-select" id="settingsInputGroup">
+                      <option value="streaming">Streamingdienst</option>
+                      <option value="mediathek">Mediathek</option>
+                    </select>
+                    <button class="modal-btn modal-btn-save" id="settingsAddSave">Hinzufügen</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="mediathek" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Mediatheken</h3>
+              <p class="settings-page-desc">Mediatheken verwalten.</p>
+            </header>
+            <div class="settings-card">
+              <div class="settings-section-header">
+                <h4 class="settings-card-title">Mediatheken</h4>
+                <button class="settings-add-dienst-btn" id="settingsAddMediathekBtn" title="Mediathek hinzufügen" aria-label="Mediathek hinzufügen">+</button>
+              </div>
+              <div class="service-list" id="settingsServiceListMediathek"></div>
+              <div data-add-form-slot></div>
+            </div>
+          </section>
+
         </div>
-
-        <div class="settings-divider"></div>
-
-        <div class="settings-section">
-          <span class="settings-section-title">Aufnahmen</span>
-          <div class="settings-rec-path-row">
-            <input class="modal-input" id="recPathInput" type="text" placeholder="Speicherort für Aufnahmen" autocomplete="off" spellcheck="false">
-            <button class="settings-action-btn" id="recPathPickBtn" type="button" title="Ordner auswählen">📁</button>
-          </div>
-          <div class="settings-rec-hint" id="recPathHint"></div>
-          <div class="settings-rec-warn" id="recPathWarn" style="display:none"></div>
-          <div class="settings-tv-actions">
-            <button class="settings-action-btn" id="recPathSaveBtn" type="button">Speicherort übernehmen</button>
-            <button class="settings-action-btn" id="recPathResetBtn" type="button">Standard (~Videos/Streaming Hub)</button>
-          </div>
-          <div class="settings-rec-ffmpeg" id="recFfmpegStatus">ffmpeg-Status wird geprüft …</div>
-        </div>
-
-        <div class="settings-divider"></div>
-
-        <div class="settings-section settings-tv-section">
-          <span class="settings-section-title">LiveTV verwalten</span>
-          <div class="settings-tv-actions">
-            <button class="settings-action-btn" id="settingsTvSourcesBtn" type="button">TV-Quellen verwalten</button>
-            <button class="settings-action-btn" id="settingsTvChannelsBtn" type="button">Sender bearbeiten</button>
-            <button class="settings-action-btn" id="settingsEpgRefreshBtn" type="button">EPG aktualisieren</button>
-          </div>
-        </div>
-
-        <div class="settings-divider"></div>
-
-        <div class="settings-section">
-          <span class="settings-section-title">TV-Modus</span>
-          <label class="tv-mode-label">
-            <input type="radio" name="tvMode" value="free" checked> FreeTV (Sidebar + eigene Sender)
-          </label>
-          <label class="tv-mode-label">
-            <input type="radio" name="tvMode" value="magenta"> MagentaTV (web.magentatv.de)
-          </label>
-        </div>
-
-        <div class="settings-status" id="settingsStatus"></div>
+        <div class="settings-status" id="settingsStatus" role="status" aria-live="polite"></div>
       </div>
     </div>
   </section>

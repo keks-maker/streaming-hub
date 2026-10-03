@@ -111,7 +111,7 @@ export default [
   },
   // ── Renderer (Browser only) ──
   {
-    files: ['renderer.js'],
+    files: ['renderer.js', 'settings-view.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

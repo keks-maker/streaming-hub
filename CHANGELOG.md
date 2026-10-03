@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Einstellungen (#4, Etappe 1 „Shell“): Das Einstellungs-Panel ist jetzt eine Zwei-Spalten-Ansicht mit Seitenleiste und genau einer Seite statt einer langen Einzelkarte. Seiten: Allgemein (Backup), LiveTV (aufklappbar: Quellen, Sender, EPG, Wiedergabe/TV-Modus, Aufnahmen), Streaming, Mediatheken (jeweils Dienste-Liste und Dienst-hinzufügen-Formular). Seitenleiste aus Konfigurations-Array (`settings-view.js`), Tastaturbedienung (Tablist, Pfeiltasten/Home/End), letzte Seite wird gemerkt, bei schmalem Fenster Tab-Leiste oben. `showDashboard('settings', { page })` unterstützt einen Seitenparameter (Vorbereitung für Deep-Links). Kein Funktionsumbau: alle DOM-IDs, IPC- und Storage-Logik unverändert; verwaiste `.settings-btn`/`.settings-body`-CSS-Regeln entfernt.
+- Tests: neuer `tests/settings-view.test.js`; `e2e/smoke.spec.js` wählt die Seite „Aufnahmen“ explizit an und prüft Seitenwechsel per Seitenleiste/Tastatur.
+
 ## 0.5.27 (2026-10-03) — macOS-Signatur-Fix (Gatekeeper „beschädigt“)
 
 - Fix (Build, macOS): Das Release-ZIP enthielt eine inkonsistente Ad-hoc-Signatur (`codesign --verify --deep --strict`: „code has no resources but signature indicates they must be present“; Info.plist nicht gebunden, Sealed Resources = none). Nach manuellem Browser-Download zeigte Gatekeeper deshalb „Streaming Hub ist beschädigt“. `scripts/evs-afterPack.js` signiert die gesamte `.app` nach dem VMP-Signieren (`castlabs_evs.vmp sign-pkg`) mit `codesign --force --deep -s -` konsistent ad-hoc neu und verifiziert sie (`--verify --deep --strict`); `build.mac.identity: null` verhindert erneutes Signieren durch electron-builder. Die VMP-Signatur bleibt gültig (`verify-pkg` am entpackten ZIP: „streaming“). Weiterhin nicht notarisiert: README beschreibt Rechtsklick → Öffnen bzw. `xattr -cr`.

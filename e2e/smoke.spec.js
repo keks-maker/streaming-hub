@@ -195,6 +195,13 @@ test('LiveTV: Favoriten-UI (Senderliste, Favoriten-Tab, Reihenfolge) erreichbar'
   await expect(overlay).not.toHaveClass(/open/);
 });
 
+// LiveTV-Gruppe der Einstellungs-Seitenleiste aufklappen (falls zugeklappt).
+async function expandSettingsLiveTv() {
+  const group = page.locator('#settingsNav .settings-nav-group');
+  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await expect(group).toHaveAttribute('aria-expanded', 'true');
+}
+
 test('Aufnahmen: Dashboard-Einstieg und Speicherort-Einstellung erreichbar', async () => {
   // Navigation über die Navbar (nach dem Betreten eines Bereichs ist sie sichtbar).
   const nav = page.locator('#overlayNav');
@@ -207,8 +214,44 @@ test('Aufnahmen: Dashboard-Einstieg und Speicherort-Einstellung erreichbar', asy
   // Einstellungen -> Aufnahme-Speicherort (Recorder-Konfiguration).
   await nav.locator('[data-section="settings"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+  // Seitenleiste: Aufnahmen liegt unter LiveTV und ist erst nach Seitenwahl sichtbar.
+  await expandSettingsLiveTv();
+  await page.locator('#settingsTab-livetv-recordings').click();
   await expect(page.locator('#recPathInput')).toBeVisible();
   await expect(page.locator('#recPathSaveBtn')).toBeVisible();
+});
+
+test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
+  await page.locator('#overlayNav [data-section="settings"]').click();
+  await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+
+  await page.locator('#settingsTab-general').click();
+  await expect(page.locator('[data-settings-page="general"]')).toBeVisible();
+  await expect(page.locator('#backupBtn')).toBeVisible();
+  await expect(page.locator('[data-settings-page="streaming"]')).toBeHidden();
+  await expect(page.locator('#recPathInput')).toBeHidden();
+
+  await page.locator('#settingsTab-streaming').click();
+  await expect(page.locator('#settingsServiceListStreaming')).toBeVisible();
+  await expect(page.locator('#settingsTab-streaming')).toHaveAttribute('aria-selected', 'true');
+
+  await page.locator('#settingsTab-mediathek').click();
+  await expect(page.locator('#settingsServiceListMediathek')).toBeVisible();
+  await page.locator('#settingsAddMediathekBtn').click();
+  await expect(page.locator('#settingsAddForm')).toBeVisible();
+  await expect(page.locator('#settingsInputGroup')).toHaveValue('mediathek');
+
+  // Pfeiltasten wechseln die Seite (Mediatheken -> Allgemein per Home).
+  await page.locator('#settingsTab-mediathek').focus();
+  await page.keyboard.press('Home');
+  await expect(page.locator('[data-settings-page="general"]')).toBeVisible();
+
+  // LiveTV-Unterseiten
+  await expandSettingsLiveTv();
+  await page.locator('#settingsTab-livetv-playback').click();
+  await expect(page.locator('input[name="tvMode"][value="free"]')).toBeVisible();
+  await page.locator('#settingsTab-livetv-sources').click();
+  await expect(page.locator('#settingsTvSourcesBtn')).toBeVisible();
 });
 
 test('Keine uncaught Exceptions / unerwarteten Konsolen-Errors seit Start', async () => {
