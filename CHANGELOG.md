@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.27 (2026-10-03) — macOS-Signatur-Fix (Gatekeeper „beschädigt“)
 
 - Fix (Build, macOS): Das Release-ZIP enthielt eine inkonsistente Ad-hoc-Signatur (`codesign --verify --deep --strict`: „code has no resources but signature indicates they must be present“; Info.plist nicht gebunden, Sealed Resources = none). Nach manuellem Browser-Download zeigte Gatekeeper deshalb „Streaming Hub ist beschädigt“. `scripts/evs-afterPack.js` signiert die gesamte `.app` nach dem VMP-Signieren (`castlabs_evs.vmp sign-pkg`) mit `codesign --force --deep -s -` konsistent ad-hoc neu und verifiziert sie (`--verify --deep --strict`); `build.mac.identity: null` verhindert erneutes Signieren durch electron-builder. Die VMP-Signatur bleibt gültig (`verify-pkg` am entpackten ZIP: „streaming“). Weiterhin nicht notarisiert: README beschreibt Rechtsklick → Öffnen bzw. `xattr -cr`.
 
