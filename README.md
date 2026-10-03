@@ -23,27 +23,20 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 
 ## Funktionen
 
-- **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken und Einstellungen
-- **Live-TV-Dashboard** – Sender-Kacheln, Favoriten, EPG-Status und aktuell laufende Sendungen
-- **Senderverwaltung** – M3U-Quellen, Suche, Favoriten, Sortierung und Channel-Editor
-- **EPG (Electronic Program Guide)** – XMLTV-Parsing mit Vollbild-Overlay, Favoriten-Ansicht und Zeitslots (2/4/8/12/24h)
-- **DVR-Timeshift** – Bei unterstützten Live-Streams Sendungen zurückspulen und per EPG-Marker direkt anspringen
-- **Mediathek-Integration** – ARD/ZDF/arte-Suche via MediathekViewWeb-API
-- **Picture-in-Picture** – Schwebe-Fenster für paralleles Streamen (auch TV-Streams)
-- **Browser-Navigation** – Zurück, Vorwärts und Neu-laden über Webview-API
-- **Kompakte Navigationsleiste** – Erweitert sich bei Hover
-- **Verschiebbare Titelleiste** – Fenster per Leiste verschieben
-- **Widevine DRM** – Castlabs Electron mit VMP-Support (Netflix, Disney+, Prime Video)
-- **Chrome-Widevine-Fallback** – Nutzt ein vorhandenes Widevine-CDM von Chrome, abhängig vom Betriebssystem
-- **Custom User-Agent** – Chrome-identischer User-Agent (dynamisch via `process.versions.chrome`)
-- **Session-Persistenz** – Persistente Partitionen (`persist:streaming`, `persist:tv`)
-- **Permission-Handling** – Automatische Freigabe für Medien- und DRM-Anfragen
-- **Dark-UI** – Glasmorphismus mit anbieter-spezifischen Akzentfarben
-- **Plattform-Icons** – Eigenes App- und Dock-Icon auf macOS
-- **Auto-Update** – Git-basiertes Update-System
-- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen und Verlauf sichern/wiederherstellen
-- **Tastaturkürzel** – Strg+T (TV), Strg+H (Verlauf), Strg+P (PiP), F11 (Vollbild)
-- **typed-core Package** – TypeScript-Datenlogik (M3U-Parsing, EPG, TV-Channel) mit Unit-Tests
+- **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken, Aufnahmen und Einstellungen
+- **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
+- **EPG (Programmübersicht)** – Vollbild-Ansicht mit Favoriten und Zeitslots (2/4/8/12/24h)
+- **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, und später in der App abspielen
+- **Zeitversetztes Fernsehen (Timeshift)** – Bei unterstützten Live-Streams zurückspulen und Sendungen per EPG-Marker anspringen
+- **Mediathek-Suche** – ARD, ZDF und ARTE direkt aus der Programmübersicht durchsuchen
+- **Bild-in-Bild** – Schwebendes Fenster für paralleles Schauen (auch TV-Streams)
+- **Verlauf** – Zuletzt gesehene Inhalte mit Direktsprung
+- **Streaming-DRM** – Netflix, Disney+ und Prime Video funktionieren mit Widevine
+- **Gespeicherte Logins** – Du meldest dich bei jedem Dienst nur einmal an
+- **Einstellungen** – Dienste, TV-Quellen, Sender, EPG, Wiedergabe und Aufnahmen an einem Ort
+- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen und Verlauf sichern und wiederherstellen
+- **Auto-Update** – Neue Versionen direkt aus der App installieren
+- **Tastaturkürzel** – für Navigation, Verlauf, Aufnahmen, Bild-in-Bild und Vollbild
 
 ## Voraussetzungen
 
@@ -51,7 +44,6 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 |---|---|
 | **Node.js** | >= 22.12 |
 | **npm** | Kommt mit Node.js |
-| **Castlabs Electron** | `v42.0.0+wvcus` |
 | **Linux** | x86_64; Paketmanager apt, dnf, pacman oder zypper |
 | **macOS** | Intel (x64) und Apple Silicon (arm64) |
 
@@ -65,7 +57,7 @@ curl -fsSL https://raw.githubusercontent.com/keks-maker/streaming-hub/main/insta
 
 Unter Linux wird die App standardmäßig nach `~/.local/share/streaming-hub` installiert und im Anwendungsmenü eingetragen. Unter macOS liegen die App-Dateien standardmäßig in `~/Library/Application Support/Streaming Hub`; das native App-Bundle für Finder und Dock wird unter `~/Applications/Streaming Hub.app` installiert. Ein abweichender Installationspfad kann über `INSTALL_DIR` gesetzt werden.
 
-Der Installer kann Node.js unter Linux über den jeweiligen Paketmanager installieren. Auf macOS nutzt er Homebrew, falls Node.js fehlt oder zu alt ist und Homebrew bereits installiert ist
+Der Installer kann Node.js unter Linux über den jeweiligen Paketmanager installieren. Auf macOS nutzt er Homebrew, falls Node.js fehlt oder zu alt ist und Homebrew bereits installiert ist.
 
 Homebrew-Installation (https://brew.sh/):
 ```bash
@@ -73,18 +65,6 @@ Homebrew-Installation (https://brew.sh/):
 ```
 
 Andernfalls müssen Node.js und npm vorher installiert sein. Windows wird von `install.sh` nicht unterstützt.
-
-### macOS-Release-Layout und Signaturprüfung
-
-Neue GitHub-macOS-ZIPs werden mit `asar: false` gebaut. Ihr Inhalt ist deshalb
-`Streaming Hub.app/Contents/Resources/app/` als echtes Verzeichnis; das entspricht
-dem Checkout-Installer und dem In-App-Updater (`Contents/Resources/app`). Bereits
-veröffentlichte 0.5.x-ZIPs mit `app.asar` werden von Installer und Updater per
-`@electron/asar` in dasselbe Verzeichnislayout entpackt. Der Installer baut
-Wrapper und Plist zunächst in einem Staging-Bundle und ersetzt die bestehende
-Installation erst nach erfolgreicher EVS- oder `codesign`-Prüfung.
-Fehlt EVS, ist `codesign` nicht verfügbar oder schlägt die finale Prüfung fehl,
-bricht der Installer ab und lässt den bisherigen Stand unverändert.
 
 ### Manueller macOS-Download (ZIP aus dem Browser)
 
@@ -101,55 +81,17 @@ Quarantäne-Flag und Gatekeeper blockiert den ersten Start:
 Installationen über den In-App-Updater oder den Installer sind nicht betroffen
 (kein Quarantäne-Flag).
 
-## Projektstruktur
-
-```
-Streaming-Hub/
-├── main.js              # Electron-Hauptprozess (Fenster, DRM, Auto-Update)
-├── preload.js           # Preload für Hauptfenster
-├── preload-content.js   # Preload für Webview-Inhalte (Anti-Detection)
-├── renderer.js          # UI-Logik, Webview-Steuerung (Source)
-├── dist/renderer.js     # Gebündelte UI-Logik (esbuild)
-├── logger.js            # Strukturiertes Logging
-├── updater.js           # Auto-Update via Git/Gitea
-├── index.html           # Haupt-UI
-├── tv.html              # HLS-TV-Player
-├── pip.html             # Picture-in-Picture-Fenster
-├── styles.css           # Dark-UI, Animationen
-├── start.sh             # Startskript (Linux/macOS)
-├── start.cmd            # Startskript (Windows)
-├── install.sh           # Installer (Linux/macOS)
-├── package.json         # Abhängigkeiten + Workspaces
-├── CHANGELOG.md         # Versionshistorie
-├── services.json        # Streaming-Dienst-Konfiguration
-├── tvsources.json       # TV-Quellen-Konfiguration
-├── packages/
-│   └── typed-core/      # TypeScript-Package (Datenlogik, M3U, EPG, TV)
-│       ├── src/         # TypeScript-Source (format.ts, epg.ts, tv.ts, mediathek.ts)
-│       ├── dist/        # Kompiliertes JS
-│       └── tests/       # Vitest Unit-Tests
-├── scripts/
-│   ├── build-renderer.js  # esbuild-Bundler
-│   └── watch-renderer.js  # Watch-Mode
-└── assets/
-    ├── icons/           # Dienst-Icons
-    ├── screenshots/     # Aktuelle UI-Screenshots
-    ├── icon.svg         # Vektor-App-Icon
-    ├── icon.png         # App- und Dock-Icon
-    └── icon.icns        # macOS-App-Icon
-```
-
 ## Bedienung
 
 ### Startseite
 
-Die Startseite bündelt die vier Bereiche Live-TV, Streaming, Mediatheken und Einstellungen. Wähle eine Kachel, um den Bereich zu öffnen.
+Die Startseite bündelt die Bereiche Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen. Wähle eine Kachel, um den Bereich zu öffnen.
 
 ![Start-Dashboard der Version 0.4.84](assets/screenshots/startseite.png)
 
 ### Navigationsleiste
 
-In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken und Einstellungen.
+In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen.
 
 ![Navigationsleiste und Streaming-Dashboard, Version 0.4.84](assets/screenshots/navbar.png)
 
@@ -173,13 +115,13 @@ Die Senderverwaltung bietet eine Suche, getrennte Ansichten für alle Sender und
 
 #### TV-Quellen verwalten
 
-Öffne **Einstellungen** und wähle **TV-Quellen verwalten**, um TV-Quellen zu pflegen:
-- **Quellen-Name** – z.B. "Deutsche Sender"
+Öffne **Einstellungen → LiveTV → Quellen**, um TV-Quellen zu pflegen. Du kannst Quellen hinzufügen, bearbeiten und entfernen:
+- **Name** – z.B. „Deutsche Sender“
 - **M3U-URL** – Link zu einer M3U-Playlist (oder lokale Datei über 📁)
 - **EPG-URL** (optional) – Link zu einer XMLTV-Datei für Programminformationen
-- **Akzentfarbe** – Farbe für die Quellen-Kennzeichnung
+- **Farbe** – Kennzeichnung der Quelle
 
-Eine vorkonfigurierte Quelle (Deutsche Öffentlich-Rechtliche) ist bereits enthalten.
+Favoriten und Anpassungen bleiben beim Bearbeiten einer Quelle erhalten. Eine vorkonfigurierte Quelle (Deutsche Öffentlich-Rechtliche) ist bereits enthalten. Unter **LiveTV → EPG** siehst du die EPG-URL je Quelle und kannst das Programm manuell aktualisieren.
 
 #### Sender auswählen
 
@@ -215,15 +157,40 @@ Bewege die Maus, um die Steuerungs-Overlays einzublenden:
 - **Audiospur** – Dropdown bei Sendern mit mehreren Tonspuren
 - **Vollbild** – Button oder `F`
 
-#### Sender bearbeiten (Channel-Editor)
+#### Sender bearbeiten
 
-Öffne in den Einstellungen **Sender bearbeiten**, um den Channel-Editor aufzurufen:
-- **Name** – Anzeigename des Senders
-- **URL** – Stream-URL überschreiben
-- **tvg-id** – Zuordnung für EPG-Daten (mit Autovervollständigung aus EPG-Quellen)
-- **Logo-URL** – Senderlogo überschreiben
+Unter **Einstellungen → LiveTV → Sender** verwaltest du alle Sender: Suche, Filter nach Quelle, Favoriten per Stern und Reihenfolge der Favoriten. Wähle einen Sender, um ihn anzupassen:
+- **Name** – Anzeigename
+- **EPG-Zuordnung** – Programmdaten (tvg-id) zuweisen, mit Auswahlliste
+- **Logo-URL** – Senderlogo ersetzen, mit Vorschau
+- **Stream-URL** – Stream überschreiben, mit „Auf Original zurücksetzen“
 
 Die Änderungen werden pro TV-Quelle gespeichert und sind sofort aktiv.
+
+#### Aufnahmen
+
+Live-TV-Sendungen lassen sich direkt im TV-Player aufnehmen und später ansehen. Voraussetzung ist, dass die Aufnahme-Komponente (ffmpeg) verfügbar ist; ihren Status zeigt **Einstellungen → LiveTV → Aufnahmen**.
+
+**Aufnahme starten:** Klicke im TV-Player unten auf den Aufnahme-Button (Ring mit Punkt) oder drücke `R`. Es erscheint ein Dialog mit drei Optionen:
+- **Ab Bildposition starten** – Beginnt an der Stelle, die du gerade im Zeitversatz ansiehst (am Live-Bild nicht verfügbar)
+- **Aktuell angezeigte Sendung aufnehmen** – Nimmt die laufende Sendung ab ihrem Anfang auf, sofern dieser noch im Zeitversatz-Fenster des Senders liegt
+- **Bis zum Ende der Sendung** – Nimmt ab jetzt auf und stoppt automatisch am Sendungsende (benötigt EPG-Daten)
+
+Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es können bis zu drei Aufnahmen gleichzeitig laufen (je Sender eine).
+
+![Aufnahme-Dialog im TV-Player](assets/screenshots/aufnahme-dialog.png)
+
+**Laufende Aufnahme:** Oben im Player zeigt ein „REC“-Hinweis mit Laufzeit, Sender und Sendung, dass aufgenommen wird – auch wenn du den Sender wechselst. Ein Klick darauf (oder auf den roten Aufnahme-Button) öffnet die Verwaltung zum Beenden. Aufnahmen laufen weiter, wenn du das Fenster schließt: Die App bleibt dann im Tray (Symbol rot bei laufender Aufnahme) und lässt sich von dort öffnen oder die Aufnahme stoppen. Reißt die Verbindung kurz ab, versucht die App automatisch, die Aufnahme fortzusetzen; nach einem Absturz werden unvollständige Aufnahmen beim nächsten Start gerettet.
+
+**Aufnahmen ansehen:** Öffne auf der Startseite die Kachel **Aufnahmen** oder drücke `Strg` + `R`. Die Übersicht zeigt Titel, Sender, Datum, Dauer und Status jeder Aufnahme. Hier kannst du Aufnahmen abspielen und löschen. Während eine Aufnahme nach dem Beenden in das MP4-Format umgewandelt wird, siehst du den Fortschritt; fertige Aufnahmen liegen als normale MP4-Dateien im Speicherordner und lassen sich auch mit anderen Playern öffnen.
+
+![Aufnahmen-Übersicht](assets/screenshots/aufnahmen-dashboard.png)
+
+**Speicherort:** Standardmäßig `~/Videos/Streaming Hub`. Unter **Einstellungen → LiveTV → Aufnahmen** kannst du einen anderen Ordner wählen (auch Netzwerkpfade, mit Warnhinweis). Der Wechsel ist nur möglich, solange keine Aufnahme läuft.
+
+![Einstellungen für Aufnahmen: Speicherort und ffmpeg-Status](assets/screenshots/einstellungen-aufnahmen.png)
+
+> **Hinweis:** Aufnahmen funktionieren für Live-TV-Sender aus deinen M3U-Quellen, nicht für DRM-geschützte Streaming-Dienste.
 
 ### EPG – Programmübersicht
 
@@ -256,17 +223,21 @@ Ein Klick auf einen Eintrag springt direkt zum entsprechenden Dienst oder TV-Sen
 
 ### Einstellungen
 
-Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu öffnen.
+Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu öffnen. Links wählst du eine Seite aus:
 
-![Einstellungen mit Diensteverwaltung und TV-Modus, Version 0.4.84](assets/screenshots/settings.png)
+- **Allgemein** – Backup & Restore
+- **LiveTV** – Quellen, Sender, EPG, Wiedergabe (TV-Modus) und Aufnahmen
+- **Streaming** – Streaming-Dienste hinzufügen und entfernen
+- **Mediatheken** – Mediatheken hinzufügen und entfernen
+
+![Einstellungen mit Seitenleiste und Senderverwaltung](assets/screenshots/settings.png)
 
 #### Backup & Restore
 - **Backup erstellen** – Speichert Dienste, TV-Quellen und Verlauf als Datei
 - **Backup einspielen** – Stellt ein vorheriges Backup wieder her
 
 #### Dienste verwalten
-- **Dienste hinzufügen** – Eigene Streaming-Dienste oder Mediatheken hinzufügen (Name, URL, Icon, Farbe, Gruppe)
-- **Dienste entfernen** – Dienste mit dem ×-Button entfernen
+Über **+** fügst du eigene Streaming-Dienste oder Mediatheken hinzu (Name, URL, Icon, Farbe); mit dem ×-Button entfernst du sie wieder.
 
 #### TV-Modus
 - **FreeTV** – TV-Button öffnet die Sidebar mit eigenen M3U-Sendern
@@ -280,8 +251,10 @@ Drücke `?` für eine Übersicht aller Kürzel:
 |---|---|
 | `Strg` + `Tab` | Nächster Dienst |
 | `Strg` + `Umsch` + `Tab` | Vorheriger Dienst |
+| `Alt` + `←` | Zurück zur vorherigen Ansicht |
 | `Strg` + `H` | Verlauf anzeigen |
-| `Strg` + `T` | TV-Sidebar umschalten |
+| `Strg` + `R` | Aufnahmen öffnen |
+| `Strg` + `T` | Live-TV öffnen |
 | `Strg` + `P` | Bild-in-Bild umschalten |
 | `F11` | Vollbild umschalten |
 | `?` | Kürzel-Übersicht |
@@ -296,6 +269,7 @@ Drücke `?` für eine Übersicht aller Kürzel:
 | `M` | Stumm schalten |
 | `←` / `→` | 10s zurück / vor |
 | `L` | Zur Live-Kante springen (DVR-Streams) |
+| `R` | Aufnahme starten bzw. verwalten |
 | `+` / `-` | Lautstärke hoch / runter |
 
 ### Auto-Update
@@ -304,21 +278,7 @@ Der Update-Button in der Navigationsleiste zeigt den Status:
 - **Grüner Haken** – App ist aktuell
 - **Roter Pfeil (pulsierend)** – Update verfügbar
 
-Klicke auf den Button, um das Update zu starten. Die App lädt die neue Version herunter und startet automatisch neu.
-
-## E2E-Tests
-
-Playwright-Smoke-Test der Desktop-App (`e2e/smoke.spec.js`), gestartet über `_electron.launch()` mit dem Castlabs-Electron aus `node_modules` — es wird kein Browser heruntergeladen (bei der Installation optional `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`).
-
-```bash
-npm run test:e2e                                   # electron . (Standard)
-E2E_APP_PATH="release/mac-arm64/Streaming Hub.app" npm run test:e2e   # gegen das gepackte Artefakt
-```
-
-- Prüft: Hauptfenster + Kern-DOM, keine uncaught Exceptions/Konsolen-Errors beim Start (bekannte harmlose Meldungen stehen kommentiert in `KNOWN_HARMLESS`), Favoriten-UI (LiveTV → Alle Sender → Favoriten) und Aufnahmen-Einstieg (Dashboard + Speicherort-Einstellung).
-- Isoliert: `userData` und `HOME` liegen in einem Temp-Verzeichnis (Env `STREAMING_HUB_USER_DATA`, siehe `main.js`), das Netz ist gesperrt, der Updater wird nie ausgelöst. Echte Nutzerdaten werden nicht berührt; ein Build ohne diesen Hook (zu alt) wird vor dem Start abgelehnt.
-- `E2E_APP_PATH` akzeptiert eine `.app` (macOS) oder eine ausführbare Datei; ohne Variable läuft `electron .`.
-- Läuft bewusst nicht in `npm test` (braucht ein Display und startet echte Electron-Prozesse).
+Klicke auf den Button, um das Update zu starten. Die App lädt die neue Version herunter und startet automatisch neu. Laufende Aufnahmen solltest du vorher beenden.
 
 ## Lizenz
 
