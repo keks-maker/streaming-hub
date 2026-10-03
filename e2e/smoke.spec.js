@@ -241,14 +241,15 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await expect(page.locator('#settingsAddForm')).toBeVisible();
   await expect(page.locator('#settingsInputGroup')).toHaveValue('mediathek');
 
-  // Formular wird beim Seitenwechsel zurückgesetzt und geschlossen.
-  await page.locator('#settingsInputName').fill('Testdienst');
+  // Formular wird beim Seitenwechsel zurückgesetzt und geschlossen (ohne erneuten +-Klick prüfen).
   await page.locator('#settingsTab-streaming').click();
-  await page.locator('#settingsTab-mediathek').click();
-  await expect(page.locator('#settingsAddForm')).toBeHidden();
-  await page.locator('#settingsAddMediathekBtn').click();
-  await expect(page.locator('#settingsInputName')).toHaveValue('');
+  await page.locator('#settingsAddDienstBtn').click();
+  await expect(page.locator('#settingsAddForm')).toBeVisible();
+  await page.locator('#settingsInputName').fill('Testdienst');
   await page.locator('#settingsTab-general').click();
+  await page.locator('#settingsTab-streaming').click();
+  await expect(page.locator('#settingsAddForm')).toBeHidden();
+  await expect(page.locator('#settingsInputName')).toHaveValue('');
 
   // Pfeiltasten wechseln die Seite (Mediatheken -> Allgemein per Home).
   await page.locator('#settingsTab-mediathek').focus();
