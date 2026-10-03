@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix (Build, macOS): Das Release-ZIP enthielt eine inkonsistente Ad-hoc-Signatur (`codesign --verify --deep --strict`: „code has no resources but signature indicates they must be present“; Info.plist nicht gebunden, Sealed Resources = none). Nach manuellem Browser-Download zeigte Gatekeeper deshalb „Streaming Hub ist beschädigt“. `scripts/evs-afterPack.js` signiert die gesamte `.app` nach dem VMP-Signieren (`castlabs_evs.vmp sign-pkg`) mit `codesign --force --deep -s -` konsistent ad-hoc neu und verifiziert sie (`--verify --deep --strict`); `build.mac.identity: null` verhindert erneutes Signieren durch electron-builder. Die VMP-Signatur bleibt gültig (`verify-pkg` am entpackten ZIP: „streaming“). Weiterhin nicht notarisiert: README beschreibt Rechtsklick → Öffnen bzw. `xattr -cr`.
+
 ## 0.5.26 (2026-10-03) — macOS-Updater-Fix (default_app.asar ENOENT)
 
 - Fix (Updater, macOS): In-App-Update scheiterte mit `ENOENT, not found in …/Contents/Resources/default_app.asar`. Root-Cause: Electrons asar-fs-Patch behandelt `Contents/Resources/default_app.asar` im Updater-Prozess als Archiv, sodass `copyBundleTree` beim Kopieren des Bundles warf — jedes Mac-Update scheiterte. Beleg: `~/Library/Logs/Streaming Hub/updater.log`; mit Castlabs-Electron reproduziert und behoben. `updater.js` setzt jetzt `process.noAsar = true` (vor allen fs-Zugriffen), `main.js` übergibt `ELECTRON_NO_ASAR=1` an beide `fork()`-Aufrufe. Regressionstest `tests/updater-asar.test.js`.

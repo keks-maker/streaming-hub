@@ -86,6 +86,21 @@ Installation erst nach erfolgreicher EVS- oder `codesign`-Prüfung.
 Fehlt EVS, ist `codesign` nicht verfügbar oder schlägt die finale Prüfung fehl,
 bricht der Installer ab und lässt den bisherigen Stand unverändert.
 
+### Manueller macOS-Download (ZIP aus dem Browser)
+
+Die App ist nicht notarisiert (kein Apple-Developer-Account); das Bundle ist nur
+ad-hoc signiert. Wird das ZIP manuell im Browser geladen, setzt macOS das
+Quarantäne-Flag und Gatekeeper blockiert den ersten Start:
+
+- Entpacken, `Streaming Hub.app` nach `/Applications` ziehen, beim ersten Start
+  Rechtsklick → **Öffnen** → **Öffnen** bestätigen (ggf. unter Systemeinstellungen →
+  Datenschutz & Sicherheit → „Trotzdem öffnen“).
+- Meldet macOS „Streaming Hub ist beschädigt und kann nicht geöffnet werden“,
+  Quarantäne-Flag entfernen: `xattr -cr "/Applications/Streaming Hub.app"`
+
+Installationen über den In-App-Updater oder den Installer sind nicht betroffen
+(kein Quarantäne-Flag).
+
 ## Projektstruktur
 
 ```
