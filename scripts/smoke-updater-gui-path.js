@@ -19,8 +19,53 @@ function sh(cmd, opts = {}) {
   return execFileSync('sh', ['-c', cmd], { stdio: ['pipe', 'pipe', 'pipe'], ...opts }).toString();
 }
 
+// Vom Kopieren ausgenommen: Build-Ausgaben und Binaries, die die Discovery nicht braucht
+// (release/ ~2,6 GB, bin/ffmpeg + bin/ffprobe ~150 MB). bin/ensure-ffmpeg.js bleibt erhalten.
+const TAR_EXCLUDES = [
+  'node_modules',
+  '.git',
+  'dist',
+  'packages/typed-core/dist',
+  './release',
+  './out',
+  './test-results',
+  './playwright-report',
+  './.cache',
+  './bin/ffmpeg',
+  './bin/ffprobe',
+];
+
+// Eigenes Temp-Verzeichnis dieses Laufs; wird in jedem Fall (Erfolg, Fehler, Timeout,
+// SIGINT/SIGTERM) entfernt. Nur dieses selbst angelegte Verzeichnis wird gelöscht.
+let tmpDir = null;
+let activeChild = null;
+
+function cleanup() {
+  if (activeChild) {
+    try {
+      activeChild.kill();
+    } catch {
+      /* bereits beendet */
+    }
+    activeChild = null;
+  }
+  if (tmpDir) {
+    const dir = tmpDir;
+    tmpDir = null;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(sig, () => {
+    cleanup();
+    process.exit(128 + (os.constants.signals[sig] || 1));
+  });
+}
+
 async function main() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'updater-smoke-'));
+  tmpDir = tmp;
   const appDir = path.join(tmp, 'app');
   console.log('[smoke] sandbox:', appDir);
 
@@ -29,7 +74,7 @@ async function main() {
   sh(`git init --quiet`, { cwd: appDir });
   sh(`git config user.email t@t && git config user.name t`, { cwd: appDir });
   // Arbeitskopie ohne node_modules/dist/.git kopieren
-  sh(`tar -C ${JSON.stringify(REPO)} --exclude=node_modules --exclude=.git --exclude=dist --exclude=packages/typed-core/dist -cf - . | tar -C ${JSON.stringify(appDir)} -xf -`);
+  sh(`tar -C ${JSON.stringify(REPO)} ${TAR_EXCLUDES.map(e => `--exclude=${e}`).join(' ')} -cf - . | tar -C ${JSON.stringify(appDir)} -xf -`);
   sh(`git add -A && git commit --quiet -m base`, { cwd: appDir });
   sh(`git tag v0.5.12`, { cwd: appDir });
   // Zustand "altes Tag": Datei ändern + commit (HEAD ≠ Tag) + Tag löschen
@@ -51,6 +96,7 @@ async function main() {
       STREAMING_HUB_UPDATER_LOG: path.join(tmp, 'updater.log'),
     },
   });
+  activeChild = child;
 
   const result = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('timeout nach 240s')), 240000);
@@ -87,11 +133,14 @@ async function main() {
   } else {
     console.log(`[smoke] RELEASE-DISCOVERY OK: höchster gültiger Release v${result.latest}, v${CURRENT_VERSION} ist up to date`);
   }
-  child.kill();
-  setTimeout(() => process.exit(process.exitCode || 0), 500);
 }
 
-main().catch(e => {
-  console.error('[smoke] FEHLER:', e.message);
-  process.exit(1);
-});
+main()
+  .catch(e => {
+    console.error('[smoke] FEHLER:', e.message);
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    cleanup();
+    process.exit(process.exitCode || 0);
+  });
