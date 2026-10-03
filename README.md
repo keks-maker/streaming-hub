@@ -105,13 +105,13 @@ Nach dem Klick auf einen Dienst wird die Webseite im Hauptbereich geladen. Deine
 
 Wähle in der Navigationsleiste **LiveTV**. Das Dashboard zeigt geladene Sender als Kacheln, Favoriten sowie die aktuelle EPG-Programmübersicht. Über **Alle Sender** öffnest du die Senderverwaltung.
 
-![Live-TV-Dashboard, Version 0.4.84](assets/screenshots/livetv-dashboard.png)
+![Live-TV-Dashboard mit Favoriten und aktueller Sendung](assets/screenshots/livetv-dashboard.png)
 
 #### Sender verwalten
 
-Die Senderverwaltung bietet eine Suche, getrennte Ansichten für alle Sender und Favoriten sowie Sortierung und Senderbearbeitung.
+Die Senderverwaltung findest du unter **Einstellungen → LiveTV → Sender** (auch über **Senderverwaltung** im Live-TV-Dashboard). Sie bietet eine Suche, getrennte Ansichten für alle Sender und Favoriten sowie Sortierung und Senderbearbeitung (Name, EPG-Zuweisung, Logo, Stream-URL). Ein Hinweis zeigt, ob zu einem Sender EPG-Daten gefunden wurden.
 
-![Senderverwaltung, Version 0.4.84](assets/screenshots/tv-senderverwaltung.png)
+![Senderverwaltung unter Einstellungen → LiveTV → Sender](assets/screenshots/tv-senderverwaltung.png)
 
 #### TV-Quellen verwalten
 
@@ -196,7 +196,7 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es kön
 
 Klicke im Live-TV-Dashboard auf **EPG öffnen**, um die vollständige Programmübersicht aufzurufen.
 
-![EPG-Programmübersicht, Version 0.4.84](assets/screenshots/epg-uebersicht.png)
+![EPG-Programmübersicht](assets/screenshots/epg-uebersicht.png)
 
 Die EPG-Ansicht zeigt:
 - **Zeitleiste** – Alle Favoriten-Sender mit Sendungen als Balken
@@ -207,7 +207,7 @@ Klicke auf eine Sendung für Details:
 - **Sender öffnen** – Sender direkt starten
 - **In Mediathek ansehen** – Sendung in ARD/ZDF/arte Mediathek suchen (falls verfügbar)
 
-![EPG-Sendungsdetails mit Aktionen, Version 0.4.84](assets/screenshots/epg-sendung.png)
+![EPG-Sendungsdetails mit Aktionen](assets/screenshots/epg-sendung.png)
 
 ### Mediathek-Suche
 
@@ -219,7 +219,7 @@ Klicke auf das Uhr-Icon in der Navigationsleiste oder drücke `Strg+H`, um den V
 
 Ein Klick auf einen Eintrag springt direkt zum entsprechenden Dienst oder TV-Sender. Mit "Löschen" kannst du den gesamten Verlauf leeren.
 
-![Wiedergabeverlauf, Version 0.4.84](assets/screenshots/verlauf.png)
+![Wiedergabeverlauf](assets/screenshots/verlauf.png)
 
 ### Einstellungen
 
