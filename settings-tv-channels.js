@@ -74,6 +74,7 @@ function createTvChannelsView({
     page: 0,
     open: null, // { key, sourceId, channelId, draft, errors }
     renderMs: 0,
+    lastListHtml: null,
   };
 
   function setStatus(message, isError = false) {
@@ -722,19 +723,25 @@ function createTvChannelsView({
 
     const noQuery = !state.query.trim();
     const ctx = { sourcesMap, multiSource: sources.length > 1, canReorder: noQuery };
-    listHost.innerHTML = '';
+    // Liste zuerst in einen Zwischenbehälter bauen: Ist das Ergebnis identisch zum letzten Stand
+    // (typisch: Broadcast direkt nach dem eigenen Speichern), bleiben die vorhandenen Zeilen
+    // unangetastet. So gehen laufende Klicks/Drags nicht an ersetzte Elemente verloren.
+    const stage = window.document.createElement('div');
     if (!sources.length) {
-      listHost.appendChild(el('div', 'service-list-empty', 'Keine TV-Quellen konfiguriert. Quellen verwaltest du unter „Quellen“.'));
+      stage.appendChild(el('div', 'service-list-empty', 'Keine TV-Quellen konfiguriert. Quellen verwaltest du unter „Quellen“.'));
     } else if (!channels.length) {
-      listHost.appendChild(el('div', 'service-list-empty', 'Keine Sender geladen.'));
+      stage.appendChild(el('div', 'service-list-empty', 'Keine Sender geladen.'));
     } else if (!items.length) {
-      listHost.appendChild(
+      stage.appendChild(
         el('div', 'service-list-empty', state.view === 'favorites' && noQuery ? 'Keine Favoriten vorhanden.' : 'Keine Sender gefunden.'),
       );
     }
-    const fragment = document.createDocumentFragment();
-    info.items.forEach(ch => fragment.appendChild(buildRow(ch, ctx)));
-    listHost.appendChild(fragment);
+    info.items.forEach(ch => stage.appendChild(buildRow(ch, ctx)));
+    const html = stage.innerHTML;
+    if (html !== state.lastListHtml) {
+      listHost.replaceChildren(...stage.childNodes);
+      state.lastListHtml = html;
+    }
     if (state.view === 'favorites' && !noQuery && items.length) {
       countEl.textContent = `${info.total} Treffer – Umsortieren ist während der Suche deaktiviert`;
     } else {

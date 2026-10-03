@@ -32,6 +32,11 @@ function m3u(prefix, count) {
   return lines.join('\n') + '\n';
 }
 
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 const SEEDED_OVERRIDES = {
   'geist-1': { name: 'Bestand', url: 'http://192.168.0.5/legacy.m3u8', fremdfeld: { a: 1 } },
   'geist-2': { tvgId: 'g2.de', tvgLogo: 'logos/g2.png' },
@@ -204,7 +209,8 @@ test('Favoriten setzen und umsortieren (Buttons, Tastatur, Drag&Drop)', async ()
   // Ränder: erster Eintrag kann nicht weiter hoch
   await expect(row('A0002').locator('[data-action="up"]')).toBeDisabled();
 
-  // Drag&Drop: A0001 vor A0002 ziehen
+  // Drag&Drop: A0001 vor A0002 ziehen (erst nach persistiertem Stand und ruhiger Liste)
+  await expect.poll(idsOf).toEqual([favs[0], favs[3], favs[1], favs[2]]);
   await row('A0001').locator('.settings-chan-drag').dragTo(row('A0002'));
   await expect.poll(names).toEqual(['Kanal A0001', 'Kanal A0002', 'Kanal A0003']);
   const persisted = await idsOf();
@@ -217,6 +223,47 @@ test('Favoriten setzen und umsortieren (Buttons, Tastatur, Drag&Drop)', async ()
   // Favorit entfernen
   await row('A0003').locator('[data-action="fav"]').click();
   await expect.poll(names).toEqual(['Kanal A0001', 'Kanal A0002']);
+  await page.locator('#settingsTvChannelsViewAll').click();
+});
+
+test('Unveränderte Ansicht: tv-sources-changed ersetzt keine Zeilen (kein Re-Render-Flackern)', async () => {
+  // Ursache der selten verlorenen Klicks/Drags im Gesamtlauf: nach jeder Änderung baute die Liste
+  // zweimal kurz hintereinander neu auf (eigenes Render + Broadcast). Ein Klick/Drag zwischen beiden
+  // Aufbauten traf ein bereits ersetztes Element. Identische Ergebnisse ersetzen die Zeilen nicht mehr.
+  await page.locator('#settingsTvChannelsSearch').fill('');
+  await page.locator('#settingsTvChannelsViewFav').click();
+  await expect.poll(names).toEqual(['Kanal A0001', 'Kanal A0002']);
+  await rows().first().evaluate(el => {
+    el.dataset.testMarker = 'bleibt';
+  });
+  const color = (await sources()).find(s => s.id === 'qb').color === '#334455' ? '#445566' : '#334455';
+  await page.evaluate(c => window.electronAPI.updateTvSource('qb', { color: c }), color);
+  await expect.poll(async () => (await sources()).find(s => s.id === 'qb').color).toBe(color);
+  await page.waitForTimeout(300);
+  await expect(rows().first()).toHaveAttribute('data-test-marker', 'bleibt');
+  await page.locator('#settingsTvChannelsViewAll').click();
+});
+
+test('Drag&Drop übersteht ein tv-sources-changed (Re-Render) mitten im Ziehen', async () => {
+  // Regression: ein Broadcast mitten im Ziehen darf den Drop nicht verlieren.
+  await page.locator('#settingsTvChannelsSearch').fill('');
+  await page.locator('#settingsTvChannelsViewFav').click();
+  await expect.poll(names).toEqual(['Kanal A0001', 'Kanal A0002']);
+  const handle = row('A0002').locator('.settings-chan-drag');
+  const target = row('A0001');
+  const hb = await handle.boundingBox();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2 + 8, hb.y + hb.height / 2 - 8, { steps: 4 });
+  // Broadcast mitten im Ziehen (andere Quelle ändert ihre Farbe) und Render abwarten
+  const color = (await sources()).find(s => s.id === 'qb').color === '#112233' ? '#223344' : '#112233';
+  await page.evaluate(c => window.electronAPI.updateTvSource('qb', { color: c }), color);
+  await expect.poll(async () => (await sources()).find(s => s.id === 'qb').color).toBe(color);
+  await page.waitForTimeout(500);
+  const tb = await target.boundingBox();
+  await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(names).toEqual(['Kanal A0002', 'Kanal A0001']);
   await page.locator('#settingsTvChannelsViewAll').click();
 });
 
@@ -242,8 +289,13 @@ test('Sender bearbeiten: Override speichern, validieren, zurücksetzen – ohne 
   // Gültig speichern
   await detail.locator('input[data-field="name"]').fill('Eins');
   await detail.locator('input[data-field="tvgId"]').fill('eins.de');
+  // Das Logo wird per Route ausgeliefert (1x1-PNG), damit die Vorschau nicht vom Netz abhängt
+  // (sonst Rennen zwischen Sichtbar-Prüfung und error-Handler, der unerreichbare Logos ausblendet).
+  await page.route('https://logos.invalid/eins.png', route => route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 }));
   await detail.locator('input[data-field="tvgLogo"]').fill('https://logos.invalid/eins.png');
   await expect(detail.locator('.settings-chan-logo-preview')).toBeVisible();
+  await expect(detail.locator('.settings-chan-logo-preview')).toHaveAttribute('src', 'https://logos.invalid/eins.png');
+  await expect.poll(() => detail.locator('.settings-chan-logo-preview').evaluate(img => img.complete && img.naturalWidth)).toBe(1);
   await detail.locator('input[data-field="url"]').fill('https://streams.invalid/override.m3u8');
   await detail.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.locator('#settingsTvChannelsStatus')).toContainText('gespeichert');
