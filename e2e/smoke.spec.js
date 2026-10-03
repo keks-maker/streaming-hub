@@ -98,7 +98,13 @@ test.beforeAll(async () => {
   const target = resolveLaunchTarget();
   electronApp = await electron.launch({
     executablePath: target.executablePath,
-    args: [...target.args, '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost'],
+    // --use-mock-keychain: HOME zeigt auf ein temp-Verzeichnis ohne Login-Keychain; ohne den Schalter
+    // erscheint auf macOS gelegentlich der Dialog "Schlüsselbund nicht gefunden".
+    args: [
+      ...target.args,
+      '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost',
+      '--use-mock-keychain',
+    ],
     env: {
       ...process.env,
       HOME: home,

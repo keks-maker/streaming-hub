@@ -4,6 +4,7 @@
 
 - Einstellungen (#4, Etappe 1 „Shell“): Das Einstellungs-Panel ist jetzt eine Zwei-Spalten-Ansicht mit Seitenleiste und genau einer Seite statt einer langen Einzelkarte. Seiten: Allgemein (Backup), LiveTV (aufklappbar: Quellen, Sender, EPG, Wiedergabe/TV-Modus, Aufnahmen), Streaming, Mediatheken (jeweils Dienste-Liste und Dienst-hinzufügen-Formular). Seitenleiste aus Konfigurations-Array (`settings-view.js`), Tastaturbedienung (Tablist, Pfeiltasten/Home/End), letzte Seite wird gemerkt, bei schmalem Fenster Tab-Leiste oben. `showDashboard('settings', { page })` unterstützt einen Seitenparameter (Vorbereitung für Deep-Links). Kein Funktionsumbau: alle DOM-IDs, IPC- und Storage-Logik unverändert; verwaiste `.settings-btn`/`.settings-body`-CSS-Regeln entfernt.
 - Tests: neuer `tests/settings-view.test.js`; `e2e/smoke.spec.js` wählt die Seite „Aufnahmen“ explizit an und prüft Seitenwechsel per Seitenleiste/Tastatur.
+- Tests: `e2e/smoke.spec.js` startet Electron mit `--use-mock-keychain` (nur Test), damit auf macOS mit temp-HOME kein Dialog „Schlüsselbund nicht gefunden“ erscheint.
 
 ## 0.5.27 (2026-10-03) — macOS-Signatur-Fix (Gatekeeper „beschädigt“)
 
