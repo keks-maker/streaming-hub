@@ -1182,7 +1182,11 @@ ipcMain.handle('update-tv-source', (event, id, updates) => {
   const sourceId = validateText(id, 'Quellen-ID', 200);
   const sources = loadTvSources();
   const idx = sources.findIndex(s => s.id === sourceId);
-  const source = validateTvSourceUpdates(updates, idx !== -1 ? sources[idx].type : undefined);
+  const source = validateTvSourceUpdates(
+    updates,
+    idx !== -1 ? sources[idx].type : undefined,
+    idx !== -1 ? sources[idx].channelOverrides : undefined,
+  );
   if (
     source.url !== undefined &&
     (source.type || (idx !== -1 ? sources[idx].type : undefined)) === 'file' &&

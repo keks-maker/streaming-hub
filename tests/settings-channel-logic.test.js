@@ -91,6 +91,14 @@ test('validateOverrideChanges: URL http/https ohne lokale/private Ziele, Logo oh
   for (const priv of ['http://127.0.0.1/a', 'http://localhost/a', 'http://192.168.1.5/a', 'http://10.0.0.1/a', 'http://[::1]/a']) {
     assert.match(validateOverrideChanges({ url: priv }).url, /lokales oder privates/, priv);
   }
+  for (const bad of ['//evil.example/x.png', '\\\\host\\share\\x.png', 'file:///x.png', 'javascript:alert(1)', 'data:image/png;base64,AAAA']) {
+    assert.ok(validateOverrideChanges({ tvgLogo: bad }).tvgLogo, bad);
+  }
+  assert.deepEqual(validateOverrideChanges({ tvgLogo: 'logos/a.png' }), {});
+  for (const bad of ['http://0.0.0.0/x', 'http://[::ffff:127.0.0.1]/x', 'http://[fd00::1]/x', 'http://printer.lan/x', 'http://intranet/x']) {
+    assert.match(validateOverrideChanges({ url: bad }).url, /lokales oder privates/, bad);
+  }
+  assert.deepEqual(validateOverrideChanges({ url: 'http://[2001:4860:4860::8888]/x' }), {});
   assert.ok(validateOverrideChanges({ tvgLogo: 'javascript:alert(1)' }).tvgLogo);
   assert.ok(validateOverrideChanges({ tvgLogo: 'data:image/png;base64,AAAA' }).tvgLogo);
   assert.deepEqual(validateOverrideChanges({ tvgLogo: 'https://l.example/x.png' }), {});

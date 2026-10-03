@@ -19,6 +19,7 @@ const {
   paginate,
 } = require('./lib/settings-channel-logic.js');
 const { formatIpcError } = require('./settings-tv-sources.js');
+const { channelLogoError } = require('./lib/input-validation.js');
 
 const PAGE_SIZE = 50;
 const COMBO_LIMIT = 100;
@@ -51,6 +52,18 @@ function createTvChannelsView({
   const listHost = root.querySelector('#settingsTvChannelsList');
   const pagerHost = root.querySelector('#settingsTvChannelsPager');
   const statusEl = root.querySelector('#settingsTvChannelsStatus');
+
+  // Logo-URL für die Anzeige. Eingegebene bzw. gespeicherte Overrides werden nur als http(s)-URL
+  // gezeigt (kein file:/UNC-Zugriff, kein Auflösen gegen die App-URL); das Playlist-Logo
+  // (ch.logo) behält das bisherige Verhalten.
+  function overrideLogoUrl(value) {
+    const text = String(value || '').trim();
+    if (!text || channelLogoError(text) || !/^https?:\/\//i.test(text)) return '';
+    return safeResourceUrl(text, { allowRelative: false });
+  }
+  function displayLogoUrl(ch) {
+    return overrideLogoUrl(ch.tvgLogo) || safeResourceUrl(ch.logo);
+  }
 
   const state = {
     selected: null, // Set der Quellen-IDs; null = alle
@@ -333,7 +346,7 @@ function createTvChannelsView({
     preview.alt = '';
     preview.loading = 'lazy';
     function updatePreview() {
-      const safe = safeResourceUrl(draft.tvgLogo.trim());
+      const safe = overrideLogoUrl(draft.tvgLogo);
       if (safe) {
         preview.src = safe;
         preview.hidden = false;
@@ -429,7 +442,7 @@ function createTvChannelsView({
     logo.alt = '';
     logo.loading = 'lazy';
     logo.decoding = 'async';
-    const logoSrc = safeResourceUrl(ch.tvgLogo || ch.logo);
+    const logoSrc = displayLogoUrl(ch);
     if (logoSrc) logo.src = logoSrc;
     else logo.classList.add('empty');
     head.appendChild(logo);

@@ -32,6 +32,11 @@ function m3u(prefix, count) {
   return lines.join('\n') + '\n';
 }
 
+const SEEDED_OVERRIDES = {
+  'geist-1': { name: 'Bestand', url: 'http://192.168.0.5/legacy.m3u8', fremdfeld: { a: 1 } },
+  'geist-2': { tvgId: 'g2.de', tvgLogo: 'logos/g2.png' },
+};
+
 let tmpRoot;
 let electronApp;
 let page;
@@ -57,7 +62,18 @@ test.beforeAll(async () => {
   fs.writeFileSync(
     path.join(userData, 'tvsources.json'),
     JSON.stringify([
-      { id: 'qa', name: 'Quelle A', url: fileA, type: 'file', color: '#a78bfa', epgUrl: null, sortOrder: [] },
+      {
+        id: 'qa',
+        name: 'Quelle A',
+        url: fileA,
+        type: 'file',
+        color: '#a78bfa',
+        epgUrl: null,
+        sortOrder: ['geist-sort'],
+        // Bestandsdaten anderer Sender inkl. unbekanntem Feld und (heute unzulässiger) privater URL:
+        // müssen das Bearbeiten eines anderen Senders unverändert überstehen.
+        channelOverrides: { ...SEEDED_OVERRIDES },
+      },
       { id: 'qb', name: 'Quelle B', url: fileB, type: 'file', color: '#22c55e', epgUrl: null, sortOrder: [] },
     ]),
   );
@@ -162,7 +178,7 @@ test('Favoriten setzen und umsortieren (Buttons, Tastatur, Drag&Drop)', async ()
   const persisted = await idsOf();
   expect(persisted).toHaveLength(3);
   const reloaded = await sources();
-  expect(reloaded.find(s => s.id === 'qa').sortOrder).toEqual([]);
+  expect(reloaded.find(s => s.id === 'qa').sortOrder).toEqual(['geist-sort']);
 
   // Favorit entfernen
   await row('A0003').locator('[data-action="fav"]').click();
@@ -184,7 +200,7 @@ test('Sender bearbeiten: Override speichern, validieren, zurücksetzen – ohne 
   await detail.locator('input[data-field="url"]').fill('http://192.168.1.5/stream.m3u8');
   await detail.getByRole('button', { name: 'Speichern' }).click();
   await expect(row('A0001').locator('.settings-chan-error')).toContainText('lokales oder privates');
-  expect((await sources()).find(s => s.id === 'qa').channelOverrides).toBeUndefined();
+  expect((await sources()).find(s => s.id === 'qa').channelOverrides).toEqual(SEEDED_OVERRIDES);
   await detail.locator('input[data-field="url"]').fill('ftp://x.example/a');
   await detail.getByRole('button', { name: 'Speichern' }).click();
   await expect(row('A0001').locator('.settings-chan-error')).toContainText('http://');
@@ -199,7 +215,12 @@ test('Sender bearbeiten: Override speichern, validieren, zurücksetzen – ohne 
   await expect(page.locator('#settingsTvChannelsStatus')).toContainText('gespeichert');
 
   const after = (await sources()).find(s => s.id === 'qa');
-  const chId = Object.keys(after.channelOverrides)[0];
+  const chId = Object.keys(after.channelOverrides).find(k => !(k in SEEDED_OVERRIDES));
+  expect(chId).toBeTruthy();
+  // Overrides anderer Sender (inkl. unbekanntem Feld) bleiben unverändert erhalten.
+  expect(after.channelOverrides['geist-1']).toEqual(SEEDED_OVERRIDES['geist-1']);
+  expect(after.channelOverrides['geist-2']).toEqual(SEEDED_OVERRIDES['geist-2']);
+  expect(Object.keys(after.channelOverrides)).toHaveLength(3);
   expect(after.channelOverrides[chId]).toEqual({
     name: 'Eins',
     tvgId: 'eins.de',
@@ -224,7 +245,7 @@ test('Sender bearbeiten: Override speichern, validieren, zurücksetzen – ohne 
   await d2.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.locator('#settingsTvChannelsStatus')).toContainText('gespeichert');
   const reset = (await sources()).find(s => s.id === 'qa');
-  expect(reset.channelOverrides).toEqual({});
+  expect(reset.channelOverrides).toEqual(SEEDED_OVERRIDES);
   await search.fill('Kanal A0001');
   await expect(row('A0001')).toBeVisible();
   await expect(row('A0001')).not.toContainText('URL überschrieben');
