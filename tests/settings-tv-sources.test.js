@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { detectSourceType, buildNewSource, buildSourceUpdates, formatLoadedAt } = require('../settings-tv-sources.js');
+const { detectSourceType, buildNewSource, buildSourceUpdates, formatIpcError, formatLoadedAt } = require('../settings-tv-sources.js');
 const validation = require('../lib/input-validation.js');
 
 const original = {
@@ -70,4 +70,17 @@ test('formatLoadedAt: ungueltig -> leer', () => {
   assert.equal(formatLoadedAt(null), '');
   assert.equal(formatLoadedAt(new Date('x')), '');
   assert.notEqual(formatLoadedAt(new Date()), '');
+});
+
+test('formatIpcError: Invalid URL wird verständlich, Electron-Präfix entfällt', () => {
+  const msg = formatIpcError(new Error("Error invoking remote method 'update-tv-source': TypeError: Invalid URL"));
+  assert.match(msg, /Ungültige URL/);
+  assert.match(msg, /https:\/\//);
+  assert.doesNotMatch(msg, /TypeError|Invalid URL|remote method/);
+  assert.match(formatIpcError(new Error('Invalid URL')), /Ungültige URL/);
+  assert.equal(
+    formatIpcError(new Error("Error invoking remote method 'add-tv-source': Error: Quellenname ist ungültig")),
+    'Quellenname ist ungültig',
+  );
+  assert.equal(formatIpcError('einfacher Text'), 'einfacher Text');
 });

@@ -33,6 +33,7 @@ const KNOWN_HARMLESS = [
   // Einstellungen-Test legt eine Quelle auf *.invalid an; deren M3U-/EPG-Abruf scheitert erwartungsgemäß.
   "Error occurred in handler for 'fetch-and-parse-m3u': Error: Fehler beim Laden der M3U: fetch failed",
   "Error occurred in handler for 'fetch-epg': Error: Fehler beim Laden des EPG (https://e2e-quelle.invalid/",
+  "Error occurred in handler for 'update-tv-source': TypeError: Invalid URL",
   // Component-Updater (Widevine) braucht Netz/EVS-Sandbox; die App loggt dazu selbst eine Warnung.
   'Component updater failed',
   // Chromium/Electron-Rauschen ohne Bezug zur App.
@@ -344,7 +345,14 @@ test('Einstellungen: LiveTV-Quelle hinzufügen, bearbeiten, EPG-URL ändern, ent
   await edit.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.locator('#settingsTvSourcesStatus')).toHaveClass(/error/);
   expect((await sourceByName('E2E Quelle 2')).url).toBe('https://e2e-quelle.invalid/liste.m3u');
+  // Ungültige URL: verständlicher deutscher Text statt rohem "TypeError: Invalid URL".
+  await edit.locator('input[name="url"]').fill('keine url');
+  await edit.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#settingsTvSourcesStatus')).toContainText('Ungültige URL');
+  await expect(page.locator('#settingsTvSourcesStatus')).not.toContainText('TypeError');
+  // Abbrechen räumt den Fehlerstatus weg.
   await edit.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(page.locator('#settingsTvSourcesStatus')).toHaveText('');
 
   // EPG-Seite: URL pro Quelle ändern, Aktualisieren-Button + Status sichtbar
   await page.locator('#settingsTab-livetv-epg').click();

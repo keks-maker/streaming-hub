@@ -51,6 +51,19 @@ function buildSourceUpdates(original, form) {
   return updates;
 }
 
+// Fehlertext aus einem IPC-Fehler: Electron-Präfix entfernen, rohe Node-Meldungen
+// ("TypeError: Invalid URL") in verständliches Deutsch übersetzen.
+function formatIpcError(e) {
+  const raw = (e && e.message ? e.message : String(e)).replace(
+    /^Error invoking remote method '[^']+': (?:(?:Type|Range|Syntax)?Error: )?/,
+    '',
+  );
+  if (/^Invalid URL\b/i.test(raw)) {
+    return 'Ungültige URL – bitte die vollständige Adresse inklusive https:// eingeben';
+  }
+  return raw;
+}
+
 function formatLoadedAt(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
   return date.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
@@ -78,9 +91,7 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
     sourcesStatus.classList.toggle('error', Boolean(isError));
   }
 
-  function errorMessage(e) {
-    return (e && e.message ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
-  }
+  const errorMessage = formatIpcError;
 
   function field(labelText, input) {
     const wrap = el('label', 'settings-field');
@@ -184,6 +195,7 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
           submitLabel: 'Speichern',
           onCancel: () => {
             editingId = null;
+            setStatus('');
             render();
           },
           onSubmit: async (form, opts) => {
@@ -343,4 +355,4 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
   return { render, updateEpgInfo };
 }
 
-module.exports = { detectSourceType, buildNewSource, buildSourceUpdates, formatLoadedAt, createTvSourcesView };
+module.exports = { detectSourceType, buildNewSource, buildSourceUpdates, formatIpcError, formatLoadedAt, createTvSourcesView };
