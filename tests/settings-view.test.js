@@ -25,10 +25,11 @@ test('Jede Seite der Navigation hat genau ein Seiten-Element im Markup', () => {
 
 test('Bestehende Einstellungs-IDs bleiben erhalten', () => {
   for (const id of [
-    'backupBtn', 'restoreBtn', 'settingsTvSourcesBtn', 'settingsTvChannelsBtn', 'settingsEpgRefreshBtn',
+    'backupBtn', 'restoreBtn', 'settingsTvChannelsBtn', 'settingsEpgRefreshBtn',
     'recPathInput', 'recPathPickBtn', 'recPathSaveBtn', 'recPathResetBtn', 'recPathHint', 'recPathWarn',
     'recFfmpegStatus', 'settingsAddDienstBtn', 'settingsAddForm', 'settingsServiceListStreaming',
-    'settingsServiceListMediathek', 'settingsStatus',
+    'settingsServiceListMediathek', 'settingsStatus', 'settingsTvSourceList', 'settingsTvSourceAdd',
+    'settingsEpgSourceList', 'settingsEpgStatus',
   ]) {
     assert.ok(indexHtml.includes(`id="${id}"`), `${id} fehlt`);
   }

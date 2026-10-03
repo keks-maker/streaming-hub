@@ -2998,3 +2998,49 @@ body {
   .settings-nav-children[hidden] { display: contents; }
   .settings-nav-item[data-group]::before { content: attr(data-group) ": "; opacity: .6; }
 }
+
+/* ═══ Einstellungen: LiveTV-Quellen und EPG (Etappe 2) ═══ */
+.settings-source-list,
+.settings-epg-list { display: flex; flex-direction: column; gap: 8px; }
+.settings-source-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.settings-source-row.editing { display: block; border-color: var(--accent); }
+.settings-source-color { width: 10px; height: 36px; border-radius: 5px; flex-shrink: 0; }
+.settings-source-info { flex: 1; min-width: 0; }
+.settings-source-name { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.settings-source-type {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(167,139,250,0.15);
+  color: var(--text-dim);
+}
+.settings-source-meta { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-source-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.settings-source-actions .settings-action-btn { padding: 7px 12px; font-size: 13px; }
+.settings-danger-btn:hover { border-color: #ef4444; color: #ef4444; }
+.settings-source-form { display: flex; flex-direction: column; gap: 10px; }
+.settings-field { display: flex; flex-direction: column; gap: 4px; }
+.settings-field-label { font-size: 12px; color: var(--text-dim); }
+.settings-source-form .modal-input { width: 100%; }
+.settings-epg-row { display: flex; align-items: center; gap: 10px; }
+.settings-epg-row .settings-row-label { flex: 0 0 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-epg-row .modal-input { flex: 1; min-width: 0; }
+.settings-status.error { color: #ef4444; }
+.settings-status-left { text-align: left; }
+@media (max-width: 760px) {
+  .settings-source-row:not(.editing) { flex-wrap: wrap; }
+  .settings-source-actions { width: 100%; }
+  .settings-epg-row { flex-wrap: wrap; }
+  .settings-epg-row .settings-row-label { flex-basis: 100%; }
+}

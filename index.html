@@ -260,10 +260,7 @@
   </div>
 
   <!-- Settings dashboard panel: Seitenleiste (settings-view.js) + genau eine Seite -->
-  <section class="settings-panel" id="settingsPanel" aria-labelledby="settingsTitle" hidden>
-    <div class="modal-header">
-      <h2 class="modal-title" id="settingsTitle">Einstellungen</h2>
-    </div>
+  <section class="settings-panel" id="settingsPanel" aria-labelledby="dashboardTitle" hidden>
     <div class="settings-shell">
       <nav class="settings-nav" id="settingsNav" aria-label="Einstellungen"></nav>
       <div class="settings-content">
@@ -305,11 +302,13 @@
             </header>
             <div class="settings-card">
               <h4 class="settings-card-title">TV-Quellen</h4>
-              <p class="settings-card-desc">Quellen hinzufügen, ändern oder entfernen.</p>
-              <div class="settings-row">
-                <span class="settings-row-label">Quellenverwaltung</span>
-                <button class="settings-action-btn" id="settingsTvSourcesBtn" type="button">TV-Quellen verwalten</button>
-              </div>
+              <p class="settings-card-desc">Playlists (URL oder lokale M3U-Datei) mit optionaler EPG-URL. Favoriten und Sender-Anpassungen bleiben beim Bearbeiten erhalten.</p>
+              <div class="settings-source-list" id="settingsTvSourceList"></div>
+              <div class="settings-status" id="settingsTvSourcesStatus" role="status" aria-live="polite"></div>
+            </div>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Quelle hinzufügen</h4>
+              <div id="settingsTvSourceAdd"></div>
             </div>
           </section>
 
@@ -335,11 +334,17 @@
             </header>
             <div class="settings-card">
               <h4 class="settings-card-title">Programmführer</h4>
-              <p class="settings-card-desc">Lädt die EPG-Daten neu.</p>
+              <p class="settings-card-desc">Lädt die EPG-Daten aller Quellen neu.</p>
               <div class="settings-row">
                 <span class="settings-row-label">EPG-Daten</span>
                 <button class="settings-action-btn" id="settingsEpgRefreshBtn" type="button">EPG aktualisieren</button>
               </div>
+              <div class="settings-status settings-status-left" id="settingsEpgStatus" role="status" aria-live="polite"></div>
+            </div>
+            <div class="settings-card">
+              <h4 class="settings-card-title">EPG-URL pro Quelle</h4>
+              <p class="settings-card-desc">Leer lassen, wenn die Quelle keine EPG-Daten liefert.</p>
+              <div class="settings-epg-list" id="settingsEpgSourceList"></div>
             </div>
           </section>
 

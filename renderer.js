@@ -21,6 +21,7 @@ const {
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 const { createSettingsView } = require('./settings-view.js');
+const { createTvSourcesView } = require('./settings-tv-sources.js');
 const {
   formatDuration,
   currentEpgStopMs,
@@ -62,6 +63,8 @@ let tvEpgRefreshing = false;
 let tvSourcesRefreshing = false;
 let tvSourceStatus = 'idle';
 let tvEpgStatus = 'idle';
+let tvEpgLoadedAt = null;
+let settingsTvSourcesView = null;
 let tvSourceErrors = [];
 let tvEpgErrors = [];
 let tvEpgUrls = [];
@@ -950,6 +953,7 @@ function renderDashboard(groupKey, opts = {}) {
     settingsPanel.hidden = false;
     settingsPanelHost.appendChild(settingsPanel);
     settingsView.showPage(opts.page);
+    settingsTvSourcesView.render();
     // Aufnahmen-Settings (Phase 1c): Speicherort + ffmpeg-Diagnose laden
     if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
   } else if (isTv) {
@@ -1540,6 +1544,7 @@ function renderTvStatus() {
   tvSidebarStatus.textContent = statusText;
   dashboardTvStatus.textContent = statusText;
   dashboardTvStatus.title = statusText;
+  if (settingsTvSourcesView) settingsTvSourcesView.updateEpgInfo();
 }
 
 function collectEpgUrls(extraUrls = []) {
@@ -1630,6 +1635,7 @@ async function loadEpgData(urls = collectEpgUrls()) {
   tvEpgData = results.flatMap(result => result.data);
   tvEpgIndex = buildEpgIndex(tvEpgData);
   tvEpgStatus = tvEpgErrors.length === results.length ? 'error' : 'success';
+  if (tvEpgStatus === 'success') tvEpgLoadedAt = new Date();
   renderTvChannels();
   renderTvStatus();
   if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
@@ -3713,14 +3719,24 @@ setTimeout(checkForUpdates, 4000);
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsPanelHost = document.getElementById('settingsPanelHost');
 const settingsView = createSettingsView(settingsPanel);
+settingsTvSourcesView = createTvSourcesView({
+  root: settingsPanel,
+  api: window.electronAPI,
+  getSources: () => tvSources,
+  safeColor,
+  onRefreshEpg: () => refreshEpg(),
+  getEpgInfo: () => ({
+    text: dashboardTvStatus.textContent,
+    loadedAt: tvEpgLoadedAt,
+    busy: tvEpgRefreshing || tvSourcesRefreshing,
+  }),
+});
 const settingsPanelPlaceholder = document.createComment('settings-panel-placeholder');
 settingsPanel.parentNode.insertBefore(settingsPanelPlaceholder, settingsPanel);
 const settingsStatus = document.getElementById('settingsStatus');
 const backupBtn = document.getElementById('backupBtn');
 const restoreBtn = document.getElementById('restoreBtn');
-const settingsTvSourcesBtn = document.getElementById('settingsTvSourcesBtn');
 const settingsTvChannelsBtn = document.getElementById('settingsTvChannelsBtn');
-const settingsEpgRefreshBtn = document.getElementById('settingsEpgRefreshBtn');
 
 function setSettingsStatus(message) {
   if (settingsStatus) settingsStatus.textContent = message;
@@ -3736,9 +3752,7 @@ document.querySelectorAll('input[name="tvMode"]').forEach(r => {
 });
 
 // settingsBtn (Fix-Set 4 entfernt, Dashboard-Kachel abdeckt Einstellungen)
-settingsTvSourcesBtn.addEventListener('click', openTvModal);
 settingsTvChannelsBtn.addEventListener('click', openTvChEditor);
-settingsEpgRefreshBtn.addEventListener('click', refreshEpg);
 
 backupBtn.addEventListener('click', async () => {
   backupBtn.disabled = true;
@@ -3835,6 +3849,7 @@ window.electronAPI.onTvSourcesChanged(sources => {
   if (!tvSelectedSourceIds.length && sources.length) tvSelectedSourceIds = sources.map(s => s.id);
 
   renderTvSourceList();
+  settingsTvSourcesView.render();
   if (structuralChange) {
     if (tvSidebarOpen) renderSourcePills();
     refreshTvSourcesAndEpg();

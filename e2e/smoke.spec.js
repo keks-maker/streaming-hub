@@ -28,6 +28,11 @@ const KNOWN_HARMLESS = [
   'ERR_NAME_NOT_RESOLVED',
   'Failed to fetch',
   'net::ERR_',
+  // Einstellungen-Test weist bewusst eine lokale URL ab; main.js loggt die Validierungsabweisung.
+  "Error occurred in handler for 'update-tv-source': Error: M3U-URL darf kein lokales oder privates Ziel verwenden",
+  // Einstellungen-Test legt eine Quelle auf *.invalid an; deren M3U-/EPG-Abruf scheitert erwartungsgemäß.
+  "Error occurred in handler for 'fetch-and-parse-m3u': Error: Fehler beim Laden der M3U: fetch failed",
+  "Error occurred in handler for 'fetch-epg': Error: Fehler beim Laden des EPG (https://e2e-quelle.invalid/",
   // Component-Updater (Widevine) braucht Netz/EVS-Sandbox; die App loggt dazu selbst eine Warnung.
   'Component updater failed',
   // Chromium/Electron-Rauschen ohne Bezug zur App.
@@ -267,7 +272,8 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await page.locator('#settingsTab-livetv-playback').click();
   await expect(page.locator('input[name="tvMode"][value="free"]')).toBeVisible();
   await page.locator('#settingsTab-livetv-sources').click();
-  await expect(page.locator('#settingsTvSourcesBtn')).toBeVisible();
+  await expect(page.locator('#settingsTvSourceList')).toBeVisible();
+  await expect(page.locator('#settingsTvSourceAdd form')).toBeVisible();
 });
 
 test('Einstellungen: Pfeiltasten im schmalen Layout erreichen LiveTV-Tabs', async () => {
@@ -285,6 +291,80 @@ test('Einstellungen: Pfeiltasten im schmalen Layout erreichen LiveTV-Tabs', asyn
   } finally {
     await page.setViewportSize({ width: 1280, height: 800 });
   }
+});
+
+test('Einstellungen: LiveTV-Quelle hinzufügen, bearbeiten, EPG-URL ändern, entfernen', async () => {
+  await page.locator('#overlayNav [data-section="settings"]').click();
+  await expandSettingsLiveTv();
+  await page.locator('#settingsTab-livetv-sources').click();
+
+  const row = name => page.locator('#settingsTvSourceList .settings-source-row', { hasText: name });
+  const sourceByName = name =>
+    page.evaluate(async n => (await window.electronAPI.getTvSources()).find(s => s.name === n) || null, name);
+
+  // Hinzufügen (isoliertes Profil, kein Netz: .invalid wird nie aufgelöst)
+  const add = page.locator('#settingsTvSourceAdd form');
+  await add.locator('input[name="name"]').fill('E2E Quelle');
+  await add.locator('input[name="url"]').fill('https://e2e-quelle.invalid/liste.m3u');
+  await add.locator('input[name="epgUrl"]').fill('https://e2e-quelle.invalid/epg.xml');
+  await add.getByRole('button', { name: 'Hinzufügen' }).click();
+  await expect(row('E2E Quelle')).toBeVisible();
+  await expect(row('E2E Quelle')).toContainText('https://e2e-quelle.invalid/liste.m3u');
+  await expect(row('E2E Quelle')).toContainText('EPG: https://e2e-quelle.invalid/epg.xml');
+  const created = await sourceByName('E2E Quelle');
+  expect(created).not.toBeNull();
+
+  // Favoriten/Overrides setzen, damit das Bearbeiten sie nachweislich nicht löscht.
+  await page.evaluate(
+    id =>
+      window.electronAPI.updateTvSource(id, {
+        favorites: ['fav-1'],
+        sortOrder: ['fav-1'],
+        channelOverrides: { 'fav-1': { url: 'https://e2e-quelle.invalid/x' } },
+      }),
+    created.id,
+  );
+
+  // Bearbeiten
+  await row('E2E Quelle').getByRole('button', { name: 'Bearbeiten' }).click();
+  const edit = page.locator('#settingsTvSourceList form');
+  await edit.locator('input[name="name"]').fill('E2E Quelle 2');
+  await edit.getByRole('button', { name: 'Speichern' }).click();
+  await expect(row('E2E Quelle 2')).toBeVisible();
+  const edited = await sourceByName('E2E Quelle 2');
+  expect(edited.id).toBe(created.id);
+  expect(edited.favorites).toEqual(['fav-1']);
+  expect(edited.sortOrder).toEqual(['fav-1']);
+  expect(edited.channelOverrides).toEqual({ 'fav-1': { url: 'https://e2e-quelle.invalid/x' } });
+  expect(edited.epgUrl).toBe('https://e2e-quelle.invalid/epg.xml');
+
+  // Ungültige Eingabe wird abgewiesen und nicht gespeichert (keine Datei-/Localhost-URL).
+  await row('E2E Quelle 2').getByRole('button', { name: 'Bearbeiten' }).click();
+  await edit.locator('input[name="url"]').fill('http://127.0.0.1/privat.m3u');
+  await edit.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#settingsTvSourcesStatus')).toHaveClass(/error/);
+  expect((await sourceByName('E2E Quelle 2')).url).toBe('https://e2e-quelle.invalid/liste.m3u');
+  await edit.getByRole('button', { name: 'Abbrechen' }).click();
+
+  // EPG-Seite: URL pro Quelle ändern, Aktualisieren-Button + Status sichtbar
+  await page.locator('#settingsTab-livetv-epg').click();
+  await expect(page.locator('#settingsEpgRefreshBtn')).toBeVisible();
+  await expect(page.locator('#settingsEpgStatus')).toBeVisible();
+  const epgRow = page.locator('#settingsEpgSourceList .settings-epg-row', { hasText: 'E2E Quelle 2' });
+  await epgRow.locator('input').fill('https://e2e-quelle.invalid/epg2.xml');
+  await epgRow.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#settingsEpgStatus')).toContainText('EPG-URL gespeichert');
+  expect((await sourceByName('E2E Quelle 2')).epgUrl).toBe('https://e2e-quelle.invalid/epg2.xml');
+
+  // Entfernen mit Bestätigung: Abbrechen behält, Bestätigen entfernt.
+  await page.locator('#settingsTab-livetv-sources').click();
+  page.once('dialog', d => d.dismiss());
+  await row('E2E Quelle 2').getByRole('button', { name: 'Entfernen' }).click();
+  await expect(row('E2E Quelle 2')).toBeVisible();
+  page.once('dialog', d => d.accept());
+  await row('E2E Quelle 2').getByRole('button', { name: 'Entfernen' }).click();
+  await expect(row('E2E Quelle 2')).toHaveCount(0);
+  expect(await sourceByName('E2E Quelle 2')).toBeNull();
 });
 
 test('Keine uncaught Exceptions / unerwarteten Konsolen-Errors seit Start', async () => {
