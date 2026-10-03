@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix (Updater, macOS): In-App-Update scheiterte mit `ENOENT … default_app.asar not found`, weil Electrons asar-Patch im Updater-Prozess `*.asar`-Dateien als Archive behandelte. `updater.js` setzt jetzt `process.noAsar = true` (vor allen fs-Zugriffen), `main.js` übergibt `ELECTRON_NO_ASAR=1` an beide `fork()`-Aufrufe. Regressionstest `tests/updater-asar.test.js`.
+
 ## 0.5.25 (2026-10-03) — Favoriten-Zapping für FullScreenPlayer (#2) · Qualitätsprüfung (Recorder, Updater, Eingabevalidierung) · E2E-Smoke-Test
 
 - Fix #2: `getNextChannelId` in `packages/typed-core/src/tv.ts` zappt mit ArrowUp/ArrowDown ausschließlich über Favoriten in Sidebar-Reihenfolge. Nicht-Favoriten springen zum nächstgelegenen Favoriten in Pfeilrichtung; Wrap-around bleibt erhalten. Die On-Screen-Senderliste verwendet dieselbe Reihenfolge.

@@ -15,6 +15,11 @@
 // neuem Tag gemerged (User-Favoriten/Sortierungen/eigene Overrides bleiben,
 // Release-Fixes kommen durch). services.json/history.json: Verhalten unverändert
 // (Overwrite — dort überschreibt der Geräte-Stand bewusst den committed Stand).
+// Updater läuft als fork() mit ELECTRON_RUN_AS_NODE=1 und Electrons asar-Patch
+// auf fs: *.asar-Dateien (z. B. Contents/Resources/default_app.asar im Bundle)
+// würden als Archive behandelt und copyFileSync scheiterte mit ENOENT.
+// Muss vor allen fs-Operationen gesetzt werden.
+process.noAsar = true;
 const logger = require('./logger.js');
 const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');

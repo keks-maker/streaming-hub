@@ -439,7 +439,9 @@ function startUpdater() {
   } else if (updateMode() === 'mac-release') {
     const updaterPath = path.join(__dirname, 'updater.js');
     if (fs.existsSync(updaterPath)) {
-      updaterProcess = fork(updaterPath, [__dirname]);
+      updaterProcess = fork(updaterPath, [__dirname], {
+        env: { ...process.env, ELECTRON_NO_ASAR: '1' },
+      });
       updaterProcess.on('exit', () => {
         updaterProcess = null;
       });
@@ -507,7 +509,7 @@ ipcMain.handle('apply-update', async (event, version) => {
   updaterLog.write(`\n=== Update gestartet ${new Date().toISOString()} v${updateVersion} ===\n`);
   const proc = fork(path.join(__dirname, 'updater.js'), [__dirname], {
     stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', STREAMING_HUB_UPDATER_LOG: updaterLogPath },
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', ELECTRON_NO_ASAR: '1', STREAMING_HUB_UPDATER_LOG: updaterLogPath },
   });
   proc.stdout?.on('data', chunk => updaterLog.write(`[stdout] ${chunk}`));
   proc.stderr?.on('data', chunk => updaterLog.write(`[stderr] ${chunk}`));
