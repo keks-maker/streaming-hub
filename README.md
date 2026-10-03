@@ -87,13 +87,13 @@ Installationen über den In-App-Updater oder den Installer sind nicht betroffen
 
 Die Startseite bündelt die Bereiche Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen. Wähle eine Kachel, um den Bereich zu öffnen.
 
-![Start-Dashboard der Version 0.4.84](assets/screenshots/startseite.png)
+![Start-Dashboard mit den Bereichen Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen](assets/screenshots/startseite.png)
 
 ### Navigationsleiste
 
 In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen.
 
-![Navigationsleiste und Streaming-Dashboard, Version 0.4.84](assets/screenshots/navbar.png)
+![Navigationsleiste und Streaming-Dashboard](assets/screenshots/navbar.png)
 
 ### Streaming-Dienste nutzen
 
