@@ -73,6 +73,7 @@
           <div class="dashboard-tv-actions" id="dashboardTvActions" hidden>
             <span class="dashboard-tv-status" id="dashboardTvStatus" aria-live="polite"></span>
             <button class="dashboard-section-action" id="dashboardTvManage" type="button">Alle Sender</button>
+            <button class="dashboard-section-action" id="dashboardTvSettings" type="button">Senderverwaltung</button>
             <button class="dashboard-section-action" id="dashboardTvStatusBtn" type="button">Status</button>
             <button class="dashboard-section-action" id="dashboardTvRefresh" type="button">EPG aktualisieren</button>
             <span class="dashboard-count" id="dashboardCount"></span>
@@ -108,7 +109,10 @@
             <span class="dashboard-eyebrow">LiveTV</span>
             <h2 id="tvChannelManagerTitle">Sender auswählen</h2>
           </div>
-          <button class="modal-close" id="tvChannelManagerClose" type="button" aria-label="Senderliste schließen">&times;</button>
+          <div class="tv-channel-manager-header-actions">
+            <button class="dashboard-section-action" id="tvChannelManagerSettings" type="button">Senderverwaltung</button>
+            <button class="modal-close" id="tvChannelManagerClose" type="button" aria-label="Senderliste schließen">&times;</button>
+          </div>
         </div>
         <div class="tv-channel-manager-toolbar">
           <div class="tv-channel-manager-tabs" role="tablist" aria-label="Senderansicht">
@@ -204,57 +208,6 @@
       </div>
       <div class="history-list" id="historyList">
         <div class="history-empty">Noch keine Einträge.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TV Sources Modal -->
-  <div class="modal-overlay" id="tvModalOverlay">
-    <div class="modal" id="tvModal">
-      <div class="modal-header">
-        <span class="modal-title">TV-Quellen verwalten</span>
-        <button class="modal-close" id="tvModalClose">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="tv-source-list" id="tvSourceList"></div>
-        <div class="modal-divider"></div>
-        <label class="modal-label">Quellen-Name</label>
-        <input class="modal-input" id="tvInputName" type="text" placeholder="z.B. Deutsche Sender">
-
-        <label class="modal-label">M3U-URL</label>
-        <div class="tv-url-row">
-          <input class="modal-input tv-url-input" id="tvInputUrl" type="url" placeholder="https://example.com/playlist.m3u">
-          <button class="tv-file-btn" id="tvFileBtn" title="Lokale Datei auswählen">📁</button>
-        </div>
-
-        <label class="modal-label">EPG-URL (optional)</label>
-        <input class="modal-input" id="tvInputEpgUrl" type="url" placeholder="https://example.com/epg.xml">
-
-        <label class="modal-label">Akzentfarbe</label>
-        <input class="modal-color" id="tvInputColor" type="color" value="#a78bfa">
-      </div>
-      <div class="modal-footer">
-        <button class="modal-btn modal-btn-save" id="tvModalSave">Hinzufügen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TV Channel Editor Modal -->
-  <div class="modal-overlay" id="tvChModalOverlay">
-    <div class="modal tv-ch-modal" id="tvChModal">
-      <div class="modal-header">
-        <span class="modal-title">Sender bearbeiten</span>
-        <button class="modal-close" id="tvChModalClose">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="tv-ch-search">
-          <input class="modal-input" id="tvChSearch" type="text" placeholder="Sender filtern..." autocomplete="off">
-        </div>
-        <div class="tv-ch-list" id="tvChList"></div>
-      </div>
-      <div class="modal-footer">
-        <span class="tv-ch-status" id="tvChStatus"></span>
-        <button class="modal-btn modal-btn-save" id="tvChModalSave">Änderungen speichern</button>
       </div>
     </div>
   </div>

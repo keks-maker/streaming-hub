@@ -257,6 +257,28 @@ test('EPG-Combobox: ohne geladenes EPG verständlicher Hinweis, Tastatur schlie�
   await row('B0001').locator('.settings-chan-detail [data-action="cancel"]').click();
 });
 
+test('Deep-Links: LiveTV-Dashboard und Senderauswahl führen zur Senderverwaltung; alte Modals sind entfernt', async () => {
+  await expect(page.locator('#tvModalOverlay')).toHaveCount(0);
+  await expect(page.locator('#tvChModalOverlay')).toHaveCount(0);
+
+  // Dashboard-Button "Senderverwaltung"
+  await page.locator('#overlayNav [data-section="livetv"]').click();
+  await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
+  await page.locator('#dashboardTvSettings').click();
+  await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+  await expect(page.locator('#settingsTab-livetv-channels')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#settingsTvChannelsList')).toBeVisible();
+
+  // Senderauswahl-Overlay ("Alle Sender") bleibt Sender-Picker und verlinkt auf die Verwaltung
+  await page.locator('#settingsTab-general').click();
+  await page.locator('#overlayNav [data-section="livetv"]').click();
+  await page.locator('#dashboardTvManage').click();
+  await expect(page.locator('#tvChannelManagerOverlay')).toHaveClass(/open/);
+  await page.locator('#tvChannelManagerSettings').click();
+  await expect(page.locator('#tvChannelManagerOverlay')).not.toHaveClass(/open/);
+  await expect(page.locator('#settingsTab-livetv-channels')).toHaveAttribute('aria-selected', 'true');
+});
+
 test('Keine uncaught Exceptions / unerwarteten Konsolen-Errors', async () => {
   expect(problems, `Unerwartete Fehler:\n${problems.join('\n')}`).toEqual([]);
 });

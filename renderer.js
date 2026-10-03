@@ -72,8 +72,6 @@ let tvSourceErrors = [];
 let tvEpgErrors = [];
 let tvEpgUrls = [];
 let tvEpgIndex = null; // Map<normId, epgEntry[]> für schnelle EPG-Lookups
-let tvChOverrides = {}; // {sourceId: {chId: {name?,url?,tvgId?,tvgLogo?}}} – ungespeicherte Änderungen
-let tvChDirty = false;
 
 let tvMode = localStorage.getItem('tvMode') || 'free';
 
@@ -465,21 +463,7 @@ const tvSidebarSources = document.getElementById('tvSidebarSources');
 const tvSidebarChannels = document.getElementById('tvSidebarChannels');
 const tvSidebarStatus = document.getElementById('tvSidebarStatus');
 const tvSearchInput = document.getElementById('tvSearchInput');
-const tvModalOverlay = document.getElementById('tvModalOverlay');
-const tvModalClose = document.getElementById('tvModalClose');
-const tvModalSave = document.getElementById('tvModalSave');
-const tvSourceList = document.getElementById('tvSourceList');
-const tvInputName = document.getElementById('tvInputName');
-const tvInputUrl = document.getElementById('tvInputUrl');
-const tvInputEpgUrl = document.getElementById('tvInputEpgUrl');
-const tvInputColor = document.getElementById('tvInputColor');
-const tvFileBtn = document.getElementById('tvFileBtn');
 const tvSidebarEdit = document.getElementById('tvSidebarEdit');
-const tvChModalOverlay = document.getElementById('tvChModalOverlay');
-const tvChModalClose = document.getElementById('tvChModalClose');
-const tvChModalSave = document.getElementById('tvChModalSave');
-const tvChList = document.getElementById('tvChList');
-const tvChSearch = document.getElementById('tvChSearch');
 
 // EPG Overlay DOM
 const epgOverlay = document.getElementById('epgOverlay');
@@ -524,6 +508,15 @@ function closeTvChannelManager() {
 }
 
 dashboardTvManage.addEventListener('click', openTvChannelManager);
+const dashboardTvSettings = document.getElementById('dashboardTvSettings');
+if (dashboardTvSettings) dashboardTvSettings.addEventListener('click', () => openSettingsPage('livetv-channels'));
+const tvChannelManagerSettings = document.getElementById('tvChannelManagerSettings');
+if (tvChannelManagerSettings) {
+  tvChannelManagerSettings.addEventListener('click', () => {
+    closeTvChannelManager();
+    openSettingsPage('livetv-channels');
+  });
+}
 tvChannelManagerClose.addEventListener('click', closeTvChannelManager);
 tvChannelManagerOverlay.addEventListener('click', e => {
   if (e.target === tvChannelManagerOverlay) closeTvChannelManager();
@@ -588,7 +581,6 @@ document.addEventListener('fullscreenchange', () => {
 let epgSlotHours = 8;
 
 // Mediathek mapping for EPG -> service search (now in typed-core tv.ts)
-const tvChStatus = document.getElementById('tvChStatus');
 
 const chromeVer = window.electronAPI.chromeVersion || '148.0.0.0';
 const uaMap = {
@@ -972,6 +964,12 @@ function renderDashboard(groupKey, opts = {}) {
   }
   dashboardView.style.display = '';
   welcomeScreen.style.display = 'none';
+}
+
+// Deep-Link in die Einstellungen (page: Schlüssel aus SETTINGS_NAV, z. B. 'livetv-channels').
+function openSettingsPage(page) {
+  overlayBar.classList.remove('nav-collapsed');
+  showDashboard('settings', { page });
 }
 
 function showDashboard(groupKey, opts = {}) {
@@ -1408,66 +1406,6 @@ function saveSettingsService() {
 
 settingsAddSave.addEventListener('click', saveSettingsService);
 
-// ── TV Sources Modal ──
-
-function openTvModal() {
-  renderTvSourceList();
-  tvInputName.value = '';
-  tvInputUrl.value = '';
-  tvInputEpgUrl.value = '';
-  tvInputColor.value = '#a78bfa';
-  tvModalOverlay.classList.add('open');
-  tvInputName.focus();
-}
-
-function closeTvModal() {
-  tvModalOverlay.classList.remove('open');
-}
-
-function renderTvSourceList() {
-  tvSourceList.innerHTML = '';
-  if (!tvSources.length) {
-    tvSourceList.innerHTML = '<div class="service-list-empty">Keine TV-Quellen konfiguriert.</div>';
-    return;
-  }
-  tvSources.forEach(src => {
-    const row = document.createElement('div');
-    row.className = 'tv-source-row';
-
-    const typeLabel = src.type === 'file' ? '📄' : '🌐';
-
-    row.innerHTML = `
-      <span class="tv-source-row-icon">${typeLabel}</span>
-      <div class="tv-source-row-info" style="flex:1;min-width:0">
-        <div class="tv-source-row-name">${escapeHtml(src.name)}</div>
-        <div class="tv-source-row-meta">${escapeHtml(src.type === 'file' ? src.url.split('/').pop() : src.url)}</div>
-      </div>
-      <button class="tv-source-row-remove" data-id="${src.id}" title="Entfernen">&times;</button>
-    `;
-
-    row.querySelector('.tv-source-row-remove').addEventListener('click', () => {
-      window.electronAPI.removeTvSource(src.id);
-    });
-
-    tvSourceList.appendChild(row);
-  });
-}
-
-function saveTvSource() {
-  const name = tvInputName.value.trim();
-  const url = tvInputUrl.value.trim();
-  const epgUrl = tvInputEpgUrl.value.trim();
-
-  if (!name || !url) return;
-
-  const isFile = url.startsWith('/') || url.startsWith('./') || url.startsWith('../') || /^[A-Z]:\\/i.test(url);
-  const color = tvInputColor.value;
-  const source = { name, url, type: isFile ? 'file' : 'url', color, epgUrl: epgUrl || null };
-  window.electronAPI.addTvSource(source).then(() => {
-    closeTvModal();
-  });
-}
-
 // ── TV Sidebar ──
 
 function toggleTvSidebar() {
@@ -1884,277 +1822,8 @@ function renderTvChannels() {
   });
 }
 
-// ── TV Channel Editor ──
-
-let tvChEditCache = []; // {ch, source}[] für die aktuelle Editor-Liste
-let tvEpgChannelList = []; // [{normId, channelId, sampleTitle}] für EPG-Dropdown
-let tvOriginalChannelUrls = {};
-
-function openTvChEditor() {
-  tvChOverrides = {};
-  tvChDirty = false;
-  tvChStatus.textContent = '';
-  tvEpgChannelList = getEpgChannelList(tvEpgIndex);
-  if (!tvEpgChannelList.length) {
-    tvChStatus.textContent = '⚠️ EPG nicht geladen – erst EPG über Sidebar laden';
-    tvChStatus.style.color = '#fbbf24';
-  }
-  // Alle Channels aus allen Quellen sammeln
-  tvChEditCache = [];
-  tvSources.forEach(src => {
-    const srcChannels = tvChannels.filter(c => c.sourceId === src.id);
-    srcChannels.forEach(ch => tvChEditCache.push({ ch, src }));
-  });
-  renderTvChEditor();
-  tvChModalOverlay.classList.add('open');
-  tvChSearch.value = '';
-  tvChSearch.focus();
-}
-
-function closeTvChEditor() {
-  tvChModalOverlay.classList.remove('open');
-}
-
-function renderTvChEditor() {
-  const filter = tvChSearch.value.toLowerCase().trim();
-  let items = tvChEditCache;
-  if (filter) {
-    items = items.filter(
-      ({ ch }) =>
-        ch.name.toLowerCase().includes(filter) ||
-        (ch.tvgId || '').toLowerCase().includes(filter) ||
-        ch.url.toLowerCase().includes(filter),
-    );
-  }
-  tvChList.innerHTML = '';
-  items.forEach(({ ch, src }) => {
-    const ov = (tvChOverrides[src.id] && tvChOverrides[src.id][ch.id]) || {};
-    const existingOv = (src.channelOverrides && src.channelOverrides[ch.id]) || {};
-    const effName = ov.name != null ? ov.name : ch.name;
-    const effTvgId = ov.tvgId != null ? ov.tvgId : ch.tvgId;
-    const effLogo = ov.tvgLogo != null ? ov.tvgLogo : ch.logo || '';
-    const originalUrl = (tvOriginalChannelUrls[src.id] && tvOriginalChannelUrls[src.id][ch.id]) || ch.url;
-    const hasLocalUrlOverride = Object.prototype.hasOwnProperty.call(ov, 'url');
-    const urlOverride = hasLocalUrlOverride ? ov.url : existingOv.url;
-    const isUrlOverridden = typeof urlOverride === 'string' && (hasLocalUrlOverride || urlOverride.length > 0);
-    const effUrl = isUrlOverridden ? urlOverride : originalUrl;
-
-    // EPG-Status
-    const normId = id =>
-      (id || '')
-        .replace(/@[^.@]*/g, '')
-        .toLowerCase()
-        .trim();
-    const epgFound = tvEpgIndex && tvEpgIndex.has(normId(effTvgId));
-    const epgIcon = epgFound ? '✓' : '✗';
-    const epgColor = epgFound ? '#22c55e' : '#ef4444';
-
-    const row = document.createElement('div');
-    row.className = 'tv-ch-row';
-    row.innerHTML = `
-      <div class="tv-ch-row-header">
-        <div class="tv-ch-name-field">
-          <label class="tv-ch-field-label">Sendername</label>
-          <input class="tv-ch-input tv-ch-name" value="${escapeHtml(effName)}" placeholder="Sendername" aria-label="Sendername">
-        </div>
-        <div class="tv-ch-row-status">
-          <span class="tv-ch-row-src">${escapeHtml(src.name)}</span>
-          <span class="tv-ch-epg-badge" style="background:${epgColor}">EPG ${epgIcon}</span>
-        </div>
-      </div>
-      <div class="tv-ch-row-fields">
-        <section class="tv-ch-section">
-          <div class="tv-ch-section-heading">
-            <span>Stream-URL</span>
-            <span class="tv-ch-override-state ${isUrlOverridden ? 'active' : ''}">${isUrlOverridden ? 'Überschrieben' : 'Standard'}</span>
-          </div>
-          <div class="tv-ch-original-url">
-            <span class="tv-ch-field-label">Original</span>
-            <code title="${escapeHtml(originalUrl)}">${escapeHtml(originalUrl)}</code>
-          </div>
-          <label class="tv-ch-override-toggle">
-            <input class="tv-ch-url-toggle" type="checkbox" ${isUrlOverridden ? 'checked' : ''}>
-            <span>Eigene URL verwenden</span>
-          </label>
-          <div class="tv-ch-url-editor" ${isUrlOverridden ? '' : 'hidden'}>
-            <input class="tv-ch-input tv-ch-url" value="${escapeHtml(effUrl)}" placeholder="https://…" aria-label="Eigene Stream-URL">
-            <button class="tv-ch-reset" type="button">Auf Standard zurücksetzen</button>
-          </div>
-        </section>
-        <section class="tv-ch-section tv-ch-metadata">
-          <div class="tv-ch-section-heading">EPG &amp; Darstellung</div>
-          <div class="tv-ch-row-meta">
-            <div class="tv-ch-field tv-ch-combo">
-              <label class="tv-ch-field-label">EPG tvg-id</label>
-              <input class="tv-ch-input tv-ch-tvgid" value="${escapeHtml(effTvgId)}" placeholder="tvg-id …" autocomplete="off">
-              <div class="tv-ch-combodrop"></div>
-            </div>
-            <label class="tv-ch-field tv-ch-logo-field">
-              <span class="tv-ch-field-label">Logo-URL</span>
-              <input class="tv-ch-input tv-ch-logo" value="${escapeHtml(effLogo)}" placeholder="https://…">
-            </label>
-          </div>
-        </section>
-      </div>
-    `;
-
-    const nameInp = row.querySelector('.tv-ch-name');
-    const urlInp = row.querySelector('.tv-ch-url');
-    const urlToggle = row.querySelector('.tv-ch-url-toggle');
-    const urlEditor = row.querySelector('.tv-ch-url-editor');
-    const urlState = row.querySelector('.tv-ch-override-state');
-    const urlReset = row.querySelector('.tv-ch-reset');
-    const tvgInp = row.querySelector('.tv-ch-tvgid');
-    const logoInp = row.querySelector('.tv-ch-logo');
-    const comboDrop = row.querySelector('.tv-ch-combodrop');
-
-    const markDirty = () => {
-      tvChDirty = true;
-      tvChStatus.textContent = '⚡ Ungespeicherte Änderungen';
-      tvChStatus.style.color = '#fbbf24';
-    };
-
-    // EPG-Combobox: filter + dropdown
-    function renderComboDropdown(query) {
-      const q = query.toLowerCase().trim();
-      comboDrop.innerHTML = '';
-      let matched = tvEpgChannelList;
-      if (q) matched = matched.filter(e => e.normId.includes(q) || e.channelId.includes(q));
-      if (!matched.length) {
-        comboDrop.innerHTML = '<div class="tv-ch-combo-empty">Keine EPG-Treffer</div>';
-        return;
-      }
-      // Max 100 anzeigen
-      matched.slice(0, 100).forEach(epg => {
-        const item = document.createElement('div');
-        item.className = 'tv-ch-combo-item';
-        item.textContent = epg.channelId;
-        item.title = epg.sampleTitle;
-        item.addEventListener('mousedown', e => {
-          e.preventDefault();
-          tvgInp.value = epg.channelId;
-          comboDrop.classList.remove('open');
-          if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
-          if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
-          tvChOverrides[src.id][ch.id].tvgId = epg.channelId;
-          markDirty();
-          // EPG-Badge aktualisieren
-          const badge = row.querySelector('.tv-ch-epg-badge');
-          badge.textContent = 'EPG ✓';
-          badge.style.background = '#22c55e';
-        });
-        comboDrop.appendChild(item);
-      });
-      if (matched.length > 100) {
-        const more = document.createElement('div');
-        more.className = 'tv-ch-combo-empty';
-        more.textContent = '... und ' + (matched.length - 100) + ' weitere';
-        comboDrop.appendChild(more);
-      }
-    }
-
-    tvgInp.addEventListener('input', () => {
-      if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
-      if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
-      tvChOverrides[src.id][ch.id].tvgId = tvgInp.value || undefined;
-      markDirty();
-      renderComboDropdown(tvgInp.value);
-      if (tvgInp.value) comboDrop.classList.add('open');
-    });
-    tvgInp.addEventListener('focus', () => {
-      renderComboDropdown(tvgInp.value);
-      comboDrop.classList.add('open');
-    });
-    tvgInp.addEventListener('blur', () => {
-      // Verzögert schließen, damit mousedown noch feuern kann
-      setTimeout(() => comboDrop.classList.remove('open'), 150);
-    });
-
-    nameInp.addEventListener('input', () => {
-      if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
-      if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
-      tvChOverrides[src.id][ch.id].name = nameInp.value || undefined;
-      markDirty();
-    });
-    const setUrlOverride = enabled => {
-      if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
-      if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
-      if (enabled) {
-        if (!urlInp.value) urlInp.value = originalUrl;
-        tvChOverrides[src.id][ch.id].url = urlInp.value;
-      } else {
-        urlInp.value = originalUrl;
-        tvChOverrides[src.id][ch.id].url = undefined;
-      }
-      urlEditor.hidden = !enabled;
-      urlState.textContent = enabled ? 'Überschrieben' : 'Standard';
-      urlState.classList.toggle('active', enabled);
-      markDirty();
-    };
-
-    urlToggle.addEventListener('change', () => setUrlOverride(urlToggle.checked));
-    urlReset.addEventListener('click', () => {
-      urlToggle.checked = false;
-      setUrlOverride(false);
-    });
-    urlInp.addEventListener('input', () => {
-      if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
-      if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
-      tvChOverrides[src.id][ch.id].url = urlInp.value;
-      markDirty();
-    });
-    logoInp.addEventListener('input', () => {
-      if (!tvChOverrides[src.id]) tvChOverrides[src.id] = {};
-      if (!tvChOverrides[src.id][ch.id]) tvChOverrides[src.id][ch.id] = {};
-      tvChOverrides[src.id][ch.id].tvgLogo = logoInp.value || undefined;
-      markDirty();
-    });
-
-    tvChList.appendChild(row);
-  });
-}
-
-function saveTvChEditor() {
-  // Jede Quelle mit Änderungen einzeln speichern
-  const promises = [];
-  Object.keys(tvChOverrides).forEach(sid => {
-    const source = tvSources.find(s => s.id === sid);
-    if (!source) return;
-    const existing = source.channelOverrides || {};
-    const merged = { ...existing };
-    Object.entries(tvChOverrides[sid]).forEach(([chId, changes]) => {
-      merged[chId] = { ...(existing[chId] || {}), ...changes };
-    });
-    // Leere Overrides entfernen
-    Object.keys(merged).forEach(chId => {
-      const clean = {};
-      Object.keys(merged[chId]).forEach(k => {
-        if (merged[chId][k] !== undefined && merged[chId][k] !== '') clean[k] = merged[chId][k];
-      });
-      if (Object.keys(clean).length) merged[chId] = clean;
-      else delete merged[chId];
-    });
-    // Direkt in tvSources aktualisieren, bevor IPC zurückkommt
-    source.channelOverrides = merged;
-    promises.push(window.electronAPI.updateTvSource(sid, { channelOverrides: merged }));
-  });
-
-  if (!promises.length) {
-    closeTvChEditor();
-    return;
-  }
-
-  tvChStatus.textContent = '⏳ Speichere…';
-  tvChStatus.style.color = '#94a3b8';
-  Promise.all(promises).then(() => {
-    tvChStatus.textContent = '✓ Gespeichert';
-    tvChStatus.style.color = '#22c55e';
-    tvChDirty = false;
-    tvChOverrides = {};
-    closeTvChEditor();
-    loadTvChannels(true); // neu laden mit Overrides (jetzt in tvSources aktuell)
-  });
-}
+// ── TV Channel Editor: Senderverwaltung liegt in settings-tv-channels.js ──
+let tvOriginalChannelUrls = {}; // {sourceId: {channelId: Original-URL}} für die Sender-Seite
 
 function reorderChannel(draggedId, targetId) {
   const dragged = tvChannels.find(ch => ch.id === draggedId);
@@ -3274,31 +2943,9 @@ historyClear.addEventListener('click', () => {
 });
 
 // TV event listeners
-tvSidebarManage.addEventListener('click', openTvModal);
+tvSidebarManage.addEventListener('click', () => openSettingsPage('livetv-sources'));
 tvSidebarSourcesRefresh.addEventListener('click', refreshTvSourcesAndEpg);
 tvSidebarEpgRefresh.addEventListener('click', refreshEpg);
-tvModalClose.addEventListener('click', closeTvModal);
-tvModalOverlay.addEventListener('click', e => {
-  if (e.target === tvModalOverlay) closeTvModal();
-});
-tvModalSave.addEventListener('click', saveTvSource);
-
-tvFileBtn.addEventListener('click', () => {
-  window.electronAPI.pickM3uFile().then(filePath => {
-    if (filePath) tvInputUrl.value = filePath;
-  });
-});
-
-tvInputName.addEventListener('keydown', e => {
-  if (e.key === 'Enter') tvInputUrl.focus();
-});
-tvInputUrl.addEventListener('keydown', e => {
-  if (e.key === 'Enter') tvInputEpgUrl.focus();
-});
-tvInputEpgUrl.addEventListener('keydown', e => {
-  if (e.key === 'Enter') saveTvSource();
-});
-
 tvSidebarTrigger.addEventListener('mouseenter', () => {
   if (tvMode === 'magenta') return;
   if (!tvSidebarOpen) openTvSidebar();
@@ -3336,21 +2983,8 @@ tvSearchInput.addEventListener('keydown', e => {
   }
 });
 
-// TV Channel Editor
-tvSidebarEdit.addEventListener('click', openTvChEditor);
-tvChModalClose.addEventListener('click', closeTvChEditor);
-tvChModalOverlay.addEventListener('click', e => {
-  if (e.target === tvChModalOverlay) closeTvChEditor();
-});
-tvChModalSave.addEventListener('click', saveTvChEditor);
-tvChSearch.addEventListener('input', renderTvChEditor);
-tvChSearch.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    tvChSearch.value = '';
-    renderTvChEditor();
-    tvChSearch.blur();
-  }
-});
+// Senderverwaltung liegt in den Einstellungen (Deep-Link)
+tvSidebarEdit.addEventListener('click', () => openSettingsPage('livetv-channels'));
 
 // Close sidebar when clicking outside (not on start page)
 document.addEventListener('click', e => {
@@ -3392,10 +3026,6 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   if (key === 'Escape') {
     if (shortcutsOverlay.classList.contains('open')) {
       shortcutsOverlay.classList.remove('open');
-      return true;
-    }
-    if (tvModalOverlay.classList.contains('open')) {
-      closeTvModal();
       return true;
     }
     if (currentDashboardGroup === 'settings') {
@@ -3875,7 +3505,6 @@ window.electronAPI.onTvSourcesChanged(sources => {
   tvSelectedSourceIds = tvSelectedSourceIds.filter(id => sources.some(s => s.id === id));
   if (!tvSelectedSourceIds.length && sources.length) tvSelectedSourceIds = sources.map(s => s.id);
 
-  renderTvSourceList();
   settingsTvSourcesView.render();
   if (settingsTvChannelsView) settingsTvChannelsView.render();
   if (structuralChange) {
