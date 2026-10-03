@@ -241,6 +241,15 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await expect(page.locator('#settingsAddForm')).toBeVisible();
   await expect(page.locator('#settingsInputGroup')).toHaveValue('mediathek');
 
+  // Formular wird beim Seitenwechsel zurückgesetzt und geschlossen.
+  await page.locator('#settingsInputName').fill('Testdienst');
+  await page.locator('#settingsTab-streaming').click();
+  await page.locator('#settingsTab-mediathek').click();
+  await expect(page.locator('#settingsAddForm')).toBeHidden();
+  await page.locator('#settingsAddMediathekBtn').click();
+  await expect(page.locator('#settingsInputName')).toHaveValue('');
+  await page.locator('#settingsTab-general').click();
+
   // Pfeiltasten wechseln die Seite (Mediatheken -> Allgemein per Home).
   await page.locator('#settingsTab-mediathek').focus();
   await page.keyboard.press('Home');
@@ -252,6 +261,23 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await expect(page.locator('input[name="tvMode"][value="free"]')).toBeVisible();
   await page.locator('#settingsTab-livetv-sources').click();
   await expect(page.locator('#settingsTvSourcesBtn')).toBeVisible();
+});
+
+test('Einstellungen: Pfeiltasten im schmalen Layout erreichen LiveTV-Tabs', async () => {
+  await page.setViewportSize({ width: 700, height: 800 });
+  try {
+    await page.locator('#overlayNav [data-section="settings"]').click();
+    await page.locator('#settingsTab-general').click();
+    const group = page.locator('#settingsNav .settings-nav-group');
+    if ((await group.getAttribute('aria-expanded')) === 'true') {
+      await group.evaluate(el => el.click());
+    }
+    await page.locator('#settingsTab-general').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#settingsTab-livetv-sources')).toHaveAttribute('aria-selected', 'true');
+  } finally {
+    await page.setViewportSize({ width: 1280, height: 800 });
+  }
 });
 
 test('Keine uncaught Exceptions / unerwarteten Konsolen-Errors seit Start', async () => {

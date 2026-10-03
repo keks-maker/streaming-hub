@@ -2987,6 +2987,7 @@ body {
   color: var(--text-dim);
   min-height: 18px;
   margin-top: 4px;
+  text-align: center;
 }
 @media (max-width: 760px) {
   .settings-shell { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }

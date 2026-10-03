@@ -124,20 +124,27 @@ function createSettingsView(panel, options = {}) {
     });
   }
 
+  function resetAddForm() {
+    if (!addForm) return;
+    addForm.style.display = 'none';
+    addForm.querySelectorAll('input').forEach(input => {
+      input.value = input.type === 'color' ? '#6c5ce7' : '';
+    });
+  }
+
   // Dienst-hinzufügen-Formular lebt nur einmal im DOM und wandert mit der Seite.
   function placeAddForm(page) {
     if (!addForm) return;
     const slot = pageEls.get(page)?.querySelector('[data-add-form-slot]');
     if (!slot) return;
-    if (addForm.parentNode !== slot) {
-      slot.appendChild(addForm);
-      addForm.style.display = 'none';
-    }
+    if (addForm.parentNode !== slot) slot.appendChild(addForm);
+    resetAddForm();
     if (addGroupSelect) addGroupSelect.value = page === 'mediathek' ? 'mediathek' : 'streaming';
   }
 
   function visibleTabs() {
-    return [...tabs.values()].filter(t => !t.closest('[hidden]'));
+    // Tatsächliche Sichtbarkeit (im schmalen Layout sind zugeklappte Gruppen per display:contents sichtbar).
+    return [...tabs.values()].filter(t => t.getClientRects().length > 0);
   }
 
   function showPage(requested, { remember = true } = {}) {
