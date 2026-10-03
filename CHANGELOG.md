@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.5.26 (2026-10-03) — macOS-Updater-Fix (default_app.asar ENOENT)
 
-- Fix (Updater, macOS): In-App-Update scheiterte mit `ENOENT … default_app.asar not found`, weil Electrons asar-Patch im Updater-Prozess `*.asar`-Dateien als Archive behandelte. `updater.js` setzt jetzt `process.noAsar = true` (vor allen fs-Zugriffen), `main.js` übergibt `ELECTRON_NO_ASAR=1` an beide `fork()`-Aufrufe. Regressionstest `tests/updater-asar.test.js`.
+- Fix (Updater, macOS): In-App-Update scheiterte mit `ENOENT, not found in …/Contents/Resources/default_app.asar`. Root-Cause: Electrons asar-fs-Patch behandelt `Contents/Resources/default_app.asar` im Updater-Prozess als Archiv, sodass `copyBundleTree` beim Kopieren des Bundles warf — jedes Mac-Update scheiterte. Beleg: `~/Library/Logs/Streaming Hub/updater.log`; mit Castlabs-Electron reproduziert und behoben. `updater.js` setzt jetzt `process.noAsar = true` (vor allen fs-Zugriffen), `main.js` übergibt `ELECTRON_NO_ASAR=1` an beide `fork()`-Aufrufe. Regressionstest `tests/updater-asar.test.js`.
 
 ## 0.5.25 (2026-10-03) — Favoriten-Zapping für FullScreenPlayer (#2) · Qualitätsprüfung (Recorder, Updater, Eingabevalidierung) · E2E-Smoke-Test
 
