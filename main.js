@@ -149,6 +149,7 @@ const {
 } = require('./lib/input-validation.js');
 const { updateMode } = require('./lib/update-mode.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
+const { describeM3uFetchError } = require('./lib/m3u-fetch-error.js');
 
 if (process.platform === 'darwin') {
   const macPathEntries = [
@@ -1213,6 +1214,10 @@ ipcMain.handle('pick-m3u-file', async event => {
   return realPath;
 });
 
+// Rückgabe: { channels, epgUrls, baseUrl } bei Erfolg, { error } bei Lade-/Eingabefehlern
+// (Netz, HTTP, Datei nicht erlaubt, ungültige Quelle). So meldet Electron abgelehnte
+// Handler nicht als rote Fehler im Terminal; der Renderer markiert die Quelle als
+// fehlerhaft. Nur die Absender-Prüfung (requireMainRenderer) wirft weiterhin.
 ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
   requireMainRenderer(event);
   try {
@@ -1248,7 +1253,8 @@ ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
     }));
     return { channels, epgUrls: result.epgUrls, baseUrl };
   } catch (err) {
-    throw new Error(`Fehler beim Laden der M3U: ${err.message}`);
+    // Keine URL/Zugangsdaten in Meldung oder Log (describeM3uFetchError gibt nur feste Texte aus).
+    return { error: `Fehler beim Laden der M3U: ${describeM3uFetchError(err)}` };
   }
 });
 

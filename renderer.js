@@ -1579,6 +1579,8 @@ async function loadTvChannels(forceReload) {
     tvSources.map(async source => {
       try {
         const result = await window.electronAPI.fetchAndParseM3U(source.url);
+        // Der Main-Prozess meldet Ladefehler als { error } (kein geworfener IPC-Fehler).
+        if (result.error) throw new Error(result.error);
         const tagged = result.channels.map(ch => ({ ...ch, sourceId: source.id }));
         sourceChannelMap[source.id] = tagged;
         sourceChannelOriginalUrlMap[source.id] = Object.fromEntries(result.channels.map(ch => [ch.id, ch.url]));

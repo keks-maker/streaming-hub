@@ -30,8 +30,7 @@ const KNOWN_HARMLESS = [
   'net::ERR_',
   // Einstellungen-Test weist bewusst eine lokale URL ab; main.js loggt die Validierungsabweisung.
   "Error occurred in handler for 'update-tv-source': Error: M3U-URL darf kein lokales oder privates Ziel verwenden",
-  // Einstellungen-Test legt eine Quelle auf *.invalid an; deren M3U-/EPG-Abruf scheitert erwartungsgemäß.
-  "Error occurred in handler for 'fetch-and-parse-m3u': Error: Fehler beim Laden der M3U: fetch failed",
+  // Einstellungen-Test legt eine Quelle auf *.invalid an; deren EPG-Abruf scheitert erwartungsgemäß.
   "Error occurred in handler for 'fetch-epg': Error: Fehler beim Laden des EPG (https://e2e-quelle.invalid/",
   "Error occurred in handler for 'update-tv-source': TypeError: Invalid URL",
   // Component-Updater (Widevine) braucht Netz/EVS-Sandbox; die App loggt dazu selbst eine Warnung.
@@ -373,6 +372,31 @@ test('Einstellungen: LiveTV-Quelle hinzufügen, bearbeiten, EPG-URL ändern, ent
   await row('E2E Quelle 2').getByRole('button', { name: 'Entfernen' }).click();
   await expect(row('E2E Quelle 2')).toHaveCount(0);
   expect(await sourceByName('E2E Quelle 2')).toBeNull();
+});
+
+test('M3U-Ladefehler: verständliches Ergebnisobjekt statt geworfener IPC-Fehler, ohne URL', async () => {
+  const result = await page.evaluate(() =>
+    window.electronAPI
+      .fetchAndParseM3U('https://m3u-unerreichbar.invalid/liste.m3u?token=abc123')
+      .then(value => ({ resolved: true, value }))
+      .catch(err => ({ resolved: false, message: String(err && err.message) })),
+  );
+  expect(result.resolved, `IPC darf nicht werfen: ${result.message}`).toBe(true);
+  expect(result.value.channels).toBeUndefined();
+  expect(result.value.error).toContain('Fehler beim Laden der M3U: ');
+  expect(result.value.error).toMatch(/Host nicht gefunden|Verbindung|Zeitüberschreitung|Server nicht erreichbar/);
+  expect(result.value.error).not.toContain('fetch failed');
+  for (const secret of ['abc123', 'm3u-unerreichbar', 'liste.m3u']) {
+    expect(result.value.error).not.toContain(secret);
+  }
+  // Validierungsfehler kommen ebenfalls als Ergebnisobjekt, ohne die Zugangsdaten zu nennen.
+  const creds = await page.evaluate(() =>
+    window.electronAPI.fetchAndParseM3U('https://nutzer:geheim@m3u-unerreichbar.invalid/x.m3u'),
+  );
+  expect(creds.error).toContain('Zugangsdaten');
+  expect(creds.error).not.toContain('geheim');
+  // Renderer/Dashboard bleiben intakt.
+  await expect(page.locator('#dashboardView')).toBeAttached();
 });
 
 test('Keine uncaught Exceptions / unerwarteten Konsolen-Errors seit Start', async () => {
