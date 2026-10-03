@@ -1,7 +1,8 @@
 // Headless-Smoke: Release-Discovery unter simuliertem GUI-Start-PATH.
 // Prüft die echte GitHub-Releases-API; Git-Tags und Checkout sind absichtlich
-// kein Teil des macOS-Updatepfads mehr. Der aktuelle package.json-Stand 0.5.16
-// muss gegenüber dem höchsten gültigen Asset-Release 0.5.3 "up to date" sein.
+// kein Teil des macOS-Updatepfads mehr. Netz-unabhängig robust: Es wird eine sehr
+// hohe Version gesendet (999.0.0); erwartet wird hasUpdate === false und ein gültiges
+// Semver als latest (also eine fehlerfreie Discovery unter dem GUI-PATH).
 'use strict';
 
 const { fork } = require('child_process');
@@ -11,6 +12,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const REPO = path.resolve(__dirname, '..');
+const CURRENT_VERSION = '999.0.0';
 const GUI_PATH = '/usr/bin:/bin:/usr/sbin:/sbin';
 
 function sh(cmd, opts = {}) {
@@ -68,7 +70,7 @@ async function main() {
       clearTimeout(timer);
       reject(new Error(`updater exit code=${code} signal=${signal}`));
     });
-    child.send({ type: 'check', currentVersion: '0.5.16' });
+    child.send({ type: 'check', currentVersion: CURRENT_VERSION });
   });
 
   const logPath = path.join(tmp, 'updater.log');
@@ -79,11 +81,11 @@ async function main() {
   if (result.error) {
     console.error('[smoke] RELEASE-DISCOVERY FEHLGESCHLAGEN:', result.error);
     process.exitCode = 1;
-  } else if (result.latest !== '0.5.3' || result.hasUpdate !== false) {
+  } else if (!/^\d+\.\d+\.\d+/.test(String(result.latest)) || result.hasUpdate !== false) {
     console.error('[smoke] unerwartetes Ergebnis:', result);
     process.exitCode = 1;
   } else {
-    console.log(`[smoke] RELEASE-DISCOVERY OK: höchster gültiger Release v${result.latest}, package.json v0.5.16 ist up to date`);
+    console.log(`[smoke] RELEASE-DISCOVERY OK: höchster gültiger Release v${result.latest}, v${CURRENT_VERSION} ist up to date`);
   }
   child.kill();
   setTimeout(() => process.exit(process.exitCode || 0), 500);

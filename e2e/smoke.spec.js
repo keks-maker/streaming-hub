@@ -65,6 +65,22 @@ function isKnownHarmless(text) {
   return KNOWN_HARMLESS.some(k => text.includes(k));
 }
 
+// Zustand einer Datei (oder null) — für Unverändert-Prüfung echter Nutzer-Logs.
+function fileState(file) {
+  try {
+    const st = fs.statSync(file);
+    return `${st.size}:${st.mtimeMs}`;
+  } catch {
+    return null;
+  }
+}
+
+// macOS: app.getPath('logs') zeigt trotz HOME-Umbiegung auf das ECHTE ~/Library/Logs/Streaming Hub
+// (dort kann der updater.log eines echten Nutzers liegen). Zustand vor App-Start erfassen;
+// der Test prüft später nur "unverändert", nie "nicht vorhanden". Das echte Log wird nie angefasst.
+const REAL_UPDATER_LOG = path.join(os.homedir(), 'Library', 'Logs', 'Streaming Hub', 'updater.log');
+let realUpdaterLogBefore = null;
+
 let tmpRoot;
 let electronApp;
 let page;
@@ -78,6 +94,7 @@ test.beforeAll(async () => {
   fs.mkdirSync(userData);
   fs.mkdirSync(home);
 
+  realUpdaterLogBefore = fileState(REAL_UPDATER_LOG);
   const target = resolveLaunchTarget();
   electronApp = await electron.launch({
     executablePath: target.executablePath,
@@ -147,7 +164,14 @@ test('Isolation: userData im Temp-Verzeichnis, kein Updater-Lauf', async () => {
   await expect(btn).not.toHaveAttribute('title', 'Suche…');
   // Kein Updater-Apply: updater.log entsteht erst beim Apply.
   const logsDir = await electronApp.evaluate(({ app }) => app.getPath('logs'));
-  expect(fs.existsSync(path.join(logsDir, 'updater.log'))).toBe(false);
+  // Zeigt logs auf das echte Verzeichnis, muss das Log unverändert sein (Zustand vor Start);
+  // liegt es im Temp, darf es nicht existieren.
+  const updaterLog = path.join(logsDir, 'updater.log');
+  if (updaterLog === REAL_UPDATER_LOG) {
+    expect(fileState(updaterLog)).toBe(realUpdaterLogBefore);
+  } else {
+    expect(fs.existsSync(updaterLog)).toBe(false);
+  }
 });
 
 test('LiveTV: Favoriten-UI (Senderliste, Favoriten-Tab, Reihenfolge) erreichbar', async () => {
