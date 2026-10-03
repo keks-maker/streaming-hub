@@ -85,44 +85,56 @@ test('t_f36663be: removeMeta entfernt beide Lagen', () => {
 test('t_f36663be: RecordJob-Start mit startOffsetSec setzt -ss VOR -i (Argument-Order beweisen)', async () => {
   const root = makeTempRoot();
   const dir = path.join(root, 'job');
+  const argsDir = path.join(root, 'args');
   fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(argsDir, { recursive: true });
+  // Fake-ffmpeg wird VOR dem Job-Start fertig geschrieben und danach nie mehr
+  // angefasst. Jeder Aufruf schreibt seine Args atomar (tmp + mv) in eine
+  // eigene, nummerierte Datei (call-1.txt = erster Spawn des ECHTEN Jobs) —
+  // kein konkurrierendes Schreiben, kein Lesen halb geschriebener Dateien.
   const fakeFfmpeg = path.join(root, 'fake-ffmpeg.sh');
-  fs.writeFileSync(fakeFfmpeg, '#!/bin/sh\necho "-v warning" "$@"\nsleep 0.2\n', { mode: 0o755 });
-  const argsPromise = new Promise(resolve => {
-    const job = new RecordJob({
-      recId: 'rec_20261002_ssorder',
-      sourceUrl: 'http://example.com/live.m3u8',
-      dir,
-      ffmpegPath: fakeFfmpeg,
-      meta: baseMeta(),
-      expectedSegmentSec: 2,
-      startOffsetSec: 120,
-      // Fix-Set 9: Legacy-Pfad deterministisch (kein Netz-Zugriff im Test)
-      fetchPlaylist: async () => { throw new Error('offline (Test)'); },
-    });
-    job.on('started', payload => {
-      assert.equal(payload.startOffsetSec, 120);
-      assert.equal(payload.degraded, false);
-      resolve();
-    });
-    job.start();
-    setTimeout(() => job.stop({ reason: 'abort' }).catch(() => {}), 600);
+  fs.writeFileSync(
+    fakeFfmpeg,
+    '#!/bin/sh\n' +
+      'D="' + argsDir + '"\n' +
+      'n=$(cat "$D/count" 2>/dev/null || echo 0)\n' +
+      'n=$((n+1))\n' +
+      'echo $n > "$D/count"\n' +
+      'printf "%s\\n" "$@" > "$D/call-$n.tmp"\n' +
+      'mv "$D/call-$n.tmp" "$D/call-$n.txt"\n' +
+      'exec sleep 1\n',
+    { mode: 0o755 },
+  );
+  const job = new RecordJob({
+    recId: 'rec_20261002_ssorder',
+    sourceUrl: 'http://example.com/live.m3u8',
+    dir,
+    ffmpegPath: fakeFfmpeg,
+    meta: baseMeta(),
+    expectedSegmentSec: 2,
+    startOffsetSec: 120,
+    // Fix-Set 9: Legacy-Pfad deterministisch (kein Netz-Zugriff im Test)
+    fetchPlaylist: async () => { throw new Error('offline (Test)'); },
   });
-  // Fake-ffmpeg echo't seine args auf stdout — RecordJob ignoriert stdout;
-  // wir prüfen stattdessen direkt die Argument-Order via Shell-Ausgabe-Datei:
-  fs.writeFileSync(fakeFfmpeg, '#!/bin/sh\nprintf "%s\\n" "$@" > ' + path.join(root, 'args.txt') + '\nsleep 0.2\n', { mode: 0o755 });
-  // Re-Spawn für args capture:
-  await new Promise(resolve => {
-    const { spawn } = require('child_process');
-    const child = spawn(fakeFfmpeg, ['-nostdin', '-ss', '120', '-i', 'http://example.com/live.m3u8'], { stdio: 'ignore' });
-    child.on('close', resolve);
-  });
-  const args = fs.readFileSync(path.join(root, 'args.txt'), 'utf8').trim().split('\n');
+  const started = new Promise(resolve => job.on('started', resolve));
+  job.start();
+  const payload = await started;
+  assert.equal(payload.startOffsetSec, 120);
+  assert.equal(payload.degraded, false);
+  // Auf das erste Spawn-Args-Ereignis warten (statt Timing zu raten).
+  const firstCall = path.join(argsDir, 'call-1.txt');
+  const deadline = Date.now() + 10000;
+  while (!fs.existsSync(firstCall) && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 20));
+  }
+  assert.ok(fs.existsSync(firstCall), 'Fake-ffmpeg wurde vom echten RecordJob gestartet');
+  const args = fs.readFileSync(firstCall, 'utf8').trim().split('\n');
   const ssIdx = args.indexOf('-ss');
   const iIdx = args.indexOf('-i');
-  assert.ok(ssIdx !== -1 && iIdx !== -1, ' beide Flags vorhanden');
+  assert.ok(ssIdx !== -1 && iIdx !== -1, 'beide Flags vorhanden');
+  assert.equal(args[ssIdx + 1], '120', '-ss trägt den Start-Offset');
   assert.ok(ssIdx < iIdx, '-ss kommt VOR -i (HLS-DVR-Seek-Contract)');
-  await argsPromise;
+  await job.stop({ reason: 'abort' }).catch(() => {});
   fs.rmSync(root, { recursive: true, force: true });
 });
 
