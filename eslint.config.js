@@ -25,6 +25,8 @@ export default [
       'node_modules/',
       'dist/',
       'release/',
+      'test-results/',
+      'playwright-report/',
       '.cache/',
       '.claude/',
       '.serena/',
@@ -66,7 +68,7 @@ export default [
   },
   // ── Main process (Node.js) ──
   {
-    files: ['main.js', 'preload.js', 'updater.js', 'logger.js', 'lib/**/*.js', 'bin/**/*.js', 'tests/**/*.js', 'scripts/**/*.js'],
+    files: ['main.js', 'preload.js', 'updater.js', 'logger.js', 'lib/**/*.js', 'bin/**/*.js', 'tests/**/*.js', 'scripts/**/*.js', 'e2e/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

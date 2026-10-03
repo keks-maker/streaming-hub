@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased — Qualitätsprüfung (Recorder, Updater, Eingabevalidierung)
+## 0.5.25 (2026-10-03) — Favoriten-Zapping für FullScreenPlayer (#2) · Qualitätsprüfung (Recorder, Updater, Eingabevalidierung) · E2E-Smoke-Test
 
+- Fix #2: `getNextChannelId` in `packages/typed-core/src/tv.ts` zappt mit ArrowUp/ArrowDown ausschließlich über Favoriten in Sidebar-Reihenfolge. Nicht-Favoriten springen zum nächstgelegenen Favoriten in Pfeilrichtung; Wrap-around bleibt erhalten. Die On-Screen-Senderliste verwendet dieselbe Reihenfolge.
 - Fix (Recorder): Retry-Budget und Backoff werden nach einem stabilen Lauf (≥ 30 s) zurückgesetzt — lange Aufnahmen mit vereinzelten Netz-Aussetzern enden nicht mehr als `failed` ohne Remux.
 - Fix (Recorder): Reconnect-Attempts (≥ 2) seeken nicht mehr erneut um den DVR-Offset zurück (vermeidet duplizierte Stunden bzw. „could not seek“).
 - Fix (Recorder): `failed`-Jobs räumen ihren afterRemux-Callback; `stop()` auf einem bereits beendeten Job lässt keinen Geister-Eintrag zurück.
@@ -9,11 +10,8 @@
 - Fix: Datei-basierte TV-Quellen funktionieren nach App-Neustart wieder; Teil-Updates von Datei-Quellen werden korrekt validiert; Datei-Quellen nur über Dateiauswahl.
 - Fix (Sicherheit): XSS über Sendernamen in `tv.html`-Fehleranzeige; Logo-Attribut-Injektion in der Live-TV-Kachel; `recording:delete` löscht nur noch innerhalb der Bibliothek; EPG-Download auf 200 MB begrenzt.
 - Tests: vier bisher nicht in `npm test` eingebundene Tests aufgenommen; neue Regressionstests.
-
-## 0.5.25 (2026-10-02) — Favoriten-Zapping für FullScreenPlayer (#2)
-
-- Fix #2: `getNextChannelId` in `packages/typed-core/src/tv.ts` zappt mit ArrowUp/ArrowDown ausschließlich über Favoriten in Sidebar-Reihenfolge. Nicht-Favoriten springen zum nächstgelegenen Favoriten in Pfeilrichtung; Wrap-around bleibt erhalten. Die On-Screen-Senderliste verwendet dieselbe Reihenfolge.
-
+- Neu: Playwright-E2E-Smoke-Test (`npm run test:e2e`, `e2e/playwright.config.js`, `e2e/smoke.spec.js`) — startet die echte Electron-App (Castlabs, `_electron.launch()`, kein Browser-Download) und prüft Hauptfenster/Kern-DOM, Konsolen-/Exception-Freiheit beim Start, Favoriten-UI und Aufnahmen-Einstieg. Optional gegen ein gepacktes Artefakt via `E2E_APP_PATH`. `npm test` bleibt unverändert (e2e läuft nicht darin).
+- Neu: Test-Hook `STREAMING_HUB_USER_DATA` in `main.js` überschreibt das userData-Verzeichnis (auch den macOS-Default) — der E2E-Test läuft damit nie gegen echte Nutzerdaten. Ohne die Variable ändert sich nichts.
 
 ## 0.5.23 (2026-10-02) — Fix-Set 10: Live-Button-Icon entdoppelt (REC-Verwechslung) · DVR-Aufnahme am Sendungsanfang startet jetzt wirklich (Master→Variant-Planung)
 

@@ -163,6 +163,11 @@ if (process.platform === 'darwin') {
   app.setName('Streaming Hub');
   app.setPath('userData', path.join(app.getPath('appData'), 'streaming-hub'));
 }
+// Test-Hook (E2E, e2e/): isoliertes userData-Verzeichnis. Gilt auf allen
+// Plattformen und läuft NACH dem macOS-Default, damit er diesen übersteuert.
+if (process.env.STREAMING_HUB_USER_DATA) {
+  app.setPath('userData', path.resolve(process.env.STREAMING_HUB_USER_DATA));
+}
 
 let mainWindow;
 let pipWindow = null;

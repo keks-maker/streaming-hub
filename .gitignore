@@ -15,3 +15,7 @@ Weiterentwicklung/
 .update-state.json
 /bin/*
 !/bin/ensure-ffmpeg.js
+
+# Playwright E2E
+test-results/
+playwright-report/

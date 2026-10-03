@@ -291,6 +291,20 @@ Der Update-Button in der Navigationsleiste zeigt den Status:
 
 Klicke auf den Button, um das Update zu starten. Die App lädt die neue Version herunter und startet automatisch neu.
 
+## E2E-Tests
+
+Playwright-Smoke-Test der Desktop-App (`e2e/smoke.spec.js`), gestartet über `_electron.launch()` mit dem Castlabs-Electron aus `node_modules` — es wird kein Browser heruntergeladen (bei der Installation optional `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`).
+
+```bash
+npm run test:e2e                                   # electron . (Standard)
+E2E_APP_PATH="release/mac-arm64/Streaming Hub.app" npm run test:e2e   # gegen das gepackte Artefakt
+```
+
+- Prüft: Hauptfenster + Kern-DOM, keine uncaught Exceptions/Konsolen-Errors beim Start (bekannte harmlose Meldungen stehen kommentiert in `KNOWN_HARMLESS`), Favoriten-UI (LiveTV → Alle Sender → Favoriten) und Aufnahmen-Einstieg (Dashboard + Speicherort-Einstellung).
+- Isoliert: `userData` und `HOME` liegen in einem Temp-Verzeichnis (Env `STREAMING_HUB_USER_DATA`, siehe `main.js`), das Netz ist gesperrt, der Updater wird nie ausgelöst. Echte Nutzerdaten werden nicht berührt; ein Build ohne diesen Hook (zu alt) wird vor dem Start abgelehnt.
+- `E2E_APP_PATH` akzeptiert eine `.app` (macOS) oder eine ausführbare Datei; ohne Variable läuft `electron .`.
+- Läuft bewusst nicht in `npm test` (braucht ein Display und startet echte Electron-Prozesse).
+
 ## Lizenz
 
 MIT
