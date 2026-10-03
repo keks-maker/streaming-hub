@@ -23,9 +23,9 @@ test('ECONNREFUSED -> Verbindung abgelehnt (auch in AggregateError)', () => {
 });
 
 test('Zeitüberschreitung: TimeoutError, AbortError, ETIMEDOUT, undici-Timeouts', () => {
-  const timeout = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+  const timeout = new globalThis.DOMException('The operation was aborted due to timeout', 'TimeoutError');
   assert.match(describeM3uFetchError(timeout), /Zeitüberschreitung/);
-  assert.match(describeM3uFetchError(new DOMException('aborted', 'AbortError')), /Zeitüberschreitung/);
+  assert.match(describeM3uFetchError(new globalThis.DOMException('aborted', 'AbortError')), /Zeitüberschreitung/);
   assert.match(describeM3uFetchError(fetchFailed(coded('ETIMEDOUT'))), /Zeitüberschreitung/);
   assert.match(describeM3uFetchError(fetchFailed(coded('UND_ERR_CONNECT_TIMEOUT'))), /Zeitüberschreitung/);
 });
