@@ -7,8 +7,8 @@ const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { resolveLaunchTarget, launchArgs } = require('./platform');
 
-const ROOT = path.resolve(__dirname, '..');
 const KNOWN_HARMLESS = [
   'ERR_NAME_NOT_RESOLVED',
   'Failed to fetch',
@@ -84,20 +84,11 @@ test.beforeAll(async () => {
       { id: 'qb', name: 'Quelle B', url: fileB, type: 'file', color: '#22c55e', epgUrl: null, sortOrder: [] },
     ]),
   );
-  // E2E_APP_PATH (optional): gepackte .app bzw. Executable statt Quellcode (wie e2e/smoke.spec.js).
-  let executablePath = require('electron');
-  let appArgs = [ROOT];
-  if (process.env.E2E_APP_PATH) {
-    executablePath = path.resolve(process.env.E2E_APP_PATH);
-    if (executablePath.endsWith('.app')) {
-      const macosDir = path.join(executablePath, 'Contents', 'MacOS');
-      executablePath = path.join(macosDir, fs.readdirSync(macosDir)[0]);
-    }
-    appArgs = [];
-  }
+  // E2E_APP_PATH (optional): gepackte .app/AppImage/linux-unpacked bzw. Executable statt Quellcode (e2e/platform.js).
+  const target = resolveLaunchTarget();
   electronApp = await electron.launch({
-    executablePath,
-    args: [...appArgs, '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost'],
+    executablePath: target.executablePath,
+    args: launchArgs(target),
     env: { ...process.env, HOME: home, STREAMING_HUB_USER_DATA: userData, STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9' },
     timeout: 45_000,
   });

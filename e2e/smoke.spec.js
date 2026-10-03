@@ -10,15 +10,15 @@
 //                 Nutzeraktion (Hover/Klick auf den Update-Button), nie beim Start;
 //                 dieser Test löst sie nie aus.
 //
-// Ziel: E2E_APP_PATH (optional) = gepackte .app (macOS) oder ausführbare Datei;
-// Default: `electron .` aus node_modules.
+// Ziel: E2E_APP_PATH (optional) = gepackte .app (macOS), AppImage/linux-unpacked (Linux) oder
+// ausführbare Datei; Default: `electron .` aus node_modules. Plattformlogik: e2e/platform.js.
 
 const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { resolveLaunchTarget, launchArgs, realUpdaterLogPath } = require('./platform');
 
-const ROOT = path.resolve(__dirname, '..');
 const PKG_VERSION = require('../package.json').version;
 
 // Bekannte, harmlose Konsolen-/Log-Meldungen (Teilstring-Match, jeweils begründet).
@@ -41,31 +41,6 @@ const KNOWN_HARMLESS = [
   'Autofill.setAddresses',
 ];
 
-function resolveLaunchTarget() {
-  const custom = process.env.E2E_APP_PATH;
-  if (!custom) {
-    // electron/index.js liefert den Pfad zur Binary des (Castlabs-)Electron.
-    return { executablePath: require('electron'), args: [ROOT], packaged: false };
-  }
-  let exe = path.resolve(custom);
-  if (exe.endsWith('.app')) {
-    const macosDir = path.join(exe, 'Contents', 'MacOS');
-    const bins = fs.existsSync(macosDir) ? fs.readdirSync(macosDir) : [];
-    if (!bins.length) throw new Error(`E2E_APP_PATH: kein Executable in ${macosDir}`);
-    exe = path.join(macosDir, bins[0]);
-  }
-  if (!fs.existsSync(exe)) throw new Error(`E2E_APP_PATH existiert nicht: ${exe}`);
-  // Vorab-Schutz (vor dem Start!): Ein Build ohne userData-Hook würde sonst die ECHTEN
-  // Nutzerdaten öffnen. Bei .app-Bundles (asar: false) prüfen wir main.js im Bundle.
-  if (custom.endsWith('.app')) {
-    const bundledMain = path.join(path.resolve(custom), 'Contents', 'Resources', 'app', 'main.js');
-    if (!fs.existsSync(bundledMain) || !fs.readFileSync(bundledMain, 'utf8').includes('STREAMING_HUB_USER_DATA')) {
-      throw new Error(`E2E_APP_PATH: ${custom} enthält den Test-Hook STREAMING_HUB_USER_DATA nicht (zu alter Build?) — Abbruch zum Schutz echter Nutzerdaten`);
-    }
-  }
-  return { executablePath: exe, args: [], packaged: true };
-}
-
 function isKnownHarmless(text) {
   return KNOWN_HARMLESS.some(k => text.includes(k));
 }
@@ -83,7 +58,8 @@ function fileState(file) {
 // macOS: app.getPath('logs') zeigt trotz HOME-Umbiegung auf das ECHTE ~/Library/Logs/Streaming Hub
 // (dort kann der updater.log eines echten Nutzers liegen). Zustand vor App-Start erfassen;
 // der Test prüft später nur "unverändert", nie "nicht vorhanden". Das echte Log wird nie angefasst.
-const REAL_UPDATER_LOG = path.join(os.homedir(), 'Library', 'Logs', 'Streaming Hub', 'updater.log');
+// Linux/Windows: dort liegt logs unter userData (im Test umgebogen), der echte Pfad dient nur dem Vergleich.
+const REAL_UPDATER_LOG = realUpdaterLogPath();
 let realUpdaterLogBefore = null;
 
 let tmpRoot;
@@ -92,7 +68,7 @@ let page;
 const problems = [];
 
 test.beforeAll(async () => {
-  // realpath: macOS-tmp liegt unter /var -> /private/var; app.getPath liefert die aufgelöste Form.
+  // realpath: macOS: tmp liegt unter /var -> /private/var; Linux: /tmp kann ein Symlink/Mount sein. app.getPath liefert die aufgelöste Form.
   tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-e2e-')));
   const userData = path.join(tmpRoot, 'userData');
   const home = path.join(tmpRoot, 'home');
@@ -103,13 +79,7 @@ test.beforeAll(async () => {
   const target = resolveLaunchTarget();
   electronApp = await electron.launch({
     executablePath: target.executablePath,
-    // --use-mock-keychain: HOME zeigt auf ein temp-Verzeichnis ohne Login-Keychain; ohne den Schalter
-    // erscheint auf macOS gelegentlich der Dialog "Schlüsselbund nicht gefunden".
-    args: [
-      ...target.args,
-      '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost',
-      '--use-mock-keychain',
-    ],
+    args: launchArgs(target),
     env: {
       ...process.env,
       HOME: home,
