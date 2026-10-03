@@ -93,10 +93,10 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
 
   const errorMessage = formatIpcError;
 
-  function field(labelText, input) {
+  function field(labelText, control) {
     const wrap = el('label', 'settings-field');
     wrap.appendChild(el('span', 'settings-field-label', labelText));
-    wrap.appendChild(input);
+    wrap.appendChild(control);
     return wrap;
   }
 

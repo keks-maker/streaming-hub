@@ -155,3 +155,85 @@ test('main.js reicht bestehende Overrides an die Update-Validierung durch', () =
   const main = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'main.js'), 'utf8');
   assert.ok(main.includes('sources[idx].channelOverrides'));
 });
+
+test('isPrivateHostname: weitere Bereiche (CGNAT, Benchmark, Multicast, Reserviert, SIIT, Site-Local, mehrfache Trailing-Dots)', () => {
+  for (const url of [
+    'http://localhost../x',
+    'http://a.lan../x',
+    'http://nas.local../x',
+    'http://100.64.0.1/x',
+    'http://100.127.255.255/x',
+    'http://198.18.0.1/x',
+    'http://198.19.255.255/x',
+    'http://192.0.0.9/x',
+    'http://224.0.0.1/x',
+    'http://239.255.255.250/x',
+    'http://240.0.0.1/x',
+    'http://255.255.255.255/x',
+    'http://[ff02::1]/x',
+    'http://[fec0::1]/x',
+    'http://[::ffff:0:8.8.8.8]/x',
+    'http://[::ffff:0:a00:1]/x',
+    'http://[64:ff9b:1::1]/x',
+    'http://[64:ff9b::a00:1]/x',
+    'http://[::10.0.0.1]/x',
+    'http://[::2]/x',
+  ]) {
+    assert.equal(iv.isPrivateHostname(hostOf(url)), true, url);
+  }
+  // nicht auswertbare IPv6-Adressen werden sicherheitshalber abgelehnt
+  for (const raw of ['1:2:3', 'g::1', '1:2:3:4:5:6:7:8:9', ':::', '1::2::3']) assert.equal(iv.isPrivateHostname(raw), true, raw);
+  assert.equal(iv.isPrivateHostname(''), true);
+  assert.equal(iv.isPrivateHostname('.'), true);
+});
+
+test('isPrivateHostname: öffentliche Grenzfälle bleiben erlaubt', () => {
+  for (const url of [
+    'http://100.63.255.255/x',
+    'http://100.128.0.1/x',
+    'http://198.17.255.255/x',
+    'http://198.20.0.1/x',
+    'http://223.255.255.255/x',
+    'http://[::ffff:8.8.8.8]/x',
+    'http://[64:ff9b::808:808]/x',
+    'http://[2001:4860:4860::8888]/x',
+    'https://example.com./x',
+  ]) {
+    assert.equal(iv.isPrivateHostname(hostOf(url)), false, url);
+  }
+});
+
+test('Alle URLs aus services.json und tvsources.json bleiben gültig (öffentliche Ziele)', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const urls = [];
+  const collect = value => {
+    if (typeof value === 'string' && /^https?:\/\//i.test(value)) urls.push(value);
+    else if (Array.isArray(value)) value.forEach(collect);
+    else if (value && typeof value === 'object') Object.values(value).forEach(collect);
+  };
+  for (const file of ['services.json', 'tvsources.json']) {
+    collect(JSON.parse(fs.readFileSync(path.join(__dirname, '..', file), 'utf8')));
+  }
+  assert.ok(urls.length >= 30, `erwartet viele Default-URLs, gefunden ${urls.length}`);
+  for (const url of urls) {
+    assert.equal(iv.isPrivateHostname(hostOf(url)), false, url);
+    assert.doesNotThrow(() => remoteHttpUrl(url, 'URL'), url);
+  }
+});
+
+test('channelOverrides: Bestandseintrag mit anderer Schlüsselreihenfolge gilt als unverändert', () => {
+  const existing = { c1: { name: 'Alt', url: 'http://192.168.0.5/legacy.m3u8', tvgLogo: 'file:///alt.png' } };
+  const reordered = { c1: { tvgLogo: 'file:///alt.png', url: 'http://192.168.0.5/legacy.m3u8', name: 'Alt' } };
+  assert.doesNotThrow(() => iv.tvSourceUpdates({ channelOverrides: reordered }, 'url', existing));
+  // geändertes Feld wird geprüft, unveränderte private Felder desselben Eintrags nicht
+  assert.doesNotThrow(() => iv.tvSourceUpdates({ channelOverrides: { c1: { ...reordered.c1, name: 'Neu' } } }, 'url', existing));
+  assert.throws(() => iv.tvSourceUpdates({ channelOverrides: { c1: { ...reordered.c1, url: 'http://127.0.0.1/x' } } }, 'url', existing), /lokales oder privates/);
+  assert.throws(() => iv.tvSourceUpdates({ channelOverrides: { c1: { ...reordered.c1, tvgLogo: '//evil.example/x.png' } } }, 'url', existing), /UNC|Netzwerk/);
+});
+
+test('Stream-URL: Längenprüfung', () => {
+  assert.ok(iv.channelStreamUrlError(`https://stream.example.com/${'x'.repeat(4100)}`));
+  assert.equal(iv.channelStreamUrlError(`https://stream.example.com/${'x'.repeat(100)}`), null);
+  assert.ok(iv.channelLogoError(`https://cdn.example.com/${'x'.repeat(4100)}`));
+});

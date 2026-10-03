@@ -2993,3 +2993,4 @@ body {
   .settings-chan-actions { width: 100%; justify-content: flex-end; }
 }
 .tv-channel-manager-header-actions { display: flex; align-items: center; gap: 10px; }
+.settings-chan-detail-hint { font-size: 13px; color: #fbbf24; }

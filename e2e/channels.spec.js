@@ -170,6 +170,12 @@ test('Favoriten setzen und umsortieren (Buttons, Tastatur, Drag&Drop)', async ()
   await page.locator('#settingsTvChannelsViewFav').click();
   await expect.poll(names).toEqual(['Kanal A0003', 'Kanal A0001', 'Kanal A0002']);
 
+  // Beschriftungen nennen den Sendernamen (kein "undefined", keine Doppelung der Aktionstexte)
+  await expect(row('A0003').locator('[data-action="fav"]')).toHaveAttribute('aria-label', 'Kanal A0003: aus Favoriten entfernen');
+  await expect(row('A0003').locator('[data-action="up"]')).toHaveAttribute('aria-label', 'Kanal A0003: in der Reihenfolge nach oben');
+  await expect(row('A0003').locator('[data-action="down"]')).toHaveAttribute('aria-label', 'Kanal A0003: in der Reihenfolge nach unten');
+  await expect(row('A0003').locator('[data-action="edit"]')).toHaveAttribute('aria-label', 'Kanal A0003: bearbeiten');
+
   // Erster sichtbarer Eintrag: "hoch" gesperrt, obwohl davor ein Geister-Favorit liegt
   await expect(row('A0003').locator('[data-action="up"]')).toBeDisabled();
   await expect(row('A0002').locator('[data-action="down"]')).toBeDisabled();
@@ -365,9 +371,29 @@ test('Escape: Combobox-Liste bleibt zu, Einstellungen bleiben offen, Entwurf geh
   await name.fill('Geändert');
   await page.keyboard.press('Escape');
   await expect(name).toHaveValue('Geändert');
-  await expect(page.locator('#settingsTvChannelsStatus')).toContainText('Ungespeicherte Änderungen');
+  const hint = row('B0001').locator('.settings-chan-detail-hint');
+  await expect(hint).toContainText('Ungespeicherte Änderungen');
+  await expect(hint).toBeInViewport(); // direkt im Detailbereich, im Sichtfeld
+  await expect(row('B0001').locator('.settings-chan-detail button[type="submit"]')).toBeFocused();
+  const hintBox = await hint.boundingBox();
+  const detailBox = await row('B0001').locator('.settings-chan-detail').boundingBox();
+  expect(hintBox.y).toBeGreaterThanOrEqual(detailBox.y);
+  expect(hintBox.y + hintBox.height).toBeLessThanOrEqual(detailBox.y + detailBox.height);
   await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
   await row('B0001').locator('.settings-chan-detail [data-action="cancel"]').click();
+  await page.locator('#settingsTvChannelsSearch').fill('');
+});
+
+test('Logo-Vorschau: nicht ladbares Logo wird ausgeblendet', async () => {
+  await page.locator('#settingsTvChannelsSearch').fill('Kanal B0002');
+  await row('B0002').locator('[data-action="edit"]').click();
+  const detail = row('B0002').locator('.settings-chan-detail');
+  await detail.scrollIntoViewIfNeeded();
+  const preview = detail.locator('.settings-chan-logo-preview');
+  await detail.locator('input[data-field="tvgLogo"]').fill('https://logos.invalid/b2-neu.png');
+  // Offline: Laden schlägt fehl -> error-Listener blendet die Vorschau aus
+  await expect(preview).toBeHidden();
+  await detail.locator('[data-action="cancel"]').click();
   await page.locator('#settingsTvChannelsSearch').fill('');
 });
 

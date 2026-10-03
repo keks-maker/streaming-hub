@@ -166,3 +166,14 @@ test('visibleFavoritePosition zählt nur sichtbare Favoriten', () => {
   assert.deepEqual(visibleFavoritePosition(favs, 'b', visible), { index: 1, count: 2 });
   assert.deepEqual(visibleFavoritePosition(favs, 'ghost', visible), { index: -1, count: 2 });
 });
+
+const { channelLabel } = require('../lib/settings-channel-logic.js');
+
+test('channelLabel: Name, sonst tvg-id, sonst ID, sonst Platzhalter', () => {
+  assert.equal(channelLabel({ id: 'c1', name: 'ARD', tvgId: 'ard.de' }), 'ARD');
+  assert.equal(channelLabel({ id: 'c1', name: '', tvgId: 'ard.de' }), 'ard.de');
+  assert.equal(channelLabel({ id: 'c1', name: '  ', tvgId: '' }), 'c1');
+  assert.equal(channelLabel({}), 'Sender');
+  assert.equal(channelLabel(undefined), 'Sender');
+  assert.ok(!channelLabel({ id: undefined, name: undefined }).includes('undefined'));
+});

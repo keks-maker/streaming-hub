@@ -8,6 +8,7 @@
 const {
   normEpgId,
   channelKey,
+  channelLabel,
   isFav,
   filterManagedChannels,
   toggleFavoriteList,
@@ -202,6 +203,7 @@ function createTvChannelsView({
     const original = (getOriginalUrls()[ch.sourceId] || {})[ch.id] || ch.url || '';
     const wrap = el('form', 'settings-chan-detail');
     wrap.noValidate = true;
+    let hintEl = null; // Hinweiszeile im Detailbereich (nahe Speichern/Abbrechen)
 
     const fieldError = key => {
       const msg = open.errors[key];
@@ -226,6 +228,8 @@ function createTvChannelsView({
       if (open.errors[field]) input.setAttribute('aria-invalid', 'true');
       input.addEventListener('input', () => {
         draft[field] = input.value;
+        open.hint = '';
+        if (hintEl) hintEl.textContent = '';
         if (field === 'tvgLogo') updatePreview();
         if (field === 'tvgId') {
           updateEpgBadge();
@@ -429,6 +433,10 @@ function createTvChannelsView({
     });
     wrap.appendChild(urlBox);
 
+    hintEl = el('div', 'settings-chan-detail-hint', open.hint || '');
+    hintEl.setAttribute('role', 'status');
+    hintEl.setAttribute('aria-live', 'polite');
+    wrap.appendChild(hintEl);
     const actions = el('div', 'settings-tv-actions');
     const save = el('button', 'modal-btn modal-btn-save', 'Speichern');
     save.type = 'submit';
@@ -460,7 +468,10 @@ function createTvChannelsView({
         state.restoreFocus = { key: channelKey(ch.sourceId, ch.id), action: 'edit' };
         render();
       } else {
-        setStatus('Ungespeicherte Änderungen – speichern oder mit „Abbrechen“ verwerfen', true);
+        // Hinweis direkt im Detailbereich (im Sichtfeld), Fokus auf "Speichern".
+        open.hint = 'Ungespeicherte Änderungen – speichern oder mit „Abbrechen“ verwerfen';
+        hintEl.textContent = open.hint;
+        save.focus();
       }
     });
     return wrap;
@@ -472,7 +483,7 @@ function createTvChannelsView({
     const { sourcesMap, multiSource, canReorder } = ctx;
     const source = sourcesMap.get(ch.sourceId);
     const key = channelKey(ch.sourceId, ch.id);
-    const label = ch.name || ch.tvgId || ch.id;
+    const label = channelLabel(ch);
     const row = el('div', 'settings-chan-row');
     row.setAttribute('role', 'listitem');
     row.dataset.key = key;
@@ -533,11 +544,11 @@ function createTvChannelsView({
 
     if (state.view === 'favorites') {
       const pos = visibleFavoritePosition((source && source.favorites) || [], ch.id, visibleIdsOf(ch.sourceId));
-      const mk = (action, symbol, label, delta, disabled) => {
+      const mk = (action, symbol, actionLabel, delta, disabled) => {
         const b = el('button', 'settings-chan-move', symbol);
         b.type = 'button';
         b.dataset.action = action;
-        b.setAttribute('aria-label', `${label}: ${label}`);
+        b.setAttribute('aria-label', `${label}: ${actionLabel}`);
         if (disabled) b.disabled = true;
         else b.addEventListener('click', () => moveFav(ch, delta, action));
         return b;
