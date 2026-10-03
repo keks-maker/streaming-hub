@@ -319,11 +319,19 @@
             </header>
             <div class="settings-card">
               <h4 class="settings-card-title">Senderverwaltung</h4>
-              <p class="settings-card-desc">Öffnet den Sender-Editor.</p>
-              <div class="settings-row">
-                <span class="settings-row-label">Sender bearbeiten</span>
-                <button class="settings-action-btn" id="settingsTvChannelsBtn" type="button">Sender bearbeiten</button>
+              <p class="settings-card-desc">Favoriten festlegen und sortieren, EPG-Zuweisung, Logo und Stream-URL je Sender anpassen.</p>
+              <div class="settings-chan-toolbar">
+                <input class="modal-input" id="settingsTvChannelsSearch" type="search" placeholder="Sender suchen …" aria-label="Sender suchen" autocomplete="off" spellcheck="false">
+                <div class="settings-chan-views" role="group" aria-label="Ansicht">
+                  <button class="settings-chan-view active" id="settingsTvChannelsViewAll" type="button" aria-pressed="true">Alle Sender</button>
+                  <button class="settings-chan-view" id="settingsTvChannelsViewFav" type="button" aria-pressed="false">Favoriten</button>
+                </div>
               </div>
+              <div class="settings-chan-sources" id="settingsTvChannelsSources" role="group" aria-label="Quellen filtern"></div>
+              <div class="settings-chan-count" id="settingsTvChannelsCount" aria-live="polite"></div>
+              <div class="settings-chan-list" id="settingsTvChannelsList" role="list"></div>
+              <div class="settings-chan-pager" id="settingsTvChannelsPager"></div>
+              <div class="settings-status settings-status-left" id="settingsTvChannelsStatus" role="status" aria-live="polite"></div>
             </div>
           </section>
 

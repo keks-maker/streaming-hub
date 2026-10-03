@@ -1,0 +1,262 @@
+'use strict';
+
+// E2E: Einstellungen → LiveTV → Sender (Issue #4, Etappe 3).
+// Eigenes isoliertes Profil mit vorbefüllter tvsources.json (lokale M3U-Dateien, kein Netz):
+//   Quelle A: 5000 Sender (Performance), Quelle B: 3 Sender.
+const { test, expect, _electron: electron } = require('@playwright/test');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const ROOT = path.resolve(__dirname, '..');
+const KNOWN_HARMLESS = [
+  'ERR_NAME_NOT_RESOLVED',
+  'Failed to fetch',
+  'net::ERR_',
+  'Component updater failed',
+  'Electron Security Warning',
+  'Autofill.enable',
+  'Autofill.setAddresses',
+];
+const isHarmless = text => KNOWN_HARMLESS.some(k => text.includes(k));
+
+function m3u(prefix, count) {
+  const lines = ['#EXTM3U'];
+  for (let i = 1; i <= count; i++) {
+    const n = String(i).padStart(4, '0');
+    lines.push(
+      `#EXTINF:-1 tvg-id="${prefix}${n}.de" tvg-logo="https://logos.invalid/${prefix}${n}.png" group-title="Gruppe ${i % 20}",Kanal ${prefix}${n}`,
+      `http://streams.invalid/${prefix}${n}.m3u8`,
+    );
+  }
+  return lines.join('\n') + '\n';
+}
+
+let tmpRoot;
+let electronApp;
+let page;
+const problems = [];
+
+async function sources() {
+  return page.evaluate(() => window.electronAPI.getTvSources());
+}
+const rows = () => page.locator('#settingsTvChannelsList .settings-chan-row');
+const row = name => page.locator('#settingsTvChannelsList .settings-chan-row', { hasText: name });
+const names = async () => (await rows().locator('.settings-chan-name').allTextContents()).map(t => t.trim());
+
+test.beforeAll(async () => {
+  tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-e2e-ch-')));
+  const userData = path.join(tmpRoot, 'userData');
+  const home = path.join(tmpRoot, 'home');
+  fs.mkdirSync(userData);
+  fs.mkdirSync(home);
+  const fileA = path.join(tmpRoot, 'a.m3u');
+  const fileB = path.join(tmpRoot, 'b.m3u');
+  fs.writeFileSync(fileA, m3u('A', 5000));
+  fs.writeFileSync(fileB, m3u('B', 3));
+  fs.writeFileSync(
+    path.join(userData, 'tvsources.json'),
+    JSON.stringify([
+      { id: 'qa', name: 'Quelle A', url: fileA, type: 'file', color: '#a78bfa', epgUrl: null, sortOrder: [] },
+      { id: 'qb', name: 'Quelle B', url: fileB, type: 'file', color: '#22c55e', epgUrl: null, sortOrder: [] },
+    ]),
+  );
+  electronApp = await electron.launch({
+    executablePath: require('electron'),
+    args: [ROOT, '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost'],
+    env: { ...process.env, HOME: home, STREAMING_HUB_USER_DATA: userData, STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9' },
+    timeout: 45_000,
+  });
+  electronApp.on('console', msg => {
+    if (msg.type() === 'error' && !isHarmless(msg.text())) problems.push(`[main console] ${msg.text()}`);
+  });
+  page = await electronApp.firstWindow();
+  page.on('pageerror', err => problems.push(`[pageerror] ${err.message}`));
+  page.on('console', msg => {
+    if (msg.type() === 'error' && !isHarmless(msg.text())) problems.push(`[renderer console] ${msg.text()}`);
+  });
+  await page.waitForLoadState('domcontentloaded');
+  await page.locator('#dashboardView').waitFor();
+  await page.locator('.dashboard-section-settings').click();
+  const group = page.locator('#settingsNav .settings-nav-group');
+  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await page.locator('#settingsTab-livetv-channels').click();
+});
+
+test.afterAll(async () => {
+  if (electronApp) {
+    const proc = electronApp.process();
+    await Promise.race([electronApp.close().catch(() => {}), new Promise(resolve => setTimeout(resolve, 5_000))]);
+    if (proc.exitCode === null && proc.signalCode === null) proc.kill('SIGKILL');
+  }
+  if (tmpRoot) fs.rmSync(tmpRoot, { recursive: true, force: true });
+});
+
+test('Große Liste (5003 Sender): seitenweise gerendert, Seitenwechsel schnell', async () => {
+  await expect(page.locator('#settingsTvChannelsCount')).toHaveText('5003 Sender', { timeout: 30_000 });
+  expect(await rows().count()).toBeLessThanOrEqual(50);
+  await expect(page.locator('#settingsTvChannelsPager')).toContainText('Seite 1 von 101');
+  // Zeitmessung im Renderer: Klick bis Layout-Frame nach dem Neuaufbau.
+  const ms = await page.evaluate(async () => {
+    const next = [...window.document.querySelectorAll('#settingsTvChannelsPager button')].find(b => b.textContent.includes('Weiter'));
+    const t0 = window.performance.now();
+    next.click();
+    await new Promise(r => window.requestAnimationFrame(() => window.requestAnimationFrame(r)));
+    return window.performance.now() - t0;
+  });
+  expect(ms, `Seitenwechsel dauerte ${ms}ms`).toBeLessThan(500);
+  await expect(page.locator('#settingsTvChannelsPager')).toContainText('Seite 2 von 101');
+  // Logos laden lazy (nur sichtbare Seite im DOM).
+  expect(await page.locator('#settingsTvChannelsList img.settings-chan-logo[loading="lazy"]').count()).toBeGreaterThan(0);
+  await page.locator('#settingsTvChannelsPager button', { hasText: 'Zurück' }).click();
+});
+
+test('Suche und Quellenfilter', async () => {
+  const search = page.locator('#settingsTvChannelsSearch');
+  await search.fill('Kanal A4999');
+  await expect(rows()).toHaveCount(1);
+  await expect(page.locator('#settingsTvChannelsCount')).toHaveText('1 Sender');
+  await search.fill('b0002.de');
+  await expect(rows()).toHaveCount(1);
+  await search.fill('');
+  await expect(page.locator('#settingsTvChannelsCount')).toHaveText('5003 Sender');
+  // Quelle A abwählen -> nur Quelle B
+  await page.locator('#settingsTvChannelsSources .settings-chan-pill', { hasText: 'Quelle A' }).click();
+  await expect(page.locator('#settingsTvChannelsCount')).toHaveText('3 Sender');
+  await page.locator('#settingsTvChannelsSources .settings-chan-pill', { hasText: 'Quelle A' }).click();
+  await expect(page.locator('#settingsTvChannelsCount')).toHaveText('5003 Sender');
+});
+
+test('Favoriten setzen und umsortieren (Buttons, Tastatur, Drag&Drop)', async () => {
+  const search = page.locator('#settingsTvChannelsSearch');
+  for (const n of ['A0003', 'A0001', 'A0002']) {
+    await search.fill(`Kanal ${n}`);
+    await expect(rows()).toHaveCount(1);
+    await row(n).locator('[data-action="fav"]').click();
+    await expect(row(n).locator('[data-action="fav"]')).toHaveAttribute('aria-pressed', 'true');
+  }
+  await search.fill('');
+  const idsOf = async () => (await sources()).find(s => s.id === 'qa').favorites;
+  const favs = await idsOf();
+  expect(favs).toHaveLength(3);
+
+  await page.locator('#settingsTvChannelsViewFav').click();
+  await expect.poll(names).toEqual(['Kanal A0003', 'Kanal A0001', 'Kanal A0002']);
+
+  // Button: A0002 nach oben
+  await row('A0002').locator('[data-action="up"]').click();
+  await expect.poll(names).toEqual(['Kanal A0003', 'Kanal A0002', 'Kanal A0001']);
+  expect(await idsOf()).toEqual([favs[0], favs[2], favs[1]]);
+
+  // Tastatur: Fokus auf "runter" von A0003, Enter -> A0003 rutscht eins nach unten, Fokus bleibt am Button
+  await row('A0003').locator('[data-action="down"]').focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(names).toEqual(['Kanal A0002', 'Kanal A0003', 'Kanal A0001']);
+  await expect(row('A0003').locator('[data-action="down"]')).toBeFocused();
+  // Ränder: erster Eintrag kann nicht weiter hoch
+  await expect(row('A0002').locator('[data-action="up"]')).toBeDisabled();
+
+  // Drag&Drop: A0001 vor A0002 ziehen
+  await row('A0001').locator('.settings-chan-drag').dragTo(row('A0002'));
+  await expect.poll(names).toEqual(['Kanal A0001', 'Kanal A0002', 'Kanal A0003']);
+  const persisted = await idsOf();
+  expect(persisted).toHaveLength(3);
+  const reloaded = await sources();
+  expect(reloaded.find(s => s.id === 'qa').sortOrder).toEqual([]);
+
+  // Favorit entfernen
+  await row('A0003').locator('[data-action="fav"]').click();
+  await expect.poll(names).toEqual(['Kanal A0001', 'Kanal A0002']);
+  await page.locator('#settingsTvChannelsViewAll').click();
+});
+
+test('Sender bearbeiten: Override speichern, validieren, zurücksetzen – ohne Datenverlust', async () => {
+  const search = page.locator('#settingsTvChannelsSearch');
+  await search.fill('Kanal A0001');
+  const before = (await sources()).find(s => s.id === 'qa');
+  await row('A0001').locator('[data-action="edit"]').click();
+  const detail = row('A0001').locator('.settings-chan-detail');
+  await expect(detail).toBeVisible();
+  await expect(detail.locator('.settings-chan-original code')).toHaveText('http://streams.invalid/A0001.m3u8');
+
+  // Ungültige Eingaben werden abgewiesen und nicht gespeichert
+  await detail.locator('input[data-field="urlEnabled"]').check();
+  await detail.locator('input[data-field="url"]').fill('http://192.168.1.5/stream.m3u8');
+  await detail.getByRole('button', { name: 'Speichern' }).click();
+  await expect(row('A0001').locator('.settings-chan-error')).toContainText('lokales oder privates');
+  expect((await sources()).find(s => s.id === 'qa').channelOverrides).toBeUndefined();
+  await detail.locator('input[data-field="url"]').fill('ftp://x.example/a');
+  await detail.getByRole('button', { name: 'Speichern' }).click();
+  await expect(row('A0001').locator('.settings-chan-error')).toContainText('http://');
+
+  // Gültig speichern
+  await detail.locator('input[data-field="name"]').fill('Eins');
+  await detail.locator('input[data-field="tvgId"]').fill('eins.de');
+  await detail.locator('input[data-field="tvgLogo"]').fill('https://logos.invalid/eins.png');
+  await expect(detail.locator('.settings-chan-logo-preview')).toBeVisible();
+  await detail.locator('input[data-field="url"]').fill('https://streams.invalid/override.m3u8');
+  await detail.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#settingsTvChannelsStatus')).toContainText('gespeichert');
+
+  const after = (await sources()).find(s => s.id === 'qa');
+  const chId = Object.keys(after.channelOverrides)[0];
+  expect(after.channelOverrides[chId]).toEqual({
+    name: 'Eins',
+    tvgId: 'eins.de',
+    tvgLogo: 'https://logos.invalid/eins.png',
+    url: 'https://streams.invalid/override.m3u8',
+  });
+  for (const key of ['id', 'name', 'url', 'type', 'color', 'epgUrl', 'favorites', 'sortOrder']) {
+    expect(after[key], key).toEqual(before[key]);
+  }
+  await search.fill('Eins');
+  await expect(row('Eins')).toBeVisible();
+  await expect(row('Eins')).toContainText('URL überschrieben');
+  await expect(row('Eins').locator('.settings-chan-tvgid')).toHaveText('eins.de');
+
+  // Zurücksetzen: URL auf Original, Felder leeren -> Override-Eintrag verschwindet
+  await row('Eins').locator('[data-action="edit"]').click();
+  const d2 = row('Eins').locator('.settings-chan-detail');
+  await d2.locator('[data-action="reset-url"]').click();
+  await d2.locator('input[data-field="name"]').fill('');
+  await d2.locator('input[data-field="tvgId"]').fill('');
+  await d2.locator('input[data-field="tvgLogo"]').fill('');
+  await d2.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#settingsTvChannelsStatus')).toContainText('gespeichert');
+  const reset = (await sources()).find(s => s.id === 'qa');
+  expect(reset.channelOverrides).toEqual({});
+  await search.fill('Kanal A0001');
+  await expect(row('A0001')).toBeVisible();
+  await expect(row('A0001')).not.toContainText('URL überschrieben');
+  await search.fill('');
+});
+
+test('Ungespeicherte Eingaben im Detailbereich überstehen tv-sources-changed', async () => {
+  await page.locator('#settingsTvChannelsSearch').fill('Kanal A0002');
+  await row('A0002').locator('[data-action="edit"]').click();
+  const input = row('A0002').locator('.settings-chan-detail input[data-field="name"]');
+  await input.fill('Halb getippt');
+  await input.focus();
+  // Broadcast auslösen (Farbe einer anderen Quelle ändern).
+  await page.evaluate(() => window.electronAPI.updateTvSource('qb', { color: '#112233' }));
+  await expect.poll(async () => (await sources()).find(s => s.id === 'qb').color).toBe('#112233');
+  await expect(row('A0002').locator('.settings-chan-detail input[data-field="name"]')).toHaveValue('Halb getippt');
+  await expect(row('A0002').locator('.settings-chan-detail input[data-field="name"]')).toBeFocused();
+  await row('A0002').locator('.settings-chan-detail [data-action="cancel"]').click();
+  await page.locator('#settingsTvChannelsSearch').fill('');
+});
+
+test('EPG-Combobox: ohne geladenes EPG verständlicher Hinweis, Tastatur schließt mit Escape', async () => {
+  await page.locator('#settingsTvChannelsSearch').fill('Kanal B0001');
+  await row('B0001').locator('[data-action="edit"]').click();
+  const tvg = row('B0001').locator('.settings-chan-detail input[data-field="tvgId"]');
+  await tvg.focus();
+  await expect(row('B0001').locator('.settings-chan-combo')).toContainText('EPG nicht geladen');
+  await page.keyboard.press('Escape');
+  await expect(row('B0001').locator('.settings-chan-combo')).toBeHidden();
+  await row('B0001').locator('.settings-chan-detail [data-action="cancel"]').click();
+});
+
+test('Keine uncaught Exceptions / unerwarteten Konsolen-Errors', async () => {
+  expect(problems, `Unerwartete Fehler:\n${problems.join('\n')}`).toEqual([]);
+});

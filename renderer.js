@@ -22,6 +22,7 @@ const {
 const logger = require('./logger.js');
 const { createSettingsView } = require('./settings-view.js');
 const { createTvSourcesView } = require('./settings-tv-sources.js');
+const { createTvChannelsView } = require('./settings-tv-channels.js');
 const {
   formatDuration,
   currentEpgStopMs,
@@ -65,6 +66,8 @@ let tvSourceStatus = 'idle';
 let tvEpgStatus = 'idle';
 let tvEpgLoadedAt = null;
 let settingsTvSourcesView = null;
+let settingsTvChannelsView = null;
+let settingsEpgListCache = { index: null, list: [] };
 let tvSourceErrors = [];
 let tvEpgErrors = [];
 let tvEpgUrls = [];
@@ -1815,6 +1818,7 @@ function renderTvChannelItem(ch, showFav) {
 }
 
 function renderTvChannels() {
+  if (settingsTvChannelsView) settingsTvChannelsView.render();
   const container = tvChannelManagerList;
   if (!container) return;
   container.innerHTML = '';
@@ -3720,7 +3724,30 @@ setTimeout(checkForUpdates, 4000);
 
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsPanelHost = document.getElementById('settingsPanelHost');
-const settingsView = createSettingsView(settingsPanel);
+const settingsView = createSettingsView(settingsPanel, {
+  onShow: page => {
+    if (page === 'livetv-channels' && settingsTvChannelsView) settingsTvChannelsView.render();
+  },
+});
+settingsTvChannelsView = createTvChannelsView({
+  root: settingsPanel,
+  api: window.electronAPI,
+  getSources: () => tvSources,
+  getChannels: () => tvChannels,
+  getOriginalUrls: () => tvOriginalChannelUrls,
+  getEpgIndex: () => tvEpgIndex,
+  getEpgChannelList: () => {
+    // Sortierte EPG-Kanalliste je Index nur einmal berechnen (Combobox ruft sie bei jeder Eingabe ab).
+    if (!tvEpgIndex) return [];
+    if (settingsEpgListCache.index !== tvEpgIndex) {
+      settingsEpgListCache = { index: tvEpgIndex, list: getEpgChannelList(tvEpgIndex) };
+    }
+    return settingsEpgListCache.list;
+  },
+  safeResourceUrl,
+  safeColor,
+  reload: () => loadTvChannels(true),
+});
 settingsTvSourcesView = createTvSourcesView({
   root: settingsPanel,
   api: window.electronAPI,
@@ -3738,7 +3765,6 @@ settingsPanel.parentNode.insertBefore(settingsPanelPlaceholder, settingsPanel);
 const settingsStatus = document.getElementById('settingsStatus');
 const backupBtn = document.getElementById('backupBtn');
 const restoreBtn = document.getElementById('restoreBtn');
-const settingsTvChannelsBtn = document.getElementById('settingsTvChannelsBtn');
 
 function setSettingsStatus(message) {
   if (settingsStatus) settingsStatus.textContent = message;
@@ -3754,7 +3780,6 @@ document.querySelectorAll('input[name="tvMode"]').forEach(r => {
 });
 
 // settingsBtn (Fix-Set 4 entfernt, Dashboard-Kachel abdeckt Einstellungen)
-settingsTvChannelsBtn.addEventListener('click', openTvChEditor);
 
 backupBtn.addEventListener('click', async () => {
   backupBtn.disabled = true;
@@ -3852,6 +3877,7 @@ window.electronAPI.onTvSourcesChanged(sources => {
 
   renderTvSourceList();
   settingsTvSourcesView.render();
+  if (settingsTvChannelsView) settingsTvChannelsView.render();
   if (structuralChange) {
     if (tvSidebarOpen) renderSourcePills();
     refreshTvSourcesAndEpg();

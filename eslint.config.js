@@ -111,7 +111,7 @@ export default [
   },
   // ── Renderer (Browser only) ──
   {
-    files: ['renderer.js', 'settings-view.js', 'settings-tv-sources.js'],
+    files: ['renderer.js', 'settings-view.js', 'settings-tv-sources.js', 'settings-tv-channels.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

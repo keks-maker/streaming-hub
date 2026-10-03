@@ -163,6 +163,7 @@ function createSettingsView(panel, options = {}) {
     });
     placeAddForm(page);
     if (remember) writeStoredPage(page, options.storage);
+    if (typeof options.onShow === 'function') options.onShow(page);
     return page;
   }
 

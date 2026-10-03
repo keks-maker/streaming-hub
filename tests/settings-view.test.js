@@ -25,7 +25,7 @@ test('Jede Seite der Navigation hat genau ein Seiten-Element im Markup', () => {
 
 test('Bestehende Einstellungs-IDs bleiben erhalten', () => {
   for (const id of [
-    'backupBtn', 'restoreBtn', 'settingsTvChannelsBtn', 'settingsEpgRefreshBtn',
+    'backupBtn', 'restoreBtn', 'settingsTvChannelsList', 'settingsTvChannelsSearch', 'settingsTvChannelsViewFav', 'settingsEpgRefreshBtn',
     'recPathInput', 'recPathPickBtn', 'recPathSaveBtn', 'recPathResetBtn', 'recPathHint', 'recPathWarn',
     'recFfmpegStatus', 'settingsAddDienstBtn', 'settingsAddForm', 'settingsServiceListStreaming',
     'settingsServiceListMediathek', 'settingsStatus', 'settingsTvSourceList', 'settingsTvSourceAdd',
