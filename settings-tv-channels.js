@@ -11,7 +11,8 @@ const {
   isFav,
   filterManagedChannels,
   toggleFavoriteList,
-  moveFavorite,
+  moveFavoriteAmongVisible,
+  visibleFavoritePosition,
   moveFavoriteTo,
   mergeOverride,
   buildOverrideChanges,
@@ -120,11 +121,16 @@ function createTvChannelsView({
     saveFavorites(source, toggleFavoriteList(source.favorites, ch.id));
   }
 
+  // Sender einer Quelle, die in der geladenen Playlist existieren (Gegenstück zu "Geister"-Favoriten).
+  function visibleIdsOf(sourceId) {
+    return new Set(getChannels().filter(c => c.sourceId === sourceId).map(c => c.id));
+  }
+
   function moveFav(ch, delta, focusAction) {
     const source = sourcesById().get(ch.sourceId);
     if (!source) return;
     state.restoreFocus = { key: channelKey(ch.sourceId, ch.id), action: focusAction };
-    saveFavorites(source, moveFavorite(source.favorites, ch.id, delta));
+    saveFavorites(source, moveFavoriteAmongVisible(source.favorites, ch.id, delta, visibleIdsOf(ch.sourceId)));
   }
 
   function dropFav(draggedKey, target) {
@@ -156,7 +162,8 @@ function createTvChannelsView({
     if (state.open && state.open.key === key) {
       state.open = null;
     } else {
-      state.open = { key, sourceId: ch.sourceId, channelId: ch.id, draft: openDraft(ch), errors: {} };
+      const draft = openDraft(ch);
+      state.open = { key, sourceId: ch.sourceId, channelId: ch.id, draft, initial: JSON.stringify(draft), errors: {} };
       state.focusDetail = true;
     }
     setStatus('');
@@ -272,12 +279,20 @@ function createTvChannelsView({
       tvgInput.setAttribute('aria-expanded', 'false');
     }
 
+    // Fokus zurück ins Feld, ohne dass das Focus-Ereignis die Liste erneut öffnet.
+    let suppressOpen = false;
+    function focusInputClosed() {
+      suppressOpen = true;
+      tvgInput.focus();
+      suppressOpen = false;
+    }
+
     function pick(channelId) {
       draft.tvgId = channelId;
       tvgInput.value = channelId;
       updateEpgBadge();
       closeCombo();
-      tvgInput.focus();
+      focusInputClosed();
     }
 
     function renderCombo() {
@@ -306,10 +321,18 @@ function createTvChannelsView({
       tvgInput.setAttribute('aria-expanded', 'true');
     }
 
-    tvgInput.addEventListener('focus', renderCombo);
-    tvgInput.addEventListener('blur', () => setTimeout(closeCombo, 150));
+    tvgInput.addEventListener('focus', () => {
+      if (!suppressOpen) renderCombo();
+    });
+    // Liste schließen, sobald der Fokus das Combobox-Feld samt Liste verlässt.
+    comboWrap.addEventListener('focusout', () => {
+      setTimeout(() => {
+        if (!comboWrap.contains(window.document.activeElement)) closeCombo();
+      }, 150);
+    });
     tvgInput.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown') {
+        if (combo.hidden) renderCombo();
         const first = combo.querySelector('.settings-chan-combo-item');
         if (first) {
           e.preventDefault();
@@ -335,7 +358,7 @@ function createTvChannelsView({
         e.preventDefault();
         e.stopPropagation();
         closeCombo();
-        tvgInput.focus();
+        focusInputClosed();
       }
     });
     updateEpgBadge();
@@ -345,6 +368,10 @@ function createTvChannelsView({
     const preview = el('img', 'settings-chan-logo-preview');
     preview.alt = '';
     preview.loading = 'lazy';
+    preview.addEventListener('error', () => {
+      preview.removeAttribute('src');
+      preview.hidden = true;
+    });
     function updatePreview() {
       const safe = overrideLogoUrl(draft.tvgLogo);
       if (safe) {
@@ -420,6 +447,22 @@ function createTvChannelsView({
       e.preventDefault();
       saveDetail(ch);
     });
+    // Escape im Detailbereich wird lokal behandelt (die Einstellungen bleiben offen):
+    // ohne Änderungen schließt es den Bereich, mit ungespeicherten Änderungen bleibt der
+    // Entwurf erhalten und ein Hinweis erscheint (kein stiller Datenverlust).
+    wrap.addEventListener('keydown', e => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (JSON.stringify(open.draft) === open.initial) {
+        state.open = null;
+        setStatus('');
+        state.restoreFocus = { key: channelKey(ch.sourceId, ch.id), action: 'edit' };
+        render();
+      } else {
+        setStatus('Ungespeicherte Änderungen – speichern oder mit „Abbrechen“ verwerfen', true);
+      }
+    });
     return wrap;
   }
 
@@ -429,6 +472,7 @@ function createTvChannelsView({
     const { sourcesMap, multiSource, canReorder } = ctx;
     const source = sourcesMap.get(ch.sourceId);
     const key = channelKey(ch.sourceId, ch.id);
+    const label = ch.name || ch.tvgId || ch.id;
     const row = el('div', 'settings-chan-row');
     row.setAttribute('role', 'listitem');
     row.dataset.key = key;
@@ -443,6 +487,11 @@ function createTvChannelsView({
     logo.loading = 'lazy';
     logo.decoding = 'async';
     const logoSrc = displayLogoUrl(ch);
+    // Fehlgeschlagene Logos: Platzhalter statt Broken-Image-Symbol.
+    logo.addEventListener('error', () => {
+      logo.removeAttribute('src');
+      logo.classList.add('empty');
+    });
     if (logoSrc) logo.src = logoSrc;
     else logo.classList.add('empty');
     head.appendChild(logo);
@@ -478,24 +527,23 @@ function createTvChannelsView({
     star.type = 'button';
     star.dataset.action = 'fav';
     star.setAttribute('aria-pressed', String(fav));
-    star.setAttribute('aria-label', `${ch.name}: ${fav ? 'aus Favoriten entfernen' : 'zu Favoriten hinzufügen'}`);
+    star.setAttribute('aria-label', `${label}: ${fav ? 'aus Favoriten entfernen' : 'zu Favoriten hinzufügen'}`);
     star.addEventListener('click', () => toggleFavorite(ch));
     actions.appendChild(star);
 
     if (state.view === 'favorites') {
-      const favs = (source && source.favorites) || [];
-      const pos = favs.indexOf(ch.id);
+      const pos = visibleFavoritePosition((source && source.favorites) || [], ch.id, visibleIdsOf(ch.sourceId));
       const mk = (action, symbol, label, delta, disabled) => {
         const b = el('button', 'settings-chan-move', symbol);
         b.type = 'button';
         b.dataset.action = action;
-        b.setAttribute('aria-label', `${ch.name}: ${label}`);
+        b.setAttribute('aria-label', `${label}: ${label}`);
         if (disabled) b.disabled = true;
         else b.addEventListener('click', () => moveFav(ch, delta, action));
         return b;
       };
-      actions.appendChild(mk('up', '↑', 'in der Reihenfolge nach oben', -1, !canReorder || pos <= 0));
-      actions.appendChild(mk('down', '↓', 'in der Reihenfolge nach unten', 1, !canReorder || pos === -1 || pos >= favs.length - 1));
+      actions.appendChild(mk('up', '↑', 'in der Reihenfolge nach oben', -1, !canReorder || pos.index <= 0));
+      actions.appendChild(mk('down', '↓', 'in der Reihenfolge nach unten', 1, !canReorder || pos.index === -1 || pos.index >= pos.count - 1));
       const handle = el('span', 'settings-chan-drag', '⠿');
       handle.setAttribute('aria-hidden', 'true');
       handle.title = 'Zum Umsortieren ziehen';
@@ -529,7 +577,7 @@ function createTvChannelsView({
     edit.type = 'button';
     edit.dataset.action = 'edit';
     edit.setAttribute('aria-expanded', String(Boolean(isOpen)));
-    edit.setAttribute('aria-label', `${ch.name}: ${isOpen ? 'Bearbeiten schließen' : 'bearbeiten'}`);
+    edit.setAttribute('aria-label', `${label}: ${isOpen ? 'Bearbeiten schließen' : 'bearbeiten'}`);
     edit.addEventListener('click', () => toggleDetail(ch));
     actions.appendChild(edit);
     head.appendChild(actions);
@@ -644,6 +692,11 @@ function createTvChannelsView({
     const sources = getSources();
     const channels = getChannels();
     const items = currentItems();
+    // Nach dem Verschieben über eine Seitengrenze die Seite des verschobenen Senders anzeigen.
+    if (state.restoreFocus) {
+      const at = items.findIndex(c => channelKey(c.sourceId, c.id) === state.restoreFocus.key);
+      if (at !== -1) state.page = Math.floor(at / PAGE_SIZE);
+    }
     const info = paginate(items, state.page, PAGE_SIZE);
     state.page = info.page;
 
@@ -675,6 +728,9 @@ function createTvChannelsView({
       countEl.textContent = `${info.total} Treffer – Umsortieren ist während der Suche deaktiviert`;
     } else {
       countEl.textContent = `${info.total} Sender`;
+    }
+    if (state.view === 'favorites' && noQuery && info.pages > 1) {
+      countEl.textContent += ' – Drag&Drop gilt nur innerhalb einer Seite, über Seitengrenzen die Pfeil-Buttons nutzen';
     }
     renderPager(info);
     restoreFocus(saved);

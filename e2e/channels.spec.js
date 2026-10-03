@@ -70,6 +70,8 @@ test.beforeAll(async () => {
         color: '#a78bfa',
         epgUrl: null,
         sortOrder: ['geist-sort'],
+        // "Geister"-Favorit: nicht (mehr) in der Playlist, muss beim Umsortieren erhalten bleiben.
+        favorites: ['geist-fav'],
         // Bestandsdaten anderer Sender inkl. unbekanntem Feld und (heute unzulässiger) privater URL:
         // müssen das Bearbeiten eines anderen Senders unverändert überstehen.
         channelOverrides: { ...SEEDED_OVERRIDES },
@@ -125,6 +127,14 @@ test('Große Liste (5003 Sender): seitenweise gerendert, Seitenwechsel schnell',
   // Logos laden lazy (nur sichtbare Seite im DOM).
   expect(await page.locator('#settingsTvChannelsList img.settings-chan-logo[loading="lazy"]').count()).toBeGreaterThan(0);
   await page.locator('#settingsTvChannelsPager button', { hasText: 'Zurück' }).click();
+  // Nicht ladbare Logos (offline) werden zum Platzhalter statt Broken-Image-Symbol.
+  // (Nur sichtbare Zeilen laden wegen loading=lazy tatsächlich.)
+  await rows().first().scrollIntoViewIfNeeded();
+  await expect(page.locator('#settingsTvChannelsList img.settings-chan-logo').first()).toHaveClass(/empty/);
+  // Beschriftungen ohne "undefined"
+  const labels = await page.locator('#settingsTvChannelsList [aria-label]').evaluateAll(els => els.map(e => e.getAttribute('aria-label')));
+  expect(labels.length).toBeGreaterThan(0);
+  expect(labels.every(l => !l.includes('undefined'))).toBe(true);
 });
 
 test('Suche und Quellenfilter', async () => {
@@ -154,15 +164,20 @@ test('Favoriten setzen und umsortieren (Buttons, Tastatur, Drag&Drop)', async ()
   await search.fill('');
   const idsOf = async () => (await sources()).find(s => s.id === 'qa').favorites;
   const favs = await idsOf();
-  expect(favs).toHaveLength(3);
+  expect(favs).toEqual(['geist-fav', ...favs.slice(1)]);
+  expect(favs).toHaveLength(4);
 
   await page.locator('#settingsTvChannelsViewFav').click();
   await expect.poll(names).toEqual(['Kanal A0003', 'Kanal A0001', 'Kanal A0002']);
 
-  // Button: A0002 nach oben
+  // Erster sichtbarer Eintrag: "hoch" gesperrt, obwohl davor ein Geister-Favorit liegt
+  await expect(row('A0003').locator('[data-action="up"]')).toBeDisabled();
+  await expect(row('A0002').locator('[data-action="down"]')).toBeDisabled();
+
+  // Button: A0002 nach oben (Tausch mit sichtbarem Nachbarn, Geist behält Platz 0)
   await row('A0002').locator('[data-action="up"]').click();
   await expect.poll(names).toEqual(['Kanal A0003', 'Kanal A0002', 'Kanal A0001']);
-  expect(await idsOf()).toEqual([favs[0], favs[2], favs[1]]);
+  expect(await idsOf()).toEqual([favs[0], favs[1], favs[3], favs[2]]);
 
   // Tastatur: Fokus auf "runter" von A0003, Enter -> A0003 rutscht eins nach unten, Fokus bleibt am Button
   await row('A0003').locator('[data-action="down"]').focus();
@@ -176,7 +191,9 @@ test('Favoriten setzen und umsortieren (Buttons, Tastatur, Drag&Drop)', async ()
   await row('A0001').locator('.settings-chan-drag').dragTo(row('A0002'));
   await expect.poll(names).toEqual(['Kanal A0001', 'Kanal A0002', 'Kanal A0003']);
   const persisted = await idsOf();
-  expect(persisted).toHaveLength(3);
+  expect(persisted).toHaveLength(4);
+  expect(persisted).toContain('geist-fav');
+  expect(new Set(persisted).size).toBe(4);
   const reloaded = await sources();
   expect(reloaded.find(s => s.id === 'qa').sortOrder).toEqual(['geist-sort']);
 
@@ -276,6 +293,82 @@ test('EPG-Combobox: ohne geladenes EPG verständlicher Hinweis, Tastatur schlie�
   await page.keyboard.press('Escape');
   await expect(row('B0001').locator('.settings-chan-combo')).toBeHidden();
   await row('B0001').locator('.settings-chan-detail [data-action="cancel"]').click();
+});
+
+test('Seitengrenze: Verschieben über die 50er-Seite wechselt die Seite, Fokus bleibt am Eintrag', async () => {
+  // 55 echte Favoriten (+ Geist) per IPC setzen.
+  const fileA = await page.evaluate(async () => (await window.electronAPI.getTvSources()).find(s => s.id === 'qa').url);
+  const ids = await page.evaluate(async url => (await window.electronAPI.fetchAndParseM3U(url)).channels.slice(100, 155).map(c => c.id), fileA);
+  expect(ids).toHaveLength(55);
+  await page.evaluate(favorites => window.electronAPI.updateTvSource('qa', { favorites }), [ids[0], 'geist-fav', ...ids.slice(1)]);
+  await page.locator('#settingsTvChannelsSearch').fill('');
+  await page.locator('#settingsTvChannelsViewFav').click();
+  await expect(page.locator('#settingsTvChannelsPager')).toContainText('Seite 1 von 2');
+  await expect(page.locator('#settingsTvChannelsCount')).toContainText('über Seitengrenzen die Pfeil-Buttons');
+  await expect(rows()).toHaveCount(50);
+  // Geist zwischen zwei sichtbaren Favoriten: Tausch mit dem sichtbaren Nachbarn, Geist behält Platz 1
+  await expect(rows().nth(0).locator('[data-action="up"]')).toBeDisabled();
+  await rows().nth(1).locator('[data-action="up"]').click();
+  await expect.poll(async () => (await sources()).find(s => s.id === 'qa').favorites.slice(0, 3)).toEqual([ids[1], 'geist-fav', ids[0]]);
+  await expect(rows().nth(0)).toHaveAttribute('data-channel-id', ids[1]);
+  const lastOnPage = rows().nth(49);
+  const key = await lastOnPage.getAttribute('data-channel-id');
+  expect(key).toBe(ids[49]);
+  await lastOnPage.locator('[data-action="down"]').click();
+  await expect(page.locator('#settingsTvChannelsPager')).toContainText('Seite 2 von 2');
+  const moved = page.locator(`#settingsTvChannelsList .settings-chan-row[data-channel-id="${ids[49]}"]`);
+  await expect(moved).toBeVisible();
+  await expect(moved.locator('[data-action="down"]')).toBeFocused();
+  const persisted = (await sources()).find(s => s.id === 'qa').favorites;
+  expect(persisted).toHaveLength(56);
+  expect(persisted[1]).toBe('geist-fav');
+  expect(persisted.indexOf(ids[49])).toBe(51);
+  expect(new Set(persisted).size).toBe(56);
+  // Rückweg über die Seitengrenze: Fokus bleibt ebenfalls erhalten
+  await moved.locator('[data-action="up"]').click();
+  await expect(page.locator('#settingsTvChannelsPager')).toContainText('Seite 1 von 2');
+  await expect(page.locator(`#settingsTvChannelsList .settings-chan-row[data-channel-id="${ids[49]}"] [data-action="up"]`)).toBeFocused();
+  await page.locator('#settingsTvChannelsViewAll').click();
+});
+
+test('Escape: Combobox-Liste bleibt zu, Einstellungen bleiben offen, Entwurf geht nicht still verloren', async () => {
+  await page.locator('#settingsTvChannelsSearch').fill('Kanal B0001');
+  await row('B0001').locator('[data-action="edit"]').click();
+  const detail = row('B0001').locator('.settings-chan-detail');
+  const tvg = detail.locator('input[data-field="tvgId"]');
+  const combo = detail.locator('.settings-chan-combo');
+  await tvg.focus();
+  await expect(combo).toBeVisible();
+  // EPG ist offline nicht geladen -> Eintrag für den Listenpfad einfügen
+  await page.evaluate(() => {
+    const item = window.document.createElement('button');
+    item.type = 'button';
+    item.className = 'settings-chan-combo-item';
+    item.textContent = 'test.de';
+    window.document.querySelector('.settings-chan-combo').appendChild(item);
+  });
+  await page.keyboard.press('ArrowDown');
+  await expect(detail.locator('.settings-chan-combo-item')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(combo).toBeHidden();
+  await expect(tvg).toBeFocused();
+  await page.waitForTimeout(400);
+  await expect(combo).toBeHidden(); // öffnet nicht erneut
+  await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+  // Escape im Feld bei geschlossener Liste, Entwurf unverändert: schließt nur den Detailbereich
+  await page.keyboard.press('Escape');
+  await expect(detail).toHaveCount(0);
+  await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+  // Mit ungespeicherter Änderung: Detailbereich und Eingabe bleiben, Hinweis erscheint
+  await row('B0001').locator('[data-action="edit"]').click();
+  const name = row('B0001').locator('.settings-chan-detail input[data-field="name"]');
+  await name.fill('Geändert');
+  await page.keyboard.press('Escape');
+  await expect(name).toHaveValue('Geändert');
+  await expect(page.locator('#settingsTvChannelsStatus')).toContainText('Ungespeicherte Änderungen');
+  await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+  await row('B0001').locator('.settings-chan-detail [data-action="cancel"]').click();
+  await page.locator('#settingsTvChannelsSearch').fill('');
 });
 
 test('Deep-Links: LiveTV-Dashboard und Senderauswahl führen zur Senderverwaltung; alte Modals sind entfernt', async () => {

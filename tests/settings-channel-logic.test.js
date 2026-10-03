@@ -115,3 +115,54 @@ test('paginate: Ausschnitt, Seitenzahl, Korrektur ungültiger Seiten', () => {
   assert.equal(paginate(items, -4, 50).page, 0);
   assert.deepEqual(paginate([], 3, 50), { items: [], page: 0, pages: 1, total: 0 });
 });
+
+const { moveFavoriteAmongVisible, visibleFavoritePosition } = require('../lib/settings-channel-logic.js');
+
+test('moveFavoriteAmongVisible: Geister behalten ihre Plätze, Tausch mit sichtbarem Nachbarn', () => {
+  const favs = ['ghost1', 'a', 'ghost2', 'b', 'c', 'ghost3'];
+  const visible = new Set(['a', 'b', 'c']);
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'b', -1, visible), ['ghost1', 'b', 'ghost2', 'a', 'c', 'ghost3']);
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'a', 1, visible), ['ghost1', 'b', 'ghost2', 'a', 'c', 'ghost3']);
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'c', -1, visible), ['ghost1', 'a', 'ghost2', 'c', 'b', 'ghost3']);
+  for (const result of [
+    moveFavoriteAmongVisible(favs, 'b', -1, visible),
+    moveFavoriteAmongVisible(favs, 'c', -1, visible),
+  ]) {
+    assert.equal(new Set(result).size, favs.length, 'keine Duplikate/Verluste');
+    assert.equal(result.indexOf('ghost1'), 0);
+    assert.equal(result.indexOf('ghost2'), 2);
+    assert.equal(result.indexOf('ghost3'), 5);
+  }
+});
+
+test('moveFavoriteAmongVisible: Ränder, unbekannte Sender, ungültiges delta', () => {
+  const favs = ['ghost', 'a', 'b', 'ghost2'];
+  const visible = new Set(['a', 'b']);
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'a', -1, visible), favs, 'erster sichtbarer: kein Nachbar');
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'b', 1, visible), favs, 'letzter sichtbarer: kein Nachbar');
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'x', 1, visible), favs);
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'a', 2, visible), favs);
+  assert.deepEqual(moveFavoriteAmongVisible(['a'], 'a', 1, new Set(['a'])), ['a']);
+  assert.deepEqual(moveFavoriteAmongVisible(undefined, 'a', 1, visible), []);
+  const input = ['a', 'b'];
+  moveFavoriteAmongVisible(input, 'a', 1, new Set(['a', 'b']));
+  assert.deepEqual(input, ['a', 'b'], 'Eingabe bleibt unverändert');
+});
+
+test('moveFavoriteAmongVisible: Seitengrenze (Position 49 -> 50) und Obergrenze', () => {
+  const favs = Array.from({ length: 60 }, (_, i) => `c${i}`);
+  const visible = new Set(favs);
+  const moved = moveFavoriteAmongVisible(favs, 'c49', 1, visible);
+  assert.equal(moved.indexOf('c49'), 50);
+  assert.equal(moved.indexOf('c50'), 49);
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'c59', 1, visible), favs);
+  assert.deepEqual(moveFavoriteAmongVisible(favs, 'c0', -1, visible), favs);
+});
+
+test('visibleFavoritePosition zählt nur sichtbare Favoriten', () => {
+  const favs = ['ghost', 'a', 'ghost2', 'b'];
+  const visible = new Set(['a', 'b']);
+  assert.deepEqual(visibleFavoritePosition(favs, 'a', visible), { index: 0, count: 2 });
+  assert.deepEqual(visibleFavoritePosition(favs, 'b', visible), { index: 1, count: 2 });
+  assert.deepEqual(visibleFavoritePosition(favs, 'ghost', visible), { index: -1, count: 2 });
+});
