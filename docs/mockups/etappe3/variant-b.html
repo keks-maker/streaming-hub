@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup B – Listen-zentriert</title>
+<style>
+/* Tokens aus styles.css (:root), nur dunkles Theme */
+:root{
+  --bg:#0a0a0f; --glass:rgba(255,255,255,0.04); --glass-hover:rgba(255,255,255,0.09);
+  --border:rgba(255,255,255,0.07); --border-strong:rgba(255,255,255,0.16);
+  --text:#f0f0f5; --text-dim:rgba(240,240,245,0.62); --text-muted:rgba(240,240,245,0.38);
+  --accent:#6c5ce7; --accent-light:#a99bff; --accent-glow:rgba(108,92,231,0.3);
+  --surface:#12121b; --surface-2:#191925; --ok:#3ddc97; --warn:#f5b84a; --err:#ff6b6b; --rec:#ff5d5d;
+  --t:0.25s cubic-bezier(0.4,0,0.2,1);
+  /* Genre-Farben (Farbe nie alleiniger Traeger: Genre steht im Tooltip/Panel) */
+  --g-news:#4aa3ff; --g-sport:#2ecc71; --g-doku:#e0a43a; --g-kinder:#ff7eb6;
+  --g-serie:#b388ff; --g-film:#ff6b5b; --g-show:#f5d04c; --g-musik:#2dd4bf; --g-none:#5b5b6b;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0;text-align:left}
+a{color:var(--accent-light)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+[data-g]{--gc:var(--g-none)}
+[data-g=news]{--gc:var(--g-news)}[data-g=sport]{--gc:var(--g-sport)}[data-g=doku]{--gc:var(--g-doku)}
+[data-g=kinder]{--gc:var(--g-kinder)}[data-g=serie]{--gc:var(--g-serie)}[data-g=film]{--gc:var(--g-film)}
+[data-g=show]{--gc:var(--g-show)}[data-g=musik]{--gc:var(--g-musik)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- Mockup-Kopf ---------- */
+.mk{background:#0e0e16;border-bottom:1px solid var(--border-strong);padding:10px 16px;display:flex;flex-direction:column;gap:8px}
+.mk-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.mk-badge{background:var(--warn);color:#1a1200;font-weight:700;padding:3px 10px;border-radius:999px;font-size:12px;letter-spacing:.02em}
+.mk-title{font-size:15px}
+.mk-spacer{flex:1}
+.mk-lbl{color:var(--text-dim);font-size:12px}
+.mk-grp{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:3px 6px;border:1px solid var(--border);border-radius:8px;background:var(--glass)}
+.mk-grp>.mk-lbl{margin-right:4px;text-transform:uppercase;letter-spacing:.05em;font-size:10.5px}
+.mk-info{font-size:12px;color:var(--text-dim)}
+.mk-link{font-size:13px}
+.sb{padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--glass);font-size:12px;color:var(--text)}
+.sb:hover{background:var(--glass-hover)}
+.sb[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.stage{padding:14px 16px 6px;display:flex;justify-content:center}
+.frame{position:relative;width:1280px;max-width:100%;height:min(80vh,780px);min-height:560px;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.gaps{padding:6px 16px 22px;max-width:1312px;margin:0 auto}
+.gaps-box{border:1px dashed var(--border-strong);border-radius:10px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12.5px;color:var(--text-dim)}
+.gaps-box strong{color:var(--text)}
+.gaps-box .sb{font-size:12px}
+.toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#000c;border:1px solid var(--border-strong);padding:7px 14px;border-radius:999px;font-size:13px;z-index:50;pointer-events:none;opacity:0;transition:opacity var(--t)}
+.toast.on{opacity:1}
+
+/* ---------- Bausteine ---------- */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border-strong);background:var(--glass);color:var(--text);font-size:13px;white-space:nowrap}
+.btn:hover{background:var(--glass-hover)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.pri:hover{filter:brightness(1.1)}
+.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed}
+.btn.ok{border-color:var(--ok);color:var(--ok)}
+.btn.sm{padding:3px 9px;font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--border-strong);background:var(--glass);font-size:12.5px;white-space:nowrap;color:var(--text)}
+.chip:hover{background:var(--glass-hover)}
+.chip[aria-pressed=true],.chip[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--gc,var(--g-none));flex:none}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden}
+.seg button{padding:5px 11px;font-size:12.5px;background:var(--glass);border-right:1px solid var(--border)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+.seg button:hover{background:var(--glass-hover)}
+.seg button[aria-pressed=true]:hover{background:var(--accent)}
+.seg-l{font-size:11px;color:var(--text-dim);margin-right:4px}
+.swl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-dim);cursor:pointer;white-space:nowrap}
+.swl input{accent-color:var(--accent);width:15px;height:15px}
+.field{background:var(--glass);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;min-width:0;color:var(--text)}
+.field::placeholder{color:var(--text-muted)}
+.gdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gc,var(--g-none));margin-right:5px;vertical-align:baseline}
+.gchip{display:none;font-size:10.5px;padding:0 6px;border-radius:999px;border:1px solid var(--gc,var(--g-none));color:var(--text);line-height:16px;white-space:nowrap}
+mark{background:rgba(245,208,76,.35);color:inherit;border-radius:2px;padding:0 1px}
+
+/* Marker: geplant (ruhig) / laufend (pulsierend) */
+.mk-plan,.mk-run{font-size:12px;line-height:1;flex:none}
+.mk-plan{color:var(--accent-light)}
+.mk-run{color:var(--rec);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.35)}}
+@media (prefers-reduced-motion:reduce){.mk-run{animation:none}.skel::after{animation:none!important}.toast{transition:none}}
+
+.prog{height:3px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden}
+.prog>i{display:block;height:100%;background:var(--accent-light)}
+.thumb{background:linear-gradient(145deg,hsl(var(--h,260) 45% 30%),hsl(calc(var(--h,260) + 40) 50% 14%));border-radius:6px;flex:none;position:relative;overflow:hidden;color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-weight:700}
+.logo{width:34px;height:34px;border-radius:8px;flex:none;background:linear-gradient(145deg,hsl(var(--h,260) 55% 38%),hsl(calc(var(--h,260) + 30) 55% 20%));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+.notice{border-radius:8px;padding:8px 10px;font-size:13px;border:1px solid var(--border-strong);background:var(--glass);display:flex;gap:8px;align-items:flex-start}
+.notice.warn{border-color:rgba(245,184,74,.5);background:rgba(245,184,74,.08)}
+.notice.info{border-color:rgba(169,155,255,.4);background:rgba(108,92,231,.1)}
+.notice b{font-weight:600}
+.dim{color:var(--text-dim)}.mut{color:var(--text-muted)}
+
+/* ---------- Detail-Panel (Inhalt gemeinsam, Platzierung je Variante) ---------- */
+.pn{display:flex;flex-direction:column;min-height:0;background:var(--surface-2);color:var(--text)}
+.pn-top{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);flex:none}
+.pn-body{padding:12px 14px 16px;overflow:auto;display:flex;flex-direction:column;gap:9px;min-height:0}
+.pn-poster{border-radius:8px;aspect-ratio:2/3;width:120px}
+.pn-title{margin:0;font-size:19px;line-height:1.25;overflow-wrap:anywhere}
+.pn-when,.pn-meta,.pn-cast{margin:0;font-size:13px;color:var(--text-dim)}
+.pn-meta{color:var(--text)}
+.pn-desc{margin:0;font-size:13.5px;line-height:1.5}
+.pn-rec{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
+.pn-rec .okt{color:var(--ok);font-weight:600}
+.pn-actions{display:flex;flex-wrap:wrap;gap:8px}
+.pn-link{font-size:13px;color:var(--accent-light);text-decoration:underline;text-underline-offset:2px}
+.pn-also h3{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim)}
+.pn-also ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.pn-also li button{width:100%;padding:4px 6px;border-radius:6px;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.pn-also li button:hover{background:var(--glass-hover)}
+.pn-more{font-size:12px;color:var(--text-dim);padding:2px 6px}
+
+/* ---------- Jetzt & Gleich ---------- */
+.jng{display:flex;flex-direction:column;min-height:0}
+.jng-head,.jng-row{display:grid;grid-template-columns:150px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch}
+.jng-head{padding:6px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);border-bottom:1px solid var(--border)}
+.jng-row{padding:6px 12px;border-bottom:1px solid var(--border)}
+.jng-chan{display:flex;align-items:center;gap:8px;padding:4px;border-radius:8px;min-width:0}
+.jng-chan:hover{background:var(--glass-hover)}
+.jng-chan span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jng-cell{display:flex;gap:9px;align-items:center;padding:6px;border-radius:8px;min-width:0;border:1px solid transparent}
+.jng-cell:hover{background:var(--glass-hover)}
+.jng-cell.cur{background:var(--glass);border-color:var(--border)}
+.jng-cell .tx{min-width:0;display:flex;flex-direction:column;gap:2px;flex:1}
+.jng-cell .tt{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.jng-cell .ts{font-size:12px;color:var(--text-dim)}
+.jng-cell .thumb{width:64px;height:36px}
+.jng-cell.empty{color:var(--text-muted);cursor:default}
+.jng-cell.empty:hover{background:none}
+.jng-note{padding:10px 14px;font-size:12.5px;color:var(--text-dim)}
+
+/* ---------- Kanalansicht (Listenform) ---------- */
+.cv{display:flex;flex-direction:column;min-height:0;flex:1}
+.cv-head{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.cv-head .logo{width:44px;height:44px;font-size:14px}
+.cv-head h2{margin:0;font-size:18px}
+.cv-now{font-size:13px;color:var(--text-dim)}
+.cv-tabs{display:flex;gap:6px;padding:8px 16px;overflow-x:auto;border-bottom:1px solid var(--border);flex:none}
+.cv-list{overflow:auto;flex:1;min-height:0;padding:4px 8px 16px;position:relative}
+.cv-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:2px 8px;border-radius:8px;border-bottom:1px solid var(--border)}
+.cv-row.past{opacity:.5}
+.cv-row.run{background:rgba(108,92,231,.14);border-color:rgba(108,92,231,.4)}
+.cv-row.nxt{background:var(--glass)}
+.cv-main{padding:6px 4px;border-radius:6px;min-width:0;display:grid;grid-template-columns:118px minmax(0,1fr);gap:8px;align-items:center}
+.cv-main:hover{background:var(--glass-hover)}
+.cv-t{font-variant-numeric:tabular-nums;font-size:13px}
+.cv-t small{display:block;color:var(--text-dim);font-size:11px}
+.cv-ti{min-width:0}
+.cv-ti b{display:flex;gap:6px;align-items:center;overflow:hidden}
+.cv-ti b span.tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cv-ti small{color:var(--text-dim);font-size:12px}
+.cv-flag{font-size:10.5px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;line-height:16px;flex:none}
+.cv-flag.n{background:#3b3b52}
+.cv-act{font-size:12px;color:var(--text-dim);text-align:right;max-width:230px}
+.cv-act .btn{font-size:12px;padding:3px 10px}
+.cv-act .okt{color:var(--ok);font-weight:600}
+
+/* ---------- Suche / Zustandsboxen ---------- */
+.sr-list{list-style:none;margin:0;padding:0}
+.sr-list li button{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:7px 12px;border-bottom:1px solid var(--border);align-items:center}
+.sr-list li button:hover{background:var(--glass-hover)}
+.sr-t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.sr-m{font-size:12.5px;color:var(--text-dim);white-space:nowrap}
+.sr-d{grid-column:1 / 3;font-size:12px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:12.5px;color:var(--text-dim);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.state-box{margin:auto;text-align:center;max-width:430px;padding:30px 20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.state-box h3{margin:0;font-size:17px}
+.state-box p{margin:0;color:var(--text-dim);font-size:13.5px}
+.state-ic{width:46px;height:46px;border-radius:50%;border:2px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text-dim)}
+.state-ic.err{border-color:var(--err);color:var(--err)}
+.skel{position:relative;overflow:hidden;background:var(--glass);border-radius:8px}
+.skel::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);animation:sh 1.4s infinite}
+@keyframes sh{to{transform:translateX(100%)}}
+
+@media (max-width:899.98px){
+  .mk{padding:8px 12px}.stage{padding:10px 12px 4px}.gaps{padding:6px 12px 18px}
+  .mk-spacer{display:none}
+}
+/* schmale Fensterbreite (per JS-Klasse, damit auch die Breiten-Simulation greift) */
+.narrow .jng-head{display:none}
+.narrow .jng-row{grid-template-columns:1fr;gap:2px;padding:8px 10px}
+.narrow .cv-row{grid-template-columns:1fr;gap:2px}
+.narrow .cv-act{text-align:left;max-width:none;padding:0 4px 4px}
+.narrow .cv-main{grid-template-columns:96px minmax(0,1fr)}
+
+.g-scroll{overflow:auto;position:relative;flex:1;min-height:0;min-width:0}
+.g-inner{position:relative;min-height:100%}
+.g-ruler{position:sticky;top:0;z-index:6;display:flex;height:34px;background:var(--surface-2);border-bottom:1px solid var(--border-strong)}
+.g-corner{position:sticky;left:0;z-index:7;width:var(--chw);flex:none;background:var(--surface-2);border-right:1px solid var(--border-strong);display:flex;align-items:center;padding:0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim)}
+.g-rt{position:relative;flex:none;height:100%}
+.g-tk{position:absolute;top:0;bottom:0;border-left:1px solid var(--border);padding:9px 0 0 4px;font-size:11px;color:var(--text-dim);white-space:nowrap}
+.g-tk.h{border-left-color:var(--border-strong)}
+.g-tk.d{border-left:2px solid var(--accent);color:var(--text);font-weight:600;z-index:1}
+.g-nowlbl{position:absolute;top:2px;transform:translateX(-50%);font-size:10px;background:var(--rec);color:#fff;padding:0 5px;border-radius:999px;z-index:2;white-space:nowrap}
+.g-row{display:flex;height:var(--rowh);border-bottom:1px solid var(--border)}
+.g-chan{position:sticky;left:0;z-index:4;width:var(--chw);flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--surface-2);border-right:1px solid var(--border-strong)}
+.g-chan:hover{background:#242436}
+.g-chan .g-cn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600}
+.g-track{position:relative;flex:none;background-image:linear-gradient(to right,var(--border) 1px,transparent 1px);background-size:var(--gs) 100%}
+.g-block{position:absolute;top:4px;bottom:4px;overflow:hidden;border-radius:6px;background:#242438;border:1px solid var(--border-strong);padding:4px 6px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.g-block:hover{background:#2f2f48;z-index:2}
+.g-block .bt{display:flex;gap:5px;align-items:flex-start;font-weight:600;font-size:12.5px;line-height:1.2}
+.g-block .bt .tx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.g-block .bm{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-block .gchip{align-self:flex-start;margin-top:2px}
+.g-block .prog{position:absolute;left:0;right:0;bottom:0;border-radius:0;height:4px}
+.g-block.past{opacity:.45}
+.g-block.run{border-color:var(--accent-light);background:#2b2850}
+.g-block.dim{opacity:.28;filter:grayscale(.7)}
+.g-block.sel{outline:2px solid var(--accent-light);outline-offset:-1px}
+.g-block.g-noepg{background:repeating-linear-gradient(135deg,#1b1b28,#1b1b28 8px,#202030 8px,#202030 16px);border-style:dashed;color:var(--text-dim);justify-content:center}
+.gd-bar .g-block[data-g]{border-left:4px solid var(--gc)}
+.gd-bar .jng-cell[data-g],.gd-bar .cv-row[data-g]{border-left:3px solid var(--gc)}
+.gd-chip .gchip{display:inline-block}
+.g-now{position:absolute;top:0;bottom:0;width:2px;background:var(--rec);z-index:3;pointer-events:none;opacity:.85}
+.g-block.prime{box-shadow:inset 0 2px 0 var(--accent-light)}
+.a-tool{flex:none;border-bottom:1px solid var(--border-strong);background:var(--surface)}
+.a-r{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;padding:7px 12px}
+.a-r+.a-r{padding-top:0}
+.a-days{display:flex;gap:6px;overflow-x:auto;flex:1 1 260px;min-width:0;padding:3px 2px}
+.a-jumps{display:flex;gap:6px}
+.a-seg{display:flex;align-items:center}
+.a-seg[hidden],.a-days[hidden],.a-jumps[hidden],.b-pane[hidden],.b-dayrow:has(.a-days[hidden]){display:none}
+.a-scroll{overflow:auto;flex:1}
+.sfield{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.b-sf{flex:1 1 360px}.b-sf .field{flex:1;min-width:160px;padding:8px 12px}
+.fchips{display:flex;gap:5px;flex-wrap:wrap}
+.fchips .chip{padding:2px 8px;font-size:12px;border-radius:6px}
+.b-body{flex:1;display:flex;min-height:0}
+.b-side{width:178px;flex:none;border-right:1px solid var(--border-strong);padding:6px;display:flex;flex-direction:column;gap:2px;overflow:auto;background:var(--surface-2)}
+.b-sh{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);padding:4px 8px}
+.b-sb{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:13px;min-width:0}
+.b-sb:hover{background:var(--glass-hover)}
+.b-sb[aria-pressed=true]{background:rgba(108,92,231,.3)}
+.b-sb .logo{width:24px;height:24px;font-size:9px;border-radius:5px}
+.b-sn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.b-sb small{font-size:10.5px}
+.b-main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;position:relative}
+.b-content{flex:1;min-height:0;display:flex;flex-direction:column}
+.b-pane{flex:none;height:46%;border-top:2px solid var(--accent);display:flex;flex-direction:column;min-height:0;background:var(--surface-2)}
+.b-pn{height:100%}
+.b-pn .pn-poster{width:84px}
+.b-pn .pn-body{max-width:820px}
+.b-tablewrap{overflow:auto;flex:1;min-height:0}
+.b-sres{display:flex;flex-direction:column;min-height:0;flex:1}
+.b-table{width:100%;border-collapse:collapse;font-size:13px}
+.b-table th{position:sticky;top:0;background:var(--surface-2);z-index:2;text-align:left;border-bottom:1px solid var(--border-strong);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim)}
+.b-th{padding:6px 8px;width:100%;text-transform:inherit;letter-spacing:inherit;font-weight:inherit;color:inherit}
+.b-th:hover{color:var(--text)}
+.b-table td{padding:3px 8px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+.b-table tbody tr:not(.b-sep){cursor:pointer}
+.b-table tbody tr:not(.b-sep):hover{background:var(--glass-hover)}
+.b-table tr.past{opacity:.45}
+.b-table tr.run{background:rgba(108,92,231,.13)}
+.b-table tr.sel{outline:2px solid var(--accent-light);outline-offset:-2px}
+.b-table .c-mk{width:22px;padding-right:0}
+.b-table .c-ti{width:150px;font-variant-numeric:tabular-nums}
+.b-table .c-ch{width:130px;color:var(--text-dim)}
+.b-table .c-ge{width:120px}
+.b-table .c-du{width:70px;color:var(--text-dim);text-align:right}
+.b-table .c-ac{width:1%;text-align:right;font-size:12px;color:var(--text-dim)}
+.b-table .c-tt{width:auto;max-width:0;overflow:hidden;text-overflow:ellipsis}
+.b-tl{font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.b-night{color:var(--accent-light);font-size:10.5px}
+.b-rest{display:block;color:var(--text-dim);font-size:10.5px}
+.b-table .c-ti .prog{margin-top:2px;width:110px}
+.b-sep td{background:rgba(108,92,231,.18);color:var(--accent-light);font-weight:600;font-size:11.5px;letter-spacing:.05em;padding:3px 8px}
+.gd-bar .b-table tbody tr[data-g]{box-shadow:inset 4px 0 0 var(--gc)}
+.gd-bar .b-table .c-mk{padding-left:10px}
+.gd-bar .gchip,.gd-none .gchip{display:none}
+.gd-chip .gtx{display:none}
+.gd-chip .gchip{display:inline-block}
+.b-tablewrap.nog .c-ge,.b-tablewrap.nog th.c-ge{display:none}
+.b-tablewrap.gd-bar .gtx{display:inline}
+.narrow .b-body{flex-direction:column}
+.narrow .b-side{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--border-strong);overflow-x:auto;flex:none}
+.narrow .b-sh{display:none}
+.narrow .b-sb{white-space:nowrap;flex:none}
+.narrow .b-pane{position:absolute;inset:0;height:auto;z-index:30;border-top:0}
+.narrow .b-table .c-ch,.narrow .b-table .c-du,.narrow .b-table th.c-ch,.narrow .b-table th.c-du{display:none}
+.narrow .b-table .c-ge{width:auto}
+.narrow .a-days{flex-basis:100%}
+</style>
+</head>
+<body>
+<header class="mk" id="mk"></header>
+<main class="stage" id="stage"><div class="frame" id="frame"><div id="app" style="display:contents"></div><div class="toast" id="toast" role="status" aria-live="polite"></div></div></main>
+<footer class="gaps" id="gaps"></footer>
+<script>
+'use strict';
+/* ===== Mock-Daten (rein statisch; simulierte Uhr: Mo 05.10.2026 20:32) =====
+   Zeit = Minuten ab Mo 05.10.2026 00:00 (negativ = davor). TV-Tag = 05:00-05:00. */
+const NOW = 20 * 60 + 32;
+const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const pad = n => String(n).padStart(2, '0');
+const dateOf = d => new Date(2026, 9, 5 + d);
+const dayShort = d => { const x = dateOf(d); return WD[x.getDay()] + ' ' + x.getDate() + '.' + (x.getMonth() + 1) + '.'; };
+const hhmm = m => { const x = ((m % 1440) + 1440) % 1440; return pad(Math.floor(x / 60)) + ':' + pad(x % 60); };
+const absDay = m => Math.floor(m / 1440);
+const tvDay = m => Math.floor((m - 300) / 1440);
+const tvLabel = d => d === 0 ? 'Heute' : d === 1 ? 'Morgen' : d === -1 ? 'Gestern' : dayShort(d);
+const whenStr = m => WD[dateOf(absDay(m)).getDay()] + ' ' + hhmm(m);
+const whenLong = m => dayShort(absDay(m)) + ' ' + hhmm(m);
+const toMin = s => (+s.slice(0, 2)) * 60 + (+s.slice(2));
+const T0 = -1440 + 300, T1 = 8 * 1440 + 1740; // Cache-Spanne: Gestern 05:00 .. Mi 14.10. 05:00
+const MAX_AHEAD = NOW + 8 * 1440; // Planungsgrenze 8 Tage
+
+const GENRES = { news: 'Nachrichten', sport: 'Sport', doku: 'Doku', kinder: 'Kinder', serie: 'Serie', film: 'Film', show: 'Show', musik: 'Musik' };
+const GKEYS = Object.keys(GENRES);
+
+const CH = [
+  { id: 'ard', name: 'Das Erste', ab: 'ARD', h: 215, med: true },
+  { id: 'zdf', name: 'ZDF', ab: 'ZDF', h: 28, med: true },
+  { id: 'rtl', name: 'RTL', ab: 'RTL', h: 0, med: true },
+  { id: 'pro7', name: 'ProSieben', ab: 'P7', h: 345, med: true },
+  { id: 'arte', name: 'arte', ab: 'arte', h: 35, med: true },
+  { id: 'kika', name: 'KiKA', ab: 'KiKA', h: 150, med: true },
+  { id: 'sport1', name: 'Sport1', ab: 'S1', h: 130, med: false },
+  { id: 'lokal', name: 'Lokal-TV (Test)', ab: 'LTV', h: 265, med: false, noepg: true },
+];
+const CHBY = Object.fromEntries(CH.map(c => [c.id, c]));
+
+const POOL = {
+  ard: [['Sportschau', 'sport'], ['Polizeiruf 110', 'film'], ['Report Mainz', 'news'], ['In aller Freundschaft', 'serie'], ['Die Story im Ersten', 'doku'], ['Panorama', 'news'], ['Rote Rosen', 'serie'], ['Verstehen Sie Spaß?', 'show'], ['Sturm der Liebe', 'serie'], ['Musik im Ersten', 'musik']],
+  zdf: [['SOKO Köln', 'serie'], ['Terra X', 'doku'], ['Markus Lanz', 'show'], ['Der Bergdoktor', 'serie'], ['heute in Europa', 'news'], ['Fußball: Länderspiel', 'sport'], ['Das Traumschiff', 'film'], ['Kommissar Rex Reloaded', 'serie'], ['ZDF-Magazin', 'doku'], ['Hitparade der Volksmusik', 'musik']],
+  rtl: [['Gute Zeiten, schlechte Zeiten', 'serie'], ['Explosiv', 'show'], ['Der Bachelor', 'show'], ['Alarm für Cobra 11', 'serie'], ['Die 10 Besten', 'show'], ['Formel 1: Training', 'sport'], ['Hautnah', 'doku'], ['Stern TV', 'doku']],
+  pro7: [['Die Simpsons', 'serie'], ['Galileo', 'doku'], ['Family Guy', 'serie'], ['Late Night Berlin', 'show'], ['Avengers: Zeitenwende', 'film'], ['The Big Bang Theory', 'serie'], ['Germany’s Next Topmodel', 'show'], ['Newstime', 'news']],
+  arte: [['Arte Journal', 'news'], ['Re:', 'doku'], ['Metropolis', 'doku'], ['Concert: Philharmonie', 'musik'], ['Spielfilm: Sommernacht', 'film'], ['Xenius', 'doku'], ['Tracks', 'musik'], ['Karambolage', 'doku']],
+  kika: [['Tom & Jerry', 'kinder'], ['Löwenzahn', 'kinder'], ['Die Sendung mit der Maus', 'kinder'], ['Schloss Einstein', 'serie'], ['Pumuckl', 'kinder'], ['logo! Kindernachrichten', 'news'], ['Ninjago', 'kinder']],
+  sport1: [['Darts: Live', 'sport'], ['Fußball: Highlights', 'sport'], ['Handball: Bundesliga', 'sport'], ['Die Bundesliga Stunde', 'sport'], ['Poker: High Stakes', 'show'], ['Teleshopping', '']],
+};
+const CFG = { kika: { from: 360, to: 1260 }, ard: { fixed: [{ at: 1200, dur: 15, title: 'Tagesschau', genre: 'news' }] } };
+const DIRS = ['Mira Lindgren', 'Hanno Werner', 'Svenja Kroll', 'Tobias Rehm', 'Lena Oswald'];
+const CAST = ['Jonas Keller', 'Hanna Brandt', 'Peter Voss', 'Clara Meinhardt', 'Ole Sander', 'Mareike Thal', 'Felix Braun', 'Ines Albrecht', 'Rolf Kessler', 'Tilda Neumann'];
+const DESCS = {
+  news: ['Die Nachrichten des Tages mit Berichten, Wetter und Kommentar.', 'Aktuelle Meldungen aus Politik, Wirtschaft und Gesellschaft.'],
+  sport: ['Live-Übertragung mit Analysen und Stimmen der Beteiligten.', 'Zusammenfassung der wichtigsten Spiele des Spieltags.'],
+  doku: ['Eine Reportage über Menschen, Orte und Hintergründe.', 'Das Wissensmagazin erklärt Phänomene aus Natur und Technik.'],
+  kinder: ['Abenteuer und Spaß für die ganze Familie.', 'Ein Klassiker mit neuen Geschichten für kleine Zuschauer.'],
+  serie: ['Neue Folge der beliebten Serie mit überraschenden Wendungen.', 'Zwischen Alltag und Drama: die Figuren geraten unter Druck.'],
+  film: ['Ein Spielfilm zwischen Spannung und Emotion.', 'Packendes Drama mit hochkarätiger Besetzung.'],
+  show: ['Unterhaltung mit prominenten Gästen und Live-Publikum.', 'Gespräche, Spiele und gute Laune im Studio.'],
+  musik: ['Konzertmitschnitt mit Klassikern und neuen Stücken.', 'Musik und Hintergründe zu aktuellen Veröffentlichungen.'],
+  '': ['Programmhinweis des Senders.', 'Wiederholung.'],
+};
+/* Handkuratierte Sendungen (Extras: Poster, Jahr, Episode, Credits, Beschreibung) */
+const X = {
+  tatort: { poster: 1, year: 2024, ep: '', dir: 'Mira Lindgren', cast: CAST.slice(0, 7), desc: 'Ein Toter im Hamburger Hafen führt die Ermittler in ein Netz aus Schmuggel und alten Schuldgeschichten.' },
+  linds: { poster: 1, year: 2019, ep: 'S2 E3', dir: 'Anna Weidner', cast: CAST.slice(2, 9), desc: 'Lindström ermittelt im Fall einer verschwundenen Lehrerin; die Spur führt zu einem stillgelegten Sägewerk.' },
+  boot: { poster: 1, year: 1981, ep: '', dir: 'Hanno Werner', cast: CAST.slice(1, 6), desc: 'Eine U-Boot-Besatzung im Nordatlantik, 1941. Kammerspiel unter Wasser (Kinofassung).' },
+  tiefsee: { poster: 1, year: 2023, ep: 'S1 E2', dir: 'Svenja Kroll', cast: [], desc: 'Forscher tauchen in Regionen vor, die kaum ein Mensch gesehen hat.' },
+  schloss: { poster: 1, year: 2023, ep: 'S31 E12', dir: '', cast: CAST.slice(5, 8), desc: 'Am Internat steht die Klassenfahrt an, doch nicht alle sind begeistert.' },
+  tj: { poster: 0, year: 0, ep: '', dir: '', cast: [], desc: 'Das Magazin' },
+  ts: { poster: 0, year: 0, ep: '', dir: '', cast: [], desc: 'Nachrichten' },
+  krimi0: { poster: 0, year: 0, ep: '', dir: '', cast: [], desc: '' },
+  tom: { poster: 1, year: 1998, ep: '', dir: '', cast: [], desc: 'Zeichentrick-Klassiker mit Kater & Maus <Special-Ausgabe>.' },
+};
+/* Hand-Daten Mo 05.10. ab 18:00 bis in die Nacht: Start|Dauer|Titel|Genre|Flags(R=Aufnahme laeuft,P=geplant)|Extras-Key */
+const HAND = {
+  ard: ['1800|60|Wer weiß denn sowas?|show', '1900|50|Brisant|show', '1950|10|Wetter vor acht|news', '2000|15|Tagesschau|news||ts', '2015|90|Tatort: Nachtschatten|film|R|tatort', '2145|30|Tagesthemen|news|P|tj', '2215|75|Maischberger|show', '2330|30|Nachtmagazin|news', '2400|60|Late-Night-Konzert|musik', '2500|90|Nachtsendung: Die Nacht der Füchse|film', '2630|150|Wiederholung: Tatort-Klassiker|film'],
+  zdf: ['1800|55|SOKO Köln|serie', '1855|5|Wetter|news', '1900|30|heute|news', '1930|30|Terra X|doku', '2000|60|Krimi|||krimi0', '2100|45|Der Bergdoktor|serie', '2145|30|heute-journal|news', '2215|45|Markus Lanz|show', '2300|90|Kommissar Lindström|serie|P|linds', '2430|150|Terra X (Wiederholung)|doku'],
+  rtl: ['1800|55|Explosiv|show', '1855|45|RTL Aktuell|news', '1940|20|Wetter & Sport|news', '2000|15|RTL Aktuell Spezial|news', '2015|135|Der Pass: Das Finale|film|P', '2230|45|Stern TV|doku', '2315|75|Hautnah|doku', '2430|60|Nachtjournal|news'],
+  pro7: ['1800|60|Die Simpsons|serie', '1900|55|Galileo|doku', '1955|20|Newstime|news', '2015|150|Avengers: Zeitenwende|film', '2245|60|Late Night Berlin|show', '2345|75|Family Guy|serie', '2500|125|Nachtsendung: Terminator-Marathon|film'],
+  arte: ['1800|45|Xenius|doku', '1845|15|Arte Journal|news', '1900|60|Re:|doku', '2000|15|Arte Journal|news', '2015|105|Das Boot|film||boot', '2200|75|Tiefsee – Reise ins Dunkel|doku|P|tiefsee', '2315|45|Concert: Philharmonie|musik', '2400|60|Karambolage|doku', '2500|90|Nachtsendung: Tracks|musik', '2630|150|Metropolis (Wiederholung)|doku'],
+  kika: ['1800|25|Tom & Jerry <Special>|kinder||tom', '1825|20|Löwenzahn|kinder', '1845|15|Sandmännchen|kinder', '1900|20|Die Sendung mit der Maus|kinder', '1920|40|Pumuckl|kinder', '2000|15|logo! Kindernachrichten|news', '2015|45|Schloss Einstein|serie||schloss'],
+  sport1: ['1800|60|Darts: Live|sport', '1900|60|Fußball: Highlights|sport', '2000|15|Sport1 News|sport', '2015|120|Handball: Bundesliga live|sport', '2215|45|Die Bundesliga Stunde|sport', '2300|120|Poker: High Stakes|show', '2500|60|Teleshopping|'],
+};
+/* Wiederholungen (fuer "Laeuft auch"): ch, Tag, Start, Dauer, Titel, Genre, Key */
+const RERUNS = [
+  ['zdf', 1, '2300', 90, 'Kommissar Lindström', 'serie', 'linds'], ['zdf', 2, '1030', 90, 'Kommissar Lindström', 'serie', 'linds'],
+  ['zdf', 3, '2300', 90, 'Kommissar Lindström', 'serie', 'linds'], ['arte', 4, '1500', 90, 'Kommissar Lindström', 'serie', 'linds'],
+  ['zdf', 5, '2300', 90, 'Kommissar Lindström', 'serie', 'linds'], ['zdf', 7, '2300', 90, 'Kommissar Lindström', 'serie', 'linds'],
+  ['ard', 2, '2015', 90, 'Tatort: Nachtschatten', 'film', 'tatort'], ['ard', 6, '1315', 90, 'Tatort: Nachtschatten', 'film', 'tatort'],
+  ['arte', 3, '2015', 105, 'Das Boot', 'film', 'boot'],
+];
+
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+/* Slot-Objekt; Datenluecken ueber Hash (Poster ~73 %, Credits ~25 %, Episode ~32 %, Jahr ~75 %, Genre ~79 %) */
+function mkSlot(ch, start, dur, title, genre, o) {
+  o = o || {};
+  const id = ch + '@' + start, h = hash(id), x = o.key ? X[o.key] : null;
+  const gen = (h >> 11) % 100 >= 21;
+  const s = { id, ch, start, stop: start + dur, title, rec: o.rec || '', key: o.key || '' };
+  if (x) {
+    s.genre = genre; s.poster = !!x.poster; s.year = x.year || 0; s.ep = x.ep || ''; s.dir = x.dir || ''; s.cast = x.cast || []; s.desc = x.desc;
+  } else {
+    s.genre = o.genreFixed ? genre : (gen ? genre : '');
+    s.poster = h % 100 >= 27;
+    s.year = (h >> 7) % 100 < 75 ? 1998 + (h >> 10) % 27 : 0;
+    s.ep = (h >> 5) % 100 < 32 ? 'S' + (1 + (h >> 9) % 6) + ' E' + (1 + (h >> 12) % 12) : '';
+    const cr = (h >> 3) % 4 === 0;
+    s.dir = cr ? DIRS[h % DIRS.length] : '';
+    s.cast = cr ? CAST.slice(h % 4, h % 4 + 2 + (h >> 4) % 6) : [];
+    const dl = DESCS[s.genre] || DESCS[''];
+    s.desc = (h >> 14) % 100 < 6 ? '' : dl[h % dl.length];
+    if (s.genre === 'news') { s.poster = false; s.ep = ''; s.dir = ''; s.cast = []; }
+  }
+  return s;
+}
+const SLOTS = {};
+function genDay(ch, d) {
+  const cfg = Object.assign({ from: 300, to: 1740 }, CFG[ch] || {});
+  const pool = POOL[ch], r = rng(hash(ch + d));
+  let t = d * 1440 + cfg.from; const end = d * 1440 + cfg.to, out = [];
+  const fixed = (cfg.fixed || []).map(f => Object.assign({ s: d * 1440 + f.at }, f));
+  const prime = d * 1440 + 1215;
+  const primePool = pool.filter(p => ['film', 'serie', 'doku', 'show'].includes(p[1]));
+  while (t < end) {
+    const f = fixed.find(q => q.s === t);
+    if (f) { out.push(mkSlot(ch, t, f.dur, f.title, f.genre, { genreFixed: 1 })); t += f.dur; continue; }
+    let dur = [30, 45, 60, 60, 90, 120][Math.floor(r() * 6)];
+    const stops = fixed.map(q => q.s).concat([prime]).filter(v => v > t).sort((a, b) => a - b);
+    if (t === prime) dur = [90, 105, 120][Math.floor(r() * 3)];
+    if (stops.length && t + dur > stops[0]) dur = stops[0] - t;
+    if (t + dur > end) dur = end - t;
+    let pick;
+    if (dur < 15) pick = ['Wetter', 'news'];
+    else pick = t === prime ? primePool[Math.floor(r() * primePool.length)] : pool[Math.floor(r() * pool.length)];
+    out.push(mkSlot(ch, t, dur, pick[0], pick[1]));
+    t += dur;
+  }
+  return out;
+}
+function place(s) {
+  const out = [];
+  for (const q of SLOTS[s.ch]) {
+    if (q.stop <= s.start || q.start >= s.stop) { out.push(q); continue; }
+    if (q.start < s.start) out.push(Object.assign({}, q, { stop: s.start }));
+    if (q.stop > s.stop) out.push(Object.assign({}, q, { start: s.stop, id: q.ch + '@' + s.stop }));
+  }
+  out.push(s);
+  SLOTS[s.ch] = out.filter(q => q.stop - q.start >= 5).sort((a, b) => a.start - b.start);
+}
+(function build() {
+  for (const c of CH) {
+    if (c.noepg) { SLOTS[c.id] = []; continue; }
+    SLOTS[c.id] = [];
+    for (let d = -1; d <= 8; d++) SLOTS[c.id].push(...genDay(c.id, d));
+  }
+  for (const ch in HAND) for (const line of HAND[ch]) {
+    const [st, du, ti, ge, fl, key] = line.split('|');
+    place(mkSlot(ch, toMin(st), +du, ti, ge || '', { rec: fl === 'R' ? 'recording' : fl === 'P' ? 'planned' : '', key: key || '', genreFixed: 1 }));
+  }
+  for (const [ch, d, st, du, ti, ge, key] of RERUNS) place(mkSlot(ch, d * 1440 + toMin(st), du, ti, ge, { key, genreFixed: 1 }));
+})();
+const ALL = Object.values(SLOTS).flat().sort((a, b) => a.start - b.start || a.ch.localeCompare(b.ch));
+const BYID = Object.fromEntries(ALL.map(p => [p.id, p]));
+const slotAt = (ch, d, hm) => BYID[ch + '@' + (d * 1440 + toMin(hm))];
+const isRun = p => p.start <= NOW && NOW < p.stop;
+const isPast = p => p.stop <= NOW;
+const isFar = p => p.start > MAX_AHEAD;
+const dur = p => p.stop - p.start;
+const slotsOf = ch => SLOTS[ch] || [];
+const nowIdx = ch => { const a = slotsOf(ch); return a.findIndex(p => p.stop > NOW); };
+/* Datenluecken-Beispiele: erste Sendung ab jetzt, die die Luecke hat */
+const GAPS = {
+  poster: p => !p.poster, credits: p => !p.dir && !p.cast.length, episode: p => !p.ep, genre: p => !p.genre,
+};
+function gapExample(kind) { return ALL.find(p => p.start > NOW - 30 && p.start < NOW + 600 && !CHBY[p.ch].noepg && GAPS[kind](p) && p.desc !== undefined && (kind === 'genre' || p.genre)) || ALL.find(p => GAPS[kind](p)); }
+/* ===== UI-Helfer (DOM nur per createElement/textContent, Daten nie als HTML geparst) ===== */
+const $ = (s, r) => (r || document).querySelector(s);
+function el(tag, o, ...kids) {
+  const e = document.createElement(tag);
+  if (o) for (const k in o) {
+    const v = o[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k === 'style') e.style.cssText = v;
+    else if (k === 'data') for (const d in v) e.dataset[d] = v[d];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c);
+  return e;
+}
+const fold1 = c => c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss');
+const fold = s => { let f = ''; for (const c of s) f += fold1(c); return f; };
+function hl(text, q) { // Treffer-Hervorhebung per DOM-Knoten
+  const fq = fold(q.trim()), out = document.createDocumentFragment();
+  if (!fq) { out.append(text); return out; }
+  let f = '', map = [];
+  for (let i = 0; i < text.length; i++) { const c = fold1(text[i]); for (const ch of c) { f += ch; map.push(i); } }
+  let pos = 0, i = f.indexOf(fq);
+  while (i >= 0) {
+    const a = map[i], b = map[i + fq.length - 1] + 1;
+    if (a > pos) out.append(text.slice(pos, a));
+    out.append(el('mark', { text: text.slice(a, b) }));
+    pos = b; i = f.indexOf(fq, i + fq.length);
+  }
+  if (pos < text.length) out.append(text.slice(pos));
+  return out;
+}
+const hue = p => hash(p.title) % 360;
+const gLabel = p => GENRES[p.genre] || '';
+const tip = p => p.title + ' · ' + hhmm(p.start) + '–' + hhmm(p.stop) + ' · ' + (GENRES[p.genre] ? 'Genre: ' + GENRES[p.genre] : 'ohne Genre') + (p.rec === 'planned' ? ' · Aufnahme geplant' : p.rec === 'recording' ? ' · Aufnahme läuft' : '');
+const restMin = p => Math.max(0, p.stop - NOW);
+const pct = p => Math.max(0, Math.min(100, (NOW - p.start) / dur(p) * 100));
+
+/* ===== Zustand ===== */
+const S = {
+  view: 'home', sel: null, query: '', desc: false, searchOpen: false, filters: new Set(), cache: 'ok',
+  channel: 'ard', chDay: 0, chMore: false, width: 1280, pref: 'auto', manual: false,
+  density: 5, genreDisp: 'bar', jump: null, day: 0, narrow: false, focusPanel: false, restoreFk: null, active: null,
+  sort: { k: 'time', d: 1 }, cacheTimer: 0, gapsOn: false,
+};
+let V = null; // Variante: {render(app)}
+const baseState = () => ({ sel: null, query: '', desc: false, searchOpen: false, filters: new Set(), cache: 'ok', chMore: false, day: 0, jump: NOW, gapsOn: false });
+const matchGenre = p => S.filters.size === 0 || S.filters.has(p.genre);
+const selSlot = () => (S.sel && BYID[S.sel]) || null;
+const noEpgSel = () => S.sel && S.sel.startsWith('noepg:') ? CHBY[S.sel.slice(6)] : null;
+const resolveStart = () => S.pref === 'grid' ? 'home' : S.pref === 'jng' ? 'jng' : (S.narrow ? 'jng' : 'home');
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2600);
+}
+function setView(v) { S.view = v; S.manual = true; S.sel = null; S.searchOpen = false; render(); }
+function pick(id, o) { // Panel oeffnen
+  S.sel = id; S.focusPanel = true; S.searchOpen = false;
+  const p = BYID[id];
+  if (p && o && o.jump) { S.jump = p.start; S.day = tvDay(p.start); if (S.view === 'channel') S.view = 'home'; }
+  render();
+}
+function closePanel() { const id = S.sel; S.sel = null; S.restoreFk = id ? 's:' + id : null; render(); }
+function openChannel(id, day) { S.channel = id; S.chDay = day == null ? Math.max(0, S.day) : day; S.view = 'channel'; S.manual = true; S.sel = null; S.searchOpen = false; S.chMore = S.chDay > 6; render(); }
+function recToggle(p) {
+  if (p.rec || isPast(p) || isFar(p)) return;
+  p.rec = 'planned'; toast('Mockup: hier öffnet sich der Planungsdialog. Marker „geplant“ wurde gesetzt.'); render();
+}
+function markerNode(p) {
+  if (p.rec === 'recording') return el('span', { class: 'mk-run', role: 'img', 'aria-label': 'Aufnahme läuft', title: 'Aufnahme läuft', text: '●' });
+  if (p.rec === 'planned') return el('span', { class: 'mk-plan', role: 'img', 'aria-label': 'Aufnahme geplant', title: 'Aufnahme geplant', text: '●' });
+  return null;
+}
+function progNode(p) { return el('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(pct(p))), 'aria-label': 'Fortschritt' }, el('i', { style: 'width:' + pct(p) + '%' })); }
+const thumbNode = (p, cls) => el('div', { class: 'thumb ' + (cls || ''), style: '--h:' + hue(p), 'aria-hidden': 'true', text: p.title.replace(/[^A-Za-zÄÖÜäöü0-9]/g, '').slice(0, 1) });
+const logoNode = c => el('span', { class: 'logo', style: '--h:' + c.h, 'aria-hidden': 'true', text: c.ab.slice(0, 4) });
+
+/* ===== Suche ===== */
+function runSearch() {
+  const q = fold(S.query.trim());
+  if (q.length < 2) return { hits: [], total: 0, short: true };
+  const hits = ALL.filter(p => {
+    if (CHBY[p.ch].noepg || !matchGenre(p)) return false;
+    p._ft = p._ft || fold(p.title); if (p._ft.includes(q)) return true;
+    if (!S.desc || !p.desc) return false;
+    p._fd = p._fd || fold(p.desc); return p._fd.includes(q);
+  });
+  return { hits: hits.slice(0, 200), total: hits.length, short: false };
+}
+function searchNode(o) { // o: {limit}
+  const r = runSearch(), box = el('div', { class: 'srch' });
+  const head = el('div', { class: 'sr-h' });
+  if (r.short) { box.append(head, el('p', { class: 'jng-note', text: 'Bitte mindestens 2 Zeichen eingeben.' })); head.append(el('span', { text: 'Suche in Titeln' + (S.desc ? ' und Beschreibungen' : '') })); return box; }
+  head.append(el('span', { text: r.total + (r.total === 1 ? ' Treffer' : ' Treffer') + ' für „' + S.query.trim() + '“' + (S.filters.size ? ' · Genre-Filter aktiv: ' + [...S.filters].map(g => GENRES[g]).join(', ') : '') }));
+  head.append(el('label', { class: 'swl' }, el('input', { type: 'checkbox', checked: S.desc || null, onchange: e => { S.desc = e.target.checked; render(); } }), 'Beschreibung durchsuchen'));
+  box.append(head);
+  if (!r.total) {
+    const b = el('div', { class: 'state-box' }, el('div', { class: 'state-ic', 'aria-hidden': 'true', text: '∅' }), el('h3', { text: 'Keine Treffer für „' + S.query.trim() + '“' }),
+      el('p', { text: 'Gesucht wird in den Titeln der gewählten Sender über den gesamten Cache-Zeitraum' + (S.desc ? ' und in den Beschreibungen.' : '.') }));
+    if (!S.desc) b.append(el('button', { class: 'btn', onclick: () => { S.desc = true; render(); } }, 'Beschreibung durchsuchen'));
+    if (S.filters.size) b.append(el('button', { class: 'btn', onclick: () => { S.filters = new Set(); render(); } }, 'Genre-Filter zurücksetzen'));
+    box.append(b); return box;
+  }
+  const ul = el('ul', { class: 'sr-list' });
+  for (const p of r.hits.slice(0, o && o.limit || 40)) {
+    const ch = CHBY[p.ch], inTitle = fold(p.title).includes(fold(S.query.trim()));
+    const b = el('button', { 'data-g': p.genre, data: { pid: p.id, fk: 's:' + p.id }, title: tip(p), onclick: () => pick(p.id, { jump: 1 }) },
+      el('span', { class: 'sr-t' }, markerNode(p), el('span', null, hl(p.title, S.query))),
+      el('span', { class: 'sr-m', text: ch.name + ' · ' + whenStr(p.start) }));
+    if (!inTitle && S.desc && p.desc) b.append(el('span', { class: 'sr-d' }, 'Beschreibung: ', hl(p.desc, S.query)));
+    ul.append(el('li', null, b));
+  }
+  box.append(ul);
+  if (r.total > (o && o.limit || 40)) box.append(el('p', { class: 'jng-note', text: 'Mockup zeigt die ersten ' + (o && o.limit || 40) + ' von ' + r.total + ' Treffern (App: hartes Limit 200).' }));
+  return box;
+}
+
+/* ===== Cache-Zustaende ===== */
+function cacheNode() {
+  const c = S.cache; if (c === 'ok') return null;
+  if (c === 'loading') {
+    const b = el('div', { class: 'state-box', role: 'status' }, el('h3', { text: 'EPG wird geladen …' }), el('p', { text: 'Die Programmdaten werden im Hintergrund aktualisiert. Das dauert meist wenige Sekunden.' }));
+    for (let i = 0; i < 4; i++) b.append(el('div', { class: 'skel', style: 'width:' + (360 - i * 40) + 'px;height:30px' }));
+    return b;
+  }
+  const defs = {
+    empty: ['∅', '', 'Noch kein EPG im Cache', 'Es wurden noch keine Programmdaten geladen. Beim ersten Start oder nach einem Update ist der Cache leer, bis der erste Abruf durch ist.', 'Jetzt aktualisieren'],
+    error: ['!', 'err', 'EPG konnte nicht geladen werden', 'Die Programmdaten konnten nicht abgerufen werden (Zeitüberschreitung). Letzter erfolgreicher Stand: Mo 5.10. 06:00. Geplante Aufnahmen bleiben davon unberührt.', 'Jetzt aktualisieren'],
+    noepg: ['—', '', 'Die aktive Quelle liefert kein EPG', 'Für diese Quelle sind keine Programmdaten hinterlegt. Das Raster bleibt leer; Sender können weiterhin direkt geöffnet werden.', 'Quelle in den Einstellungen prüfen'],
+  }[c];
+  const b = el('div', { class: 'state-box', role: c === 'error' ? 'alert' : 'status' }, el('div', { class: 'state-ic ' + defs[1], 'aria-hidden': 'true', text: defs[0] }), el('h3', { text: defs[2] }), el('p', { text: defs[3] }));
+  b.append(el('button', { class: 'btn pri', onclick: () => c === 'noepg' ? toast('Mockup: öffnet Einstellungen › Quellen') : startRefresh() }, defs[4]));
+  return b;
+}
+function startRefresh() { S.cache = 'loading'; render(); clearTimeout(S.cacheTimer); S.cacheTimer = setTimeout(() => { S.cache = 'ok'; render(); }, 1800); }
+
+/* ===== Detail-Panel (Inhalt) ===== */
+function noticeFor(p) {
+  if (isPast(p)) return { c: 'info', t: 'Vorbei', d: 'Diese Sendung ist bereits zu Ende. Aufnehmen ist nicht mehr möglich.' };
+  if (isFar(p)) return { c: 'warn', t: 'Planung nur bis 8 Tage im Voraus', d: 'Diese Sendung liegt weiter in der Zukunft; die Aufnahme kann später geplant werden.' };
+  if (isRun(p) && p.rec !== 'recording') return { c: 'info', t: 'Läuft bereits', d: 'Eine Aufnahme würde jetzt starten; der Anfang der Sendung fehlt.' };
+  return null;
+}
+/* Aktion je Slot (Listen/Karten) */
+function slotAction(p) {
+  if (p.rec === 'recording') return el('span', null, markerNode(p), ' Aufnahme läuft');
+  if (p.rec === 'planned') return el('span', { class: 'okt' }, markerNode(p), ' Aufnahme geplant ✓');
+  if (isPast(p)) return el('span', { class: 'dim', text: 'vorbei' });
+  if (isFar(p)) return el('span', { title: 'Planung nur bis 8 Tage im Voraus', text: 'Planung nur bis 8 Tage im Voraus' });
+  return el('button', { class: 'btn sm', 'aria-label': 'Aufnehmen: ' + p.title, title: isRun(p) ? 'Läuft bereits – Aufnahme startet sofort' : 'Aufnehmen', onclick: () => recToggle(p) }, 'Aufnehmen');
+}
+function alsoList(p) {
+  const all = ALL.filter(q => q.title === p.title && q.id !== p.id && q.start > NOW && !CHBY[q.ch].noepg).sort((a, b) => a.start - b.start);
+  if (!all.length) return null;
+  const ul = el('ul');
+  for (const q of all.slice(0, 5)) ul.append(el('li', null, el('button', { title: tip(q), onclick: () => pick(q.id, { jump: 1 }) }, el('span', { text: whenLong(q.start) }), el('span', { class: 'dim', text: CHBY[q.ch].name }))));
+  const sec = el('section', { class: 'pn-also', 'aria-label': 'Läuft auch' }, el('h3', { text: 'Läuft auch' }), ul);
+  if (all.length > 5) sec.append(el('div', { class: 'pn-more', text: '+ ' + (all.length - 5) + ' weitere Termine (Anzeige max. 5)' }));
+  return sec;
+}
+/* o: {cls, poster:'collapse'|'ph', onChannel} */
+function detailNode(o) {
+  o = o || {};
+  const root = el('section', { class: 'pn ' + (o.cls || ''), 'aria-label': 'Sendungsdetails' });
+  const close = el('button', { class: 'btn sm pn-close', 'aria-label': 'Details schließen (Esc)', onclick: closePanel }, '✕ Schließen');
+  root.append(el('div', { class: 'pn-top' }, el('span', { class: 'mk-lbl', text: o.label || 'Details' }), close));
+  const body = el('div', { class: 'pn-body' });
+  const ne = noEpgSel();
+  if (ne) {
+    body.append(el('h2', { class: 'pn-title', text: ne.name }), el('p', { class: 'pn-when', text: 'Sender ohne EPG-Daten' }),
+      el('div', { class: 'notice warn', role: 'status' }, el('span', null, el('b', { text: 'Kein EPG im Cache. ' }), 'Für diesen Sender liegen keine Sendungen vor, daher ist keine Planung möglich. Der Sender lässt sich trotzdem öffnen.')),
+      el('div', { class: 'pn-actions' }, el('button', { class: 'btn pri', onclick: () => toast('Mockup: öffnet „' + ne.name + '“ im Player') }, 'Sender öffnen'),
+        el('button', { class: 'btn', 'aria-disabled': 'true', title: 'Ohne EPG keine Planung' }, 'Aufnehmen'),
+        el('button', { class: 'btn', 'aria-disabled': 'true', title: 'Keine Mediathek für diesen Sender' }, 'Mediathek')));
+    root.append(body); return root;
+  }
+  const p = selSlot(); if (!p) { root.append(body); return root; }
+  const ch = CHBY[p.ch];
+  if (p.poster) body.append(el('div', { class: 'thumb pn-poster', style: '--h:' + hue(p), 'aria-label': 'Poster (Platzhalter)', role: 'img', text: 'Poster' }));
+  else if (o.poster === 'ph') body.append(el('div', { class: 'thumb pn-poster', style: '--h:' + hue(p) + ';filter:saturate(.3)', 'aria-label': 'Kein Poster vorhanden', role: 'img', text: 'Kein Poster' }));
+  body.append(el('h2', { class: 'pn-title', text: p.title }));
+  const night = absDay(p.start) !== tvDay(p.start);
+  body.append(el('p', { class: 'pn-when', text: dayShort(absDay(p.start)) + ' · ' + hhmm(p.start) + '–' + hhmm(p.stop) + ' · ' + ch.name + (night ? ' · Nacht zu ' + dayShort(tvDay(p.start)) : '') }));
+  const meta = [];
+  if (p.genre) meta.push(el('span', { 'data-g': p.genre }, el('i', { class: 'gdot' }), GENRES[p.genre]));
+  if (p.year) meta.push(String(p.year));
+  meta.push(dur(p) + ' min');
+  if (p.ep) meta.push(p.ep);
+  const mp = el('p', { class: 'pn-meta' });
+  meta.forEach((m, i) => { if (i) mp.append(' · '); mp.append(m); });
+  body.append(mp);
+  const cred = [];
+  if (p.dir) cred.push('Regie ' + p.dir);
+  if (p.cast.length) cred.push('Mit ' + p.cast.slice(0, 3).join(', ') + (p.cast.length > 3 ? ' + ' + (p.cast.length - 3) + ' weitere' : ''));
+  if (cred.length) body.append(el('p', { class: 'pn-cast', text: cred.join(' · ') }));
+  if (p.desc) body.append(el('p', { class: 'pn-desc', text: p.desc }));
+  const n = noticeFor(p);
+  if (n) body.append(el('div', { class: 'notice ' + n.c, role: 'status' }, el('span', null, el('b', { text: n.t + '. ' }), n.d)));
+  if (p.rec) body.append(el('div', { class: 'pn-rec' }, markerNode(p), el('span', { class: 'okt', text: p.rec === 'planned' ? 'Aufnahme geplant ✓' : 'Aufnahme läuft' }), el('button', { class: 'pn-link', onclick: () => toast('Mockup: springt zur Geplant-Liste') }, 'Zur Geplant-Liste')));
+  const dis = isPast(p) || isFar(p) || !!p.rec;
+  body.append(el('div', { class: 'pn-actions' },
+    el('button', { class: 'btn pri', onclick: () => toast('Mockup: öffnet „' + ch.name + '“ im Player') }, 'Sender öffnen'),
+    el('button', { class: 'btn' + (p.rec ? ' ok' : ''), 'aria-disabled': dis ? 'true' : null, title: p.rec ? 'Bereits eingeplant' : isPast(p) ? 'Vorbei' : isFar(p) ? 'Planung nur bis 8 Tage im Voraus' : 'Aufnehmen', onclick: () => { if (!dis) recToggle(p); } }, p.rec === 'planned' ? 'Geplant ✓' : p.rec === 'recording' ? 'Läuft ●' : 'Aufnehmen'),
+    el('button', { class: 'btn', 'aria-disabled': ch.med ? null : 'true', title: ch.med ? 'Mediathek' : 'Keine Mediathek für diesen Sender', onclick: () => { if (ch.med) toast('Mockup: öffnet die Mediathek von ' + ch.name); } }, 'Mediathek')));
+  body.append(el('button', { class: 'pn-link', 'data-fk': 'pl', onclick: () => (o.onChannel || openChannel)(p.ch, Math.max(0, Math.min(8, tvDay(p.start)))) }, 'Alle Sendungen des Senders'));
+  const a = alsoList(p); if (a) body.append(a);
+  root.append(body); return root;
+}
+
+/* ===== Jetzt & Gleich ===== */
+function jngNode(o) {
+  const wrap = el('div', { class: 'jng gd-' + S.genreDisp, role: 'list', 'aria-label': 'Jetzt und Gleich' });
+  wrap.append(el('div', { class: 'jng-head', 'aria-hidden': 'true' }, el('span', { text: 'Sender' }), el('span', { text: 'Läuft' }), el('span', { text: 'Danach' }), el('span', { text: 'Danach' })));
+  let n = 0;
+  for (const c of CH) {
+    const row = el('div', { class: 'jng-row', role: 'listitem' });
+    row.append(el('button', { class: 'jng-chan', title: 'Alle Sendungen von ' + c.name, 'data-fk': 'c:' + c.id, onclick: () => openChannel(c.id, 0) }, logoNode(c), el('span', { text: c.name })));
+    if (c.noepg) {
+      if (S.filters.size) continue;
+      row.append(el('button', { class: 'jng-cell empty', style: 'grid-column:2 / -1', onclick: () => { S.sel = 'noepg:' + c.id; S.focusPanel = true; render(); } }, el('span', { class: 'tx' }, el('span', { class: 'tt', text: 'Kein EPG im Cache' }), el('span', { class: 'ts', text: 'Für diesen Sender liegen keine Programmdaten vor.' }))));
+      wrap.append(row); n++; continue;
+    }
+    const a = slotsOf(c.id), i = nowIdx(c.id); let any = false;
+    [0, 1, 2].forEach(k => {
+      const p = a[i + k];
+      if (!p || !matchGenre(p)) { row.append(el('div', { class: 'jng-cell empty', 'aria-hidden': 'true', text: S.filters.size ? '—' : '' })); return; }
+      any = true;
+      const cur = k === 0 && isRun(p);
+      const cell = el('button', { class: 'jng-cell' + (cur ? ' cur' : ''), 'data-g': p.genre, data: { pid: p.id, fk: 's:' + p.id }, title: tip(p), onclick: () => pick(p.id) });
+      if (p.poster && !(o && o.noThumb)) cell.append(thumbNode(p));
+      const ts = el('span', { class: 'ts' }, (absDay(p.start) !== absDay(NOW) ? whenStr(p.start) : hhmm(p.start)) + '–' + hhmm(p.stop) + (cur ? ' · noch ' + restMin(p) + ' min' : ''));
+      const tx = el('span', { class: 'tx' }, el('span', { class: 'tt' }, markerNode(p), el('span', { style: 'overflow:hidden;text-overflow:ellipsis', text: p.title }), p.genre ? el('span', { class: 'gchip', text: GENRES[p.genre] }) : null), ts);
+      if (cur) tx.append(progNode(p));
+      cell.append(tx); row.append(cell);
+    });
+    if (S.filters.size && !any) continue;
+    wrap.append(row); n++;
+  }
+  if (!n) wrap.append(el('div', { class: 'state-box' }, el('div', { class: 'state-ic', 'aria-hidden': 'true', text: '∅' }), el('h3', { text: 'Keine passenden Sendungen' }), el('p', { text: 'Im Genre-Filter „' + [...S.filters].map(g => GENRES[g]).join(', ') + '“ läuft gerade nichts.' }), el('button', { class: 'btn', onclick: () => { S.filters = new Set(); render(); } }, 'Filter zurücksetzen')));
+  return wrap;
+}
+
+/* ===== Kanalansicht: Tage-Tabs + Liste ===== */
+function dayTabs() {
+  const days = [0, 1, 2, 3, 4, 5, 6].concat(S.chMore ? [7, 8] : []);
+  const t = el('div', { class: 'cv-tabs', role: 'group', 'aria-label': 'TV-Tag wählen (05:00–05:00)' });
+  for (const d of days) {
+    const far = d >= 8;
+    t.append(el('button', { class: 'chip', 'aria-pressed': String(S.chDay === d), title: far ? 'TV-Tag ' + dayShort(d) + ' – teils jenseits der 8-Tage-Planungsgrenze' : 'TV-Tag ' + dayShort(d), 'data-fk': 'd:' + d, onclick: () => { S.chDay = d; render(); } }, d <= 1 ? tvLabel(d) + ' · ' + dayShort(d).slice(3) : dayShort(d)));
+  }
+  t.append(el('button', { class: 'chip', 'aria-pressed': String(S.chMore), onclick: () => { S.chMore = !S.chMore; if (!S.chMore && S.chDay > 6) S.chDay = 6; render(); } }, S.chMore ? '− Cache-Tage' : '+ Cache-Tage (> 8 T.)'));
+  return t;
+}
+function chNowLine(c) {
+  const a = slotsOf(c.id), p = a[nowIdx(c.id)];
+  return p && isRun(p) ? el('div', { class: 'cv-now' }, 'Jetzt läuft: ', el('b', { text: p.title }), ' · noch ' + restMin(p) + ' min') : el('div', { class: 'cv-now', text: 'Gerade keine Sendung im EPG' });
+}
+function channelRows(c, d) {
+  const list = el('div', { class: 'cv-list gd-' + S.genreDisp, role: 'list', 'aria-label': 'Sendungen von ' + c.name + ', TV-Tag ' + dayShort(d) });
+  const a = slotsOf(c.id).filter(p => tvDay(p.start) === d);
+  if (!a.length) { list.append(el('p', { class: 'jng-note', text: 'Für diesen TV-Tag liegen keine Sendungen im Cache.' })); return list; }
+  const nxt = d === tvDay(NOW) ? a.find(p => p.start > NOW) : null;
+  for (const p of a) {
+    const run = isRun(p), night = absDay(p.start) !== d;
+    const row = el('div', { class: 'cv-row' + (isPast(p) ? ' past' : '') + (run ? ' run' : '') + (p === nxt && !run ? ' nxt' : ''), role: 'listitem', 'data-g': p.genre });
+    const tt = el('span', { class: 'cv-t' }, hhmm(p.start) + '–' + hhmm(p.stop), night ? el('small', { text: 'Nacht · ' + whenStr(p.start).slice(0, 2) }) : null);
+    const ti = el('span', { class: 'cv-ti' }, el('b', null, markerNode(p), run ? el('span', { class: 'cv-flag', text: 'Jetzt' }) : p === nxt ? el('span', { class: 'cv-flag n', text: 'Nächste' }) : null, el('span', { class: 'tx', text: p.title }), p.genre ? el('span', { class: 'gchip', text: GENRES[p.genre] }) : null),
+      el('small', { text: (GENRES[p.genre] || 'ohne Genre') + ' · ' + dur(p) + ' min' + (run ? ' · noch ' + restMin(p) + ' min' : '') }));
+    row.append(el('button', { class: 'cv-main', title: tip(p), data: { pid: p.id, fk: 's:' + p.id }, onclick: () => pick(p.id) }, tt, ti), el('div', { class: 'cv-act' }, slotAction(p)));
+    list.append(row);
+  }
+  return list;
+}
+
+function syncPressed(root) { for (const b of root.querySelectorAll('[data-t]')) b.setAttribute('aria-pressed', String(!!b._on())); }
+function tbtn(cls, label, on, click, extra) { const b = el('button', Object.assign({ class: cls, 'data-t': '1', onclick: click }, extra || {}), label); b._on = on; return b; }
+function filterChips(extraCls) { // Genre-Filter-Chips
+  const w = el('div', { class: 'fchips ' + (extraCls || ''), role: 'group', 'aria-label': 'Genre-Filter' });
+  w.append(tbtn('chip', 'Alle', () => S.filters.size === 0, () => { S.filters = new Set(); render(); }));
+  for (const g of GKEYS) w.append(tbtn('chip', [el('i', { class: 'dot' }), GENRES[g]], () => S.filters.has(g), () => { S.filters.has(g) ? S.filters.delete(g) : S.filters.add(g); render(); }, { 'data-g': g, 'data-genre': g, title: 'Genre: ' + GENRES[g] }));
+  return w;
+}
+function searchField(o) { // o:{cls}
+  const f = el('form', { class: 'sfield ' + (o && o.cls || ''), role: 'search', onsubmit: e => e.preventDefault() });
+  const inp = el('input', { class: 'field', type: 'search', id: 'q', placeholder: 'Titel suchen …', 'aria-label': 'Suche in Titeln', autocomplete: 'off', maxlength: '80', oninput: e => { S.query = e.target.value; S.searchOpen = true; render(); } });
+  inp._sync = () => { if (document.activeElement !== inp && inp.value !== S.query) inp.value = S.query; };
+  const lab = el('label', { class: 'swl' }, el('input', { type: 'checkbox', id: 'q-desc', onchange: e => { S.desc = e.target.checked; S.searchOpen = true; render(); } }), 'Beschreibung durchsuchen');
+  lab._sync = () => { lab.firstChild.checked = S.desc; };
+  f.append(inp, lab); f._sync = () => { inp._sync(); lab._sync(); };
+  return f;
+}
+const syncAll = root => { syncPressed(root); for (const e of root.querySelectorAll('.sfield')) e._sync(); };
+/* ===== Raster (A und B-Rastermodus) ===== */
+function buildGrid(o) { // o:{ppm,rowH,chanW,onChan,onScroll}
+  const ppm = o.ppm, W = (T1 - T0) * ppm, chw = o.chanW;
+  const sc = el('div', { class: 'g-scroll gd-' + S.genreDisp, tabindex: '0', role: 'region', 'aria-label': 'Programmraster (scrollbar, Pfeiltasten)', style: '--rowh:' + o.rowH + 'px;--chw:' + chw + 'px' });
+  const inner = el('div', { class: 'g-inner', style: 'width:' + (chw + W) + 'px' });
+  const rt = el('div', { class: 'g-rt', style: 'width:' + W + 'px;--gs:' + (30 * ppm) + 'px' });
+  for (let m = Math.ceil(T0 / 30) * 30; m <= T1; m += 30) {
+    const full = m % 60 === 0, day = (m - 300) % 1440 === 0;
+    if (!full && ppm < 5) continue;
+    rt.append(el('span', { class: 'g-tk' + (full ? ' h' : '') + (day ? ' d' : ''), style: 'left:' + (m - T0) * ppm + 'px' }, day ? dayShort(tvDay(m)) + ' · ' + hhmm(m) : full ? hhmm(m) : ''));
+  }
+  rt.append(el('span', { class: 'g-nowlbl', style: 'left:' + (NOW - T0) * ppm + 'px', text: 'jetzt ' + hhmm(NOW) }));
+  inner.append(el('div', { class: 'g-ruler' }, el('div', { class: 'g-corner', text: 'Favoriten' }), rt));
+  for (const c of CH) {
+    const row = el('div', { class: 'g-row' });
+    row.append(el('button', { class: 'g-chan', title: 'Alle Sendungen von ' + c.name + ' (Kanalansicht)', 'data-fk': 'c:' + c.id, onclick: () => o.onChan(c.id) }, logoNode(c), el('span', { class: 'g-cn', text: c.name })));
+    const tr = el('div', { class: 'g-track', style: 'width:' + W + 'px;--gs:' + (30 * ppm) + 'px' });
+    if (c.noepg) {
+      tr.append(el('button', { class: 'g-block g-noepg', style: 'left:' + (NOW - 20 - T0) * ppm + 'px;width:420px', onclick: () => { S.sel = 'noepg:' + c.id; S.focusPanel = true; render(); } }, el('span', { class: 'bt', text: 'Kein EPG im Cache' }), el('span', { class: 'bm', text: 'Für diesen Sender liegen keine Daten vor' })));
+    } else for (const p of slotsOf(c.id)) {
+      const w = dur(p) * ppm - 2, run = isRun(p), past = isPast(p);
+      const cls = 'g-block' + (past ? ' past' : '') + (run ? ' run' : '') + (S.filters.size && !matchGenre(p) ? ' dim' : '') + (S.sel === p.id ? ' sel' : '') + (p.start % 1440 === 1215 ? ' prime' : '');
+      const b = el('button', { class: cls, 'data-g': p.genre, style: 'left:' + (p.start - T0) * ppm + 'px;width:' + w + 'px', title: tip(p), 'aria-label': tip(p), data: { pid: p.id, fk: 's:' + p.id }, onclick: () => pick(p.id) });
+      if (w >= 28) {
+        b.append(el('span', { class: 'bt' }, markerNode(p), el('span', { class: 'tx', text: p.title })), el('span', { class: 'bm', text: hhmm(p.start) + (run ? ' · noch ' + restMin(p) + ' min' : '') }));
+        if (p.genre) b.append(el('span', { class: 'gchip', text: GENRES[p.genre] }));
+        if (run) b.append(progNode(p));
+      }
+      tr.append(b);
+    }
+    row.append(tr); inner.append(row);
+  }
+  inner.append(el('div', { class: 'g-now', style: 'left:' + (chw + (NOW - T0) * ppm) + 'px' }));
+  sc.append(inner);
+  let raf = 0;
+  sc.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const m = T0 + (sc.scrollLeft + (sc.clientWidth - chw) * .25) / ppm; if (o.onScroll) o.onScroll(tvDay(m), m); }); });
+  sc._scrollTo = m => { sc.scrollLeft = Math.max(0, (m - T0) * ppm - (sc.clientWidth - chw) * .25); };
+  return sc;
+}
+/* ===== Zustandsleiste, Kopf, Render-Schleife ===== */
+const JUMPS = { now: NOW, prime: 1215, late: 1320, night: 1500 };
+const selPatch = p => ({ view: 'home', sel: p.id, jump: p.start, day: tvDay(p.start), focusPanel: false });
+const FAR = () => ALL.find(p => p.ch === 'ard' && p.start >= 8 * 1440 + 1320);
+const STATES = [
+  ['Raster / Tage', 'st-grid', 'Raster (Favoriten)', () => ({ view: 'home', jump: NOW })],
+  ['Raster / Tage', 'st-days', 'Tage + Nachtsendung', () => ({ view: 'home', day: 0, jump: 1500 })],
+  ['Raster / Tage', 'st-jump-2015', '20:15', () => ({ view: 'home', jump: 1215 })],
+  ['Panel', 'st-panel-b', 'mit B-Daten (geplant)', () => selPatch(slotAt('zdf', 0, '2300'))],
+  ['Panel', 'st-panel-nob', 'ohne B-Daten', () => selPatch(slotAt('ard', 0, '2145'))],
+  ['Panel', 'st-panel-rec', 'Aufnahme läuft', () => selPatch(slotAt('ard', 0, '2015'))],
+  ['Panel', 'st-panel-running', 'läuft bereits', () => selPatch(slotAt('zdf', 0, '2000'))],
+  ['Panel', 'st-panel-past', 'vorbei', () => selPatch(slotAt('ard', 0, '2000'))],
+  ['Panel', 'st-panel-far', '> 8 Tage', () => selPatch(FAR())],
+  ['Panel', 'st-panel-special', 'Sonderzeichen-Titel', () => selPatch(slotAt('kika', 0, '1800'))],
+  ['Panel', 'st-panel-noepg', 'kein EPG', () => ({ view: 'home', sel: 'noepg:lokal', focusPanel: false })],
+  ['Ansichten', 'st-jng', 'Jetzt & Gleich', () => ({ view: 'jng' })],
+  ['Ansichten', 'st-channel', 'Kanalansicht', () => ({ view: 'channel', channel: 'ard', chDay: 0 })],
+  ['Ansichten', 'st-channel-far', 'Kanal Tag > 8', () => ({ view: 'channel', channel: 'ard', chDay: 8, chMore: true })],
+  ['Suche / Filter', 'st-search', 'Suche: Treffer', () => ({ view: 'home', query: 'tatort', searchOpen: true })],
+  ['Suche / Filter', 'st-search-desc', 'Suche in Beschreibung', () => ({ view: 'home', query: 'hafen', desc: true, searchOpen: true })],
+  ['Suche / Filter', 'st-search-empty', 'Suche: leer', () => ({ view: 'home', query: 'zaubermaus', searchOpen: true })],
+  ['Suche / Filter', 'st-filter', 'Filter Film (Raster)', () => ({ view: 'home', filters: new Set(['film']), jump: 1215 })],
+  ['Suche / Filter', 'st-jng-filter', 'Filter Sport (J&G)', () => ({ view: 'jng', filters: new Set(['sport']) })],
+  ['Cache', 'st-cache-empty', 'leer', () => ({ cache: 'empty' })],
+  ['Cache', 'st-cache-loading', 'lädt', () => ({ cache: 'loading' })],
+  ['Cache', 'st-cache-error', 'Fehler', () => ({ cache: 'error' })],
+  ['Cache', 'st-cache-noepg', 'Quelle ohne EPG', () => ({ cache: 'noepg' })],
+  ['Cache', 'st-cache-ok', 'ok', () => ({ cache: 'ok' })],
+  ['Daten', 'st-gaps', 'Datenlücken', () => Object.assign(selPatch(gapExample('poster')), { gapsOn: true })],
+];
+function applyState(id) {
+  if (id === 'st-wide' || id === 'st-narrow') {
+    S.width = id === 'st-wide' ? 1280 : 880; S.manual = false; S.active = id; computeNarrow(); S.view = resolveStart(); S.sel = null; render(); return;
+  }
+  const d = STATES.concat(V.states || []).find(s => s[1] === id); if (!d) return;
+  clearTimeout(S.cacheTimer);
+  Object.assign(S, baseState(), d[3](), V.patch ? V.patch(id) : {}, { active: id });
+  S.manual = true; render();
+}
+function computeNarrow() {
+  const avail = $('#stage').clientWidth - 32;
+  S.narrow = Math.min(S.width, avail) < 900;
+}
+function buildHeader() {
+  const mk = $('#mk');
+  const stBtn = (id, label) => el('button', { class: 'sb', id, 'data-state': id.slice(3), 'data-t': '1', onclick: () => applyState(id) }, label);
+  const wid = el('div', { class: 'mk-grp', role: 'group', 'aria-label': 'Fensterbreite simulieren' }, el('span', { class: 'mk-lbl', text: 'Fensterbreite simulieren:' }));
+  for (const [id, l, w] of [['st-wide', '1280 px', 1280], ['st-narrow', '880 px', 880]]) { const b = stBtn(id, l); b._on = () => S.width === w; wid.append(b); }
+  mk.append(el('div', { class: 'mk-row' }, el('span', { class: 'mk-badge', text: 'Mockup – nicht die App' }), el('strong', { class: 'mk-title', text: V.title }), el('a', { class: 'mk-link', href: 'index.html' }, '← Übersicht'), el('span', { class: 'mk-spacer' }), wid));
+  const sbar = el('nav', { class: 'mk-row', id: 'statebar', 'aria-label': 'Zustand' }, el('span', { class: 'mk-lbl', text: 'Zustand' }));
+  const groups = {};
+  for (const d of STATES.concat(V.states || [])) {
+    if (!groups[d[0]]) { groups[d[0]] = el('div', { class: 'mk-grp', role: 'group', 'aria-label': d[0] }, el('span', { class: 'mk-lbl', text: d[0] })); sbar.append(groups[d[0]]); }
+    const b = stBtn(d[1], d[2]); b._on = () => S.active === d[1]; groups[d[0]].append(b);
+  }
+  mk.append(sbar);
+  const pref = el('div', { class: 'mk-grp', role: 'group', 'aria-label': 'Startansicht (Einstellung)' }, el('span', { class: 'mk-lbl', text: 'Startansicht (Einstellung)' }));
+  for (const [v, l] of [['auto', 'Automatisch'], ['grid', V.homeName || 'Raster'], ['jng', 'Jetzt & Gleich']]) {
+    const b = el('button', { class: 'sb', id: 'pref-' + v, 'data-t': '1', onclick: () => { S.pref = v; S.manual = false; S.view = resolveStart(); S.sel = null; render(); } }, l); b._on = () => S.pref === v; pref.append(b);
+  }
+  const entry = el('div', { class: 'mk-grp', role: 'group', 'aria-label': 'Einstieg Kanalansicht' }, el('span', { class: 'mk-lbl', text: 'Einstieg Kanalansicht' }),
+    el('button', { class: 'sb', id: 'entry-chan', onclick: () => openChannel('ard', 0) }, V.entry1 || 'Klick auf Sendername'),
+    el('button', { class: 'sb', id: 'entry-panel', onclick: () => { Object.assign(S, selPatch(slotAt('ard', 0, '2145')), { focusPanel: false }); S.view = 'home'; S.manual = true; S.restoreFk = 'pl'; render(); } }, 'Panel-Link „Alle Sendungen des Senders“'));
+  mk.append(el('div', { class: 'mk-row mk-info' }, pref, entry,
+    el('span', { id: 'mk-status', role: 'status' }),
+    el('span', null, 'Marker: ', el('span', { class: 'mk-plan', text: '●' }), ' geplant · ', el('span', { class: 'mk-run', text: '●' }), ' läuft (Aufnahme) · simulierte Uhr Mo 5.10.2026 20:32')));
+  // Datenluecken-Legende
+  const g = $('#gaps');
+  const gb = el('div', { class: 'gaps-box', role: 'group', 'aria-label': 'Datenlücken' }, el('strong', { text: 'Datenlücken' }),
+    el('span', { text: 'Quelle iptv-epg.org (04.10.2026): ohne Poster ≈ 27 % · ohne Credits ≈ 75 % · ohne Episode ≈ 68 % · ohne Genre ≈ 21 %. Fehlende Felder werden ausgeblendet, keine leeren Zeilen. Beispiele:' }));
+  for (const [k, l] of [['poster', 'ohne Poster'], ['credits', 'ohne Credits'], ['episode', 'ohne Episode'], ['genre', 'ohne Genre']]) gb.append(el('button', { class: 'sb', id: 'gap-' + k, onclick: () => { Object.assign(S, selPatch(gapExample(k)), { gapsOn: true, active: 'st-gaps' }); S.view = 'home'; S.manual = true; render(); } }, l));
+  g.append(gb);
+}
+function render() {
+  const act = document.activeElement, fk = act && act.getAttribute && act.getAttribute('data-fk');
+  const frame = $('#frame'), app = $('#app');
+  frame.style.width = S.width + 'px';
+  computeNarrow();
+  frame.classList.toggle('narrow', S.narrow);
+  V.render(app);
+  syncAll(document);
+  $('#mk-status').textContent = 'Fensterbreite ' + Math.min(S.width, $('#stage').clientWidth - 32) + ' px (' + (S.narrow ? 'schmal, unter 900 px' : 'breit') + ') · Startansicht ' + ({ auto: 'Automatisch', grid: V.homeName || 'Raster', jng: 'Jetzt & Gleich' }[S.pref]) + (S.pref === 'auto' ? ' → ' + (resolveStart() === 'jng' ? 'Jetzt & Gleich' : (V.homeName || 'Raster')) : '') + ' · Cache: ' + ({ ok: 'ok', empty: 'leer', loading: 'lädt', error: 'Fehler', noepg: 'Quelle ohne EPG' }[S.cache]);
+  // Fokus: Panel beim Oeffnen, sonst ggf. Rueckkehr zum Ausloeser
+  let target = null;
+  if (S.focusPanel) target = $('.pn-close', app);
+  else if (S.restoreFk) target = app.querySelector('[data-fk="' + S.restoreFk.replace(/"/g, '') + '"]');
+  else if (fk && (!document.activeElement || document.activeElement === document.body || !document.contains(act))) target = app.querySelector('[data-fk="' + fk.replace(/"/g, '') + '"]');
+  S.focusPanel = false; S.restoreFk = null;
+  if (target) target.focus({ preventScroll: true });
+  S.jump = null;
+  const run = app.querySelector('.cv-row.run'); if (run && run.parentElement.scrollTop === 0) run.parentElement.scrollTop = Math.max(0, run.offsetTop - 120);
+}
+function boot(variant) {
+  V = variant; buildHeader();
+  computeNarrow(); S.view = resolveStart();
+  let was = S.narrow;
+  window.addEventListener('resize', () => { computeNarrow(); if (S.narrow !== was) { was = S.narrow; if (!S.manual) S.view = resolveStart(); render(); } });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (S.sel) closePanel(); else if (S.searchOpen) { S.searchOpen = false; render(); }
+  });
+  render();
+}
+/* ===== Variante B: Listen-zentriert (MediathekView-nah) ===== */
+S.bmode = 'list';
+const B = {
+  title: 'Variante B · Listen-zentriert (Tabelle + Filterleiste)', homeName: 'Liste', entry1: 'Klick auf Sender in der Senderliste links',
+  states: [['Raster / Tage', 'st-list', 'Liste (Standard)', () => ({ view: 'home', jump: NOW })]],
+  patch(id) { return { bmode: id === 'st-grid' || id === 'st-filter' ? 'grid' : 'list' }; },
+  last: NOW,
+  build(app) {
+    const s = B.shell = {};
+    const modes = el('div', { class: 'seg', role: 'group', 'aria-label': 'Darstellung' },
+      tbtn('', 'Liste', () => S.view === 'home' && S.bmode === 'list', () => { S.bmode = 'list'; setView('home'); }, { id: 'mode-list' }),
+      tbtn('', 'Raster', () => S.view === 'home' && S.bmode === 'grid', () => { S.bmode = 'grid'; setView('home'); }, { id: 'mode-grid' }),
+      tbtn('', 'Jetzt & Gleich', () => S.view === 'jng', () => setView('jng'), { id: 'mode-jng' }));
+    s.days = el('div', { class: 'a-days', role: 'group', 'aria-label': 'Tag wählen (TV-Tag 05:00–05:00)' });
+    for (let d = -1; d <= 8; d++) s.days.append(tbtn('chip', d <= 1 ? tvLabel(d) + ' ' + dayShort(d).slice(3) : dayShort(d), () => S.day === d, () => { S.view = 'home'; S.manual = true; S.day = d; S.jump = d === tvDay(NOW) ? NOW : d * 1440 + 300; render(); }, { 'data-fk': 'd:' + d, title: 'TV-Tag ' + dayShort(d) + ' (05:00–05:00)' }));
+    const jb = (id, l, f) => el('button', { class: 'btn sm', id, onclick: () => { S.view = 'home'; S.manual = true; if (id === 'jump-now') S.day = tvDay(NOW); S.jump = f(); render(); } }, l);
+    s.jumps = el('div', { class: 'a-jumps', role: 'group', 'aria-label': 'Schnellsprung' }, jb('jump-now', 'Jetzt', () => NOW), jb('jump-2015', '20:15', () => S.day * 1440 + 1215), jb('jump-2200', '22:00', () => S.day * 1440 + 1320));
+    s.dens = el('div', { class: 'a-seg' }, el('span', { class: 'seg-l', text: 'Rasterdichte' }), el('div', { class: 'seg', role: 'group', 'aria-label': 'Rasterdichte in Pixel pro Minute' },
+      ...[3, 5, 8].map(n => tbtn('', n + ' px/min', () => S.density === n, () => { S.density = n; render(); }, { id: 'dens-' + n }))));
+    s.gd = el('div', { class: 'a-seg' }, el('span', { class: 'seg-l', text: 'Genre-Darstellung' }), el('div', { class: 'seg', role: 'group', 'aria-label': 'Genre-Darstellung' },
+      ...[['bar', 'Balken links'], ['chip', 'Chip in Spalte'], ['none', 'nur Panel']].map(([v, l]) => tbtn('', l, () => S.genreDisp === v, () => { S.genreDisp = v; render(); }, { id: 'gd-' + v }))));
+    const tool = el('div', { class: 'a-tool b-tool' },
+      el('div', { class: 'a-r' }, searchField({ cls: 'b-sf' }), modes),
+      el('div', { class: 'a-r' }, filterChips(), s.gd, s.dens),
+      el('div', { class: 'a-r b-dayrow' }, s.days, s.jumps));
+    s.side = el('nav', { class: 'b-side', 'aria-label': 'Sender' });
+    s.content = el('div', { class: 'b-content' });
+    s.pane = el('div', { class: 'b-pane', hidden: true, role: 'region', 'aria-label': 'Detailbereich' });
+    s.main = el('div', { class: 'b-main' }, s.content, s.pane);
+    app.append(tool, el('div', { class: 'b-body' }, s.side, s.main));
+  },
+  render(app) {
+    if (!B.shell) B.build(app);
+    const s = B.shell, cn = cacheNode();
+    const home = S.view === 'home' && !cn, grid = home && S.bmode === 'grid', searching = !!(S.query && S.searchOpen && home);
+    s.days.hidden = !home || searching; s.jumps.hidden = !home || searching; s.dens.hidden = !grid; s.gd.hidden = S.view === 'channel';
+    // Senderliste
+    s.side.replaceChildren(el('div', { class: 'b-sh', text: 'Sender' }),
+      el('button', { class: 'b-sb', 'aria-pressed': String(S.view !== 'channel'), onclick: () => { S.view = 'home'; S.manual = true; S.sel = null; render(); } }, el('span', { text: 'Alle Favoriten' })));
+    for (const c of CH) s.side.append(el('button', { class: 'b-sb', 'aria-pressed': String(S.view === 'channel' && S.channel === c.id), 'data-fk': 'c:' + c.id, title: c.noepg ? 'Kein EPG im Cache' : 'Alle Sendungen von ' + c.name + ' (7 TV-Tage)', onclick: () => c.noepg ? (S.sel = 'noepg:' + c.id, S.focusPanel = true, render()) : openChannel(c.id, Math.max(0, S.day)) }, logoNode(c), el('span', { class: 'b-sn', text: c.name }), c.noepg ? el('small', { class: 'mut', text: 'kein EPG' }) : null));
+    const prevTop = B.sc ? B.sc.scrollTop : 0; const wasGrid = !!(B.sc && B.sc.classList.contains('g-scroll')); B.sc = null;
+    s.content.replaceChildren();
+    if (cn) s.content.append(cn);
+    else if (S.view === 'jng') s.content.append(el('div', { class: 'a-scroll' }, jngNode()));
+    else if (S.view === 'channel') s.content.append(B.channel());
+    else if (searching) s.content.append(B.search());
+    else if (S.bmode === 'grid') {
+      const sc = buildGrid({ ppm: S.density, rowH: 64, chanW: 130, onChan: id => openChannel(id), onScroll: (d, m) => { B.last = m; if (d !== S.day) { S.day = d; syncPressed(s.days); } } });
+      s.content.append(sc); B.sc = sc; sc.scrollTop = wasGrid ? prevTop : 0; sc._scrollTo(S.jump != null ? S.jump : B.last);
+      if (S.jump != null) B.last = S.jump;
+    } else {
+      const wrap = el('div', { class: 'b-tablewrap gd-' + S.genreDisp + (S.genreDisp === 'none' ? ' nog' : '') });
+      wrap.append(B.table(ALL.filter(p => !CHBY[p.ch].noepg && tvDay(p.start) === S.day && matchGenre(p)), { day: S.day }));
+      s.content.append(wrap); B.sc = wrap; wrap.scrollTop = prevTop;
+      if (S.jump != null) {
+        const key = S.jump === NOW ? r => +r.dataset.stop > NOW : r => +r.dataset.start >= S.jump;
+        const row = [...wrap.querySelectorAll('tr[data-start]')].find(key);
+        if (row) wrap.scrollTop = Math.max(0, row.offsetTop - 44);
+      }
+    }
+    s.pane.hidden = !S.sel; s.pane.replaceChildren();
+    if (S.sel) s.pane.append(detailNode({ cls: 'b-pn', poster: 'collapse', label: 'Details' }));
+    s.main.classList.toggle('has-pane', !!S.sel);
+  },
+  channel() {
+    const c = CHBY[S.channel], w = el('div', { class: 'cv' });
+    w.append(el('div', { class: 'cv-head' }, logoNode(c), el('div', null, el('h2', { text: c.name }), chNowLine(c)), el('span', { class: 'mut', text: '7 TV-Tage · Tag = 05:00–05:00' })), dayTabs(), channelRows(c, S.chDay));
+    return w;
+  },
+  search() {
+    const r = runSearch(), box = el('div', { class: 'b-sres' });
+    if (r.short || !r.total) return searchNode();
+    box.append(el('div', { class: 'sr-h' }, el('span', { text: r.total + ' Treffer für „' + S.query.trim() + '“ (alle Tage)' }),
+      el('label', { class: 'swl' }, el('input', { type: 'checkbox', checked: S.desc || null, onchange: e => { S.desc = e.target.checked; render(); } }), 'Beschreibung durchsuchen'),
+      el('button', { class: 'btn sm', onclick: () => { S.searchOpen = false; render(); } }, '✕ Suche schließen (Esc)')));
+    const wrap = el('div', { class: 'b-tablewrap gd-' + S.genreDisp + (S.genreDisp === 'none' ? ' nog' : '') });
+    wrap.append(B.table(r.hits.slice(0, 60), { q: S.query, search: true }));
+    box.append(wrap);
+    if (r.total > 60) box.append(el('p', { class: 'jng-note', text: 'Mockup zeigt die ersten 60 von ' + r.total + ' Treffern (App: hartes Limit 200).' }));
+    return box;
+  },
+  table(rows, o) {
+    const sk = S.sort.k, sd = S.sort.d;
+    const keyf = { time: p => p.start, ch: p => CH.findIndex(c => c.id === p.ch) * 1e6 + p.start, title: p => fold(p.title) + p.start, genre: p => (p.genre || 'zzz') + p.start };
+    rows = rows.slice().sort((a, b) => { const x = keyf[sk](a), y = keyf[sk](b); return (x < y ? -1 : x > y ? 1 : 0) * sd; });
+    const th = (k, l, cls) => el('th', { scope: 'col', class: cls || '', 'aria-sort': sk === k ? (sd > 0 ? 'ascending' : 'descending') : 'none' }, el('button', { class: 'b-th', onclick: () => { S.sort = { k, d: sk === k ? -sd : 1 }; render(); } }, l + (sk === k ? (sd > 0 ? ' ▲' : ' ▼') : '')));
+    const t = el('table', { class: 'b-table' }, el('caption', { class: 'sr', text: o.search ? 'Suchergebnisse' : 'Programm ' + dayShort(o.day) + ' (TV-Tag 05:00–05:00)' }));
+    t.append(el('thead', null, el('tr', null, el('th', { scope: 'col', class: 'c-mk' }, el('span', { class: 'sr', text: 'Aufnahme' })), th('time', 'Zeit', 'c-ti'), th('ch', 'Sender', 'c-ch'), th('title', 'Titel'), th('genre', 'Genre', 'c-ge'), el('th', { scope: 'col', class: 'c-du', text: 'Dauer' }), el('th', { scope: 'col', class: 'c-ac' }, el('span', { class: 'sr', text: 'Aktion' })))));
+    const tb = el('tbody'); let shownPrime = false;
+    for (const p of rows) {
+      if (!o.search && sk === 'time' && sd > 0 && !shownPrime && p.start % 1440 >= 1215 && p.start % 1440 < 1500) { shownPrime = true; tb.append(el('tr', { class: 'b-sep' }, el('td', { colspan: '7', text: '20:15 · Primetime' }))); }
+      const run = isRun(p), night = absDay(p.start) !== tvDay(p.start);
+      const tr = el('tr', { class: (isPast(p) ? 'past ' : '') + (run ? 'run ' : '') + (S.sel === p.id ? 'sel' : ''), 'data-g': p.genre, 'data-start': p.start, 'data-stop': p.stop, title: tip(p), onclick: e => { if (!e.target.closest('button')) pick(p.id); } });
+      tr.append(el('td', { class: 'c-mk' }, markerNode(p)));
+      tr.append(el('td', { class: 'c-ti' }, o.search ? whenStr(p.start) : hhmm(p.start), night && !o.search ? el('small', { class: 'b-night', text: ' Nacht' }) : null, run ? el('small', { class: 'b-rest', text: 'noch ' + restMin(p) + ' min' }) : null, run ? progNode(p) : null));
+      tr.append(el('td', { class: 'c-ch', text: CHBY[p.ch].name }));
+      tr.append(el('td', { class: 'c-tt' }, el('button', { class: 'b-tl', 'data-fk': 's:' + p.id, data: { pid: p.id }, onclick: () => pick(p.id) }, o.q ? hl(p.title, o.q) : p.title)));
+      tr.append(el('td', { class: 'c-ge' }, p.genre ? el('span', { class: 'gchip', text: GENRES[p.genre] }) : null, p.genre ? el('span', { class: 'gtx', text: GENRES[p.genre] }) : el('span', { class: 'mut', text: '–' })));
+      tr.append(el('td', { class: 'c-du', text: dur(p) + ' min' }), el('td', { class: 'c-ac' }, slotAction(p)));
+      tb.append(tr);
+    }
+    if (!rows.length) tb.append(el('tr', null, el('td', { colspan: '7', class: 'jng-note', text: 'Keine Sendungen für diesen Tag und Filter.' })));
+    t.append(tb); return t;
+  },
+};
+boot(B);
+</script>
+</body>
+</html>
