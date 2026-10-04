@@ -4,7 +4,9 @@ export function parseEpgTime(timeStr: string): Date {
   const m = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{2})(\d{2})/);
   if (m) {
     const utc = Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!);
-    const tzOffset = (+m[7]!) * 60 + (+m[8]!);
+    // Vorzeichen gilt für Stunden UND Minuten ("-0530" = −330 min, nicht −270)
+    const sign = m[7]!.startsWith('-') ? -1 : 1;
+    const tzOffset = sign * (Math.abs(+m[7]!) * 60 + (+m[8]!));
     return new Date(utc - tzOffset * 60000);
   }
   const m2 = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);

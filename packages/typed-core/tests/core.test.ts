@@ -168,6 +168,13 @@ it('parseEpgTime – with timezone', () => {
   expect(d.getTime()).toBe(Date.UTC(2026, 5, 9, 12, 30, 0));
 });
 
+it('parseEpgTime – negativer Offset mit Minuten (−05:30 = −330 min)', () => {
+  // Vorzeichen gilt für Stunden UND Minuten: 20:15 −0530 = 01:45 UTC am Folgetag
+  expect(parseEpgTime('20261005201500 -0530').getTime()).toBe(Date.UTC(2026, 9, 6, 1, 45, 0));
+  expect(parseEpgTime('20261005201500 +0530').getTime()).toBe(Date.UTC(2026, 9, 5, 14, 45, 0));
+  expect(parseEpgTime('20261005201500 -0000').getTime()).toBe(Date.UTC(2026, 9, 5, 20, 15, 0));
+});
+
 it('parseEpgTime – without timezone (UTC)', () => {
   const d = parseEpgTime('20260609120000');
   expect(d.getUTCHours()).toBe(12);
