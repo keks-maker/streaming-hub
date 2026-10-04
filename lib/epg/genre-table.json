@@ -1,0 +1,41 @@
+{
+  "_hinweis": "Daten fuer lib/epg/genre.js (Etappe 3.2, EPG-Konzept B3). Eintraege werden beim Laden gefaltet (klein, ohne Umlaute/Akzente). exact: ganzer Kategoriename; contains: Teilstring (nur wo eindeutig). Je Kategorie geht exact vor contains; bei mehreren Gruppen gewinnt die Reihenfolge in priority. Nicht zuordenbare Kategorien ergeben sonstiges.",
+  "priority": ["news", "sport", "kinder", "doku", "serie", "film", "show", "musik", "sonstiges"],
+  "exact": {
+    "news": ["Nachrichten", "Politik", "Aktuelles", "Regionalinfos", "Regionalmagazin", "Regionales", "Wetterbericht"],
+    "sport": [
+      "Sport", "Sports", "Fußball", "Eishockey", "Basketball", "American Football", "Football", "Rugby", "Motorsport",
+      "Sportmagazin", "Sportsmagazin", "Sportdoku", "Boxen", "Rallye", "E-Sport", "Darts", "Golf", "Baseball", "Rad",
+      "Radsport", "Pferdesport", "Kampfsport", "Extremsport", "Triathlon", "Squash", "Speedway", "Offroad", "Motocross",
+      "Monstertruck", "1. Bundesliga", "Nations League", "Schachturnier", "Dartsturnier"
+    ],
+    "kinder": ["Kinder", "Kinder & Jugend", "Animation", "Zeichentrickserie", "Animationsserie", "Animeserie", "Vorschulreihe", "Kinderserie", "Märchen"],
+    "doku": [
+      "Dokumentation", "Doku", "Dokus", "Dokureihe", "Wissen", "Natur und Tiere", "Reisen", "Reportage", "Reisereportage",
+      "Geschichte", "Report", "Natur", "Biografie", "Porträt"
+    ],
+    "serie": [
+      "Serie", "Serien", "Krimiserie", "Comedyserie", "Soap", "Daily Soap", "Sitcom", "Gerichtssoap", "Dokusoap", "Doku-Soap",
+      "Realitysoap", "Telenovela"
+    ],
+    "film": [
+      "Film", "Filme", "Spielfilm", "Drama", "Krimi", "Action", "Thriller", "Komödie", "Horror", "Western", "Romantik",
+      "Fantasy", "ScienceFiction", "Abenteuer", "Erotischer Film", "Mystery", "Politdrama", "Sportlerdrama"
+    ],
+    "show": ["Unterhaltung", "Show", "Talkshow", "Gerichtsshow", "Reality", "Comedy", "Quiz", "Talk", "Satire", "Gespräch", "Kabarett"],
+    "musik": ["Musik", "Music", "Konzert"]
+  },
+  "contains": {
+    "news": ["nachricht", "politik", "polit"],
+    "sport": ["sport", "fussball", "football", "bundesliga", "rennen", "turnier"],
+    "kinder": ["kinder", "zeichentrick", "animation", "anime", "vorschul"],
+    "doku": ["doku", "reportage", "reise", "wissen", "geschichte", "portrat", "biografie", "natur", "report"],
+    "serie": ["serie", "soap", "sitcom", "telenovela"],
+    "film": [
+      "film", "krimi", "kriminal", "drama", "thriller", "action", "komodie", "tragodie", "horror", "western", "fantasy",
+      "abenteuer", "romantik", "science", "sci-fi", "mystery", "erotik", "epos"
+    ],
+    "show": ["show", "quiz", "talk", "comedy", "reality", "kabarett", "unterhaltung"],
+    "musik": ["musik", "music", "konzert", "festival"]
+  }
+}

@@ -148,8 +148,11 @@ test('validateEpgSearch: Defaults, Trimmen, Optionen', () => {
     toMs: T0 + 1000,
     limit: EPG_SEARCH_DEFAULT_LIMIT,
     includeDesc: false,
+    full: false,
   });
   assert.equal(validateEpgSearch(['A.de'], 'ab', T0, T0 + 1000, EPG_SEARCH_MAX_LIMIT, { includeDesc: true }).includeDesc, true);
+  assert.equal(validateEpgSearch(['A.de'], 'ab', T0, T0 + 1000, null, { full: true }).full, true);
+  assert.throws(() => validateEpgSearch(['A.de'], 'ab', T0, T0 + 1000, null, { full: 'ja' }), /Suchoptionen/);
   assert.equal(validateEpgSearch(['A.de'], 'ab', T0, T0 + 1000, null, null).limit, EPG_SEARCH_DEFAULT_LIMIT);
   assert.equal(validateEpgSearch(['A.de'], 'a'.repeat(80), T0, T0 + 1000).query.length, 80);
   assert.doesNotThrow(() => validateEpgSearch(keys(EPG_SEARCH_MAX_CHANNELS), 'ab', T0, T0 + 1000));

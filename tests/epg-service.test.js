@@ -568,3 +568,129 @@ test('onChanged: Takt-Refresh (tick) meldet ebenfalls, ein Tick ohne Fälligkeit
   await service.tick();
   assert.equal(count, 2);
 });
+
+// ── Etappe 3.2: Upgrade-Refresh bei v1-Cache (AUF-Plan T3/P18) ──
+
+const CACHE_NAME = 'epg-cache.json';
+
+/** Legt in dir einen v1-Cache der Quelle URL_A ab (Zeilen mit 4 Elementen). */
+function writeV1Cache(dir, { fetchedAt = NOW } = {}) {
+  const rows = [
+    [NOW, NOW + HOUR, 'Alte Sendung', 'Alt'],
+    [NOW + HOUR, NOW + 2 * HOUR, 'Zweite alte', ''],
+  ];
+  fs.writeFileSync(
+    path.join(dir, CACHE_NAME),
+    JSON.stringify({ version: 1, sources: { [URL_A]: { fetchedAt, sourceIds: ['de'], channels: { 'zdf.de': rows } } } }),
+  );
+}
+
+const V2_XML = `<?xml version="1.0"?><tv>
+<programme start="20261005140000 +0200" stop="20261005150000 +0200" channel="ZDF.de"><title>Neue Sendung</title><category>Krimi</category><category>Drama</category>
+<icon src="https://img.example.org/n.jpg"/><date>2021</date><episode-num system="xmltv_ns">0.1.</episode-num><credits><actor>Darsteller</actor></credits></programme>
+</tv>`;
+
+test('Upgrade-Refresh: v1-Cache ist sofort nutzbar (Felder leer) und wird beim Start trotz frischem Alter neu geladen', async () => {
+  const dir = makeDir();
+  writeV1Cache(dir, { fetchedAt: NOW - 60 * 1000 }); // 1 min alt: normalerweise KEIN Start-Refresh (startMinAgeMs 30 min)
+  const ctx = makeService({ dir, xml: V2_XML, clock: { t: NOW } });
+  await ctx.service.start();
+  // sofort nutzbar, vor Abschluss des Refreshs
+  assert.equal(ctx.service.find('ZDF.de', NOW + 1).title, 'Alte Sendung');
+  assert.deepEqual(ctx.service.find('ZDF.de', NOW + 1).categories, []);
+  assert.equal(ctx.service.store.isLegacy(URL_A), true);
+  await ctx.service.initialRefresh;
+  assert.equal(ctx.fetchFn.calls.length, 1, 'Upgrade-Refresh trotz frischem Cache');
+  assert.equal(ctx.service.store.isLegacy(URL_A), false);
+  const slot = ctx.service.range('ZDF.de', 0, Infinity)[0];
+  assert.equal(slot.title, 'Neue Sendung');
+  assert.deepEqual(slot.categories, ['Krimi', 'Drama']);
+  assert.equal(slot.icon, 'https://img.example.org/n.jpg');
+  assert.equal(slot.year, 2021);
+  assert.equal(slot.episode, 'S1 E2');
+  assert.deepEqual(slot.credits.actor, ['Darsteller']);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, CACHE_NAME), 'utf-8')).version, 2);
+  ctx.service.stop();
+
+  // nächster Start: Cache ist v2 und frisch → kein weiterer Download
+  const again = makeService({ dir, xml: V2_XML, clock: { t: NOW + 60 * 1000 } });
+  await again.service.start();
+  await again.service.initialRefresh;
+  assert.equal(again.fetchFn.calls.length, 0, 'Upgrade-Refresh läuft nur einmal');
+  again.service.stop();
+});
+
+test('Upgrade-Refresh: normale Mindestalter-Regel gilt weiter für v2 (nur der Upgrade umgeht sie)', async () => {
+  const dir = makeDir();
+  const first = makeService({ dir, xml: V2_XML });
+  await first.service.refresh({ force: true });
+  const fresh = makeService({ dir, xml: V2_XML, clock: { t: NOW + 60 * 1000 } });
+  await fresh.service.start();
+  await fresh.service.initialRefresh;
+  assert.equal(fresh.fetchFn.calls.length, 0);
+  fresh.service.stop();
+});
+
+test('Upgrade-Refresh: schlägt er fehl, bleibt der v1-Cache nutzbar; Wiederholung nach retryInterval, dann Erfolg', async () => {
+  const dir = makeDir();
+  writeV1Cache(dir, { fetchedAt: NOW - 1000 });
+  const clock = { t: NOW };
+  const mode = { fail: true };
+  const fetchFn = makeFetch({
+    [URL_A]: () => {
+      if (mode.fail) throw new Error('offline');
+      return responseFor(V2_XML);
+    },
+  });
+  const ctx = makeService({ dir, fetchImpl: fetchFn, clock });
+  await ctx.service.start();
+  await ctx.service.initialRefresh;
+  assert.equal(fetchFn.calls.length, 1);
+  assert.equal(ctx.service.find('ZDF.de', NOW + 1).title, 'Alte Sendung', 'v1-Daten bleiben nutzbar');
+  assert.equal(ctx.service.store.isLegacy(URL_A), true);
+  assert.equal(ctx.service.status().sources[0].lastError, 'offline');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, CACHE_NAME), 'utf-8')).version, 1, 'Datei bleibt unverändert (kein Verwerfen)');
+
+  clock.t = NOW + 10 * 60 * 1000;
+  await ctx.service.tick();
+  assert.equal(fetchFn.calls.length, 1, 'innerhalb des retryInterval kein neuer Versuch');
+
+  mode.fail = false;
+  clock.t = NOW + 31 * 60 * 1000;
+  await ctx.service.tick();
+  assert.equal(fetchFn.calls.length, 2);
+  assert.equal(ctx.service.store.isLegacy(URL_A), false);
+  assert.equal(ctx.service.range('ZDF.de', 0, Infinity)[0].title, 'Neue Sendung');
+  ctx.service.stop();
+});
+
+test('Upgrade-Refresh: meldet onChanged; ohne autoRefresh (isolierter Lauf) bleibt der v1-Cache unangetastet', async () => {
+  const dir = makeDir();
+  writeV1Cache(dir);
+  const ctx = makeService({ dir, xml: V2_XML });
+  const events = [];
+  ctx.service.onChanged(p => events.push(p));
+  await ctx.service.start();
+  await ctx.service.initialRefresh;
+  assert.equal(events.length, 1);
+  ctx.service.stop();
+
+  const dir2 = makeDir();
+  writeV1Cache(dir2);
+  const isolated = makeService({ dir: dir2, xml: V2_XML, autoRefresh: false });
+  await isolated.service.start();
+  assert.equal(isolated.fetchFn.calls.length, 0);
+  assert.equal(isolated.service.find('ZDF.de', NOW + 1).title, 'Alte Sendung');
+  assert.equal(isolated.service.store.isLegacy(URL_A), true);
+});
+
+test('Refresh übernimmt die Zusatzfelder des Parsers in den Cache (Roundtrip über die Platte)', async () => {
+  const dir = makeDir();
+  const first = makeService({ dir, xml: V2_XML });
+  await first.service.refresh({ force: true });
+  const second = makeService({ dir, xml: V2_XML, autoRefresh: false });
+  await second.service.start();
+  assert.deepEqual(second.service.range('ZDF.de', 0, Infinity), first.service.range('ZDF.de', 0, Infinity));
+  assert.equal(second.service.range('ZDF.de', 0, Infinity)[0].icon, 'https://img.example.org/n.jpg');
+  second.service.stop();
+});

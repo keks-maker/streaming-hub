@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture fuer Etappe 3.2 (Datenmodell B): Zusatzfelder des Parsers. Alle Zeiten UTC. -->
+<tv generator-info-name="streaming-hub-test">
+  <channel id="b1.de"><display-name>B1</display-name></channel>
+
+  <!-- alle Felder, 4 Kategorien (die vierte entfaellt), 2 credits-Bloecke, Besetzung ueber den Grenzen -->
+  <programme start="20261005180000 +0000" stop="20261005190000 +0000" channel="b1.de">
+    <title lang="de">Voll belegt</title>
+    <sub-title lang="de">Der Untertitel &amp; mehr</sub-title>
+    <desc lang="de">Beschreibung mit Zeilen
+umbruch.</desc>
+    <credits>
+      <director>Regie Eins</director>
+      <director>Regie Zwei</director>
+      <director>Regie Drei</director>
+      <actor>Darsteller 1</actor><actor>Darsteller 2</actor><actor>Darsteller 3</actor><actor>Darsteller 4</actor>
+      <presenter>Moderator Eins</presenter>
+    </credits>
+    <category lang="de">Krimi</category>
+    <category lang="de">Drama</category>
+    <category lang="en">Sports</category>
+    <category lang="de">Vierte</category>
+    <credits>
+      <actor>Darsteller 5</actor><actor>Darsteller 6</actor><actor>Darsteller 7</actor><actor>Darsteller 8</actor>
+      <actor>Darsteller 9</actor><actor>Darsteller 10</actor>
+      <presenter>Moderator Zwei</presenter><presenter>Moderator Drei</presenter>
+    </credits>
+    <date>20190501</date>
+    <episode-num system="onscreen">S2 E3</episode-num>
+    <icon src="https://img.example.org/p/1.jpg?w=300&amp;h=200" width="300" height="200"/>
+    <icon src="https://img.example.org/p/zweites.jpg"/>
+    <rating system="FSK"><value>FSK 12</value><icon src="https://img.example.org/fsk.png"/></rating>
+  </programme>
+
+  <!-- nur Pflichtfelder -->
+  <programme start="20261005190000 +0000" stop="20261005200000 +0000" channel="b1.de">
+    <title>Nur Titel</title>
+  </programme>
+
+  <!-- Ueberlaengen: werden gekuerzt, nie abgelehnt; zu lange Icon-URL bleibt leer -->
+  <programme start="20261005200000 +0000" stop="20261005210000 +0000" channel="b1.de">
+    <title>Ueberlaengen</title>
+    <sub-title>UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU</sub-title>
+    <category>KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK</category>
+    <episode-num>S1 E9999999999999999999999999999999999999999</episode-num>
+    <credits><actor>Äxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</actor></credits>
+    <icon src="https://example.org/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"/>
+    <rating><value>RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR</value></rating>
+  </programme>
+
+  <!-- unzulaessige Icon-Schemata -->
+  <programme start="20261005210000 +0000" stop="20261005220000 +0000" channel="b1.de">
+    <title>Icon javascript</title>
+    <icon src="javascript:alert(1)"/>
+  </programme>
+  <programme start="20261005220000 +0000" stop="20261005230000 +0000" channel="b1.de">
+    <title>Icon data</title>
+    <icon src="data:image/png;base64,AAAA"/>
+    <icon src="http://img.example.org/zweites-ignoriert.png"/>
+  </programme>
+  <programme start="20261005225000 +0000" stop="20261005230000 +0000" channel="b1.de">
+    <title>Icon http</title>
+    <icon src="http://img.example.org/ok-http.png"/>
+  </programme>
+  <programme start="20261005224000 +0000" stop="20261005225000 +0000" channel="b1.de">
+    <title>Icon ftp</title>
+    <icon src="ftp://example.org/x.png"/>
+  </programme>
+
+  <!-- numerische und benannte Entities in Credits (einmal dekodiert, kein Doppel-Decode) -->
+  <programme start="20261005230000 +0000" stop="20261006000000 +0000" channel="b1.de">
+    <title>Entities in Credits</title>
+    <credits>
+      <director>Bj&#246;rn B&#xFC;ttner</director>
+      <actor>Ren&#233; &amp; Zoe</actor>
+      <actor>A &amp;lt; B</actor>
+      <actor><![CDATA[Cdata <Name>]]></actor>
+      <presenter>Jos&#x00E9; &#128512;</presenter>
+    </credits>
+    <category>Kinder &amp; Jugend</category>
+    <category>Fu&#223;ball</category>
+  </programme>
+
+  <!-- xmltv_ns und andere Episodenformen -->
+  <programme start="20261006000000 +0000" stop="20261006010000 +0000" channel="b1.de">
+    <title>xmltv_ns 1.2.</title>
+    <episode-num system="xmltv_ns">1.2.</episode-num>
+  </programme>
+  <programme start="20261006010000 +0000" stop="20261006020000 +0000" channel="b1.de">
+    <title>xmltv_ns mit Gesamtzahl</title>
+    <episode-num system="xmltv_ns">0.4/10.0/2</episode-num>
+  </programme>
+  <programme start="20261006020000 +0000" stop="20261006030000 +0000" channel="b1.de">
+    <title>xmltv_ns nur Folge</title>
+    <episode-num system="xmltv_ns"> .5.</episode-num>
+  </programme>
+  <programme start="20261006030000 +0000" stop="20261006040000 +0000" channel="b1.de">
+    <title>xmltv_ns leer</title>
+    <episode-num system="xmltv_ns">..</episode-num>
+    <episode-num system="dd_progid">EP00012345.0007</episode-num>
+  </programme>
+  <programme start="20261006040000 +0000" stop="20261006050000 +0000" channel="b1.de">
+    <title>Episode nur E</title>
+    <episode-num>E826</episode-num>
+  </programme>
+
+  <!-- Kategorien Sport/Sports (beide kommen in der Quelle vor) und Duplikate -->
+  <programme start="20261006050000 +0000" stop="20261006060000 +0000" channel="b1.de">
+    <title>Sportschau</title>
+    <category lang="de">Sport</category>
+    <category lang="de">Sport</category>
+    <category lang="en">Sports</category>
+  </programme>
+
+  <!-- Jahr: ungueltig / ausserhalb / aus Datum -->
+  <programme start="20261006060000 +0000" stop="20261006070000 +0000" channel="b1.de">
+    <title>Jahr 1850</title><date>1850</date>
+  </programme>
+  <programme start="20261006070000 +0000" stop="20261006080000 +0000" channel="b1.de">
+    <title>Jahr kein Zahl</title><date>abc</date>
+  </programme>
+  <programme start="20261006080000 +0000" stop="20261006090000 +0000" channel="b1.de">
+    <title>Jahr aus ISO-Datum</title><date>2023-11-05</date>
+  </programme>
+  <programme start="20261006090000 +0000" stop="20261006100000 +0000" channel="b1.de">
+    <title>Jahr 2150</title><date>2150</date>
+  </programme>
+
+  <!-- fehlende/verschachtelte Tags: unabgeschlossene Elemente, Felder im CDATA/Titel -->
+  <programme start="20261006100000 +0000" stop="20261006110000 +0000" channel="b1.de">
+    <title>Defekte Felder</title>
+    <category>Offen
+    <actor>Nach offenem Tag</actor>
+    <icon src="https://img.example.org/nach-defekt.png"/>
+  </programme>
+  <programme start="20261006110000 +0000" stop="20261006120000 +0000" channel="b1.de">
+    <title>Versteckt in CDATA</title>
+    <desc><![CDATA[<category>Falsch</category><actor>Falsch</actor><icon src="https://img.example.org/falsch.png"/>]]></desc>
+    <category>Echt</category>
+  </programme>
+  <programme start="20261006120000 +0000" stop="20261006130000 +0000" channel="b1.de">
+    <title>Verschachtelt</title>
+    <category><b>Fett</b>Text</category>
+    <credits><credits><actor>Innen</actor></credits></credits>
+  </programme>
+</tv>
