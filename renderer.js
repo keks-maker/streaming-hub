@@ -1282,6 +1282,7 @@ function describeStorageRoot(info) {
 
 async function loadRecordingSettingsUi() {
   loadRecordingLimitsUi();
+  loadEpgCacheStatusUi();
   try {
     const info = await window.electronAPI.getRecordingStorageRoot();
     recPathInput.value = info.root;
@@ -1307,6 +1308,49 @@ async function loadRecordingSettingsUi() {
     recFfmpegStatus.classList.remove('ok', 'error');
     recFfmpegStatus.textContent = 'ffmpeg-Status nicht ermittelbar: ' + (e?.message || e);
   }
+}
+
+// ── Settings „LiveTV: EPG“: Status des Wochen-Caches im Main (Etappe 1) ──
+// Nur Anzeige (textContent) + manueller Refresh; die Daten selbst bleiben im Main.
+const settingsEpgCacheStatus = document.getElementById('settingsEpgCacheStatus');
+const settingsEpgCacheRefreshBtn = document.getElementById('settingsEpgCacheRefreshBtn');
+
+function describeEpgCacheStatus(status) {
+  if (!status || !Array.isArray(status.sources) || !status.sources.some(s => s.fetchedAt)) {
+    const err = status?.sources?.find(s => s.lastError)?.lastError;
+    return err ? `Noch kein Stand — letzter Fehler: ${err}` : 'Noch kein Stand (wird beim nächsten Refresh geladen)';
+  }
+  const fmt = ms => new Date(ms).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+  const channels = status.sources.reduce((n, s) => n + (s.channelCount || 0), 0);
+  const err = status.sources.find(s => s.lastError);
+  return (
+    `Stand: ${fmt(status.lastSuccessAt)} · ${channels} Kanäle · reicht ${status.coverageDays} Tage voraus` +
+    (status.refreshing ? ' · wird aktualisiert …' : ` · nächster Refresh ca. ${fmt(status.nextRefreshAt)}`) +
+    (err ? ` · letzter Fehler: ${err.lastError}` : '')
+  );
+}
+
+async function loadEpgCacheStatusUi() {
+  if (!settingsEpgCacheStatus || !window.electronAPI.getEpgStatus) return;
+  try {
+    settingsEpgCacheStatus.textContent = describeEpgCacheStatus(await window.electronAPI.getEpgStatus());
+  } catch (e) {
+    settingsEpgCacheStatus.textContent = 'Status nicht verfügbar: ' + (e?.message || e);
+  }
+}
+
+if (settingsEpgCacheRefreshBtn) {
+  settingsEpgCacheRefreshBtn.addEventListener('click', async () => {
+    settingsEpgCacheRefreshBtn.disabled = true;
+    settingsEpgCacheStatus.textContent = 'Wird aktualisiert …';
+    try {
+      settingsEpgCacheStatus.textContent = describeEpgCacheStatus(await window.electronAPI.refreshEpgCache());
+    } catch (e) {
+      settingsEpgCacheStatus.textContent = 'Aktualisierung fehlgeschlagen: ' + (e?.message || e);
+    } finally {
+      settingsEpgCacheRefreshBtn.disabled = false;
+    }
+  });
 }
 
 // ── Limits: Parallel-Limit, Höchstdauer, Reserve (Etappe 1) ──
