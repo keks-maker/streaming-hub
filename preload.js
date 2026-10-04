@@ -56,6 +56,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('tv-sources-changed', handler);
   },
 
+  // Wochen-EPG im Main (Etappe 1): Abfrage-API. Antworttexte sind fremde
+  // Daten — nur als Text rendern (kein innerHTML).
+  getEpgRange: (channelKey, fromMs, toMs) => ipcRenderer.invoke('epg:range', channelKey, fromMs, toMs),
+  findEpg: (channelKey, atMs) => ipcRenderer.invoke('epg:find', channelKey, atMs),
+  getEpgStatus: () => ipcRenderer.invoke('epg:status'),
+  refreshEpgCache: () => ipcRenderer.invoke('epg:refresh'),
+
   // Autoupdate
   checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
   applyUpdate: version => ipcRenderer.invoke('apply-update', version),

@@ -22,6 +22,9 @@ const { TrayController } = require('./lib/recorder/TrayController.js');
 const { sweepOrphans } = require('./lib/orphan-sweep.js');
 const paths = require('./lib/recorder/paths.js');
 const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
+const { EpgService } = require('./lib/epg/EpgService.js');
+const { registerEpgIpc } = require('./lib/epg/ipc.js');
+const { fetchEpgResponse } = require('./lib/epg/download.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 
 /**
@@ -59,6 +62,8 @@ function recordingSettingsResponse(result) {
 
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
 let recorder = null;
+// Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
+let epgService = null;
 let trayController = null;
 
 // Wiedergabe-Protokoll der Aufnahmen (Phase 1c, Karte t_bafa7928):
@@ -315,6 +320,8 @@ function saveTvSources(sources) {
 function broadcastTvSources() {
   const sources = loadTvSources();
   mainWindow?.webContents.send('tv-sources-changed', sources);
+  // Neue/geänderte EPG-URL: Main-Cache holt sie nach (nur wenn fällig)
+  if (epgService) epgService.tick().catch(e => logger.warn('EPG-Tick nach Quellenänderung fehlgeschlagen:', e.message));
 }
 
 function parseM3U(content, sourceId) {
@@ -703,6 +710,22 @@ app.whenReady().then(() => {
     .then(() => logger.info('Widevine CDM status:', components.status()))
     .catch(() => logger.warn('Component updater failed (expected without sandbox), using system Widevine if available'));
 
+  // ── Wochen-EPG im Main (Etappe 1, Konzept §3.2) ──
+  // Cache in userData, Start sofort aus dem Cache nutzbar, Refresh im
+  // Hintergrund (beim Start + alle 12 h) — auch ohne offenes Fenster (Tray).
+  // Unabhängig von den ffmpeg-Binaries (kein Bezug zur Aufnahme-Engine).
+  try {
+    epgService = new EpgService({
+      dir: app.getPath('userData'),
+      getSources: () => loadTvSources().map(({ id, name, epgUrl }) => ({ id, name, epgUrl })),
+      logger,
+    });
+    registerEpgIpc({ ipcMain, epg: epgService, requireMainRenderer });
+    epgService.start().catch(e => logger.warn('EPG-Dienst konnte nicht starten:', e.message));
+  } catch (e) {
+    logger.error('EPG-Dienst konnte nicht eingerichtet werden:', e.message);
+  }
+
   // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
   // "vorhanden + ausführbar + -version ok". Fehlschlag wird als sichtbarer
   // Fehlerdialog gemeldet — Aufnahme-Features degradieren erkennbar statt still.
@@ -1023,6 +1046,7 @@ app.on('window-all-closed', () => {
 // Recovery-Remux (RecorderService.recover) holt die Aufnahme beim
 // nächsten Start nach (F-FB-10).
 app.on('before-quit', () => {
+  if (epgService) epgService.stop();
   if (!recorder) return;
   try {
     recorder.quitSweep();
@@ -1382,20 +1406,9 @@ ipcMain.handle('restore-settings', async event => {
 ipcMain.handle('fetch-epg', async (event, url) => {
   requireMainRenderer(event);
   try {
-    let epgUrl = remoteHttpUrl(url, 'EPG-URL');
-    let response;
-    for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
-      response = await fetch(epgUrl, {
-        signal: AbortSignal.timeout(20_000),
-        redirect: 'manual',
-      });
-      if (![301, 302, 303, 307, 308].includes(response.status)) break;
-      const location = response.headers.get('location');
-      if (!location) throw new Error(`HTTP ${response.status} ohne Redirect-Ziel`);
-      if (redirectCount === 5) throw new Error('Zu viele Redirects');
-      epgUrl = remoteHttpUrl(new URL(location, epgUrl).toString(), 'EPG-Redirect-Ziel');
-    }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // Download-Validierung (remoteHttpUrl, Redirect-Handling) ist mit dem
+    // Main-EpgService geteilt: lib/epg/download.js
+    const response = await fetchEpgResponse(url);
     const xml = await readResponseText(response, MAX_EPG_BYTES);
     const entries = parseXMLTV(xml);
     if (!entries.length) throw new Error('Die XMLTV-Datei enthält keine gültigen Sendungen');

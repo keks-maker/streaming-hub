@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lokale Test-XMLTV-Datei (kein Netz). Enthält Sommerzeit-Wechsel (Europe/Berlin 2026),
+     Entities, CDATA, Einfach-Quotes, fehlende Offsets und defekte Einträge. -->
+<tv generator-info-name="streaming-hub-test">
+  <channel id="DasErste.de"><display-name>Das Erste</display-name></channel>
+  <channel id="ZDF.de"><display-name>ZDF</display-name></channel>
+
+  <programme start="20261005201500 +0200" stop="20261005204500 +0200" channel="DasErste.de">
+    <title lang="de">Tagesschau &amp; Wetter</title>
+    <desc lang="de">Nachrichten &lt;live&gt; mit &quot;Zitat&quot; &amp;lt; bleibt Text &#228;&#x00F6;</desc>
+  </programme>
+  <programme start="20261005204500 +0200" stop="20261005220000 +0200" channel="DasErste.de">
+    <title><![CDATA[Film: Anna & <Bob>]]></title>
+    <desc><![CDATA[Beschreibung mit <b>Tags</b> & Zeichen]]></desc>
+  </programme>
+
+  <!-- Sommerzeit-Ende: 03:00 CEST -> 02:00 CET (Wiederholung der Stunde 02:xx) -->
+  <programme start="20261025013000 +0200" stop="20261025023000 +0100" channel="DasErste.de">
+    <title>Nachtprogramm Zeitumstellung</title>
+  </programme>
+  <!-- Sommerzeit-Beginn: 02:00 CET -> 03:00 CEST (Stunde 02:xx entfällt) -->
+  <programme start="20260329013000 +0100" stop="20260329033000 +0200" channel="DasErste.de">
+    <title>Nachtprogramm Frühling</title>
+  </programme>
+
+  <programme start='20261005200000 +0000' stop='20261005210000 +0000' channel='ZDF.de'>
+    <title>Einfache Anführungszeichen</title>
+    <desc>Mit &gt; im Text</desc>
+  </programme>
+  <programme start="20261005210000" stop="20261005220000" channel="ZDF.de">
+    <title>Ohne Offset gilt UTC</title>
+  </programme>
+  <programme start="20261005220000 Z" stop="202610052300" channel="ZDF.de">
+    <title>Kurzformat ohne Sekunden</title>
+  </programme>
+
+  <!-- Defekte Einträge: werden verworfen -->
+  <programme start="20261005230000 +0200" stop="20261005220000 +0200" channel="ZDF.de"><title>Stop vor Start</title></programme>
+  <programme start="kaputt" stop="20261005220000 +0200" channel="ZDF.de"><title>Ungültige Zeit</title></programme>
+  <programme start="20261006100000 +0200" stop="20261006110000 +0200" channel="ZDF.de"></programme>
+  <programme start="20261006100000 +0200" stop="20261006110000 +0200"><title>Ohne Kanal</title></programme>
+  <programme start="20261006100000 +0200" stop="20261006110000 +0200" channel="ZDF.de"/>
+</tv>
