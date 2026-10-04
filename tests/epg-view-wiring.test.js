@@ -18,7 +18,7 @@ test('Altcode entfernt: keine Referenzen auf Zeitslot-Buttons, altes Raster und 
     const src = read(file);
     for (const name of dead) assert.ok(!src.includes(name), `${file} enthält noch ${name}`);
   }
-  for (const name of ['epg-grid', 'epg-ruler', 'epg-programs-col', 'epg-channel-col', 'epg-time-marker', 'epgFadeIn']) {
+  for (const name of ['.epg-grid {', '.epg-row {', '.epg-row.epg-ruler', '.epg-programs-col', '.epg-channel-col', '.epg-time-marker', 'epgFadeIn']) {
     assert.ok(!read('styles.css').includes(name), `styles.css enthält noch ${name}`);
   }
 });
@@ -39,3 +39,18 @@ test('Verdrahtung: Einstiege und Esc-Kette laufen über epg-view (Einstiege umge
   for (const gone of ['epgDetailBackdrop', 'epgBody', 'epgCloseBtn']) assert.ok(!html.includes(`id="${gone}"`), gone);
 });
 
+
+test('Raster-Verdrahtung: Modus-Segment, Zoom, kein Hook-Button ohne Handler, goToNow löst die Tag-Bindung', () => {
+  const view = read('epg-view.js');
+  assert.match(view, /id: 'epgModeList'/);
+  assert.match(view, /id: 'epgModeGrid'/);
+  assert.match(view, /function setMode\(mode\)/);
+  assert.match(view, /async function goToNow\(\) \{\s*dayPin = null;/, 'W1: „Jetzt“ hebt die Tag-Bindung auf');
+  const gridView = read('epg-grid-view.js');
+  assert.match(gridView, /typeof deps\.onChannelClick === 'function'\s*\?/, 'Sendername nur klickbar, wenn ein Hook vorhanden ist');
+  for (const file of ['epg-grid-view.js', 'epg-grid-model.js', 'epg-dom.js']) {
+    const src = read(file);
+    assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML|tvEpgIndex|decodeEntities/.test(src), file);
+  }
+  assert.ok(!/onChannelClick/.test(read('renderer.js')), 'Kanalansicht kommt erst in 3.4: kein Hook im Renderer verdrahtet');
+});
