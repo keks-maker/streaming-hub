@@ -111,7 +111,6 @@ function planDays({ nowMs, coverageFromMs, coverageToMs }) {
 /** EPG-Schlüssel eines Senders (wie im Planungsdialog: tvgId), '' wenn nicht abfragbar. */
 function epgChannelKey(channel) {
   const key = channel && typeof channel.tvgId === 'string' ? channel.tvgId.trim() : '';
-  // eslint-disable-next-line no-control-regex -- Steuerzeichen sind hier genau das Ziel (IPC-Validierung)
   if (!key || key.length > MAX_KEY_LENGTH || /[\u0000-\u001f\u007f]/.test(key)) return '';
   return key;
 }
@@ -316,6 +315,17 @@ function scrollTopForTime(layout, ms) {
 function activeDayKeyAt(layout, scrollTop) {
   const idx = itemIndexAt(layout, scrollTop + 1);
   return idx < 0 ? null : layout.items[idx].dayKey;
+}
+
+/**
+ * Aktiver Tag bei Scrollposition scrollTop. pin = { key, top }: ein explizit gewählter Tag (Tab-Klick)
+ * bleibt aktiv, solange die Liste an der dabei erreichten Position steht — auch wenn scrollTop wegen
+ * zu kurzer Liste auf 0 oder das Ende geklemmt ist. Scrollt der Nutzer weg, folgt der Tab wieder.
+ * Rückgabe: { key, pin } (pin null, sobald aufgehoben).
+ */
+function resolveActiveDay(layout, scrollTop, pin) {
+  if (pin && Math.abs(scrollTop - pin.top) < 2) return { key: pin.key, pin };
+  return { key: activeDayKeyAt(layout, scrollTop), pin: null };
 }
 
 /** Startzeit der obersten (ganz oder teilweise sichtbaren) Zeile — Scroll-Anker, moduswechsel-fähig. */
@@ -544,6 +554,7 @@ module.exports = {
   scrollTopForDay,
   scrollTopForTime,
   activeDayKeyAt,
+  resolveActiveDay,
   anchorTimeAt,
   rowPhase,
   toggleState,

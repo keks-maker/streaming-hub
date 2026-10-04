@@ -309,6 +309,22 @@ test('scrollTopForDay/scrollTopForTime/activeDayKeyAt/anchorTimeAt: Tageswechsel
   assert.equal(model.anchorTimeAt(layout, model.scrollTopForTime(layout, anchor)), anchor);
 });
 
+test('resolveActiveDay: gewählter Tag bleibt bei geklemmtem scrollTop aktiv, Scrollen hebt die Bindung auf', () => {
+  const at = (d, h) => local(2026, 10, d, h, 0);
+  const slots = { 'a.de': [{ start: at(5, 6), stop: at(5, 7), title: 'A' }, { start: at(6, 6), stop: at(6, 7), title: 'B' }] };
+  const data = dayDataFor(slots).filter(d => d.day.key === '2026-10-05' || d.day.key === '2026-10-06');
+  const layout = model.buildLayout(data, NOW);
+  // Liste nicht scrollbar: Klick auf „Morgen“ bleibt bei scrollTop 0 → ohne Pin würde „Heute“ aktiv
+  assert.equal(model.activeDayKeyAt(layout, 0), '2026-10-05');
+  const pin = { key: '2026-10-06', top: 0 };
+  assert.deepEqual(model.resolveActiveDay(layout, 0, pin), { key: '2026-10-06', pin });
+  assert.deepEqual(model.resolveActiveDay(layout, 1, pin), { key: '2026-10-06', pin });
+  // weggescrollt: Tab folgt wieder, Pin entfällt
+  const topB = model.scrollTopForDay(layout, '2026-10-06');
+  assert.deepEqual(model.resolveActiveDay(layout, topB + 50, { key: '2026-10-05', top: 0 }), { key: '2026-10-06', pin: null });
+  assert.deepEqual(model.resolveActiveDay(layout, 0, null), { key: '2026-10-05', pin: null });
+});
+
 test('rowPhase: vergangen, läuft (Fortschritt, noch N min), kommend', () => {
   const row = { start: NOW - 30 * MIN, stop: NOW + 30 * MIN };
   assert.deepEqual(model.rowPhase(row, NOW), { phase: 'now', progress: 0.5, minutesLeft: 30 });

@@ -110,6 +110,7 @@ function createEpgView(root, deps) {
   let modalSeq = 0;
   let confirmCtx = null;
   let mediathekOpen = null;
+  let dayPin = null;
 
   // ── DOM-Gerüst ──
   root.textContent = '';
@@ -640,7 +641,9 @@ function createEpgView(root, deps) {
     if (!layout) return;
     const anchor = model.anchorTimeAt(layout, scroll.scrollTop);
     if (anchor !== null) viewState.setAnchor(anchor);
-    const key = model.activeDayKeyAt(layout, scroll.scrollTop);
+    const active = model.resolveActiveDay(layout, scroll.scrollTop, dayPin);
+    dayPin = active.pin;
+    const key = active.key;
     if (key && key !== viewState.dayKey) {
       viewState.setDay(key);
       syncDayTabs();
@@ -680,6 +683,7 @@ function createEpgView(root, deps) {
     const top = layout ? model.scrollTopForDay(layout, dayKey) : null;
     if (top === null) return;
     scroll.scrollTop = top;
+    dayPin = { key: dayKey, top: scroll.scrollTop };
     renderWindow();
     updateFollow();
     viewState.setDay(dayKey);
@@ -1054,6 +1058,7 @@ function createEpgView(root, deps) {
     detailCache = new Map();
     rowsById = new Map();
     layout = null;
+    dayPin = null;
     spacer.style.height = '';
     schedules = [];
     recordings = [];

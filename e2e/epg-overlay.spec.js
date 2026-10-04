@@ -139,6 +139,17 @@ test.describe('Programmführer (kleine Fixture)', () => {
     night.setHours(2, 0, 0, 0);
     if (night.getTime() <= base + 2 * HOUR) night.setDate(night.getDate() + 1);
     nightStart = night.getTime();
+    // Füllkanal: je 25 halbstündige Sendungen an den nächsten drei TV-Tagen → Liste ist scrollbar
+    const filler = [];
+    for (let day = 1; day <= 3; day += 1) {
+      const t = new Date(base);
+      t.setDate(t.getDate() + day);
+      t.setHours(5, 0, 0, 0);
+      for (let i = 0; i < 25; i += 1) {
+        const start = t.getTime() + i * 30 * MIN;
+        filler.push({ title: `Füller ${day}-${i}`, start, stop: start + 30 * MIN });
+      }
+    }
     const second = { title: 'Zweitlauf', start: base - 10 * MIN, stop: base + 50 * MIN };
     const nightSlot = { title: 'Nachtkrimi', start: nightStart, stop: nightStart + HOUR };
     const programme = (channel, s) => {
@@ -149,9 +160,11 @@ test.describe('Programmführer (kleine Fixture)', () => {
       '<?xml version="1.0" encoding="UTF-8"?><tv>' +
       '<channel id="E2E.de"><display-name>E2E Kanal</display-name></channel>' +
       '<channel id="E2E2.de"><display-name>Zweiter Kanal</display-name></channel>' +
+      '<channel id="E2E3.de"><display-name>Füllkanal</display-name></channel>' +
       Object.values(slots).map(s => programme('E2E.de', s)).join('\n') +
       programme('E2E2.de', second) +
       programme('E2E2.de', nightSlot) +
+      filler.map(f => programme('E2E3.de', f)).join('\n') +
       '</tv>';
     ctx = await launchApp({
       prefix: 'streaming-hub-e2e-epgov-',
@@ -159,11 +172,12 @@ test.describe('Programmführer (kleine Fixture)', () => {
       channels: [
         { id: 'E2E.de', name: 'E2E Kanal' },
         { id: 'E2E2.de', name: 'Zweiter Kanal' },
+        { id: 'E2E3.de', name: 'Füllkanal' },
       ],
-      favorites: ['E2E.de', 'E2E2.de'],
+      favorites: ['E2E.de', 'E2E2.de', 'E2E3.de'],
     });
     page = ctx.page;
-    await waitForEpgChannels(page, 2);
+    await waitForEpgChannels(page, 3);
   });
 
   test.afterAll(async () => {
@@ -214,15 +228,21 @@ test.describe('Programmführer (kleine Fixture)', () => {
   test('Tages-Tabs: Tageswechsel springt auf den Tagesanfang, aktiver Tab folgt der Scrollposition, „Jetzt“ springt zurück', async () => {
     await page.locator('.epg-daytab', { hasText: 'Morgen' }).click();
     await expect(page.locator('.epg-daytab.active')).toHaveText('Morgen');
-    await expect(page.locator('.epg-day-head').first()).toContainText('Morgen');
-    // Scrollen über die Tagesgrenze: der aktive Tab folgt der Scrollposition
-    const lastTab = await page.locator('.epg-daytab').last().innerText();
-    await page.locator('.epg-daytab').last().click();
-    await expect(page.locator('.epg-daytab.active')).toHaveText(lastTab);
+    await expect(page.locator('.epg-day-head', { hasText: 'Morgen' })).toBeVisible();
+    // der Tag bleibt aktiv, wenn die Position nicht weiter scrollbar ist (explizite Wahl)
+    await page.waitForTimeout(300);
+    await expect(page.locator('.epg-daytab.active')).toHaveText('Morgen');
+    // Die Fixture ist durch den Füllkanal scrollbar: der aktive Tab folgt der Scrollposition
+    const scrollable = await page.locator('#epgList').evaluate(el => el.scrollHeight - el.clientHeight);
+    expect(scrollable).toBeGreaterThan(500);
     await page.locator('#epgList').evaluate(el => {
-      el.scrollTop -= el.clientHeight * 3;
+      el.scrollTop = el.scrollHeight;
     });
-    await expect(page.locator('.epg-daytab.active')).not.toHaveText(lastTab);
+    await expect(page.locator('.epg-daytab.active')).not.toHaveText('Morgen');
+    await page.locator('#epgList').evaluate(el => {
+      el.scrollTop = 0;
+    });
+    await expect(page.locator('.epg-daytab.active')).toHaveText(/^(Gestern|Heute)$/);
     await page.locator('#epgNowBtn').click();
     await expect(page.locator('.epg-daytab.active')).toHaveText('Heute');
     await expect(page.locator('.epg-now-line')).toBeVisible();
@@ -391,6 +411,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     expect(entries[0].title).toBe(literal);
     expect(entries[0].description).toContain(literal);
     // abbrechen, damit nachfolgende Tests sauber starten
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');
     await page.locator('#epgDetailRecordBtn').click();
     await page.locator('#epgConfirmYes').click();
     await expect(page.locator('#epgDetailRecordBtn')).toHaveText('● Aufnehmen');
