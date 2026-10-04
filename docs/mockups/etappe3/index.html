@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockups Etappe 3.0 – Übersicht</title>
+<style>
+:root{--bg:#0a0a0f;--glass:rgba(255,255,255,0.04);--glass-hover:rgba(255,255,255,0.09);--border:rgba(255,255,255,0.07);--border-strong:rgba(255,255,255,0.16);--text:#f0f0f5;--text-dim:rgba(240,240,245,0.62);--accent:#6c5ce7;--accent-light:#a99bff;--warn:#f5b84a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+a{color:var(--accent-light)}
+header{padding:14px 20px;border-bottom:1px solid var(--border-strong);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.badge{background:var(--warn);color:#1a1200;font-weight:700;padding:3px 10px;border-radius:999px;font-size:12px}
+main{max-width:1000px;margin:0 auto;padding:22px 20px 48px}
+h1{font-size:24px;margin:0 0 6px}
+p.lead{color:var(--text-dim);margin:0 0 20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{display:flex;flex-direction:column;gap:6px;padding:16px;border:1px solid var(--border-strong);border-radius:14px;background:var(--glass);text-decoration:none;color:var(--text)}
+.card:hover{background:var(--glass-hover);border-color:var(--accent)}
+.card b{font-size:17px}
+.card span{color:var(--text-dim);font-size:14px}
+.card em{font-style:normal;color:var(--accent-light);font-size:13px;margin-top:4px}
+section{margin-top:26px}
+h2{font-size:16px;margin:0 0 8px}
+ul{margin:0;padding-left:20px;color:var(--text-dim)}
+li{margin:3px 0}
+.note{border:1px dashed var(--border-strong);border-radius:10px;padding:10px 14px;color:var(--text-dim);font-size:14px}
+@media (max-width:900px){main{padding:16px 14px 40px}}
+</style>
+</head>
+<body>
+<header><span class="badge">Mockup – nicht die App</span><strong>Etappe 3.0 · Design-Runde</strong></header>
+<main>
+  <h1>Drei Varianten für EPG-Overlay, Panel und Kanalansicht</h1>
+  <p class="lead">Statische Mockups mit Beispieldaten (simulierte Uhr: Mo 5.10.2026 20:32). Keine App-Logik, keine externen Requests. Jede Seite hat oben eine Zustand-Leiste und einen Umschalter für die Fensterbreite (1280 / 880 px).</p>
+  <div class="cards">
+    <a class="card" href="variant-a.html"><b>A · Raster-zentriert</b><span>Programmzeitschrift mit Zeitleiste und Senderspalte; Kanalansicht als Modus per Klick auf den Sendernamen.</span><span>Panel rechts (380 px); Rasterdichte 3/5/8 px/min und Genre-Darstellung umschaltbar.</span><em>Öffnen →</em></a>
+    <a class="card" href="variant-b.html"><b>B · Listen-zentriert</b><span>Dichte Tabelle (Zeit, Sender, Titel, Genre) mit Filterleiste und Suche oben, Senderliste links.</span><span>Raster als zweiter Modus; Detailbereich unten statt rechts.</span><em>Öffnen →</em></a>
+    <a class="card" href="variant-c.html"><b>C · Poster-zentriert</b><span>Karussells je Sender mit Bildkarten, Kanalseite mit Kopfbereich und Tages-Tabs.</span><span>Detailansicht als Vollflächen-Sheet mit großem Poster.</span><em>Öffnen →</em></a>
+  </div>
+  <section>
+    <h2>Hinweis: Datenlücken</h2>
+    <div class="note">Die Quelle liefert nicht für jede Sendung alles (Stand 04.10.2026): ohne Poster ca. 27 %, ohne Credits ca. 75 %, ohne Episode ca. 68 %, ohne Genre ca. 21 %. Alle Varianten zeigen deshalb Sendungen ohne diese Felder und blenden fehlende Felder aus. Am Seitenende steht eine Legende „Datenlücken“ mit Beispielen zum Anklicken.</div>
+  </section>
+  <section>
+    <h2>Bedienung</h2>
+    <ul>
+      <li>Leiste „Zustand“: springt direkt zu einem Szenario (Panel-Varianten, Jetzt &amp; Gleich, Kanalansicht, Suche, Filter, Cache-Zustände, Datenlücken).</li>
+      <li>„Fensterbreite simulieren“ schaltet die Mockup-Fläche zwischen 1280 und 880 px; unter 900 px gilt das schmale Layout.</li>
+      <li>„Startansicht (Einstellung)“ zeigt die Wirkung von „Automatisch“: unter 900 px startet Jetzt &amp; Gleich.</li>
+      <li>„Einstieg Kanalansicht“ zeigt beide Einstiege (Sender anklicken, Panel-Link).</li>
+      <li>Alles ist per Tastatur erreichbar (Tab, Enter, Esc schließt Panel bzw. Trefferliste).</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
