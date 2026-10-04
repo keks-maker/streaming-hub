@@ -16,6 +16,8 @@ const ui = require('../lib/recorder/schedule-ui-model.js');
 const ROOT = path.join(__dirname, '..');
 const rendererJs = fs.readFileSync(path.join(ROOT, 'renderer.js'), 'utf8');
 const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const epgViewJs = fs.readFileSync(path.join(ROOT, 'epg-view.js'), 'utf8');
+const epgViewModelJs = fs.readFileSync(path.join(ROOT, 'epg-view-model.js'), 'utf8');
 const MIN = 60 * 1000;
 
 test('Zukunfts-Regel: future / running / past / invalid mit den Meldungen aus §3.7', () => {
@@ -106,17 +108,18 @@ test('Renderer: Planungs-Code rendert EPG-Daten nie über innerHTML', () => {
   // Dashboard-Kopf/Tabs ebenfalls nur textContent
   const dashFrom = rendererJs.indexOf('function renderRecordingDashboard()');
   assert.ok(!/innerHTML\s*=\s*`/.test(rendererJs.slice(dashFrom, listFrom).replace("dashboardGrid.innerHTML = ''", '')));
-  // Vorbelegung des EPG-Detail-Hinweises ebenfalls als Text
-  assert.match(rendererJs, /epgDetailNotice\.textContent = message/);
+  // Hinweis im Detail-Modal (epg-view.js) ebenfalls als Text
+  assert.match(epgViewJs, /dNotice\.textContent = message/);
+  assert.match(epgViewJs, /toastEl\.textContent = message/);
 });
 
 test('Renderer: Zukunfts-Regel im EPG-Detail — Button immer sichtbar, Meldungen ersetzen den Dialog', () => {
-  assert.match(rendererJs, /recordBtn\.textContent = '● Aufnehmen'/);
-  assert.match(rendererJs, /handleEpgRecordClick\(data\)/);
+  assert.match(epgViewModelJs, /LABEL_RECORD = '● Aufnehmen'/);
+  assert.match(rendererJs, /recordProgramme: programme => handleEpgRecordClick\(programme\)/);
   const fn = rendererJs.slice(rendererJs.indexOf('function handleEpgRecordClick'), rendererJs.indexOf('let recSchedulePending'));
   assert.match(fn, /classifyProgramme/);
   assert.match(fn, /verdict\.state !== 'future'/);
-  assert.match(fn, /setEpgDetailNotice\(verdict\.message\);\s*return;/, 'bei running/past: Meldung und Abbruch vor dem Dialog');
+  assert.match(fn, /epgView\.notify\(verdict\.message\);\s*return;/, 'bei running/past: Meldung und Abbruch vor dem Dialog');
   assert.match(fn, /openSchedulePlanningDialog/);
 });
 
