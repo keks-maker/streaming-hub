@@ -132,3 +132,18 @@ test('Auto-Stopp ist idempotent: manueller Stopp nach Auslösung liefert dieselb
   const libraryMp4 = fs.readdirSync(path.dirname(meta.outputFile)).filter(f => f.endsWith('.mp4'));
   assert.equal(libraryMp4.length, 1, 'genau eine MP4');
 });
+
+test('Auto-Stopp nutzt die kurze SIGINT-Grace (3 s statt 10 s) — kein langes Überlaufen über das Sendungsende', async () => {
+  const clock = makeClock();
+  const { service } = makeFakeService({ now: clock.now });
+  const { recId } = await service.start({ ...REQUEST, stopAt: clock.t + 1000 });
+  await sleep(300);
+  const job = service.getJob(recId);
+  assert.equal(job._stopGraceMs, 10000, 'manueller Stopp: reguläre Grace');
+  const doneP = waitForDone(service, recId);
+  clock.advance(5000);
+  job.checkLimits();
+  assert.equal(job._stopGraceMs, 3000);
+  const meta = await doneP;
+  assert.equal(meta.status, 'completed');
+});
