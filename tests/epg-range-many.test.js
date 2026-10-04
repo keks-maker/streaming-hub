@@ -3,6 +3,8 @@
 // Tests: epg:range-many (Etappe 3.1, EPG-Konzept §4 A-1) — schlanke Raster-Slots für
 // mehrere Kanäle: EpgStore.rangeMany, EpgService-Delegation, IPC, Großfixture.
 
+// Volle Projektion von range()/find() seit Etappe 3.2
+const FULL_KEYS = ['categories', 'credits', 'desc', 'episode', 'icon', 'rating', 'start', 'stop', 'subtitle', 'title', 'year'];
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -69,7 +71,7 @@ test('rangeMany: Quellen werden vereinigt, Duplikate entfernt; range() bleibt un
   });
   const [r] = store.rangeMany(['ZDF.de'], NOW, NOW + 10 * HOUR);
   assert.equal(r.slots.length, 3);
-  assert.deepEqual(Object.keys(store.range('ZDF.de', NOW, NOW + HOUR)[0]).sort(), ['desc', 'start', 'stop', 'title']);
+  assert.deepEqual(Object.keys(store.range('ZDF.de', NOW, NOW + HOUR)[0]).sort(), FULL_KEYS);
 });
 
 test('rangeMany: Gesamtslot-Grenze wirft klaren Fehler statt still abzuschneiden', () => {

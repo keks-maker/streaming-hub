@@ -4,6 +4,8 @@
 // preload-Whitelist, main.js-Verdrahtung — und Verdrahtungs-Checks für die
 // stopAt-Umstellung/Settings (Quelltext-Verträge wie in den fixset-Tests).
 
+// Volle Projektion von range()/find() seit Etappe 3.2
+const FULL_KEYS = ['categories', 'credits', 'desc', 'episode', 'icon', 'rating', 'start', 'stop', 'subtitle', 'title', 'year'];
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -95,7 +97,7 @@ test('IPC: epg:range/find/status/refresh liefern Daten ohne Fenster (reiner Main
 
   const week = await handlers.get('epg:range')(main, 'ZDF.de@HD', NOW, NOW + 7 * 24 * HOUR);
   assert.ok(week.length >= 7 * 24, `Slots: ${week.length}`);
-  assert.deepEqual(Object.keys(week[0]).sort(), ['desc', 'start', 'stop', 'title']);
+  assert.deepEqual(Object.keys(week[0]).sort(), FULL_KEYS);
 
   const now = await handlers.get('epg:find')(main, 'ZDF.de', NOW + 5 * 60 * 1000);
   assert.equal(now.start, NOW);
