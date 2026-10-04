@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased - Aufnahme Etappe 3.1
+
+Main-API und reine Logik für den neuen EPG-Programmführer (EPG-Konzept A-1/A-2). Keine sichtbare Änderung an der Oberfläche; die neuen Schnittstellen werden erst von der UI-Umsetzung (Etappe 3.3) genutzt.
+
+- EPG-Raster-API (A-1): Neue IPC `epg:range-many(channelKeys, fromMs, toMs)` liefert für bis zu 100 Kanäle in einem Aufruf schlanke Slots `{ start, stop, title }` (ohne Beschreibung; Details weiter über `epg:find`/`epg:range`). Zeitraum höchstens 14 Tage, höchstens 25 000 Slots je Aufruf — darüber gibt es einen klaren Fehler statt stillem Abschneiden. Antwort: `[{ channelKey, slots }]` in Eingabereihenfolge, `channelKey` ist der übergebene Schlüssel.
+- EPG-Suche (A-1): Neue IPC `epg:search(channelKeys, query, fromMs, toMs, limit, options)` durchsucht bis zu 600 Kanäle (Suchbegriff 2–80 Zeichen, Limit Standard 50, hart 200, Zeitraum höchstens 14 Tage; `options.includeDesc` durchsucht zusätzlich die Beschreibung, Standard aus). Treffer `{ channelKey, start, stop, title }` nach Startzeit sortiert, Antwort `{ results, truncated }`. Faltungsregel (`lib/epg-text.js`, gleiche Funktion im Main und im Renderer-Modul): Kleinschreibung, NFD ohne Akzente (ä→a, é→e), ß→ss, Digraphen ae/oe/ue→a/o/u, Whitespace zusammengezogen — „Käse“, „kase“ und „Kaese“ finden sich gegenseitig. Die Suche läuft in Scheiben (`setImmediate`) und blockiert den Main-Event-Loop nicht; gefaltete Titel werden je Slot zwischengespeichert.
+- Alle neuen Kanäle nur hinter `requireMainRenderer`, mit Validierung in `lib/ipc-validation.js` (`validateEpgRangeMany`, `validateEpgSearch`) und fester Preload-Whitelist (`getEpgRangeMany`, `searchEpg`). `epg:range` und `epg:find` bleiben unverändert.
+- Ereignis `epg:changed` (L-1): `EpgService.onChanged(cb)` meldet jeden erfolgreichen Refresh (Takt, Start, manuell und der gezielte Slip-Refresh `refreshForSource`), nie einen Fehlschlag; `main.js` leitet es nur an das Hauptfenster weiter (`{ at, urls }`), `preload.js` bietet `onEpgChanged(cb)` mit Abmelde-Funktion wie `onScheduleChanged`.
+- Reine Raster-Logik (A-2): Neu `lib/epg-grid.js` (ohne Electron/DOM/Uhr, „jetzt“ immer als Parameter): Zeit↔px, sichtbarer Bereich und Virtualisierungsfenster (±1 Viewport), Fortschritt/„noch N min“, TV-Tag 05:00–05:00 lokal (über lokale Datumskomponenten, korrekt an Sommerzeitumstellungen mit 23/25 Stunden), Tagesleisten-Chips und Marker-Zuordnung `matchMarkers` (Sendungsinhalt `[epgStart, epgStop]` ohne Puffer, nur `scheduled`/`recording`, zusammengelegte Einträge, laufende manuelle Aufnahmen aus `recording:list`, Kanalvergleich über normalisierte `tvgId`/`channelId`).
+- Tests: `test:suite` nutzt jetzt den Glob `tests/*.test.js` (neue Testdateien werden automatisch erfasst; `tests/helpers/*` laufen nicht als Tests; `test:updater` bleibt als eigenes Skript bestehen). Neu `epg-grid`, `epg-range-many`, `epg-search`; erweitert `epg-ipc`, `epg-service` (Event), `ipc-validation`. Testhelfer `tests/helpers/epg-large-fixture.js` erzeugt deterministische EPG-Daten (XMLTV oder Slots) mit z. B. 438 Kanälen × 10 Tage.
+
 ## 0.7.0 (2026-10-04) — Aufnahme-Planung
 
 Geplante Aufnahmen aus dem EPG (Main-Prozess, auch bei geschlossenem Fenster) auf Basis des neuen Aufnahme-Fundaments. Die Einträge sind nach Etappen gegliedert.
