@@ -21,6 +21,7 @@ const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorde
 const { TrayController } = require('./lib/recorder/TrayController.js');
 const { sweepOrphans } = require('./lib/orphan-sweep.js');
 const paths = require('./lib/recorder/paths.js');
+const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 
 /**
@@ -34,6 +35,26 @@ function storageFreeBytes(root) {
   } catch (_) {
     return null;
   }
+}
+
+function readRecordingSettingsRaw() {
+  try {
+    return userStorage.readJson('recordingSettings', null);
+  } catch (_) {
+    return null;
+  }
+}
+
+function recordingSettingsResponse(result) {
+  return {
+    maxParallel: result.settings.maxParallel,
+    maxDurationHours: result.settings.maxDurationHours,
+    reserveMB: result.settings.reserveMB,
+    minReserveMB: recordingSettingsLib.MIN_RESERVE_MB,
+    clamped: result.clamped || {},
+    reserveBelowMinimum: !!result.reserveBelowMinimum,
+    reserveWarning: result.reserveBelowMinimum ? recordingSettingsLib.RESERVE_MIN_WARNING : null,
+  };
 }
 
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
@@ -733,7 +754,17 @@ app.whenReady().then(() => {
           logger.warn('Persistierter Aufnahmen-Speicherort nicht nutzbar (' + check.error + ') — Default bleibt aktiv');
         }
       }
-      recorder = new RecorderService({ appRoot: __dirname, storageRoot });
+      // Limits (Parallel-Limit, Höchstdauer, Reserve) aus den persistierten
+      // Settings — Altdaten ohne die Felder laden mit Defaults, Werte werden
+      // beim Laden geklemmt (Reserve-Minimum auch hier, nicht nur in der UI).
+      const normalizedSettings = recordingSettingsLib.normalizeRecordingSettings(persisted).settings;
+      recorder = new RecorderService({
+        appRoot: __dirname,
+        storageRoot,
+        maxParallel: normalizedSettings.maxParallel,
+        maxDurationHours: normalizedSettings.maxDurationHours,
+        reserveMB: normalizedSettings.reserveMB,
+      });
       // Orphan-Janitor (Karte t_695bf150, Sweep beim App-Start): Bereinigt
       // App-eigene verwaiste ffmpeg/ffprobe-Prozesse (PPID 1 / toter Parent)
       // vom letzten Crash bzw. von einem Quit-Race — QA-Befund: Orphan lief
@@ -760,7 +791,13 @@ app.whenReady().then(() => {
         const lib = path.join(recorder.storageRoot, 'Aufnahmen');
         const jobDir = path.join(lib, recId);
         const playlist = path.join(jobDir, 'index.m3u8');
-        if (meta.status === 'recording' && fs.existsSync(playlist)) {
+        // Nicht fertig konvertierte Aufnahmen (läuft / Remux zurückgestellt,
+        // z. B. „Speicher knapp“) bleiben über die HLS-Zwischenform abspielbar.
+        if (
+          ['recording', 'remux-pending', 'aborted'].includes(meta.status) &&
+          !(meta.outputFile && fs.existsSync(meta.outputFile)) &&
+          fs.existsSync(playlist)
+        ) {
           // Laufende Aufnahme: HLS-Zwischenform live abspielbar (hls.js-Pfad
           // mit corsEnabled-Scheme — im Isolat + App verifiziert)
           return { kind: 'hls', url: `${REC_SCHEME}://${recId}/index.m3u8` };
@@ -820,6 +857,14 @@ app.whenReady().then(() => {
         recorder.store.removeMeta(recId);
         // 4) Index-Eintrag entfernen
         recorder.store.removeFromIndex(recId);
+        // 5) Platz ist frei geworden: zurückgestellte Remuxes („Speicher knapp“) nachholen
+        recorder
+          .retryDeferredRemuxes({
+            afterRemux: ({ meta: done }) => {
+              mainWindow?.webContents.send('recording:changed', { recId: done.id, meta: done });
+            },
+          })
+          .catch(e => logger.warn('Nachholender Remux nach Löschen fehlgeschlagen:', e.message));
         return { success: true };
       });
       // ── Settings: Speicherort (Konzept §3.4, Phase 1c) ──
@@ -847,13 +892,36 @@ app.whenReady().then(() => {
         if (typeof root !== 'string' || !root.trim()) throw new Error('Kein Speicherort angegeben');
         if (root.length > 1024) throw new Error('Speicherort-Pfad zu lang');
         const resolved = recorder.setStorageRoot(root.trim());
-        userStorage.writeJson('recordingSettings', { storageRoot: resolved });
+        // Merge statt Überschreiben: Limits/Reserve bleiben erhalten
+        userStorage.writeJson('recordingSettings', {
+          ...recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()).settings,
+          storageRoot: resolved,
+        });
         return {
           root: resolved,
           isDefault: resolved === paths.defaultRecordingsRoot(),
           network: isNetworkishPath(resolved),
           freeBytes: storageFreeBytes(resolved),
         };
+      });
+      // Settings „Aufnahmen“: Parallel-Limit, Höchstdauer, Reserve (Etappe 1).
+      // Validierung/Clamp im Main; die Antwort enthält die tatsächlich
+      // gespeicherten Werte + Clamp-Hinweise (UI zeigt die Reserve-Warnung).
+      ipcMain.handle('recording:get-settings', event => {
+        requireMainRenderer(event);
+        return recordingSettingsResponse(recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()));
+      });
+      ipcMain.handle('recording:set-settings', (event, patch) => {
+        requireMainRenderer(event);
+        if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('Ungültige Aufnahme-Einstellungen');
+        const result = recordingSettingsLib.applyRecordingSettingsPatch(readRecordingSettingsRaw(), patch);
+        const current = recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()).settings;
+        userStorage.writeJson('recordingSettings', {
+          ...result.settings,
+          ...(current.storageRoot ? { storageRoot: current.storageRoot } : {}),
+        });
+        recorder.setLimits(result.settings);
+        return recordingSettingsResponse(result);
       });
       // ffmpeg-Diagnose (Konzept §3.4): Version/ok/Fehler für die Settings.
       // Meldet zusätzlich die SHA-256 der installierten ffmpeg-Binary und den

@@ -81,7 +81,6 @@ let tvMode = localStorage.getItem('tvMode') || 'free';
 // sowie die Bibliothek/Settings-Screens. Konsumiert NUR die Engine
 // (recording:*), keine Aufnahme-Logik hier.
 let recordingState = { active: [], remuxing: [] };
-const recordingAutoStopTimers = new Map(); // recId → timeout („bis zum Ende der Sendung“)
 
 const recordingStatusListeners = [];
 function onRecordingStatusChanged(cb) {
@@ -181,7 +180,6 @@ function applyRecordingState(status) {
     : { active: [], remuxing: [] };
   notifyRecordingStatusListeners();
   pushRecordingStatusToTvView();
-  syncAutoStopTimers();
   updateRecordingsScreenIfVisible();
 }
 
@@ -237,43 +235,43 @@ function pushRecordingPhaseToTvView(payload) {
 }
 
 /**
- * Auto-Stopp „Bis zum Ende der Sendung“ (Konzept §3.1): hält pro Aufnahme
- * einen Timer, der bei EPG-Ende recording:stop auslöst. Timer werden bei jedem
- * Status-Update neu synchronisiert (Aufnahme weg → Timer weg).
+ * Soft-Limit-Dialog (L2): Das Parallel-Limit ist erreicht — „Trotzdem
+ * aufnehmen“ (force) oder „Verwerfen“. Nur Text, kein innerHTML.
  */
-function syncAutoStopTimers() {
-  for (const [recId, timer] of recordingAutoStopTimers) {
-    if (!(recordingState.active || []).some(a => a.recId === recId)) {
-      clearTimeout(timer);
-      recordingAutoStopTimers.delete(recId);
+function askRecordingLimitOverride({ limit, active }) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('recLimitOverlay');
+    const text = document.getElementById('recLimitText');
+    const forceBtn = document.getElementById('recLimitForce');
+    const discardBtn = document.getElementById('recLimitDiscard');
+    if (!overlay || !text || !forceBtn || !discardBtn) {
+      resolve(false);
+      return;
     }
-  }
-}
-
-function armAutoStopFor(recId, stopAtMs) {
-  disarmAutoStopFor(recId);
-  const delay = stopAtMs - Date.now();
-  if (!(delay > 0)) return; // Sendung bereits zu Ende → User stoppt selbst
-  recordingAutoStopTimers.set(recId, setTimeout(() => {
-    recordingAutoStopTimers.delete(recId);
-    window.electronAPI.stopRecording(recId).catch(e => {
-      logger.warn('Auto-Stopp (Sendungsende) fehlgeschlagen:', e?.message || e);
-    });
-  }, delay));
-}
-
-function disarmAutoStopFor(recId) {
-  const timer = recordingAutoStopTimers.get(recId);
-  if (timer) {
-    clearTimeout(timer);
-    recordingAutoStopTimers.delete(recId);
-  }
+    text.textContent =
+      `Es laufen bereits ${active} von ${limit} erlaubten Aufnahmen. ` +
+      'Weitere Aufnahmen belasten Netzwerk und Festplatte.';
+    const finish = decision => {
+      overlay.classList.remove('open');
+      forceBtn.removeEventListener('click', onForce);
+      discardBtn.removeEventListener('click', onDiscard);
+      resolve(decision);
+    };
+    const onForce = () => finish(true);
+    const onDiscard = () => finish(false);
+    forceBtn.addEventListener('click', onForce);
+    discardBtn.addEventListener('click', onDiscard);
+    overlay.classList.add('open');
+    discardBtn.focus();
+  });
 }
 
 /**
  * Startet eine Aufnahme über die Engine. untilEpgEnd nutzt das Ende der
- * laufenden Sendung (EPG) als Auto-Stopp; ohne EPG verhält sich der Request
- * wie „ab jetzt“ (Hinweis kommt bereits aus dem tv.html-Dialog).
+ * laufenden Sendung (EPG) als Auto-Stopp: der Renderer gibt nur noch den
+ * Zeitpunkt (stopAt) mit, den Stopp übernimmt der Main-Prozess (L1) — auch bei
+ * geschlossenem Fenster. Ohne EPG verhält sich der Request wie „ab jetzt“
+ * (Hinweis kommt bereits aus dem tv.html-Dialog).
  */
 async function startRecordingFromRequest({
   channelId,
@@ -287,7 +285,7 @@ async function startRecordingFromRequest({
   const ch = channelId ? tvChannels.find(c => c.id === channelId) : null;
   const url = ch?.url;
   if (!url) throw new Error('Kein Stream für die Aufnahme verfügbar');
-  const result = await window.electronAPI.startRecording({
+  const request = {
     sourceUrl: url,
     channelId: channelId || null,
     channelName: channelName || ch?.name || null,
@@ -295,9 +293,13 @@ async function startRecordingFromRequest({
     epgDescription: epgDescription || null,
     // Karte t_f36663be (Engine C): DVR-Rückstand in Sekunden — 0 = Live-Head.
     startOffsetSec: Number.isFinite(startOffsetSec) && startOffsetSec > 0 ? Math.floor(startOffsetSec) : 0,
-  });
-  if (untilEpgEnd && epgStopMs && result?.recId) {
-    armAutoStopFor(result.recId, epgStopMs);
+  };
+  if (untilEpgEnd && Number.isFinite(epgStopMs) && epgStopMs > Date.now()) request.stopAt = Math.floor(epgStopMs);
+  let result = await window.electronAPI.startRecording(request);
+  if (result?.code === 'PARALLEL_LIMIT') {
+    const override = await askRecordingLimitOverride(result);
+    if (!override) return { discarded: true };
+    result = await window.electronAPI.startRecording({ ...request, force: true });
   }
   // Sofortiger Snapshot — die Engine-Events kommen zusätzlich asynchron.
   try {
@@ -308,7 +310,6 @@ async function startRecordingFromRequest({
 
 async function stopRecordingById(recId) {
   const result = await window.electronAPI.stopRecording(recId);
-  disarmAutoStopFor(recId);
   try {
     applyRecordingState(await window.electronAPI.getRecordingStatus());
   } catch (_e) { /* s. o. */ }
@@ -1280,6 +1281,7 @@ function describeStorageRoot(info) {
 }
 
 async function loadRecordingSettingsUi() {
+  loadRecordingLimitsUi();
   try {
     const info = await window.electronAPI.getRecordingStorageRoot();
     recPathInput.value = info.root;
@@ -1306,6 +1308,58 @@ async function loadRecordingSettingsUi() {
     recFfmpegStatus.textContent = 'ffmpeg-Status nicht ermittelbar: ' + (e?.message || e);
   }
 }
+
+// ── Limits: Parallel-Limit, Höchstdauer, Reserve (Etappe 1) ──
+// Validierung/Clamp passiert im Main; die UI zeigt nur die tatsächlich
+// gespeicherten Werte und die Reserve-Warnung an.
+const recMaxParallelInput = document.getElementById('recMaxParallelInput');
+const recMaxDurationInput = document.getElementById('recMaxDurationInput');
+const recReserveInput = document.getElementById('recReserveInput');
+const recReserveWarn = document.getElementById('recReserveWarn');
+const recLimitsSaveBtn = document.getElementById('recLimitsSaveBtn');
+
+function applyRecordingLimitsToUi(settings) {
+  recMaxParallelInput.value = String(settings.maxParallel);
+  recMaxDurationInput.value = String(settings.maxDurationHours);
+  recReserveInput.value = String(settings.reserveMB);
+  recReserveInput.min = String(settings.minReserveMB || 512);
+  const warn = settings.reserveWarning || '';
+  recReserveWarn.textContent = warn ? '⚠ ' + warn : '';
+  recReserveWarn.style.display = warn ? '' : 'none';
+}
+
+async function loadRecordingLimitsUi() {
+  try {
+    applyRecordingLimitsToUi(await window.electronAPI.getRecordingSettings());
+  } catch (e) {
+    setSettingsStatus('✕ Aufnahme-Einstellungen konnten nicht geladen werden: ' + (e?.message || e));
+  }
+}
+
+async function saveRecordingLimits() {
+  recLimitsSaveBtn.disabled = true;
+  try {
+    const saved = await window.electronAPI.setRecordingSettings({
+      maxParallel: recMaxParallelInput.value,
+      maxDurationHours: recMaxDurationInput.value,
+      reserveMB: recReserveInput.value,
+    });
+    applyRecordingLimitsToUi(saved);
+    setSettingsStatus(
+      saved.reserveBelowMinimum
+        ? `⚠ ${saved.reserveWarning} — ${saved.minReserveMB} MB wurden eingetragen und gespeichert.`
+        : '✓ Aufnahme-Einstellungen gespeichert',
+    );
+  } catch (e) {
+    setSettingsStatus('✕ ' + (e?.message || e));
+  } finally {
+    recLimitsSaveBtn.disabled = false;
+  }
+}
+recLimitsSaveBtn.addEventListener('click', saveRecordingLimits);
+// Beim Verlassen des Reserve-Feldes sofort prüfen/speichern: Eingabe unter
+// dem Minimum → Warnung + automatisches Setzen und Speichern des Minimums.
+recReserveInput.addEventListener('change', saveRecordingLimits);
 
 async function saveRecordingStorageRoot(newRoot) {
   recPathSaveBtn.disabled = true;
@@ -2295,6 +2349,7 @@ function showRecordingPlayerError(message) {
 function recordingStatusText(meta) {
   if (meta.status === 'recording') return 'Laufende Aufnahme';
   if (meta.status === 'remux-pending') {
+    if (meta.remuxDeferredReason && !remuxProgressMap.has(meta.id)) return meta.remuxDeferredReason;
     const p = remuxProgressMap.get(meta.id);
     if (p && typeof p.percent === 'number') {
       const rest = Number.isFinite(p.remainingSec) ? ` · noch ~${formatDuration(p.remainingSec)}` : '';
@@ -2302,7 +2357,12 @@ function recordingStatusText(meta) {
     }
     return 'Konvertiere…';
   }
-  if (meta.status === 'completed') return 'Fertig';
+  if (meta.status === 'completed') {
+    if (meta.stopReason === 'disk-full') return 'Fertig — beendet: Speicher voll';
+    if (meta.stopReason === 'max-duration') return 'Fertig — beendet: Höchstdauer erreicht';
+    if (meta.stopReason === 'storage-lost') return 'Fertig — beendet: Speicherort nicht erreichbar';
+    return 'Fertig';
+  }
   if (meta.status === 'aborted') return 'Abgebrochen';
   return 'Fehlgeschlagen';
 }
@@ -2373,7 +2433,11 @@ function renderRecordingsInto(listEl) {
       const playBtn = document.createElement('button');
       playBtn.className = 'recording-entry-btn';
       playBtn.textContent = '▶ Wiedergabe';
-      const playable = meta.status === 'completed' || meta.status === 'recording';
+      // Zurückgestellter Remux („Speicher knapp“): HLS-Zwischenform bleibt abspielbar
+      const playable =
+        meta.status === 'completed' ||
+        meta.status === 'recording' ||
+        (meta.status === 'remux-pending' && !!meta.remuxDeferredReason);
       playBtn.disabled = !playable;
       if (playable) playBtn.addEventListener('click', () => openRecordingPlayback(meta));
       actions.appendChild(playBtn);
@@ -3518,7 +3582,7 @@ window.electronAPI.onTvSourcesChanged(sources => {
 
 // ═══ Aufnahmen (Phase 1c): Engine-Events ═══
 // Der Renderer ist der einzige Konsumpunkt der recording:*-Events und
-// verteilt sie an Chrome (tv.html), Bibliothek und Auto-Stopp-Timer.
+// verteilt sie an Chrome (tv.html) und die Bibliothek (Auto-Stopp läuft im Main).
 window.electronAPI.onRecordingStatus(data => {
   // phase-Events: {recId, phase, percent?, remainingSec?}
   if (!data || typeof data !== 'object') return;
@@ -3561,6 +3625,17 @@ window.electronAPI.onRecordingSeekDegraded?.(data => {
       'Die Aufnahme beginnt am aktuellen Live-Bild.',
   );
   logger.warn('[recorder] Start-Degrade:', data.message || '');
+});
+window.electronAPI.onRecordingAutoStopped?.(data => {
+  // Auto-Stopp im Main: Hinweis nur bei kritischen Gründen (Speicher voll /
+  // Speicherort weg) und Höchstdauer — Sendungsende ist der erwartete Normalfall.
+  if (!data || typeof data !== 'object') return;
+  const name = data.channelName || 'Aufnahme';
+  if (data.reason === 'disk-full' || data.reason === 'storage-lost') {
+    showTvToast(`Aufnahme „${name}“ beendet: ${data.message}. Sie bleibt abspielbar.`);
+  } else if (data.reason === 'max-duration') {
+    showTvToast(`Aufnahme „${name}“ beendet: ${data.message}.`);
+  }
 });
 window.electronAPI.onRecordingChanged(data => {
   // Statuswechsel einer Aufnahme (failed/aborted/completed) → Bibliothek + Chip

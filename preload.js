@@ -101,12 +101,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('recording:seek-degraded', handler);
   },
 
+  // Auto-Stopp im Main (Sendungsende, Höchstdauer, Speicher voll, Speicherort weg)
+  onRecordingAutoStopped: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:auto-stopped', handler);
+    return () => ipcRenderer.removeListener('recording:auto-stopped', handler);
+  },
+
   // Aufnahme-UI (Phase 1c): Bibliothek + Settings
   getRecordingFile: recId => ipcRenderer.invoke('recording:get-file', recId),
   deleteRecording: recId => ipcRenderer.invoke('recording:delete', recId),
   getRecordingStorageRoot: () => ipcRenderer.invoke('recording:get-storage-root'),
   setRecordingStorageRoot: root => ipcRenderer.invoke('recording:set-storage-root', root),
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
+  getRecordingSettings: () => ipcRenderer.invoke('recording:get-settings'),
+  setRecordingSettings: patch => ipcRenderer.invoke('recording:set-settings', patch),
   checkFfmpegStatus: () => ipcRenderer.invoke('recording:ffmpeg-status'),
   getDefaultRecordingRoot: () => ipcRenderer.invoke('recording:get-default-root'),
   onOpenRecordings: cb => {
