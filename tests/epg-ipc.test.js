@@ -137,6 +137,7 @@ test('main.js: EpgService wird unabhängig vom Fenster/ffmpeg-Health gestartet u
   assert.match(main, /new EpgService\(\{[\s\S]*?getSources: \(\) => loadTvSources\(\)/);
   assert.match(main, /registerEpgIpc\(\{ ipcMain, epg: epgService, requireMainRenderer \}\)/);
   assert.match(main, /epgService\.start\(\)/);
+  assert.match(main, /autoRefresh: !process\.env\.STREAMING_HUB_USER_DATA/, 'E2E-Isolation: kein automatischer Netz-Download');
   // Start steht VOR dem ffmpeg-Health-Zweig (kein Zusammenhang mit der Aufnahme-Engine)
   assert.ok(main.indexOf('new EpgService(') < main.indexOf('const health = checkHealth(__dirname)'));
   // geteilte Download-Validierung statt Duplikat im fetch-epg-Handler

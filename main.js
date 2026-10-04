@@ -719,6 +719,9 @@ app.whenReady().then(() => {
       dir: app.getPath('userData'),
       getSources: () => loadTvSources().map(({ id, name, epgUrl }) => ({ id, name, epgUrl })),
       logger,
+      // Isolierte Testläufe (STREAMING_HUB_USER_DATA, E2E) laden nicht automatisch
+      // aus dem Netz; STREAMING_HUB_EPG_REFRESH=on schaltet es dort wieder ein.
+      autoRefresh: !process.env.STREAMING_HUB_USER_DATA || process.env.STREAMING_HUB_EPG_REFRESH === 'on',
     });
     registerEpgIpc({ ipcMain, epg: epgService, requireMainRenderer });
     epgService.start().catch(e => logger.warn('EPG-Dienst konnte nicht starten:', e.message));

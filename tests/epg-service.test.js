@@ -464,6 +464,21 @@ test('Parsing großer Dokumente: 438 Kanäle × 10 Tage ohne Gesamtstring (Strea
   assert.ok(service.range('Kanal59.de', NOW, NOW + 7 * DAY).length >= 7 * 12);
 });
 
+test('autoRefresh=false (isolierte Testläufe): Cache wird geladen, aber nichts automatisch heruntergeladen', async () => {
+  const xml = buildXmltv({ channels: ['ZDF.de'], fromMs: NOW - DAY, toMs: NOW + 10 * DAY });
+  const first = makeService({ xml });
+  await first.service.refresh({ force: true });
+  const isolated = makeService({ dir: first.dir, xml, clock: { t: NOW + 3 * DAY }, autoRefresh: false });
+  await isolated.service.start();
+  assert.equal(await isolated.service.tick(), null);
+  assert.equal(await isolated.service.tick({ atStart: true }), null);
+  assert.equal(isolated.fetchFn.calls.length, 0, 'kein automatischer Download');
+  assert.ok(isolated.service.find('ZDF.de', NOW + DAY), 'Cache trotzdem nutzbar');
+  const [manual] = await isolated.service.refresh({ force: true });
+  assert.equal(manual.ok, true, 'manueller Refresh funktioniert');
+  isolated.service.stop();
+});
+
 test('Service: stop() bricht laufende Refreshes ab und ist wiederholbar', async () => {
   const { service } = makeService({
     fetchImpl: async () => {
