@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseXMLTV, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -22,6 +22,9 @@ const { createScheduleStore } = require('./lib/recorder/ScheduleStore.js');
 const { Scheduler } = require('./lib/recorder/Scheduler.js');
 const { registerScheduleIpc } = require('./lib/recorder/ipc-schedule.js');
 const { TrayController } = require('./lib/recorder/TrayController.js');
+const { QuitCoordinator } = require('./lib/recorder/QuitCoordinator.js');
+const { StandbyGuard } = require('./lib/recorder/StandbyGuard.js');
+const { createStreamResolver } = require('./lib/recorder/stream-resolver.js');
 const { sweepOrphans } = require('./lib/orphan-sweep.js');
 const paths = require('./lib/recorder/paths.js');
 const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
@@ -60,6 +63,8 @@ let epgService = null;
 let trayController = null;
 // Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
 let scheduler = null;
+// Standby-Schutz (Etappe 2b): powerSaveBlocker bei Aufnahme/anstehendem Start
+let standbyGuard = null;
 
 // Test-Hook (E2E): STREAMING_HUB_EPG_FIXTURE=<XMLTV-Datei> ersetzt den EPG-Download
 // durch die lokale Datei — für Main-EpgService UND fetch-epg. Gilt nur in isolierten
@@ -203,6 +208,34 @@ if (process.env.STREAMING_HUB_USER_DATA) {
 }
 
 let mainWindow;
+
+// ── Beenden-Dialog bei anstehender Planung (Etappe 2b, Konzept §3.5/E2) ──
+// Nur bei einer Planung in den nächsten 24 h; Logik in lib/recorder/quit-guard.js,
+// Ablauf (Fenster-X, before-quit, Updater-/System-Quit ohne Dialog) im QuitCoordinator.
+// Test-Hook (E2E): STREAMING_HUB_TEST_QUIT_DIALOG=mock ersetzt den nativen Dialog
+// durch eine Attrappe, die die Dialog-Optionen in globalThis.__streamingHubTest
+// aufzeichnet und die dort gesetzte Antwort liefert. Gilt nur in isolierten Läufen
+// (STREAMING_HUB_USER_DATA), nie im Normalbetrieb.
+const quitDialogMock = process.env.STREAMING_HUB_USER_DATA && process.env.STREAMING_HUB_TEST_QUIT_DIALOG === 'mock';
+if (quitDialogMock) {
+  globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
+}
+const quitCoordinator = new QuitCoordinator({
+  app,
+  askDialog: (win, options) => {
+    if (quitDialogMock) {
+      const hook = globalThis.__streamingHubTest;
+      hook.quitDialogCalls.push({ message: options.message, detail: options.detail, buttons: options.buttons, hadWindow: !!win });
+      return Promise.resolve({ response: hook.quitDialogResponse });
+    }
+    return win ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options);
+  },
+  getEntries: () => (scheduler ? scheduler.list() : []),
+  getActiveCount: () => (recorder ? recorder.activeJobs().length : 0),
+  getWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
+  logger,
+});
+
 let pipWindow = null;
 let userStorage = null;
 const selectedM3uFiles = new Set();
@@ -527,6 +560,7 @@ ipcMain.handle('apply-update', async (event, version) => {
       mainWindow?.webContents.send('update-status', { type: 'downloaded' });
       setTimeout(() => {
         app.relaunch({ execPath: newAppImage });
+        quitCoordinator.allowQuit('updater');
         app.quit();
       }, 2000);
       return { success: true };
@@ -578,6 +612,7 @@ ipcMain.handle('apply-update', async (event, version) => {
         if (!msg.error) {
           setTimeout(() => {
             app.relaunch();
+            quitCoordinator.allowQuit('updater');
             app.quit();
           }, 500);
         }
@@ -625,9 +660,19 @@ function createWindow() {
     title: 'Streaming Hub',
   });
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    mainWindow.focus();
+  const createdWindow = mainWindow;
+  createdWindow.once('ready-to-show', () => {
+    createdWindow.show();
+    createdWindow.focus();
+  });
+  // Fenster-X: Beenden-Dialog bei Planung < 24 h (sonst schließt das Fenster wie bisher)
+  createdWindow.on('close', event => {
+    quitCoordinator.handleWindowClose(event, createdWindow);
+  });
+  // Nach „Fenster zu, App im Tray“ kein zerstörtes Fenster mehr referenzieren
+  // (Tray „App öffnen“/„Planung öffnen“ und das Dock-Icon erzeugen es neu).
+  createdWindow.on('closed', () => {
+    if (mainWindow === createdWindow) mainWindow = null;
   });
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     if (errorCode !== -3) logger.error('Hauptfenster konnte nicht geladen werden:', errorCode, errorDescription, validatedURL);
@@ -663,6 +708,33 @@ function createWindow() {
       /* key not available on this platform */
     }
   }
+}
+
+/** Hauptfenster zeigen; nach „Fenster zu, App im Tray“ wird es neu erzeugt. */
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+/** Aufnahmen-Dashboard im Renderer öffnen (Tab 'library' | 'planned'), auch bei frisch erzeugtem Fenster. */
+function openRecordingsTab(tab) {
+  showMainWindow();
+  const win = mainWindow;
+  if (!win) return;
+  const send = () => {
+    try {
+      win.webContents.send('recordings:open', { tab });
+    } catch (_) {
+      // Fenster zwischendurch weg
+    }
+  };
+  if (win.webContents.isLoading()) win.webContents.once('did-finish-load', send);
+  else send();
 }
 
 app.whenReady().then(() => {
@@ -812,7 +884,7 @@ app.whenReady().then(() => {
       } catch (e) {
         logger.warn('Orphan-Janitor fehlgeschlagen (App startet weiter):', e.message);
       }
-      registerRecorderIpc({ ipcMain, recorder, mainWindow });
+      registerRecorderIpc({ ipcMain, recorder, mainWindow, getMainWindow: () => mainWindow });
       // Wiedergabeprotokoll rec:// (Bibliothek, Phase 1c)
       protocol.handle(recordingProtocol.scheme, recordingProtocol.handler);
       // Bibliotheks-IPC (Phase 1c): Dateiinfo + Löschen
@@ -1022,14 +1094,18 @@ app.whenReady().then(() => {
       // Shutdown-/Beenden-Verhalten. Erst nach Recorder-Setup.
       trayController = new TrayController({
         recorder,
-        getWindow: () => mainWindow || null,
+        getWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
+        showWindow: showMainWindow,
         getStorageRoot: () => recorder.storageRoot,
-        openLibrary: () => {
-          mainWindow?.webContents.send('recordings:open');
-        },
+        openLibrary: () => openRecordingsTab('library'),
+        openPlanning: () => openRecordingsTab('planned'),
+        getPlanned: () => (scheduler ? scheduler.list() : []),
+        confirmQuit: () => quitCoordinator.confirmQuit(),
         appRoot: __dirname,
       });
       trayController.create();
+      // macOS/Linux: System-Shutdown darf nie am Beenden-Dialog hängen bleiben
+      powerMonitor.on('shutdown', () => quitCoordinator.markSystemShutdown());
 
       // ── Planung (Etappe 2a, Konzept §3.4) ──
       // ScheduleStore in userData, Scheduler nach dem Recorder-Setup (recover()
@@ -1044,6 +1120,10 @@ app.whenReady().then(() => {
           resolveStream: resolveScheduledStream,
           getSettings: () => recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()).settings,
           epgLookup: ({ key, atMs }) => (epgService ? epgService.find(key, atMs) : null),
+          // Schedule-Slip (Etappe 2b): gezielter Refresh der Quelle + Abgleich mit dem frischen Cache
+          refreshEpg: ({ entry }) =>
+            epgService ? epgService.refreshForSource(entry.sourceId) : Promise.resolve({ ok: false, error: 'EPG-Dienst nicht verfügbar' }),
+          epgRange: ({ key, fromMs, toMs }) => (epgService ? epgService.range(key, fromMs, toMs) : []),
           logger,
         });
         registerScheduleIpc({
@@ -1058,15 +1138,21 @@ app.whenReady().then(() => {
             }
           },
         });
-        scheduler.on('schedule:notify', ({ message }) => {
-          try {
-            if (Notification.isSupported()) new Notification({ title: 'Streaming Hub — Planung', body: message }).show();
-          } catch (_) {
-            // Benachrichtigungen nicht verfügbar — die Meldung steht auch in der Planungsliste
-          }
+        // Benachrichtigungen (Planung) und Menü-Aktualisierung laufen über den TrayController
+        // (gemeinsamer Notifier, bereinigte Texte)
+        trayController.attachScheduler(scheduler);
+        // Standby-Schutz: Blocker bei laufender Aufnahme und ab 5 min vor einem geplanten Start
+        standbyGuard = new StandbyGuard({
+          powerSaveBlocker,
+          getActiveCount: () => recorder.activeJobs().length,
+          getWindows: () => scheduler.upcomingWindows(),
+          logger,
         });
+        standbyGuard.attach({ scheduler, recorder });
         powerMonitor.on('resume', () => {
+          // Neubewertung (Spätstart/verpasst, Slip-Prüfung) — der Takt sync't danach den Blocker
           scheduler.onResume().catch(e => logger.warn('Planung nach Standby fehlgeschlagen:', e.message));
+          standbyGuard.sync();
         });
         scheduler.start().catch(e => logger.error('Planung konnte nicht gestartet werden:', e.message));
       } catch (e) {
@@ -1105,7 +1191,11 @@ app.on('window-all-closed', () => {
 // mehr: Nodeprozess und seine Childs sterben im selben Quit-Sweep.
 // Recovery-Remux (RecorderService.recover) holt die Aufnahme beim
 // nächsten Start nach (F-FB-10).
-app.on('before-quit', () => {
+app.on('before-quit', event => {
+  // Beenden-Dialog bei Planung < 24 h (Etappe 2b): Quit wird dafür zunächst abgebrochen;
+  // der Cleanup unten läuft erst, wenn der Quit wirklich durchgeht.
+  if (quitCoordinator.handleBeforeQuit(event)) return;
+  if (standbyGuard) standbyGuard.release();
   if (epgService) epgService.stop();
   if (scheduler) scheduler.stop();
   if (!recorder) return;
@@ -1116,6 +1206,10 @@ app.on('before-quit', () => {
   }
 });
 app.on('will-quit', () => globalShortcut.unregisterAll());
+// macOS: Dock-Klick bei „Fenster zu, App im Tray“ bringt das Fenster zurück
+app.on('activate', () => {
+  if (app.isReady()) showMainWindow();
+});
 
 ipcMain.on('toggle-pip', (event, url) => {
   requireMainRenderer(event);
@@ -1182,7 +1276,7 @@ ipcMain.on('toggle-pip', (event, url) => {
 
   pipWindow.on('closed', () => {
     pipWindow = null;
-    mainWindow.webContents.send('pip-state', false);
+    mainWindow?.webContents.send('pip-state', false);
   });
 
   mainWindow.webContents.send('pip-state', true);
@@ -1423,43 +1517,14 @@ ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
 });
 
 // Stream-URL einer geplanten Aufnahme beim Start FRISCH aus der Senderliste
-// auflösen (Konzept §3.3): Quelle laden, Overrides (tvsources.json) anwenden,
-// Kanal über Kanal-ID bzw. tvg-id finden. Der URL-Snapshot am Planungseintrag
-// gilt nur als Fallback, wenn die Quelle nicht geladen werden kann (Netz weg).
-// Fehlt der Kanal in der geladenen Liste → ok:false mit lesbarer Meldung.
-async function resolveScheduledStream({ sourceId, channelId, tvgId, channelName, sourceUrlSnapshot }) {
-  const sources = loadTvSources();
-  const candidates = sourceId ? sources.filter(s => s.id === sourceId) : sources;
-  const label = channelName || channelId || 'Der Sender';
-  if (!candidates.length) {
-    return { ok: false, message: `Die TV-Quelle von „${label}“ existiert nicht mehr.` };
-  }
-  let loadFailed = false;
-  for (const source of candidates) {
-    let loaded;
-    try {
-      loaded = await loadM3uChannels(source.url);
-    } catch (err) {
-      loadFailed = true;
-      logger.warn('[schedule] Senderliste nicht ladbar:', source.name, describeM3uFetchError(err));
-      continue;
-    }
-    const channels = applyChannelOverrides(loaded.channels, { ...source, baseUrl: loaded.baseUrl });
-    const found =
-      channels.find(c => c.id === channelId) || (tvgId ? channels.find(c => c.tvgId && c.tvgId === tvgId) : null);
-    if (found && typeof found.url === 'string' && /^https?:\/\//i.test(found.url)) {
-      return { ok: true, url: found.url, channelName: found.name || channelName };
-    }
-  }
-  if (loadFailed && sourceUrlSnapshot) {
-    logger.warn('[schedule] Senderliste nicht erreichbar — nutze gespeicherte Stream-URL als Fallback:', label);
-    return { ok: true, url: sourceUrlSnapshot, channelName };
-  }
-  if (loadFailed) {
-    return { ok: false, message: `Die Senderliste konnte nicht geladen werden — „${label}“ wurde nicht gestartet.` };
-  }
-  return { ok: false, message: `„${label}“ ist nicht mehr in der Senderliste — die geplante Aufnahme wurde nicht gestartet.` };
-}
+// auflösen (Konzept §3.3) — Logik in lib/recorder/stream-resolver.js (testbar).
+const resolveScheduledStream = createStreamResolver({
+  loadTvSources: () => loadTvSources(),
+  loadM3uChannels: urlOrPath => loadM3uChannels(urlOrPath),
+  applyChannelOverrides,
+  describeM3uFetchError,
+  logger,
+});
 
 ipcMain.handle('get-app-path', event => {
   requireMainRenderer(event);

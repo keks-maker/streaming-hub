@@ -3109,8 +3109,14 @@ recordingPlayerClose.addEventListener('click', closeRecordingPlayback);
 const recordingsBtn = document.getElementById('recordingsBtn'); // entfernt (Fix-Set 4)
 if (recordingsBtn) recordingsBtn.addEventListener('click', () => showDashboard('recording'));
 
-// Tray → App: „Aufnahmen-Bibliothek“ im Tray-Menü öffnet den Dashboard-Bereich
-window.electronAPI.onOpenRecordings?.(() => {
+// Tray → App: „Aufnahmen-Bibliothek“ bzw. „Planung öffnen“ im Tray-Menü öffnet den
+// Dashboard-Bereich Aufnahmen im Tab „Bibliothek“ bzw. „Geplant“ (Whitelist, fester Wert)
+window.electronAPI.onOpenRecordings?.(data => {
+  const tab = data && data.tab;
+  if (tab === 'library' || tab === 'planned') {
+    recordingDashboardTab = tab;
+    scheduleEditingId = null;
+  }
   showDashboard('recording');
 });
 
