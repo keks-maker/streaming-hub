@@ -28,6 +28,7 @@ const {
   currentEpgStopMs,
   isProbablyNetworkPath,
 } = require('./lib/recorder/ui-model.js');
+const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 
 function safeResourceUrl(value, { allowRelative = true } = {}) {
   if (typeof value !== 'string' || !value.trim()) return '';
@@ -369,7 +370,8 @@ function updateRecordingsScreenIfVisible() {
   const now = Date.now();
   if (now - recordingsScreenRenderTs < 500) return;
   recordingsScreenRenderTs = now;
-  if (currentDashboardGroup === 'recording') {
+  // Eine offene Puffer-Bearbeitung in „Geplant“ wird nicht von Hintergrund-Events überzeichnet
+  if (currentDashboardGroup === 'recording' && !(recordingDashboardTab === 'planned' && scheduleEditingId)) {
     renderRecordingDashboard();
   }
 }
@@ -511,6 +513,7 @@ const epgDetailMeta = document.getElementById('epgDetailMeta');
 const epgDetailDesc = document.getElementById('epgDetailDesc');
 const epgDetailActions = document.getElementById('epgDetailActions');
 const epgDetailClose = document.getElementById('epgDetailClose');
+const epgDetailNotice = document.getElementById('epgDetailNotice');
 const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
 dashboardEpgOpen.addEventListener('click', openEpgView);
@@ -1394,12 +1397,19 @@ const recMaxDurationInput = document.getElementById('recMaxDurationInput');
 const recReserveInput = document.getElementById('recReserveInput');
 const recReserveWarn = document.getElementById('recReserveWarn');
 const recLimitsSaveBtn = document.getElementById('recLimitsSaveBtn');
+const recBufferBeforeInput = document.getElementById('recBufferBeforeInput');
+const recBufferAfterInput = document.getElementById('recBufferAfterInput');
+const recLateStartInput = document.getElementById('recLateStartInput');
 
 function applyRecordingLimitsToUi(settings) {
   recMaxParallelInput.value = String(settings.maxParallel);
   recMaxDurationInput.value = String(settings.maxDurationHours);
   recReserveInput.value = String(settings.reserveMB);
   recReserveInput.min = String(settings.minReserveMB || 512);
+  // Planung (Etappe 2a): Altantworten ohne die Felder zeigen die Defaults
+  recBufferBeforeInput.value = String(settings.bufferBeforeMin ?? 2);
+  recBufferAfterInput.value = String(settings.bufferAfterMin ?? 5);
+  recLateStartInput.checked = settings.lateStart !== false;
   const warn = settings.reserveWarning || '';
   recReserveWarn.textContent = warn ? '⚠ ' + warn : '';
   recReserveWarn.style.display = warn ? '' : 'none';
@@ -1423,10 +1433,13 @@ async function saveRecordingLimits() {
       ['maxParallel', recMaxParallelInput],
       ['maxDurationHours', recMaxDurationInput],
       ['reserveMB', recReserveInput],
+      ['bufferBeforeMin', recBufferBeforeInput],
+      ['bufferAfterMin', recBufferAfterInput],
     ]) {
       const raw = input.value.trim();
       if (raw !== '' && Number.isFinite(Number(raw))) patch[key] = raw;
     }
+    patch.lateStart = recLateStartInput.checked;
     const saved = await window.electronAPI.setRecordingSettings(patch);
     applyRecordingLimitsToUi(saved);
     setSettingsStatus(
@@ -1444,6 +1457,10 @@ recLimitsSaveBtn.addEventListener('click', saveRecordingLimits);
 // Beim Verlassen des Reserve-Feldes sofort prüfen/speichern: Eingabe unter
 // dem Minimum → Warnung + automatisches Setzen und Speichern des Minimums.
 recReserveInput.addEventListener('change', saveRecordingLimits);
+// Karte „Planung“: speichert sofort (kein eigener Button)
+recBufferBeforeInput.addEventListener('change', saveRecordingLimits);
+recBufferAfterInput.addEventListener('change', saveRecordingLimits);
+recLateStartInput.addEventListener('change', saveRecordingLimits);
 
 async function saveRecordingStorageRoot(newRoot) {
   recPathSaveBtn.disabled = true;
@@ -2276,6 +2293,7 @@ function showEpgDetail(data) {
   epgDetailDesc.textContent = data.desc || 'Keine Beschreibung verfügbar.';
 
   epgDetailActions.innerHTML = '';
+  setEpgDetailNotice('');
 
   // Watch button
   const watchBtn = document.createElement('button');
@@ -2292,6 +2310,16 @@ function showEpgDetail(data) {
     }
   });
   epgDetailActions.appendChild(watchBtn);
+
+  // Aufnehmen (Etappe 2a, §3.7): immer sichtbar; nur Sendungen mit Start in der
+  // Zukunft öffnen den Planungsdialog, sonst erscheint eine Meldung.
+  const recordBtn = document.createElement('button');
+  recordBtn.className = 'epg-action-btn epg-record-btn';
+  recordBtn.id = 'epgDetailRecordBtn';
+  recordBtn.type = 'button';
+  recordBtn.textContent = '● Aufnehmen';
+  recordBtn.addEventListener('click', () => handleEpgRecordClick(data));
+  epgDetailActions.appendChild(recordBtn);
 
   // Mediathek button
   const mediathek = getMediathekForChannel(data.tvgId || data.channel);
@@ -2315,6 +2343,223 @@ function showEpgDetail(data) {
 
 function closeEpgDetail() {
   epgDetailBackdrop.style.display = 'none';
+}
+
+// ── Planung: „Aufnehmen“ im EPG-Detail + Planungsdialog (Etappe 2a, §3.7) ──
+// Alle Texte (Titel, Sender, Beschreibung) laufen ausschließlich über textContent.
+
+function setEpgDetailNotice(message, ok = false) {
+  if (!epgDetailNotice) return;
+  epgDetailNotice.textContent = message || '';
+  epgDetailNotice.hidden = !message;
+  epgDetailNotice.classList.toggle('ok', !!message && ok);
+}
+
+function handleEpgRecordClick(data) {
+  const startMs = parseEpgTime(data.start).getTime();
+  const stopMs = parseEpgTime(data.stop).getTime();
+  const verdict = scheduleUi.classifyProgramme(startMs > 0 ? startMs : NaN, stopMs > 0 ? stopMs : NaN, Date.now());
+  if (verdict.state !== 'future') {
+    setEpgDetailNotice(verdict.message);
+    return;
+  }
+  setEpgDetailNotice('');
+  const ch = tvChannels.find(c => c.id === data.channelId) || null;
+  openSchedulePlanningDialog({
+    // Renderer-EPG liefert Entities unaufgelöst (parseXMLTV): wie in der Sendungsanzeige dekodieren
+    title: decodeEntities(data.title || ''),
+    description: decodeEntities(data.desc || ''),
+    channelName: data.channel || ch?.name || '',
+    channelId: data.channelId || ch?.id || '',
+    tvgId: data.tvgId || ch?.tvgId || '',
+    sourceId: ch?.sourceId || '',
+    sourceUrl: ch?.url || '',
+    startMs,
+    stopMs,
+  });
+}
+
+let recSchedulePending = null; // { close } des gerade offenen Dialogs
+
+function openSchedulePlanningDialog(ctx) {
+  if (recSchedulePending) return;
+  const overlay = document.getElementById('recScheduleOverlay');
+  const progEl = document.getElementById('recScheduleProg');
+  const whenEl = document.getElementById('recScheduleWhen');
+  const beforeInput = document.getElementById('recScheduleBefore');
+  const afterInput = document.getElementById('recScheduleAfter');
+  const adjEl = document.getElementById('recScheduleAdjacency');
+  const conflictEl = document.getElementById('recScheduleConflict');
+  const errorEl = document.getElementById('recScheduleError');
+  const discardBtn = document.getElementById('recScheduleDiscard');
+  const mergeBtn = document.getElementById('recScheduleMerge');
+  const confirmBtn = document.getElementById('recScheduleConfirm');
+  if (!overlay || !progEl || !confirmBtn || !window.electronAPI.addSchedule) return;
+
+  progEl.textContent = `${ctx.title} — ${ctx.channelName}`;
+  whenEl.textContent = scheduleUi.formatSlotRange(ctx.startMs, ctx.stopMs);
+  const previousFocus = document.activeElement;
+  let state = { conflict: null, adjacency: null, planable: false, busy: false };
+  let checkTimer = null;
+  let checkSeq = 0;
+
+  const toSec = input => {
+    const raw = input.value.trim();
+    if (raw === '' || !Number.isFinite(Number(raw))) return undefined;
+    return Math.round(Math.min(30, Math.max(0, Number(raw))) * 60);
+  };
+  const buildRequest = extra => {
+    const request = {
+      channelId: ctx.channelId,
+      channelName: ctx.channelName,
+      tvgId: ctx.tvgId,
+      sourceId: ctx.sourceId,
+      title: ctx.title,
+      description: ctx.description,
+      epgStart: scheduleUi.toScheduleIso(ctx.startMs),
+      epgStop: scheduleUi.toScheduleIso(ctx.stopMs),
+      ...extra,
+    };
+    if (/^https?:\/\//i.test(ctx.sourceUrl)) request.sourceUrlSnapshot = ctx.sourceUrl;
+    const before = toSec(beforeInput);
+    const after = toSec(afterInput);
+    if (before !== undefined) request.bufferBeforeSec = before;
+    if (after !== undefined) request.bufferAfterSec = after;
+    return request;
+  };
+  const showError = message => {
+    errorEl.textContent = message || '';
+    errorEl.hidden = !message;
+  };
+  const render = () => {
+    const conflictText = scheduleUi.describeConflict(state.conflict);
+    conflictEl.textContent = conflictText;
+    conflictEl.hidden = !conflictText;
+    const adjText = scheduleUi.describeAdjacency(state.adjacency);
+    adjEl.textContent = adjText;
+    adjEl.hidden = !adjText;
+    mergeBtn.hidden = !(state.adjacency && state.adjacency.canMerge);
+    confirmBtn.textContent = state.conflict && state.conflict.exceeds ? 'Trotzdem planen' : 'Planen';
+    confirmBtn.disabled = !state.planable || state.busy;
+    mergeBtn.disabled = !state.planable || state.busy;
+  };
+
+  const runCheck = async () => {
+    const seq = (checkSeq += 1);
+    try {
+      // Plausibilisierung gegen den Main-EPG-Cache (Datenquelle der Planung)
+      const key = ctx.tvgId || ctx.channelId;
+      const slot = key && window.electronAPI.findEpg ? await window.electronAPI.findEpg(key, ctx.startMs) : null;
+      if (seq !== checkSeq) return;
+      if (!slot) {
+        state = { conflict: null, adjacency: null, planable: false, busy: false };
+        showError(scheduleUi.MSG_NO_EPG);
+        render();
+        return;
+      }
+      const res = await window.electronAPI.checkScheduleConflicts(buildRequest({}));
+      if (seq !== checkSeq) return;
+      state = { conflict: res.conflict, adjacency: res.adjacency, planable: true, busy: false };
+      showError('');
+    } catch (e) {
+      if (seq !== checkSeq) return;
+      state = { conflict: null, adjacency: null, planable: false, busy: false };
+      showError(scheduleUi.ipcErrorMessage(e));
+    }
+    render();
+  };
+  const scheduleCheck = () => {
+    clearTimeout(checkTimer);
+    checkTimer = setTimeout(runCheck, 250);
+  };
+
+  const close = () => {
+    clearTimeout(checkTimer);
+    checkSeq += 1;
+    overlay.classList.remove('open');
+    confirmBtn.removeEventListener('click', onConfirm);
+    mergeBtn.removeEventListener('click', onMerge);
+    discardBtn.removeEventListener('click', close);
+    beforeInput.removeEventListener('input', scheduleCheck);
+    afterInput.removeEventListener('input', scheduleCheck);
+    overlay.removeEventListener('keydown', onKey);
+    recSchedulePending = null;
+    if (previousFocus && typeof previousFocus.focus === 'function') {
+      try { previousFocus.focus(); } catch (_e) { /* Element weg */ }
+    }
+  };
+
+  const submit = async extra => {
+    if (state.busy || !state.planable) return;
+    state = { ...state, busy: true };
+    render();
+    try {
+      const result = await window.electronAPI.addSchedule(buildRequest(extra));
+      if (result && result.ok === false && result.code === 'CONFLICT') {
+        // Zwischenzeitlich neuer Konflikt: Warnung zeigen, Entscheidung bleibt beim Nutzer
+        state = { conflict: result.conflict, adjacency: result.adjacency, planable: true, busy: false };
+        render();
+        return;
+      }
+      close();
+      const when = scheduleUi.formatSlotRange(ctx.startMs, ctx.stopMs);
+      setEpgDetailNotice(
+        result && result.merged
+          ? `Aufnahme verlängert: ${result.entry.title} (${scheduleUi.formatEntryTimes(result.entry)})`
+          : `Aufnahme geplant: ${ctx.title} (${when})`,
+        true,
+      );
+    } catch (e) {
+      state = { ...state, busy: false };
+      showError(scheduleUi.ipcErrorMessage(e));
+      render();
+    }
+  };
+  const onConfirm = () => submit(state.conflict && state.conflict.exceeds ? { allowOverLimit: true } : {});
+  const onMerge = () =>
+    submit({ mergeWithId: state.adjacency.entryId, ...(state.conflict && state.conflict.exceeds ? { allowOverLimit: true } : {}) });
+
+  // Esc = Verwerfen; Tab bleibt im Dialog (Fokus-Trap über die sichtbaren Bedienelemente)
+  const onKey = ev => {
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+    } else if (ev.key === 'Tab') {
+      const order = [beforeInput, afterInput, discardBtn, mergeBtn, confirmBtn].filter(el => !el.hidden && !el.disabled);
+      if (!order.length) return;
+      const idx = order.indexOf(document.activeElement);
+      const next = ev.shiftKey ? (idx <= 0 ? order.length - 1 : idx - 1) : idx === -1 || idx === order.length - 1 ? 0 : idx + 1;
+      ev.preventDefault();
+      order[next].focus();
+    }
+  };
+
+  confirmBtn.addEventListener('click', onConfirm);
+  mergeBtn.addEventListener('click', onMerge);
+  discardBtn.addEventListener('click', close);
+  beforeInput.addEventListener('input', scheduleCheck);
+  afterInput.addEventListener('input', scheduleCheck);
+  overlay.addEventListener('keydown', onKey);
+  recSchedulePending = { close };
+
+  showError('');
+  state = { conflict: null, adjacency: null, planable: false, busy: false };
+  render();
+  overlay.classList.add('open');
+  discardBtn.focus();
+  // Puffer-Defaults aus den Settings, dann erste Prüfung
+  window.electronAPI
+    .getRecordingSettings()
+    .then(settings => {
+      beforeInput.value = String(settings.bufferBeforeMin ?? 2);
+      afterInput.value = String(settings.bufferAfterMin ?? 5);
+    })
+    .catch(() => {
+      beforeInput.value = '2';
+      afterInput.value = '5';
+    })
+    .finally(runCheck);
 }
 
 // ── TV Keyboard shortcut ──
@@ -2571,26 +2816,233 @@ function openRecordingsScreen() {
   showDashboard('recording');
 }
 
+// Dashboard „Aufnahmen“: Tabs „Bibliothek“ | „Geplant“ (Etappe 2a, §3.7)
+let recordingDashboardTab = 'library';
+let scheduleEditingId = null; // Eintrag mit offener Puffer-Bearbeitung (kein Überzeichnen)
+
 function renderRecordingDashboard() {
   const panel = document.createElement('div');
   panel.className = 'recordings-dashboard-panel';
   const header = document.createElement('div');
   header.className = 'recordings-dashboard-header';
-  header.innerHTML = `<span class="recordings-dashboard-title">Aufnahmen</span>`;
+  const titleEl = document.createElement('span');
+  titleEl.className = 'recordings-dashboard-title';
+  titleEl.textContent = 'Aufnahmen';
+  header.appendChild(titleEl);
   const refresh = document.createElement('button');
   refresh.className = 'recordings-refresh';
   refresh.id = 'recordingsRefresh';
   refresh.title = 'Aktualisieren';
   refresh.textContent = '↻';
-  refresh.addEventListener('click', renderRecordingDashboard);
+  refresh.addEventListener('click', () => {
+    scheduleEditingId = null;
+    renderRecordingDashboard();
+  });
   header.appendChild(refresh);
   panel.appendChild(header);
+
+  const tabs = document.createElement('div');
+  tabs.className = 'recordings-tabs';
+  tabs.setAttribute('role', 'tablist');
+  for (const [key, label] of [['library', 'Bibliothek'], ['planned', 'Geplant']]) {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.id = `recordingsTab-${key}`;
+    tab.className = 'recordings-tab' + (recordingDashboardTab === key ? ' active' : '');
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', recordingDashboardTab === key ? 'true' : 'false');
+    tab.textContent = label;
+    tab.addEventListener('click', () => {
+      if (recordingDashboardTab === key) return;
+      recordingDashboardTab = key;
+      scheduleEditingId = null;
+      renderRecordingDashboard();
+    });
+    tabs.appendChild(tab);
+  }
+  panel.appendChild(tabs);
+
   const list = document.createElement('div');
   list.className = 'recordings-list recordings-dashboard-list';
+  list.id = recordingDashboardTab === 'planned' ? 'scheduleList' : 'recordingsLibraryList';
   panel.appendChild(list);
-  renderRecordingsInto(list);
+  if (recordingDashboardTab === 'planned') renderScheduleInto(list);
+  else renderRecordingsInto(list);
   dashboardGrid.innerHTML = '';
   dashboardGrid.appendChild(panel);
+}
+
+// ── Planungsliste „Geplant“ ──
+// Nur textContent: Titel/Sender stammen aus dem EPG (fremder Text).
+
+function scheduleRowButton(label, onClick, { danger = false } = {}) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'recording-entry-btn' + (danger ? ' danger' : '');
+  btn.textContent = label;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+function buildScheduleRow(entry) {
+  const row = document.createElement('div');
+  row.className = 'recording-entry';
+  row.dataset.scheduleId = entry.id;
+  row.dataset.state = entry.state;
+
+  const logoSrc = recordingChannelLogo(entry.channelName);
+  const logo = logoSrc
+    ? Object.assign(document.createElement('img'), { className: 'recording-entry-logo', alt: '' })
+    : Object.assign(document.createElement('div'), {
+        className: 'recording-entry-logo-fallback',
+        textContent: (entry.channelName || '?').slice(0, 1).toUpperCase(),
+      });
+  if (logoSrc) logo.src = logoSrc;
+  row.appendChild(logo);
+
+  const body = document.createElement('div');
+  body.className = 'recording-entry-body';
+  const title = document.createElement('div');
+  title.className = 'recording-entry-title';
+  title.textContent = entry.title;
+  const meta = document.createElement('div');
+  meta.className = 'recording-entry-meta';
+  meta.textContent = `${entry.channelName || entry.channelId} · ${scheduleUi.formatEntryTimes(entry)} · ${scheduleUi.formatBuffers(entry)}`;
+  const status = document.createElement('div');
+  status.className = `recording-entry-status schedule-status s-${entry.state}`;
+  status.textContent = scheduleUi.scheduleStatusText(entry);
+  body.append(title, meta, status);
+  row.appendChild(body);
+
+  const actions = document.createElement('div');
+  actions.className = 'recording-entry-actions';
+  if (entry.state === 'scheduled') {
+    actions.appendChild(scheduleRowButton('Bearbeiten', () => {
+      scheduleEditingId = entry.id;
+      renderRecordingDashboard();
+    }));
+    actions.appendChild(scheduleRowButton('Absagen', ev => cancelScheduleEntry(entry, ev.currentTarget), { danger: true }));
+  } else if (entry.state !== 'recording') {
+    actions.appendChild(scheduleRowButton('Entfernen', ev => removeScheduleEntry(entry, ev.currentTarget)));
+  }
+  row.appendChild(actions);
+
+  if (scheduleEditingId === entry.id && entry.state === 'scheduled') body.appendChild(buildScheduleEditForm(entry));
+  return row;
+}
+
+function buildScheduleEditForm(entry) {
+  const form = document.createElement('div');
+  form.className = 'schedule-inline-edit';
+  const mkInput = (label, sec) => {
+    const wrap = document.createElement('label');
+    wrap.textContent = label + ' ';
+    const input = document.createElement('input');
+    input.className = 'modal-input';
+    input.type = 'number';
+    input.min = '0';
+    input.max = '30';
+    input.step = '1';
+    input.value = String(Math.round((sec || 0) / 60));
+    wrap.appendChild(input);
+    return { wrap, input };
+  };
+  const before = mkInput('Vorlauf (Min.)', entry.bufferBeforeSec);
+  const after = mkInput('Nachlauf (Min.)', entry.bufferAfterSec);
+  const msg = document.createElement('span');
+  let allowOverLimit = false;
+  const save = scheduleRowButton('Speichern', async () => {
+    const toSec = input => Math.round(Math.min(30, Math.max(0, Number(input.value) || 0)) * 60);
+    save.disabled = true;
+    try {
+      const patch = { bufferBeforeSec: toSec(before.input), bufferAfterSec: toSec(after.input) };
+      if (allowOverLimit) patch.allowOverLimit = true;
+      const result = await window.electronAPI.updateSchedule(entry.id, patch);
+      if (result && result.ok === false && result.code === 'CONFLICT') {
+        msg.textContent = scheduleUi.describeConflict(result.conflict);
+        allowOverLimit = true;
+        save.textContent = 'Trotzdem speichern';
+        save.disabled = false;
+        return;
+      }
+      scheduleEditingId = null;
+      renderRecordingDashboard();
+    } catch (e) {
+      msg.textContent = scheduleUi.ipcErrorMessage(e);
+      save.disabled = false;
+    }
+  });
+  const cancel = scheduleRowButton('Abbrechen', () => {
+    scheduleEditingId = null;
+    renderRecordingDashboard();
+  });
+  form.append(before.wrap, after.wrap, save, cancel, msg);
+  return form;
+}
+
+function cancelScheduleEntry(entry, button) {
+  // Bestätigung nur, wenn die Aufnahme gleich startet (< 30 Min.) — sonst sofort
+  const startMs = Date.parse(entry.epgStart);
+  const soon = Number.isFinite(startMs) && startMs - Date.now() < 30 * 60 * 1000;
+  if (soon && button.dataset.confirm !== '1') {
+    button.dataset.confirm = '1';
+    button.textContent = 'Wirklich absagen?';
+    setTimeout(() => {
+      if (button.isConnected) {
+        button.dataset.confirm = '';
+        button.textContent = 'Absagen';
+      }
+    }, 4000);
+    return;
+  }
+  button.disabled = true;
+  window.electronAPI.removeSchedule(entry.id).catch(e => {
+    showTvToast('Absagen nicht möglich: ' + scheduleUi.ipcErrorMessage(e));
+    button.disabled = false;
+  });
+}
+
+function removeScheduleEntry(entry, button) {
+  button.disabled = true;
+  window.electronAPI.removeSchedule(entry.id).catch(e => {
+    showTvToast('Entfernen nicht möglich: ' + scheduleUi.ipcErrorMessage(e));
+    button.disabled = false;
+  });
+}
+
+function renderScheduleInto(listEl) {
+  window.electronAPI
+    .listSchedules()
+    .then(entries => {
+      listEl.textContent = '';
+      const { upcoming, history } = scheduleUi.splitScheduleEntries(entries || []);
+      if (!upcoming.length && !history.length) {
+        const empty = document.createElement('div');
+        empty.className = 'recordings-empty';
+        empty.id = 'scheduleEmpty';
+        empty.textContent =
+          'Keine Aufnahmen geplant. Öffne im Programmführer eine kommende Sendung und wähle „Aufnehmen“.';
+        listEl.appendChild(empty);
+        return;
+      }
+      const section = (label, items) => {
+        if (!items.length) return;
+        const head = document.createElement('div');
+        head.className = 'schedule-section-title';
+        head.textContent = label;
+        listEl.appendChild(head);
+        for (const entry of items) listEl.appendChild(buildScheduleRow(entry));
+      };
+      section('Anstehend', upcoming);
+      section('Verlauf', history);
+    })
+    .catch(e => {
+      listEl.textContent = '';
+      const err = document.createElement('div');
+      err.className = 'recordings-empty';
+      err.textContent = 'Planung konnte nicht geladen werden: ' + scheduleUi.ipcErrorMessage(e);
+      listEl.appendChild(err);
+    });
 }
 
 /**
@@ -3723,6 +4175,14 @@ window.electronAPI.onRecordingAutoStopped?.(data => {
     showTvToast(`Aufnahme „${name}“ beendet: ${data.message}. Sie bleibt abspielbar.`);
   } else if (data.reason === 'max-duration') {
     showTvToast(`Aufnahme „${name}“ beendet: ${data.message}.`);
+  }
+});
+// Planung: live aktualisieren (Liste „Geplant“) und Hinweise (Spätstart, verpasst, fehlgeschlagen) zeigen
+window.electronAPI.onScheduleChanged?.(data => {
+  const notice = data && typeof data === 'object' ? data.notice : null;
+  if (notice && notice.message) showTvToast(notice.message);
+  if (currentDashboardGroup === 'recording' && recordingDashboardTab === 'planned' && !scheduleEditingId) {
+    renderRecordingDashboard();
   }
 });
 window.electronAPI.onRecordingChanged(data => {

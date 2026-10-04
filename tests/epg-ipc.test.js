@@ -137,11 +137,13 @@ test('main.js: EpgService wird unabhängig vom Fenster/ffmpeg-Health gestartet u
   assert.match(main, /new EpgService\(\{[\s\S]*?getSources: \(\) => loadTvSources\(\)/);
   assert.match(main, /registerEpgIpc\(\{ ipcMain, epg: epgService, requireMainRenderer \}\)/);
   assert.match(main, /epgService\.start\(\)/);
-  assert.match(main, /autoRefresh: !process\.env\.STREAMING_HUB_USER_DATA/, 'E2E-Isolation: kein automatischer Netz-Download');
+  assert.match(main, /autoRefresh:\s*!process\.env\.STREAMING_HUB_USER_DATA/, 'E2E-Isolation: kein automatischer Netz-Download');
+  // Test-Hook: lokale XMLTV-Fixture ersetzt den Download (nur mit STREAMING_HUB_USER_DATA, nie im Normalbetrieb)
+  assert.match(main, /process\.env\.STREAMING_HUB_USER_DATA && process\.env\.STREAMING_HUB_EPG_FIXTURE/);
   // Start steht VOR dem ffmpeg-Health-Zweig (kein Zusammenhang mit der Aufnahme-Engine)
   assert.ok(main.indexOf('new EpgService(') < main.indexOf('const health = checkHealth(__dirname)'));
   // geteilte Download-Validierung statt Duplikat im fetch-epg-Handler
-  assert.match(main, /const response = await fetchEpgResponse\(url\)/);
+  assert.match(main, /const response = await fetchEpgResponse\(url(, epgFixtureFetch \? \{ fetchImpl: epgFixtureFetch \} : undefined)?\)/);
   assert.match(main, /epgService\.stop\(\)/, 'Dienst wird beim Beenden gestoppt');
   // Renderer-EPG bleibt unverändert: fetch-epg-Handler und parseXMLTV bestehen weiter
   assert.match(main, /ipcMain\.handle\('fetch-epg'/);
