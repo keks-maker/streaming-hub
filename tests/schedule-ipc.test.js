@@ -191,3 +191,14 @@ test('Quelltext: main.js registriert die Planungs-IPC hinter requireMainRenderer
   assert.ok(!/ipcRenderer\.(send|invoke)\([a-zA-Z]/.test(block), 'nur feste Kanalnamen als Literale');
   assert.equal((block.match(/ipcRenderer\.invoke\('schedule:/g) || []).length, 5);
 });
+
+test('Titel/Beschreibung: Steuerzeichen werden zu Leerzeichen normalisiert, Grenzen exakt 300/2000', () => {
+  const out = v({ title: '  Tag\u0000es\tschau\n\nSpezial  ', description: 'a\u0007b\r\nc' });
+  assert.equal(out.title, 'Tag es schau Spezial');
+  assert.equal(out.description, 'a b c');
+  assert.equal(v({ title: 'x'.repeat(300) }).title.length, 300);
+  assert.throws(() => v({ title: 'x'.repeat(301) }), /zu lang/);
+  assert.equal(v({ description: 'y'.repeat(2000) }).description.length, 2000);
+  assert.throws(() => v({ description: 'y'.repeat(2001) }), /zu lang/);
+  assert.throws(() => v({ title: '\u0000\u0001' }), /Titel fehlt/);
+});

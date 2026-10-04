@@ -224,7 +224,7 @@ test('Direkt anschließende Sendung: Mittelpunkt-Regel und „Eine durchgehende 
   // Fokus-Trap: Tab wandert durch die Bedienelemente und verlässt den Dialog nicht
   for (let i = 0; i < 8; i += 1) {
     await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => !!document.activeElement.closest('#recScheduleOverlay'))).toBe(true);
+    expect(await page.evaluate(() => !!window.document.activeElement.closest('#recScheduleOverlay'))).toBe(true);
   }
   await page.locator('#recScheduleMerge').click();
   await expect(page.locator('#recScheduleOverlay')).not.toHaveClass(/open/);

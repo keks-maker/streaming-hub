@@ -155,3 +155,22 @@ test('Randbedingungen: tv.html unberührt (kein Aufnahme-Button für Planung im 
   const nav = indexHtml.slice(indexHtml.indexOf('id="overlayNav"'), indexHtml.indexOf('id="overlayNav"') + 600);
   assert.ok(!/Geplant|schedule/i.test(nav), 'Navbar bekommt keinen Planungs-Eintrag');
 });
+
+test('clampText kürzt auf die Main-Grenzen (mit „…“), der Validator akzeptiert das Ergebnis', () => {
+  const validation = require('../lib/ipc-validation.js');
+  assert.equal(ui.clampText('kurz', 300), 'kurz');
+  const t = ui.clampText('t'.repeat(500), 300);
+  const d = ui.clampText('d'.repeat(5000), 2000);
+  assert.equal(t.length, 300);
+  assert.equal(d.length, 2000);
+  assert.ok(t.endsWith('…') && d.endsWith('…'));
+  assert.equal(ui.clampText(null, 10), '');
+  assert.match(rendererJs, /scheduleUi\.clampText\(ctx\.title, 300\)/);
+  assert.match(rendererJs, /scheduleUi\.clampText\(ctx\.description, 2000\)/);
+  const now = Date.parse('2026-10-05T19:00:00+02:00');
+  const out = validation.validateScheduleInput(
+    { channelId: 'a', channelName: 'A', title: t, description: d, epgStart: '2026-10-05T20:00:00+02:00', epgStop: '2026-10-05T21:00:00+02:00' },
+    { nowMs: now },
+  );
+  assert.equal(out.description.length, 2000);
+});
