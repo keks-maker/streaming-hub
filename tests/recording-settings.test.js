@@ -16,6 +16,7 @@ const {
   clampMaxDurationHours,
   normalizeRecordingSettings,
   applyRecordingSettingsPatch,
+  buildSettingsResponse,
 } = require('../lib/recorder/recording-settings.js');
 
 test('Defaults: 3 parallel, 6 h Höchstdauer, 1 GB Reserve, Minimum 512 MB', () => {
@@ -103,4 +104,25 @@ test('Patch: unbekannte Felder werden ignoriert (kein Durchreichen aus IPC)', ()
   const result = applyRecordingSettingsPatch(null, { evil: 'x', storageRoot: '/etc', maxParallel: 3 });
   assert.equal(result.settings.evil, undefined);
   assert.equal(result.settings.storageRoot, undefined, 'storageRoot ist nicht per Patch setzbar');
+});
+
+test('Handler-Logik get/set: Antwortform, Warnung bei Reserve < 512, nicht gesendete Felder bleiben', () => {
+  const got = buildSettingsResponse(normalizeRecordingSettings({ storageRoot: '/x' }));
+  assert.deepEqual(got, {
+    maxParallel: 3, maxDurationHours: 6, reserveMB: 1024, minReserveMB: 512,
+    clamped: { maxParallel: false, maxDurationHours: false, reserveMB: false },
+    reserveBelowMinimum: false, reserveWarning: null,
+  });
+  const stored = { maxParallel: 5, maxDurationHours: 8, reserveMB: 2048 };
+  const set = applyRecordingSettingsPatch(stored, { reserveMB: '100' });
+  const res = buildSettingsResponse(set);
+  assert.equal(res.reserveMB, 512);
+  assert.equal(res.reserveBelowMinimum, true);
+  assert.equal(res.reserveWarning, RESERVE_MIN_WARNING);
+  assert.equal(res.maxParallel, 5);
+  assert.equal(res.maxDurationHours, 8);
+  const again = buildSettingsResponse(applyRecordingSettingsPatch(set.settings, { maxParallel: 2 }));
+  assert.equal(again.reserveMB, 512);
+  assert.equal(again.reserveWarning, null);
+  assert.equal(again.maxParallel, 2);
 });

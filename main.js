@@ -48,17 +48,7 @@ function readRecordingSettingsRaw() {
   }
 }
 
-function recordingSettingsResponse(result) {
-  return {
-    maxParallel: result.settings.maxParallel,
-    maxDurationHours: result.settings.maxDurationHours,
-    reserveMB: result.settings.reserveMB,
-    minReserveMB: recordingSettingsLib.MIN_RESERVE_MB,
-    clamped: result.clamped || {},
-    reserveBelowMinimum: !!result.reserveBelowMinimum,
-    reserveWarning: result.reserveBelowMinimum ? recordingSettingsLib.RESERVE_MIN_WARNING : null,
-  };
-}
+const recordingSettingsResponse = recordingSettingsLib.buildSettingsResponse;
 
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
 let recorder = null;
