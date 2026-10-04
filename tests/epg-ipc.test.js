@@ -88,7 +88,10 @@ async function makeIpc() {
 
 test('IPC: epg:range/find/status/refresh liefern Daten ohne Fenster (reiner Main-Dienst)', async () => {
   const { handlers, main } = await makeIpc();
-  assert.deepEqual([...handlers.keys()].sort(), ['epg:find', 'epg:refresh', 'epg:range', 'epg:status'].sort());
+  assert.deepEqual(
+    [...handlers.keys()].sort(),
+    ['epg:find', 'epg:refresh', 'epg:range', 'epg:range-many', 'epg:search', 'epg:status'].sort(),
+  );
 
   const week = await handlers.get('epg:range')(main, 'ZDF.de@HD', NOW, NOW + 7 * 24 * HOUR);
   assert.ok(week.length >= 7 * 24, `Slots: ${week.length}`);
@@ -111,6 +114,8 @@ test('IPC: fremde Absender werden abgelehnt (requireMainRenderer), ungültige Ei
   for (const [channel, args] of [
     ['epg:range', ['ZDF.de', NOW, NOW + HOUR]],
     ['epg:find', ['ZDF.de', NOW]],
+    ['epg:range-many', [['ZDF.de'], NOW, NOW + HOUR]],
+    ['epg:search', [['ZDF.de'], 'Show', NOW, NOW + HOUR]],
     ['epg:status', []],
     ['epg:refresh', []],
   ]) {
@@ -122,12 +127,19 @@ test('IPC: fremde Absender werden abgelehnt (requireMainRenderer), ungültige Ei
   await assert.rejects(async () => handlers.get('epg:range')(main, 'ZDF.de', '0', 1), /ungültig/);
 });
 
-test('preload.js: EPG-Kanäle stehen in der Whitelist (genau diese vier)', () => {
+test('preload.js: EPG-Kanäle stehen in der Whitelist (feste Namen, keine generische Durchreichung)', () => {
   const preload = read('preload.js');
-  for (const channel of ['epg:range', 'epg:find', 'epg:status', 'epg:refresh']) {
+  for (const channel of ['epg:range', 'epg:find', 'epg:range-many', 'epg:search', 'epg:status', 'epg:refresh', 'epg:changed']) {
     assert.ok(preload.includes(`'${channel}'`), channel);
   }
   assert.match(preload, /getEpgRange: \(channelKey, fromMs, toMs\) => ipcRenderer\.invoke\('epg:range'/);
+  assert.match(preload, /getEpgRangeMany: \(channelKeys, fromMs, toMs\) => ipcRenderer\.invoke\('epg:range-many'/);
+  assert.match(preload, /searchEpg: \(channelKeys, query, fromMs, toMs, limit, options\)/);
+  // onEpgChanged: wie onScheduleChanged mit Unsubscribe-Funktion
+  assert.match(
+    preload,
+    /onEpgChanged: cb => \{\s*const handler = \(_e, data\) => cb\(data\);\s*ipcRenderer\.on\('epg:changed', handler\);\s*return \(\) => ipcRenderer\.removeListener\('epg:changed', handler\);/,
+  );
   // Kein generischer Durchreich-Kanal für epg:* (nur invoke mit festem Kanalnamen)
   assert.ok(!/ipcRenderer\.invoke\(\s*[a-zA-Z_]+\s*[,)]/.test(preload), 'kein invoke mit variablem Kanalnamen');
 });
@@ -137,6 +149,8 @@ test('main.js: EpgService wird unabhängig vom Fenster/ffmpeg-Health gestartet u
   assert.match(main, /new EpgService\(\{[\s\S]*?getSources: \(\) => loadTvSources\(\)/);
   assert.match(main, /registerEpgIpc\(\{ ipcMain, epg: epgService, requireMainRenderer \}\)/);
   assert.match(main, /epgService\.start\(\)/);
+  // epg:changed geht nur ans Hauptfenster (mainWindow), Fehler beim Senden sind nicht fatal
+  assert.match(main, /epgService\.onChanged\(payload => \{\s*try \{\s*mainWindow\?\.webContents\.send\('epg:changed', payload\)/);
   assert.match(main, /autoRefresh:\s*!process\.env\.STREAMING_HUB_USER_DATA/, 'E2E-Isolation: kein automatischer Netz-Download');
   // Test-Hook: lokale XMLTV-Fixture ersetzt den Download (nur mit STREAMING_HUB_USER_DATA, nie im Normalbetrieb)
   assert.match(main, /process\.env\.STREAMING_HUB_USER_DATA && process\.env\.STREAMING_HUB_EPG_FIXTURE/);

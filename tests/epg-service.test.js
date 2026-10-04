@@ -489,3 +489,82 @@ test('Service: stop() bricht laufende Refreshes ab und ist wiederholbar', async 
   service.stop();
   service.stop();
 });
+
+// ── epg:changed (Etappe 3.1): onChanged feuert nach erfolgreichem Refresh ──
+
+test('onChanged: feuert nach erfolgreichem Refresh (einmal je Refresh, nach dem Speichern), Abmelden geht', async () => {
+  const xml = buildXmltv({ channels: ['ZDF.de'], fromMs: NOW - DAY, toMs: NOW + DAY });
+  const { service, dir } = makeService({ xml });
+  const events = [];
+  const off = service.onChanged(payload => {
+    // beim Event sind die neuen Daten bereits im Cache und auf der Platte
+    events.push({ ...payload, slots: service.range('ZDF.de', NOW, NOW + HOUR).length, saved: fs.existsSync(path.join(dir, 'epg-cache.json')) });
+  });
+  await service.refresh({ force: true });
+  assert.equal(events.length, 1);
+  assert.deepEqual(events[0], { at: NOW, urls: [URL_A], slots: 1, saved: true });
+  // parallele Aufrufe teilen sich den Refresh → ein Event
+  await Promise.all([service.refresh({ force: true }), service.refresh({ force: true })]);
+  assert.equal(events.length, 2);
+  off();
+  await service.refresh({ force: true });
+  assert.equal(events.length, 2, 'nach dem Abmelden kein Event mehr');
+  assert.throws(() => service.onChanged('kein listener'), /Funktion/);
+});
+
+test('onChanged: kein Event bei Fehlschlag (Download, leeres XMLTV); alter Cache bleibt', async () => {
+  const xml = buildXmltv({ channels: ['ZDF.de'], fromMs: NOW - DAY, toMs: NOW + DAY });
+  let mode = 'ok';
+  const { service, clock } = makeService({
+    fetchImpl: async () => {
+      if (mode === 'down') throw new Error('Netz weg');
+      return responseFor(mode === 'empty' ? '<tv></tv>' : xml);
+    },
+  });
+  let count = 0;
+  service.onChanged(() => {
+    count += 1;
+  });
+  await service.refresh({ force: true });
+  assert.equal(count, 1);
+  for (const m of ['down', 'empty']) {
+    mode = m;
+    clock.t += HOUR;
+    const results = await service.refresh({ force: true });
+    assert.equal(results[0].ok, false, m);
+  }
+  assert.equal(count, 1, 'Fehlschläge melden nichts');
+  assert.equal(service.range('ZDF.de', NOW, NOW + HOUR).length, 1, 'alter Cache bleibt');
+});
+
+test('onChanged: feuert auch bei refreshForSource (Slip-Refresh), nicht ohne passende Quelle; Fehler im Listener stören nicht', async () => {
+  const xml = buildXmltv({ channels: ['ZDF.de'], fromMs: NOW - DAY, toMs: NOW + DAY });
+  const { service } = makeService({ xml, logger: { warn() {}, info() {} } });
+  const urls = [];
+  service.onChanged(() => {
+    throw new Error('Listener kaputt');
+  });
+  service.onChanged(p => urls.push(...p.urls));
+  const ok = await service.refreshForSource('de');
+  assert.equal(ok.ok, true);
+  assert.deepEqual(urls, [URL_A]);
+  const none = await service.refreshForSource('gibtsnicht');
+  assert.equal(none.ok, false);
+  assert.deepEqual(urls, [URL_A], 'keine betroffene Quelle → kein Event');
+});
+
+test('onChanged: Takt-Refresh (tick) meldet ebenfalls, ein Tick ohne Fälligkeit nicht', async () => {
+  const xml = buildXmltv({ channels: ['ZDF.de'], fromMs: NOW - DAY, toMs: NOW + 2 * DAY });
+  const { service, clock } = makeService({ xml });
+  let count = 0;
+  service.onChanged(() => {
+    count += 1;
+  });
+  await service.tick();
+  assert.equal(count, 1);
+  await service.tick();
+  assert.equal(count, 1, 'nicht fällig');
+  clock.t += 13 * HOUR;
+  await service.tick();
+  assert.equal(count, 2);
+});
