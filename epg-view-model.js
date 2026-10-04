@@ -18,6 +18,7 @@
 
 const grid = require('./lib/epg-grid.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
+const gridModel = require('./epg-grid-model.js');
 
 const ROW_HEIGHT = 44;
 const DAY_HEIGHT = 30;
@@ -473,7 +474,7 @@ function deriveViewState({ status, loadError, loading, channelCount, hasFavorite
 const MODES = ['list', 'grid'];
 
 /**
- * Gemeinsamer Zustand: Modus, Tag, Scroll-Anker (Zeitpunkt statt Pixel → in jedem Modus
+ * Gemeinsamer Zustand: Modus, Zoom (Raster, 3/5/8 px/min), Tag, Scroll-Anker (Zeitpunkt statt Pixel → in jedem Modus
  * wiederherstellbar), Auswahl, „Alle Sender“ (Sitzungsvariable, P14). Ein Moduswechsel
  * ändert nur den Modus.
  */
@@ -484,6 +485,7 @@ function createViewState(initial = {}) {
     anchorMs: Number.isFinite(initial.anchorMs) ? initial.anchorMs : null,
     selectedRowId: initial.selectedRowId || null,
     showAll: !!initial.showAll,
+    zoom: gridModel.isZoom(initial.zoom) ? initial.zoom : gridModel.DEFAULT_ZOOM,
   };
   return {
     get mode() {
@@ -500,6 +502,14 @@ function createViewState(initial = {}) {
     },
     get showAll() {
       return state.showAll;
+    },
+    get zoom() {
+      return state.zoom;
+    },
+    setZoom(zoom) {
+      if (!gridModel.isZoom(zoom)) return false;
+      state.zoom = zoom;
+      return true;
     },
     setMode(mode) {
       if (!MODES.includes(mode)) return false;

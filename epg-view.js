@@ -20,6 +20,9 @@
 const grid = require('./lib/epg-grid.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const model = require('./epg-view-model.js');
+const gridModel = require('./epg-grid-model.js');
+const { createGridView } = require('./epg-grid-view.js');
+const { h, trapTab } = require('./epg-dom.js');
 
 const TICK_MS = 30 * 1000;
 const OVERSCAN_PX = 400;
@@ -27,39 +30,6 @@ const SCROLL_RELOAD_DEBOUNCE_MS = 250;
 const MARKER_DEBOUNCE_MS = 120;
 const TOAST_MS = 5000;
 const FETCH_PARALLEL = 3;
-
-function h(tag, props = {}, children = []) {
-  const el = document.createElement(tag);
-  if (props.className) el.className = props.className;
-  if (props.id) el.id = props.id;
-  if (props.text !== undefined) el.textContent = props.text;
-  if (props.type) el.type = props.type;
-  if (props.hidden) el.hidden = true;
-  for (const [name, value] of Object.entries(props.attrs || {})) el.setAttribute(name, value);
-  for (const child of children) el.appendChild(child);
-  return el;
-}
-
-function getFocusable(container) {
-  return [...container.querySelectorAll('button, [href], input, select, textarea, [tabindex]')].filter(
-    el => !el.disabled && el.tabIndex >= 0 && !el.closest('[hidden]') && el.getClientRects().length > 0,
-  );
-}
-
-/** Tab-Falle: hält den Fokus in container. Gibt true zurück, wenn die Taste behandelt wurde. */
-function trapTab(event, container) {
-  if (event.key !== 'Tab') return false;
-  const list = getFocusable(container);
-  if (!list.length) {
-    event.preventDefault();
-    return true;
-  }
-  const idx = list.indexOf(document.activeElement);
-  const next = event.shiftKey ? (idx <= 0 ? list.length - 1 : idx - 1) : idx === -1 || idx === list.length - 1 ? 0 : idx + 1;
-  event.preventDefault();
-  list[next].focus();
-  return true;
-}
 
 /**
  * root: das leere Overlay-Element (#epgOverlay). deps:
@@ -88,6 +58,8 @@ function createEpgView(root, deps) {
   let channelEntries = [];
   let channelByKey = new Map();
   let hasFavorites = false;
+  let channelsWithEpg = new Set(); // rohe Schlüssel mit mindestens einer Sendung (Raster zeigt nur diese Sender)
+  let coverageToMs = null;
   let dayRows = new Map(); // dayKey → rows
   let dayPromises = new Map(); // dayKey → Promise (laufende/fertige Abrufe)
   let layout = null;
@@ -135,12 +107,25 @@ function createEpgView(root, deps) {
     attrs: { 'aria-label': 'Programmführer schließen' },
     text: '×',
   });
+  const modeListBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeList', type: 'button', text: 'Liste' });
+  const modeGridBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeGrid', type: 'button', text: 'Raster' });
+  const modeSeg = h('div', { className: 'epg-seg', attrs: { role: 'group', 'aria-label': 'Ansicht' } }, [modeListBtn, modeGridBtn]);
   const header = h('div', { className: 'epg-header' }, [
-    h('h2', { className: 'epg-title', text: 'Programmführer' }),
+    h('div', { className: 'epg-header-left' }, [h('h2', { className: 'epg-title', text: 'Programmführer' }), modeSeg]),
     h('div', { className: 'epg-header-actions' }, [nowBtn, standEl, refreshBtn, closeBtn]),
   ]);
   const dayTabs = h('div', { className: 'epg-daytabs', id: 'epgDayTabs', attrs: { role: 'group', 'aria-label': 'Tag' } });
-  const filterBar = h('div', { className: 'epg-filterbar' }, [dayTabs]);
+  // Raster-Werkzeuge (nur im Raster sichtbar): Zoom 3/5/8 px/min und Schnellsprünge
+  const zoomBtns = gridModel.ZOOMS.map(z => {
+    const btn = h('button', { className: 'epg-seg-btn epg-zoom-btn', type: 'button', text: String(z), attrs: { title: `${z} px pro Minute` } });
+    btn.dataset.zoom = String(z);
+    return btn;
+  });
+  const zoomSeg = h('div', { className: 'epg-seg', id: 'epgZoom', attrs: { role: 'group', 'aria-label': 'Zoom (px pro Minute)' } }, zoomBtns);
+  const jump2015Btn = h('button', { className: 'epg-btn epg-jump-btn', id: 'epgJump2015', type: 'button', text: '20:15' });
+  const jump2200Btn = h('button', { className: 'epg-btn epg-jump-btn', id: 'epgJump2200', type: 'button', text: '22:00' });
+  const gridTools = h('div', { className: 'epg-grid-tools', id: 'epgGridTools', hidden: true }, [jump2015Btn, jump2200Btn, zoomSeg]);
+  const filterBar = h('div', { className: 'epg-filterbar' }, [dayTabs, gridTools]);
 
   const listHead = h('div', { className: 'epg-list-head', attrs: { 'aria-hidden': 'true' } }, [
     h('span', { text: 'Zeit' }),
@@ -158,7 +143,17 @@ function createEpgView(root, deps) {
     stateText,
     stateBtn,
   ]);
-  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, stateEl]);
+  const gridView = createGridView({
+    api,
+    now,
+    getMarkerData: () => ({ schedules: markerList(), recordings }),
+    isSelected: id => viewState.selectedRowId === id,
+    onOpen: row => openDetail(row),
+    onChannelClick: typeof deps.onChannelClick === 'function' ? deps.onChannelClick : undefined,
+    onScroll: () => followGrid(),
+    onError: err => warn(err),
+  });
+  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, gridView.el, stateEl]);
 
   // Detail-Modal
   const dTitle = h('h3', { className: 'epg-detail-title', id: 'epgDetailTitle' });
@@ -443,9 +438,12 @@ function createEpgView(root, deps) {
 
   function showState(next) {
     const ready = next.kind === 'ready';
-    scroll.hidden = !ready;
+    scroll.hidden = !(ready && viewState.mode === 'list');
+    gridView.setVisible(ready && viewState.mode === 'grid');
     stateEl.hidden = ready;
     nowBtn.disabled = !ready;
+    modeListBtn.disabled = !ready;
+    modeGridBtn.disabled = !ready;
     root.dataset.state = next.kind;
     if (ready) return;
     stateTitle.textContent = next.title;
@@ -481,6 +479,7 @@ function createEpgView(root, deps) {
       if (seq !== loadSeq) return null;
       for (const part of batch) results.push(...part);
     }
+    for (const entry of results) if (entry.slots && entry.slots.length) channelsWithEpg.add(entry.channelKey);
     return model.buildDayRows(day, results, channelByKey);
   }
 
@@ -517,6 +516,7 @@ function createEpgView(root, deps) {
     const fromMs = Math.min(
       ...(status.sources || []).map(s => (Number.isFinite(s.coverageFromMs) ? s.coverageFromMs : Infinity)),
     );
+    coverageToMs = Number.isFinite(status.coverageToMs) ? status.coverageToMs : null;
     days = model.planDays({
       nowMs,
       coverageFromMs: Number.isFinite(fromMs) ? fromMs : null,
@@ -542,6 +542,8 @@ function createEpgView(root, deps) {
       dayRows = new Map();
       dayPromises = new Map();
       layout = null;
+      channelsWithEpg = new Set();
+      gridView.reset();
       clearNodes();
     }
     try {
@@ -556,6 +558,7 @@ function createEpgView(root, deps) {
         dayRows = new Map();
         dayPromises = new Map();
         layout = null;
+        gridView.reset();
         clearNodes();
         loading = false;
         applyDerivedState(false);
@@ -575,12 +578,16 @@ function createEpgView(root, deps) {
       await Promise.all(firstTargets.map(d => ensureDay(d, seq)));
       if (seq !== loadSeq) return;
       const hadLayout = layout !== null;
+      let jumped = hadLayout;
       rebuildLayout({ keepPosition: hadLayout });
+      syncGridData(reload);
       const state = applyDerivedState(rowCount() === 0 && order.length > firstTargets.length);
       if (state.kind === 'ready') {
-        if (!hadLayout) jumpToNow();
-        else renderWindow();
-        updateFollow();
+        if (!jumped) {
+          jumpNow();
+          jumped = true;
+        } else renderCurrent();
+        follow();
       }
       loading = false;
       // übrige Tage im Hintergrund, nächster zuerst
@@ -589,11 +596,14 @@ function createEpgView(root, deps) {
         await ensureDay(day, seq);
         if (seq !== loadSeq) return;
         rebuildLayout({ keepPosition: true });
+        syncGridData(false);
         const next = applyDerivedState(rowCount() === 0 && day !== order[order.length - 1]);
         if (next.kind === 'ready') {
-          if (!nodes.size) jumpToNow();
-          else renderWindow();
-          updateFollow();
+          if (!jumped) {
+            jumpNow();
+            jumped = true;
+          } else renderCurrent();
+          follow();
         }
       }
     } catch (err) {
@@ -621,6 +631,7 @@ function createEpgView(root, deps) {
       recordings = Array.isArray(r) ? r : [];
       for (const entry of nodes.values()) entry.sig = '';
       renderWindow();
+      gridView.invalidate();
       renderModal();
     } catch (err) {
       warn(err);
@@ -658,7 +669,114 @@ function createEpgView(root, deps) {
     updateFollow();
   }
 
+  /** Raster/Liste: Zeitanker und gewählten Tag nachführen (Scrollposition des aktiven Modus). */
+  function follow() {
+    if (viewState.mode === 'grid') followGrid();
+    else updateFollow();
+  }
+
+  function followGrid() {
+    const axis = gridView.getAxis();
+    if (!axis || !isOpen) return;
+    const left = gridView.scrollLeft();
+    viewState.setAnchor(gridModel.anchorFromScrollLeft(viewState.anchorMs, left, axis, gridView.getZoom()));
+    let key;
+    if (dayPin && Math.abs(left - dayPin.top) < 2) key = dayPin.key;
+    else {
+      dayPin = null;
+      key = gridModel.dayKeyAtTime(days, viewState.anchorMs);
+    }
+    if (key && key !== viewState.dayKey) {
+      viewState.setDay(key);
+      syncDayTabs();
+    }
+  }
+
+  function renderCurrent() {
+    if (viewState.mode === 'grid') gridView.render();
+    else renderWindow();
+  }
+
+  function jumpNow() {
+    if (viewState.mode === 'grid') {
+      gridView.scrollToNow();
+      followGrid();
+    } else jumpToNow();
+  }
+
+  /** Raster-Daten (Achse, Sender mit EPG, Zoom) an das Raster geben. */
+  function syncGridData(refetch) {
+    gridView.configure({
+      axis: gridModel.axisFor({ days, coverageToMs }),
+      entries: gridModel.gridRowsFor(channelEntries, channelsWithEpg),
+      zoom: viewState.zoom,
+      refetch,
+    });
+  }
+
+  function syncModeUi() {
+    const grid_ = viewState.mode === 'grid';
+    modeListBtn.classList.toggle('active', !grid_);
+    modeGridBtn.classList.toggle('active', grid_);
+    modeListBtn.setAttribute('aria-pressed', String(!grid_));
+    modeGridBtn.setAttribute('aria-pressed', String(grid_));
+    gridTools.hidden = !grid_;
+    for (const btn of zoomBtns) {
+      const active = Number(btn.dataset.zoom) === viewState.zoom;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    }
+  }
+
+  /** Moduswechsel Liste ↔ Raster: Tag, Zeitanker und Auswahl bleiben erhalten. */
+  function setMode(mode) {
+    if (!isOpen || !layout || mode === viewState.mode) return;
+    follow();
+    const anchor = viewState.anchorMs;
+    if (!viewState.setMode(mode)) return;
+    dayPin = null;
+    syncModeUi();
+    if (mode === 'grid') {
+      syncGridData(false);
+      scroll.hidden = true;
+      gridView.setVisible(true);
+      if (Number.isFinite(anchor)) gridView.scrollTime(anchor);
+      else gridView.scrollToNow();
+      const selected = viewState.selectedRowId;
+      if (selected) gridView.revealChannel(selected.slice(0, selected.lastIndexOf('|')));
+      followGrid();
+    } else {
+      gridView.setVisible(false);
+      scroll.hidden = false;
+      const top = Number.isFinite(anchor) ? model.scrollTopForTime(layout, anchor) : null;
+      if (top !== null) scroll.scrollTop = top;
+      renderWindow();
+      updateFollow();
+    }
+  }
+
+  function setZoom(zoom) {
+    if (!viewState.setZoom(zoom)) return;
+    syncModeUi();
+    syncGridData(false);
+    followGrid();
+  }
+
+  function jumpToClock(hour, minute) {
+    const day = days.find(d => d.key === viewState.dayKey) || days.find(d => d.isToday) || days[0];
+    if (!day || viewState.mode !== 'grid') return;
+    gridView.scrollTime(grid.tvDayTime(day.startMs, hour, minute), 0.1);
+    dayPin = null;
+    followGrid();
+  }
+
   async function goToNow() {
+    dayPin = null;
+    if (viewState.mode === 'grid') {
+      gridView.scrollToNow();
+      followGrid();
+      return;
+    }
     const today = days.find(d => d.isToday);
     if (!today) return;
     await ensureDay(today, loadSeq);
@@ -672,6 +790,12 @@ function createEpgView(root, deps) {
     if (idx < 0) return;
     viewState.setDay(dayKey);
     syncDayTabs();
+    if (viewState.mode === 'grid') {
+      gridView.scrollTime(days[idx].startMs);
+      dayPin = { key: dayKey, top: gridView.scrollLeft() };
+      followGrid();
+      return;
+    }
     const seq = loadSeq;
     const todayIdx = Math.max(0, days.findIndex(d => d.isToday));
     const between = days.slice(Math.min(idx, todayIdx), Math.max(idx, todayIdx) + 1);
@@ -696,7 +820,9 @@ function createEpgView(root, deps) {
   }
 
   function onResize() {
-    if (isOpen) scheduleRender();
+    if (!isOpen) return;
+    scheduleRender();
+    gridView.scheduleRender();
   }
 
   // ── Tick (30 s): Fortschritt ohne Neuaufbau ──
@@ -710,6 +836,7 @@ function createEpgView(root, deps) {
     }
     renderStand();
     if (!layout) return;
+    if (viewState.mode === 'grid') gridView.tick();
     const next = model.buildLayout(loadedRun(), nowMs);
     if (next.nowIndex !== layout.nowIndex) rebuildLayout({ keepPosition: true });
     renderWindow();
@@ -866,6 +993,7 @@ function createEpgView(root, deps) {
     viewState.select(row.id);
     for (const entry of nodes.values()) entry.sig = '';
     renderWindow();
+    gridView.invalidate();
     dTitle.textContent = row.title || '(ohne Titel)';
     const minutes = model.durationMinutes(row.start, row.stop);
     dMeta.textContent = `${model.formatDetailTime(row.start, row.stop)} · ${minutes} min · ${row.channel.name || row.channelKey}`;
@@ -894,7 +1022,8 @@ function createEpgView(root, deps) {
     modalSeq += 1;
     const rowId = viewState.selectedRowId;
     const entry = rowId ? nodes.get(`r:${rowId}`) : null;
-    focusOpener(entry ? entry.refs.open : null);
+    gridView.invalidate();
+    focusOpener(viewState.mode === 'grid' ? gridView.blockElement(rowId) : entry ? entry.refs.open : null);
   }
 
   // ── Ereignisse ──
@@ -935,6 +1064,11 @@ function createEpgView(root, deps) {
     addHandler(window, 'resize', onResize);
     addHandler(root, 'keydown', onRootKeydown);
     addHandler(nowBtn, 'click', () => goToNow());
+    addHandler(modeListBtn, 'click', () => setMode('list'));
+    addHandler(modeGridBtn, 'click', () => setMode('grid'));
+    addHandler(jump2015Btn, 'click', () => jumpToClock(20, 15));
+    addHandler(jump2200Btn, 'click', () => jumpToClock(22, 0));
+    for (const btn of zoomBtns) addHandler(btn, 'click', () => setZoom(Number(btn.dataset.zoom)));
     addHandler(closeBtn, 'click', () => close());
     addHandler(refreshBtn, 'click', () => refresh());
     addHandler(stateBtn, 'click', () => {
@@ -1035,6 +1169,7 @@ function createEpgView(root, deps) {
     root.style.display = 'flex';
     detailCache = new Map();
     viewState.select(null);
+    syncModeUi();
     bind();
     showState({ kind: 'loading', title: 'EPG wird geladen …', text: '', action: null });
     refreshMarkers();
@@ -1059,6 +1194,9 @@ function createEpgView(root, deps) {
     rowsById = new Map();
     layout = null;
     dayPin = null;
+    gridView.reset();
+    channelsWithEpg = new Set();
+    coverageToMs = null;
     spacer.style.height = '';
     schedules = [];
     recordings = [];
