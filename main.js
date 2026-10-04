@@ -21,6 +21,10 @@ const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorde
 const { TrayController } = require('./lib/recorder/TrayController.js');
 const { sweepOrphans } = require('./lib/orphan-sweep.js');
 const paths = require('./lib/recorder/paths.js');
+const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
+const { EpgService } = require('./lib/epg/EpgService.js');
+const { registerEpgIpc } = require('./lib/epg/ipc.js');
+const { fetchEpgResponse } = require('./lib/epg/download.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 
 /**
@@ -36,8 +40,20 @@ function storageFreeBytes(root) {
   }
 }
 
+function readRecordingSettingsRaw() {
+  try {
+    return userStorage.readJson('recordingSettings', null);
+  } catch (_) {
+    return null;
+  }
+}
+
+const recordingSettingsResponse = recordingSettingsLib.buildSettingsResponse;
+
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
 let recorder = null;
+// Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
+let epgService = null;
 let trayController = null;
 
 // Wiedergabe-Protokoll der Aufnahmen (Phase 1c, Karte t_bafa7928):
@@ -294,6 +310,8 @@ function saveTvSources(sources) {
 function broadcastTvSources() {
   const sources = loadTvSources();
   mainWindow?.webContents.send('tv-sources-changed', sources);
+  // Neue/geänderte EPG-URL: Main-Cache holt sie nach (nur wenn fällig)
+  if (epgService) epgService.tick().catch(e => logger.warn('EPG-Tick nach Quellenänderung fehlgeschlagen:', e.message));
 }
 
 function parseM3U(content, sourceId) {
@@ -682,6 +700,25 @@ app.whenReady().then(() => {
     .then(() => logger.info('Widevine CDM status:', components.status()))
     .catch(() => logger.warn('Component updater failed (expected without sandbox), using system Widevine if available'));
 
+  // ── Wochen-EPG im Main (Etappe 1, Konzept §3.2) ──
+  // Cache in userData, Start sofort aus dem Cache nutzbar, Refresh im
+  // Hintergrund (beim Start + alle 12 h) — auch ohne offenes Fenster (Tray).
+  // Unabhängig von den ffmpeg-Binaries (kein Bezug zur Aufnahme-Engine).
+  try {
+    epgService = new EpgService({
+      dir: app.getPath('userData'),
+      getSources: () => loadTvSources().map(({ id, name, epgUrl }) => ({ id, name, epgUrl })),
+      logger,
+      // Isolierte Testläufe (STREAMING_HUB_USER_DATA, E2E) laden nicht automatisch
+      // aus dem Netz; STREAMING_HUB_EPG_REFRESH=on schaltet es dort wieder ein.
+      autoRefresh: !process.env.STREAMING_HUB_USER_DATA || process.env.STREAMING_HUB_EPG_REFRESH === 'on',
+    });
+    registerEpgIpc({ ipcMain, epg: epgService, requireMainRenderer });
+    epgService.start().catch(e => logger.warn('EPG-Dienst konnte nicht starten:', e.message));
+  } catch (e) {
+    logger.error('EPG-Dienst konnte nicht eingerichtet werden:', e.message);
+  }
+
   // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
   // "vorhanden + ausführbar + -version ok". Fehlschlag wird als sichtbarer
   // Fehlerdialog gemeldet — Aufnahme-Features degradieren erkennbar statt still.
@@ -733,7 +770,17 @@ app.whenReady().then(() => {
           logger.warn('Persistierter Aufnahmen-Speicherort nicht nutzbar (' + check.error + ') — Default bleibt aktiv');
         }
       }
-      recorder = new RecorderService({ appRoot: __dirname, storageRoot });
+      // Limits (Parallel-Limit, Höchstdauer, Reserve) aus den persistierten
+      // Settings — Altdaten ohne die Felder laden mit Defaults, Werte werden
+      // beim Laden geklemmt (Reserve-Minimum auch hier, nicht nur in der UI).
+      const normalizedSettings = recordingSettingsLib.normalizeRecordingSettings(persisted).settings;
+      recorder = new RecorderService({
+        appRoot: __dirname,
+        storageRoot,
+        maxParallel: normalizedSettings.maxParallel,
+        maxDurationHours: normalizedSettings.maxDurationHours,
+        reserveMB: normalizedSettings.reserveMB,
+      });
       // Orphan-Janitor (Karte t_695bf150, Sweep beim App-Start): Bereinigt
       // App-eigene verwaiste ffmpeg/ffprobe-Prozesse (PPID 1 / toter Parent)
       // vom letzten Crash bzw. von einem Quit-Race — QA-Befund: Orphan lief
@@ -760,7 +807,13 @@ app.whenReady().then(() => {
         const lib = path.join(recorder.storageRoot, 'Aufnahmen');
         const jobDir = path.join(lib, recId);
         const playlist = path.join(jobDir, 'index.m3u8');
-        if (meta.status === 'recording' && fs.existsSync(playlist)) {
+        // Nicht fertig konvertierte Aufnahmen (läuft / Remux zurückgestellt,
+        // z. B. „Speicher knapp“) bleiben über die HLS-Zwischenform abspielbar.
+        if (
+          ['recording', 'remux-pending', 'aborted'].includes(meta.status) &&
+          !(meta.outputFile && fs.existsSync(meta.outputFile)) &&
+          fs.existsSync(playlist)
+        ) {
           // Laufende Aufnahme: HLS-Zwischenform live abspielbar (hls.js-Pfad
           // mit corsEnabled-Scheme — im Isolat + App verifiziert)
           return { kind: 'hls', url: `${REC_SCHEME}://${recId}/index.m3u8` };
@@ -820,6 +873,14 @@ app.whenReady().then(() => {
         recorder.store.removeMeta(recId);
         // 4) Index-Eintrag entfernen
         recorder.store.removeFromIndex(recId);
+        // 5) Platz ist frei geworden: zurückgestellte Remuxes („Speicher knapp“) nachholen
+        recorder
+          .retryDeferredRemuxes({
+            afterRemux: ({ meta: done }) => {
+              mainWindow?.webContents.send('recording:changed', { recId: done.id, meta: done });
+            },
+          })
+          .catch(e => logger.warn('Nachholender Remux nach Löschen fehlgeschlagen:', e.message));
         return { success: true };
       });
       // ── Settings: Speicherort (Konzept §3.4, Phase 1c) ──
@@ -847,13 +908,36 @@ app.whenReady().then(() => {
         if (typeof root !== 'string' || !root.trim()) throw new Error('Kein Speicherort angegeben');
         if (root.length > 1024) throw new Error('Speicherort-Pfad zu lang');
         const resolved = recorder.setStorageRoot(root.trim());
-        userStorage.writeJson('recordingSettings', { storageRoot: resolved });
+        // Merge statt Überschreiben: Limits/Reserve bleiben erhalten
+        userStorage.writeJson('recordingSettings', {
+          ...recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()).settings,
+          storageRoot: resolved,
+        });
         return {
           root: resolved,
           isDefault: resolved === paths.defaultRecordingsRoot(),
           network: isNetworkishPath(resolved),
           freeBytes: storageFreeBytes(resolved),
         };
+      });
+      // Settings „Aufnahmen“: Parallel-Limit, Höchstdauer, Reserve (Etappe 1).
+      // Validierung/Clamp im Main; die Antwort enthält die tatsächlich
+      // gespeicherten Werte + Clamp-Hinweise (UI zeigt die Reserve-Warnung).
+      ipcMain.handle('recording:get-settings', event => {
+        requireMainRenderer(event);
+        return recordingSettingsResponse(recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()));
+      });
+      ipcMain.handle('recording:set-settings', (event, patch) => {
+        requireMainRenderer(event);
+        if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('Ungültige Aufnahme-Einstellungen');
+        const result = recordingSettingsLib.applyRecordingSettingsPatch(readRecordingSettingsRaw(), patch);
+        const current = recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()).settings;
+        userStorage.writeJson('recordingSettings', {
+          ...result.settings,
+          ...(current.storageRoot ? { storageRoot: current.storageRoot } : {}),
+        });
+        recorder.setLimits(result.settings);
+        return recordingSettingsResponse(result);
       });
       // ffmpeg-Diagnose (Konzept §3.4): Version/ok/Fehler für die Settings.
       // Meldet zusätzlich die SHA-256 der installierten ffmpeg-Binary und den
@@ -955,6 +1039,7 @@ app.on('window-all-closed', () => {
 // Recovery-Remux (RecorderService.recover) holt die Aufnahme beim
 // nächsten Start nach (F-FB-10).
 app.on('before-quit', () => {
+  if (epgService) epgService.stop();
   if (!recorder) return;
   try {
     recorder.quitSweep();
@@ -1314,20 +1399,9 @@ ipcMain.handle('restore-settings', async event => {
 ipcMain.handle('fetch-epg', async (event, url) => {
   requireMainRenderer(event);
   try {
-    let epgUrl = remoteHttpUrl(url, 'EPG-URL');
-    let response;
-    for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
-      response = await fetch(epgUrl, {
-        signal: AbortSignal.timeout(20_000),
-        redirect: 'manual',
-      });
-      if (![301, 302, 303, 307, 308].includes(response.status)) break;
-      const location = response.headers.get('location');
-      if (!location) throw new Error(`HTTP ${response.status} ohne Redirect-Ziel`);
-      if (redirectCount === 5) throw new Error('Zu viele Redirects');
-      epgUrl = remoteHttpUrl(new URL(location, epgUrl).toString(), 'EPG-Redirect-Ziel');
-    }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // Download-Validierung (remoteHttpUrl, Redirect-Handling) ist mit dem
+    // Main-EpgService geteilt: lib/epg/download.js
+    const response = await fetchEpgResponse(url);
     const xml = await readResponseText(response, MAX_EPG_BYTES);
     const entries = parseXMLTV(xml);
     if (!entries.length) throw new Error('Die XMLTV-Datei enthält keine gültigen Sendungen');

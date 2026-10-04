@@ -56,6 +56,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('tv-sources-changed', handler);
   },
 
+  // Wochen-EPG im Main (Etappe 1): Abfrage-API. Antworttexte sind fremde
+  // Daten — nur als Text rendern (kein innerHTML).
+  getEpgRange: (channelKey, fromMs, toMs) => ipcRenderer.invoke('epg:range', channelKey, fromMs, toMs),
+  findEpg: (channelKey, atMs) => ipcRenderer.invoke('epg:find', channelKey, atMs),
+  getEpgStatus: () => ipcRenderer.invoke('epg:status'),
+  refreshEpgCache: () => ipcRenderer.invoke('epg:refresh'),
+
   // Autoupdate
   checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
   applyUpdate: version => ipcRenderer.invoke('apply-update', version),
@@ -101,12 +108,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('recording:seek-degraded', handler);
   },
 
+  // Auto-Stopp im Main (Sendungsende, Höchstdauer, Speicher voll, Speicherort weg)
+  onRecordingAutoStopped: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('recording:auto-stopped', handler);
+    return () => ipcRenderer.removeListener('recording:auto-stopped', handler);
+  },
+
   // Aufnahme-UI (Phase 1c): Bibliothek + Settings
   getRecordingFile: recId => ipcRenderer.invoke('recording:get-file', recId),
   deleteRecording: recId => ipcRenderer.invoke('recording:delete', recId),
   getRecordingStorageRoot: () => ipcRenderer.invoke('recording:get-storage-root'),
   setRecordingStorageRoot: root => ipcRenderer.invoke('recording:set-storage-root', root),
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
+  getRecordingSettings: () => ipcRenderer.invoke('recording:get-settings'),
+  setRecordingSettings: patch => ipcRenderer.invoke('recording:set-settings', patch),
   checkFfmpegStatus: () => ipcRenderer.invoke('recording:ffmpeg-status'),
   getDefaultRecordingRoot: () => ipcRenderer.invoke('recording:get-default-root'),
   onOpenRecordings: cb => {
