@@ -238,32 +238,65 @@ function pushRecordingPhaseToTvView(payload) {
  * Soft-Limit-Dialog (L2): Das Parallel-Limit ist erreicht — „Trotzdem
  * aufnehmen“ (force) oder „Verwerfen“. Nur Text, kein innerHTML.
  */
+let recLimitPending = null; // { promise, finish } des gerade offenen Dialogs
+
+function closeRecordingLimitDialog(decision = false) {
+  if (recLimitPending) recLimitPending.finish(decision);
+}
+
 function askRecordingLimitOverride({ limit, active }) {
-  return new Promise(resolve => {
-    const overlay = document.getElementById('recLimitOverlay');
-    const text = document.getElementById('recLimitText');
-    const forceBtn = document.getElementById('recLimitForce');
-    const discardBtn = document.getElementById('recLimitDiscard');
-    if (!overlay || !text || !forceBtn || !discardBtn) {
-      resolve(false);
-      return;
-    }
-    text.textContent =
-      `Es laufen bereits ${active} von ${limit} erlaubten Aufnahmen. ` +
-      'Weitere Aufnahmen belasten Netzwerk und Festplatte.';
-    const finish = decision => {
+  // Ein offener Dialog wird wiederverwendet: kein zweites Listener-Paar,
+  // ein weiterer Start wartet auf dieselbe Entscheidung.
+  if (recLimitPending) return recLimitPending.promise;
+  const overlay = document.getElementById('recLimitOverlay');
+  const text = document.getElementById('recLimitText');
+  const forceBtn = document.getElementById('recLimitForce');
+  const discardBtn = document.getElementById('recLimitDiscard');
+  if (!overlay || !text || !forceBtn || !discardBtn) return Promise.resolve(false);
+  text.textContent =
+    `Es laufen bereits ${active} von ${limit} erlaubten Aufnahmen. ` +
+    'Weitere Aufnahmen belasten Netzwerk und Festplatte.';
+  const previousFocus = document.activeElement;
+  const promise = new Promise(resolve => {
+    const cleanup = () => {
       overlay.classList.remove('open');
       forceBtn.removeEventListener('click', onForce);
       discardBtn.removeEventListener('click', onDiscard);
+      overlay.removeEventListener('keydown', onKey);
+      recLimitPending = null;
+      if (previousFocus && typeof previousFocus.focus === 'function') {
+        try { previousFocus.focus(); } catch (_e) { /* Element weg */ }
+      }
+    };
+    const finish = decision => {
+      cleanup();
       resolve(decision);
     };
     const onForce = () => finish(true);
     const onDiscard = () => finish(false);
+    // Esc = „Verwerfen“; Tab bleibt im Dialog (Fokus-Trap über beide Buttons)
+    const onKey = ev => {
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        finish(false);
+      } else if (ev.key === 'Tab') {
+        const order = [discardBtn, forceBtn];
+        const idx = order.indexOf(document.activeElement);
+        const next = ev.shiftKey ? (idx <= 0 ? order.length - 1 : idx - 1) : (idx === -1 || idx === order.length - 1 ? 0 : idx + 1);
+        ev.preventDefault();
+        order[next].focus();
+      }
+    };
     forceBtn.addEventListener('click', onForce);
     discardBtn.addEventListener('click', onDiscard);
-    overlay.classList.add('open');
-    discardBtn.focus();
+    overlay.addEventListener('keydown', onKey);
+    recLimitPending = { finish, promise: null };
   });
+  recLimitPending.promise = promise;
+  overlay.classList.add('open');
+  discardBtn.focus();
+  return promise;
 }
 
 /**
@@ -1383,11 +1416,18 @@ async function loadRecordingLimitsUi() {
 async function saveRecordingLimits() {
   recLimitsSaveBtn.disabled = true;
   try {
-    const saved = await window.electronAPI.setRecordingSettings({
-      maxParallel: recMaxParallelInput.value,
-      maxDurationHours: recMaxDurationInput.value,
-      reserveMB: recReserveInput.value,
-    });
+    // Nur gültige (nicht leere, numerische) Felder senden — ein leeres Feld
+    // behält den bisherigen Wert, statt still auf den Default zu fallen.
+    const patch = {};
+    for (const [key, input] of [
+      ['maxParallel', recMaxParallelInput],
+      ['maxDurationHours', recMaxDurationInput],
+      ['reserveMB', recReserveInput],
+    ]) {
+      const raw = input.value.trim();
+      if (raw !== '' && Number.isFinite(Number(raw))) patch[key] = raw;
+    }
+    const saved = await window.electronAPI.setRecordingSettings(patch);
     applyRecordingLimitsToUi(saved);
     setSettingsStatus(
       saved.reserveBelowMinimum
@@ -3132,6 +3172,10 @@ document.querySelectorAll('.epg-slot-btn').forEach(btn => {
 // Keyboard shortcut handler (shared for document + webview forwarding)
 function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   if (key === 'Escape') {
+    if (recLimitPending) {
+      closeRecordingLimitDialog(false); // Soft-Limit-Dialog: Esc = „Verwerfen“
+      return true;
+    }
     if (shortcutsOverlay.classList.contains('open')) {
       shortcutsOverlay.classList.remove('open');
       return true;
