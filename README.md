@@ -26,7 +26,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 - **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken, Aufnahmen und Einstellungen
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
 - **EPG (Programmübersicht)** – Vollbild-Ansicht mit Favoriten und Zeitslots (2/4/8/12/24h)
-- **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, und später in der App abspielen
+- **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, aus dem EPG im Voraus planen und später in der App abspielen
 - **Zeitversetztes Fernsehen (Timeshift)** – Bei unterstützten Live-Streams zurückspulen und Sendungen per EPG-Marker anspringen
 - **Mediathek-Suche** – ARD, ZDF und ARTE direkt aus der Programmübersicht durchsuchen
 - **Bild-in-Bild** – Schwebendes Fenster für paralleles Schauen (auch TV-Streams)
@@ -176,7 +176,7 @@ Live-TV-Sendungen lassen sich direkt im TV-Player aufnehmen und später ansehen.
 - **Aktuell angezeigte Sendung aufnehmen** – Nimmt die laufende Sendung ab ihrem Anfang auf, sofern dieser noch im Zeitversatz-Fenster des Senders liegt
 - **Bis zum Ende der Sendung** – Nimmt ab jetzt auf und stoppt automatisch am Sendungsende (benötigt EPG-Daten)
 
-Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es können bis zu drei Aufnahmen gleichzeitig laufen (je Sender eine).
+Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es laufen standardmäßig bis zu drei Aufnahmen gleichzeitig (je Sender eine); das Limit ist unter **Einstellungen → LiveTV → Aufnahmen → Parallele Aufnahmen** einstellbar. Wird es überschritten, fragt die App, ob du trotzdem aufnehmen möchtest.
 
 ![Aufnahme-Dialog im TV-Player](assets/screenshots/aufnahme-dialog.png)
 
@@ -186,7 +186,11 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es kön
 
 ![Aufnahmen-Übersicht](assets/screenshots/aufnahmen-dashboard.png)
 
-**Speicherort:** Standardmäßig `~/Videos/Streaming Hub`. Unter **Einstellungen → LiveTV → Aufnahmen** kannst du einen anderen Ordner wählen (auch Netzwerkpfade, mit Warnhinweis). Der Wechsel ist nur möglich, solange keine Aufnahme läuft.
+**Aufnahmen planen:** Öffne im EPG eine Sendung, die in der Zukunft liegt, und klicke auf **Aufnehmen**. Der Planungsdialog zeigt Vor- und Nachlauf (Puffer) und warnt bei Konflikten mit dem Parallel-Limit. Geplante Aufnahmen siehst du im Tab **Geplant** der Aufnahmen-Übersicht; dort kannst du die Puffer ändern oder den Eintrag absagen. Die Aufnahme startet im Hintergrund, auch bei geschlossenem Fenster – die App muss dafür laufen (im Tray genügt). Verschiebt sich die Sendung im EPG, übernimmt die App die neuen Zeiten und weist am Eintrag darauf hin; verschwindet die Sendung aus dem EPG, wird nur gewarnt. Wurde der Start verpasst (App aus, Standby), startet die Aufnahme bei noch laufender Sendung sofort. Das Programm der nächsten Tage hält die App als Wochen-Cache vor und aktualisiert es im Hintergrund.
+
+**Beenden und Tray:** Steht innerhalb der nächsten 24 Stunden eine Aufnahme an, fragt die App beim Schließen oder Beenden nach, ob sie im Hintergrund bleiben soll (**Im Hintergrund behalten** / **Trotzdem beenden**). Das Tray-Menü listet die nächsten geplanten Aufnahmen und bietet **Planung öffnen**. Während einer Aufnahme (und kurz vor geplanten Aufnahmen) verhindert die App ihre Suspendierung; einen schlafenden Rechner weckt sie nicht.
+
+**Speicherort:** Standardmäßig `~/Videos/Streaming Hub`. Unter **Einstellungen → LiveTV → Aufnahmen** kannst du einen anderen Ordner wählen (auch Netzwerkpfade, mit Warnhinweis). Der Wechsel ist nur möglich, solange keine Aufnahme läuft. Dort stellst du auch den **Puffer** vor und nach der Sendung (0–30 Minuten, Standard 2 und 5), die **Reserve freier Speicher** (Standard 1 GB, Minimum 512 MB; darunter stoppt die Aufnahme kontrolliert) und den **Spätstart** ein.
 
 ![Einstellungen für Aufnahmen: Speicherort und ffmpeg-Status](assets/screenshots/einstellungen-aufnahmen.png)
 
