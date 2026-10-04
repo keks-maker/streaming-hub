@@ -60,6 +60,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Daten — nur als Text rendern (kein innerHTML).
   getEpgRange: (channelKey, fromMs, toMs) => ipcRenderer.invoke('epg:range', channelKey, fromMs, toMs),
   findEpg: (channelKey, atMs) => ipcRenderer.invoke('epg:find', channelKey, atMs),
+  // Raster: schlanke Slots {start, stop, title} je Kanal; Suche gefaltet (Etappe 3.1)
+  getEpgRangeMany: (channelKeys, fromMs, toMs) => ipcRenderer.invoke('epg:range-many', channelKeys, fromMs, toMs),
+  searchEpg: (channelKeys, query, fromMs, toMs, limit, options) =>
+    ipcRenderer.invoke('epg:search', channelKeys, query, fromMs, toMs, limit, options),
+  onEpgChanged: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('epg:changed', handler);
+    return () => ipcRenderer.removeListener('epg:changed', handler);
+  },
   getEpgStatus: () => ipcRenderer.invoke('epg:status'),
   refreshEpgCache: () => ipcRenderer.invoke('epg:refresh'),
 

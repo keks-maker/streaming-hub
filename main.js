@@ -805,6 +805,14 @@ app.whenReady().then(() => {
         !process.env.STREAMING_HUB_USER_DATA || process.env.STREAMING_HUB_EPG_REFRESH === 'on' || !!epgFixtureFetch,
     });
     registerEpgIpc({ ipcMain, epg: epgService, requireMainRenderer });
+    // epg:changed (Main → Hauptfenster) nach jedem erfolgreichen Refresh, auch Slip
+    epgService.onChanged(payload => {
+      try {
+        mainWindow?.webContents.send('epg:changed', payload);
+      } catch (_) {
+        // Fenster zwischendurch geschlossen — der Cache im Main bleibt gültig
+      }
+    });
     epgService.start().catch(e => logger.warn('EPG-Dienst konnte nicht starten:', e.message));
   } catch (e) {
     logger.error('EPG-Dienst konnte nicht eingerichtet werden:', e.message);
