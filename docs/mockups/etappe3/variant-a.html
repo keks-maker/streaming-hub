@@ -179,7 +179,7 @@ mark{background:rgba(245,208,76,.35);color:inherit;border-radius:2px;padding:0 1
 .skel::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);animation:sh 1.4s infinite}
 @keyframes sh{to{transform:translateX(100%)}}
 
-@media (max-width:900px){
+@media (max-width:899.98px){
   .mk{padding:8px 12px}.stage{padding:10px 12px 4px}.gaps{padding:6px 12px 18px}
   .mk-spacer{display:none}
 }
@@ -699,6 +699,24 @@ function channelRows(c, d) {
   return list;
 }
 
+function syncPressed(root) { for (const b of root.querySelectorAll('[data-t]')) b.setAttribute('aria-pressed', String(!!b._on())); }
+function tbtn(cls, label, on, click, extra) { const b = el('button', Object.assign({ class: cls, 'data-t': '1', onclick: click }, extra || {}), label); b._on = on; return b; }
+function filterChips(extraCls) { // Genre-Filter-Chips
+  const w = el('div', { class: 'fchips ' + (extraCls || ''), role: 'group', 'aria-label': 'Genre-Filter' });
+  w.append(tbtn('chip', 'Alle', () => S.filters.size === 0, () => { S.filters = new Set(); render(); }));
+  for (const g of GKEYS) w.append(tbtn('chip', [el('i', { class: 'dot' }), GENRES[g]], () => S.filters.has(g), () => { S.filters.has(g) ? S.filters.delete(g) : S.filters.add(g); render(); }, { 'data-g': g, 'data-genre': g, title: 'Genre: ' + GENRES[g] }));
+  return w;
+}
+function searchField(o) { // o:{cls}
+  const f = el('form', { class: 'sfield ' + (o && o.cls || ''), role: 'search', onsubmit: e => e.preventDefault() });
+  const inp = el('input', { class: 'field', type: 'search', id: 'q', placeholder: 'Titel suchen …', 'aria-label': 'Suche in Titeln', autocomplete: 'off', maxlength: '80', oninput: e => { S.query = e.target.value; S.searchOpen = true; render(); } });
+  inp._sync = () => { if (document.activeElement !== inp && inp.value !== S.query) inp.value = S.query; };
+  const lab = el('label', { class: 'swl' }, el('input', { type: 'checkbox', id: 'q-desc', onchange: e => { S.desc = e.target.checked; S.searchOpen = true; render(); } }), 'Beschreibung durchsuchen');
+  lab._sync = () => { lab.firstChild.checked = S.desc; };
+  f.append(inp, lab); f._sync = () => { inp._sync(); lab._sync(); };
+  return f;
+}
+const syncAll = root => { syncPressed(root); for (const e of root.querySelectorAll('.sfield')) e._sync(); };
 /* ===== Raster (A und B-Rastermodus) ===== */
 function buildGrid(o) { // o:{ppm,rowH,chanW,onChan,onScroll}
   const ppm = o.ppm, W = (T1 - T0) * ppm, chw = o.chanW;
@@ -738,24 +756,6 @@ function buildGrid(o) { // o:{ppm,rowH,chanW,onChan,onScroll}
   sc._scrollTo = m => { sc.scrollLeft = Math.max(0, (m - T0) * ppm - (sc.clientWidth - chw) * .25); };
   return sc;
 }
-function syncPressed(root) { for (const b of root.querySelectorAll('[data-t]')) b.setAttribute('aria-pressed', String(!!b._on())); }
-function tbtn(cls, label, on, click, extra) { const b = el('button', Object.assign({ class: cls, 'data-t': '1', onclick: click }, extra || {}), label); b._on = on; return b; }
-function filterChips(extraCls) { // Genre-Filter-Chips
-  const w = el('div', { class: 'fchips ' + (extraCls || ''), role: 'group', 'aria-label': 'Genre-Filter' });
-  w.append(tbtn('chip', 'Alle', () => S.filters.size === 0, () => { S.filters = new Set(); render(); }));
-  for (const g of GKEYS) w.append(tbtn('chip', [el('i', { class: 'dot' }), GENRES[g]], () => S.filters.has(g), () => { S.filters.has(g) ? S.filters.delete(g) : S.filters.add(g); render(); }, { 'data-g': g, 'data-genre': g, title: 'Genre: ' + GENRES[g] }));
-  return w;
-}
-function searchField(o) { // o:{cls}
-  const f = el('form', { class: 'sfield ' + (o && o.cls || ''), role: 'search', onsubmit: e => e.preventDefault() });
-  const inp = el('input', { class: 'field', type: 'search', id: 'q', placeholder: 'Titel suchen …', 'aria-label': 'Suche in Titeln', autocomplete: 'off', maxlength: '80', oninput: e => { S.query = e.target.value; S.searchOpen = true; render(); } });
-  inp._sync = () => { if (document.activeElement !== inp && inp.value !== S.query) inp.value = S.query; };
-  const lab = el('label', { class: 'swl' }, el('input', { type: 'checkbox', id: 'q-desc', onchange: e => { S.desc = e.target.checked; S.searchOpen = true; render(); } }), 'Beschreibung durchsuchen');
-  lab._sync = () => { lab.firstChild.checked = S.desc; };
-  f.append(inp, lab); f._sync = () => { inp._sync(); lab._sync(); };
-  return f;
-}
-const syncAll = root => { syncPressed(root); for (const e of root.querySelectorAll('.sfield')) e._sync(); };
 /* ===== Zustandsleiste, Kopf, Render-Schleife ===== */
 const JUMPS = { now: NOW, prime: 1215, late: 1320, night: 1500 };
 const selPatch = p => ({ view: 'home', sel: p.id, jump: p.start, day: tvDay(p.start), focusPanel: false });
@@ -838,7 +838,7 @@ function render() {
   frame.classList.toggle('narrow', S.narrow);
   V.render(app);
   syncAll(document);
-  $('#mk-status').textContent = 'Fensterbreite ' + Math.min(S.width, $('#stage').clientWidth - 32) + ' px (' + (S.narrow ? 'schmal < 900' : 'breit') + ') · Startansicht ' + ({ auto: 'Automatisch', grid: V.homeName || 'Raster', jng: 'Jetzt & Gleich' }[S.pref]) + (S.pref === 'auto' ? ' → ' + (resolveStart() === 'jng' ? 'Jetzt & Gleich' : (V.homeName || 'Raster')) : '') + ' · Cache: ' + ({ ok: 'ok', empty: 'leer', loading: 'lädt', error: 'Fehler', noepg: 'Quelle ohne EPG' }[S.cache]);
+  $('#mk-status').textContent = 'Fensterbreite ' + Math.min(S.width, $('#stage').clientWidth - 32) + ' px (' + (S.narrow ? 'schmal, unter 900 px' : 'breit') + ') · Startansicht ' + ({ auto: 'Automatisch', grid: V.homeName || 'Raster', jng: 'Jetzt & Gleich' }[S.pref]) + (S.pref === 'auto' ? ' → ' + (resolveStart() === 'jng' ? 'Jetzt & Gleich' : (V.homeName || 'Raster')) : '') + ' · Cache: ' + ({ ok: 'ok', empty: 'leer', loading: 'lädt', error: 'Fehler', noepg: 'Quelle ohne EPG' }[S.cache]);
   // Fokus: Panel beim Oeffnen, sonst ggf. Rueckkehr zum Ausloeser
   let target = null;
   if (S.focusPanel) target = $('.pn-close', app);

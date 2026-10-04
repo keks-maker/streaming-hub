@@ -179,7 +179,7 @@ mark{background:rgba(245,208,76,.35);color:inherit;border-radius:2px;padding:0 1
 .skel::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);animation:sh 1.4s infinite}
 @keyframes sh{to{transform:translateX(100%)}}
 
-@media (max-width:900px){
+@media (max-width:899.98px){
   .mk{padding:8px 12px}.stage{padding:10px 12px 4px}.gaps{padding:6px 12px 18px}
   .mk-spacer{display:none}
 }
@@ -189,38 +189,6 @@ mark{background:rgba(245,208,76,.35);color:inherit;border-radius:2px;padding:0 1
 .narrow .cv-row{grid-template-columns:1fr;gap:2px}
 .narrow .cv-act{text-align:left;max-width:none;padding:0 4px 4px}
 .narrow .cv-main{grid-template-columns:96px minmax(0,1fr)}
-
-.g-scroll{overflow:auto;position:relative;flex:1;min-height:0;min-width:0}
-.g-inner{position:relative;min-height:100%}
-.g-ruler{position:sticky;top:0;z-index:6;display:flex;height:34px;background:var(--surface-2);border-bottom:1px solid var(--border-strong)}
-.g-corner{position:sticky;left:0;z-index:7;width:var(--chw);flex:none;background:var(--surface-2);border-right:1px solid var(--border-strong);display:flex;align-items:center;padding:0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim)}
-.g-rt{position:relative;flex:none;height:100%}
-.g-tk{position:absolute;top:0;bottom:0;border-left:1px solid var(--border);padding:9px 0 0 4px;font-size:11px;color:var(--text-dim);white-space:nowrap}
-.g-tk.h{border-left-color:var(--border-strong)}
-.g-tk.d{border-left:2px solid var(--accent);color:var(--text);font-weight:600;z-index:1}
-.g-nowlbl{position:absolute;top:2px;transform:translateX(-50%);font-size:10px;background:var(--rec);color:#fff;padding:0 5px;border-radius:999px;z-index:2;white-space:nowrap}
-.g-row{display:flex;height:var(--rowh);border-bottom:1px solid var(--border)}
-.g-chan{position:sticky;left:0;z-index:4;width:var(--chw);flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--surface-2);border-right:1px solid var(--border-strong)}
-.g-chan:hover{background:#242436}
-.g-chan .g-cn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600}
-.g-track{position:relative;flex:none;background-image:linear-gradient(to right,var(--border) 1px,transparent 1px);background-size:var(--gs) 100%}
-.g-block{position:absolute;top:4px;bottom:4px;overflow:hidden;border-radius:6px;background:#242438;border:1px solid var(--border-strong);padding:4px 6px;display:flex;flex-direction:column;gap:1px;min-width:0}
-.g-block:hover{background:#2f2f48;z-index:2}
-.g-block .bt{display:flex;gap:5px;align-items:flex-start;font-weight:600;font-size:12.5px;line-height:1.2}
-.g-block .bt .tx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.g-block .bm{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.g-block .gchip{align-self:flex-start;margin-top:2px}
-.g-block .prog{position:absolute;left:0;right:0;bottom:0;border-radius:0;height:4px}
-.g-block.past{opacity:.45}
-.g-block.run{border-color:var(--accent-light);background:#2b2850}
-.g-block.dim{opacity:.28;filter:grayscale(.7)}
-.g-block.sel{outline:2px solid var(--accent-light);outline-offset:-1px}
-.g-block.g-noepg{background:repeating-linear-gradient(135deg,#1b1b28,#1b1b28 8px,#202030 8px,#202030 16px);border-style:dashed;color:var(--text-dim);justify-content:center}
-.gd-bar .g-block[data-g]{border-left:4px solid var(--gc)}
-.gd-bar .jng-cell[data-g],.gd-bar .cv-row[data-g]{border-left:3px solid var(--gc)}
-.gd-chip .gchip{display:inline-block}
-.g-now{position:absolute;top:0;bottom:0;width:2px;background:var(--rec);z-index:3;pointer-events:none;opacity:.85}
-.g-block.prime{box-shadow:inset 0 2px 0 var(--accent-light)}
 .a-tool{flex:none;border-bottom:1px solid var(--border-strong);background:var(--surface)}
 .a-r{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;padding:7px 14px}
 .a-r+.a-r{padding-top:0}
@@ -310,6 +278,8 @@ mark{background:rgba(245,208,76,.35);color:inherit;border-radius:2px;padding:0 1
 .narrow .c-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));padding:10px 12px}
 .c-nowbox .cv-flag{align-self:flex-start;margin-bottom:2px}
 .c-nowbox{display:block}.c-nowbox .prog{margin-top:6px}
+.c-fav{cursor:default;background:rgba(108,92,231,.25);border-color:var(--accent)}
+.c-fav:hover{background:rgba(108,92,231,.25)}
 </style>
 </head>
 <body>
@@ -765,45 +735,6 @@ function channelRows(c, d) {
   return list;
 }
 
-/* ===== Raster (A und B-Rastermodus) ===== */
-function buildGrid(o) { // o:{ppm,rowH,chanW,onChan,onScroll}
-  const ppm = o.ppm, W = (T1 - T0) * ppm, chw = o.chanW;
-  const sc = el('div', { class: 'g-scroll gd-' + S.genreDisp, tabindex: '0', role: 'region', 'aria-label': 'Programmraster (scrollbar, Pfeiltasten)', style: '--rowh:' + o.rowH + 'px;--chw:' + chw + 'px' });
-  const inner = el('div', { class: 'g-inner', style: 'width:' + (chw + W) + 'px' });
-  const rt = el('div', { class: 'g-rt', style: 'width:' + W + 'px;--gs:' + (30 * ppm) + 'px' });
-  for (let m = Math.ceil(T0 / 30) * 30; m <= T1; m += 30) {
-    const full = m % 60 === 0, day = (m - 300) % 1440 === 0;
-    if (!full && ppm < 5) continue;
-    rt.append(el('span', { class: 'g-tk' + (full ? ' h' : '') + (day ? ' d' : ''), style: 'left:' + (m - T0) * ppm + 'px' }, day ? dayShort(tvDay(m)) + ' · ' + hhmm(m) : full ? hhmm(m) : ''));
-  }
-  rt.append(el('span', { class: 'g-nowlbl', style: 'left:' + (NOW - T0) * ppm + 'px', text: 'jetzt ' + hhmm(NOW) }));
-  inner.append(el('div', { class: 'g-ruler' }, el('div', { class: 'g-corner', text: 'Favoriten' }), rt));
-  for (const c of CH) {
-    const row = el('div', { class: 'g-row' });
-    row.append(el('button', { class: 'g-chan', title: 'Alle Sendungen von ' + c.name + ' (Kanalansicht)', 'data-fk': 'c:' + c.id, onclick: () => o.onChan(c.id) }, logoNode(c), el('span', { class: 'g-cn', text: c.name })));
-    const tr = el('div', { class: 'g-track', style: 'width:' + W + 'px;--gs:' + (30 * ppm) + 'px' });
-    if (c.noepg) {
-      tr.append(el('button', { class: 'g-block g-noepg', style: 'left:' + (NOW - 20 - T0) * ppm + 'px;width:420px', onclick: () => { S.sel = 'noepg:' + c.id; S.focusPanel = true; render(); } }, el('span', { class: 'bt', text: 'Kein EPG im Cache' }), el('span', { class: 'bm', text: 'Für diesen Sender liegen keine Daten vor' })));
-    } else for (const p of slotsOf(c.id)) {
-      const w = dur(p) * ppm - 2, run = isRun(p), past = isPast(p);
-      const cls = 'g-block' + (past ? ' past' : '') + (run ? ' run' : '') + (S.filters.size && !matchGenre(p) ? ' dim' : '') + (S.sel === p.id ? ' sel' : '') + (p.start % 1440 === 1215 ? ' prime' : '');
-      const b = el('button', { class: cls, 'data-g': p.genre, style: 'left:' + (p.start - T0) * ppm + 'px;width:' + w + 'px', title: tip(p), 'aria-label': tip(p), data: { pid: p.id, fk: 's:' + p.id }, onclick: () => pick(p.id) });
-      if (w >= 28) {
-        b.append(el('span', { class: 'bt' }, markerNode(p), el('span', { class: 'tx', text: p.title })), el('span', { class: 'bm', text: hhmm(p.start) + (run ? ' · noch ' + restMin(p) + ' min' : '') }));
-        if (p.genre) b.append(el('span', { class: 'gchip', text: GENRES[p.genre] }));
-        if (run) b.append(progNode(p));
-      }
-      tr.append(b);
-    }
-    row.append(tr); inner.append(row);
-  }
-  inner.append(el('div', { class: 'g-now', style: 'left:' + (chw + (NOW - T0) * ppm) + 'px' }));
-  sc.append(inner);
-  let raf = 0;
-  sc.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const m = T0 + (sc.scrollLeft + (sc.clientWidth - chw) * .25) / ppm; if (o.onScroll) o.onScroll(tvDay(m), m); }); });
-  sc._scrollTo = m => { sc.scrollLeft = Math.max(0, (m - T0) * ppm - (sc.clientWidth - chw) * .25); };
-  return sc;
-}
 function syncPressed(root) { for (const b of root.querySelectorAll('[data-t]')) b.setAttribute('aria-pressed', String(!!b._on())); }
 function tbtn(cls, label, on, click, extra) { const b = el('button', Object.assign({ class: cls, 'data-t': '1', onclick: click }, extra || {}), label); b._on = on; return b; }
 function filterChips(extraCls) { // Genre-Filter-Chips
@@ -904,7 +835,7 @@ function render() {
   frame.classList.toggle('narrow', S.narrow);
   V.render(app);
   syncAll(document);
-  $('#mk-status').textContent = 'Fensterbreite ' + Math.min(S.width, $('#stage').clientWidth - 32) + ' px (' + (S.narrow ? 'schmal < 900' : 'breit') + ') · Startansicht ' + ({ auto: 'Automatisch', grid: V.homeName || 'Raster', jng: 'Jetzt & Gleich' }[S.pref]) + (S.pref === 'auto' ? ' → ' + (resolveStart() === 'jng' ? 'Jetzt & Gleich' : (V.homeName || 'Raster')) : '') + ' · Cache: ' + ({ ok: 'ok', empty: 'leer', loading: 'lädt', error: 'Fehler', noepg: 'Quelle ohne EPG' }[S.cache]);
+  $('#mk-status').textContent = 'Fensterbreite ' + Math.min(S.width, $('#stage').clientWidth - 32) + ' px (' + (S.narrow ? 'schmal, unter 900 px' : 'breit') + ') · Startansicht ' + ({ auto: 'Automatisch', grid: V.homeName || 'Raster', jng: 'Jetzt & Gleich' }[S.pref]) + (S.pref === 'auto' ? ' → ' + (resolveStart() === 'jng' ? 'Jetzt & Gleich' : (V.homeName || 'Raster')) : '') + ' · Cache: ' + ({ ok: 'ok', empty: 'leer', loading: 'lädt', error: 'Fehler', noepg: 'Quelle ohne EPG' }[S.cache]);
   // Fokus: Panel beim Oeffnen, sonst ggf. Rueckkehr zum Ausloeser
   let target = null;
   if (S.focusPanel) target = $('.pn-close', app);
@@ -952,7 +883,7 @@ const C = {
     s.gd = el('div', { class: 'a-seg' }, el('span', { class: 'seg-l', text: 'Genre-Darstellung' }), el('div', { class: 'seg', role: 'group', 'aria-label': 'Genre-Darstellung' },
       ...[['bar', 'Balken links'], ['chip', 'Chip im Block'], ['none', 'nur Detail']].map(([v, l]) => tbtn('', l, () => S.genreDisp === v, () => { S.genreDisp = v; render(); }, { id: 'gd-' + v }))));
     s.top = el('div', { class: 'a-tool c-top' },
-      el('div', { class: 'a-r' }, el('span', { class: 'c-h1', text: 'Programm' }), nav, searchField({ cls: 'c-sf' })),
+      el('div', { class: 'a-r' }, el('span', { class: 'c-h1', text: 'Programm' }), el('span', { class: 'chip c-fav', 'aria-label': 'Senderauswahl: Favoriten', text: '★ Favoriten' }), nav, searchField({ cls: 'c-sf' })),
       el('div', { class: 'a-r' }, filterChips('c-fc'), s.gd),
       el('div', { class: 'a-r c-dayrow' }, s.days, s.jumps));
     s.content = el('div', { class: 'c-scroll' });
