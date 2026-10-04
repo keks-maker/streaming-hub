@@ -111,6 +111,7 @@ function planDays({ nowMs, coverageFromMs, coverageToMs }) {
 /** EPG-Schlüssel eines Senders (wie im Planungsdialog: tvgId), '' wenn nicht abfragbar. */
 function epgChannelKey(channel) {
   const key = channel && typeof channel.tvgId === 'string' ? channel.tvgId.trim() : '';
+  // eslint-disable-next-line no-control-regex -- Steuerzeichen sind hier genau das Ziel (IPC-Validierung)
   if (!key || key.length > MAX_KEY_LENGTH || /[\u0000-\u001f\u007f]/.test(key)) return '';
   return key;
 }
