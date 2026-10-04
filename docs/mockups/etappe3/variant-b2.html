@@ -345,6 +345,23 @@ mark{background:rgba(245,208,76,.35);color:inherit;border-radius:2px;padding:0 1
 .b2-table th.c-ac{text-align:right;padding-right:10px}
 .narrow .b2-table .c-ch,.narrow .b2-table th.c-ch{display:table-cell;width:96px}
 .narrow .b2-table .c-ge .gtx{font-size:12px}
+
+/* K7: Rueckfrage und Toast am Fensterrand (sichtbar auch bei gescrollter Seite) */
+.b2-cwrap{position:fixed;bottom:14px;left:0;right:0}
+.toast{position:fixed;bottom:84px}
+.pn-hint{margin:0;font-size:13px;color:var(--warn)}
+/* H4 */
+.pi{white-space:normal}
+.b2-pop.wide{width:min(720px,calc(100vw - 40px))}
+/* H5 */
+.b2-sw{display:flex;align-items:center;gap:2px;flex:1 1 0;min-width:0}
+.b2-sw .b2-scr{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 22px),transparent);padding-right:22px}
+.b2-arr{flex:none;width:22px;height:24px;border-radius:6px;border:1px solid var(--border-strong);background:var(--glass);text-align:center;line-height:20px;font-size:15px}
+.b2-arr:hover{background:var(--glass-hover)}
+/* H6 */
+.b2-table th.c-du{text-align:right;padding:6px 16px 6px 8px}
+.b2-table th.c-ac{padding:6px 10px 6px 18px}
+.b2-table td.c-du{padding-right:16px}
 </style>
 </head>
 <body>
@@ -1041,6 +1058,7 @@ function detailNode(o) {
     el('button', { class: 'btn pri', onclick: () => toast('Mockup: öffnet „' + ch.name + '“ im Player') }, 'Sender öffnen'),
     blocked ? el('button', { class: 'btn', 'aria-disabled': 'true', title: isPast(p) ? 'Vorbei' : 'Planung nur bis 8 Tage im Voraus' }, '● Aufnehmen') : recBtn(p, 'b2-big'),
     el('button', { class: 'btn', 'aria-disabled': ch.med ? null : 'true', title: ch.med ? 'Mediathek' : 'Keine Mediathek für diesen Sender', onclick: () => { if (ch.med) toast('Mockup: öffnet die Mediathek von ' + ch.name); } }, 'Mediathek')));
+  if (blocked) body.append(el('p', { class: 'pn-hint', role: 'status', text: isPast(p) ? 'Aufnehmen nicht möglich: Sendung ist vorbei.' : 'Aufnehmen nicht möglich: Planung nur bis 8 Tage im Voraus.' }));
   body.append(el('button', { class: 'pn-link', 'data-fk': 'pl', onclick: () => openChannel(p.ch, Math.max(0, Math.min(8, tvDay(p.start)))) }, 'Alle Sendungen des Senders'));
   const a = alsoList(p); if (a) body.append(a);
   root.append(body); return root;
@@ -1050,7 +1068,7 @@ function detailNode(o) {
 function pw(key, labelFn, contentFn, o) {
   o = o || {};
   const w = el('span', { class: 'pw ' + (o.cls || '') });
-  const b = el('button', { class: o.btn || 'btn sm', 'aria-haspopup': 'true', 'data-fk': 'pw:' + key + (o.u || ''), 'aria-label': o.aria, onclick: () => { S.pop = S.pop === key ? null : key; render(); } });
+  const b = el('button', { class: o.btn || 'btn sm', 'aria-haspopup': 'true', 'data-fk': 'pw:' + key + (o.u || ''), 'aria-label': o.aria, onclick: () => { S.pop = S.pop === key ? null : key; S.popFk = 'pw:' + key + (o.u || ''); render(); } });
   w.append(b);
   w._upd = () => { b.textContent = labelFn(); b.setAttribute('aria-expanded', String(S.pop === key)); const old = w.querySelector('.b2-pop'); if (old) old.remove(); if (S.pop === key) w.append(el('div', { class: 'b2-pop ' + (o.align || '') + ' ' + (o.pcls || ''), role: 'group', 'aria-label': o.aria || 'Filter' }, contentFn())); };
   w._upd(); return w;
@@ -1065,6 +1083,14 @@ const filterAll = () => {
   for (const [v, l] of [['fav', 'Favoriten'], ['all', 'Alle Sender'], ['group', 'Gruppe …']]) sc.append(el('label', { class: 'pi' }, el('input', { type: 'radio', name: 'scope', checked: S.fScope === v || null, 'data-fk': 'pi:sc:' + v, onchange: () => { S.fScope = v; if (v !== 'fav') toast('Mockup: Beispieldaten enthalten nur die Favoriten'); render(); } }), l));
   return el('div', { class: 'f2grid' }, el('div', null, sc, senderBox()), el('div', null, el('div', { class: 'psh', text: 'Genre' }), genreBox()), el('div', null, el('div', { class: 'psh', text: 'Tag' }), dayBox(), el('div', { class: 'psh', text: 'Optionen' }), optBox()));
 };
+const scrollWrap = (g, l) => el('div', { class: 'b2-sw' }, el('button', { class: 'b2-arr', 'aria-label': l + ' nach links scrollen', onclick: () => g.scrollBy({ left: -180, behavior: 'smooth' }) }, '‹'), g, el('button', { class: 'b2-arr', 'aria-label': l + ' nach rechts scrollen', onclick: () => g.scrollBy({ left: 180, behavior: 'smooth' }) }, '›'));
+function trapTab(e) {
+  if (e.key !== 'Tab') return;
+  const f = [...e.currentTarget.querySelectorAll('button:not([aria-disabled=true]),a[href],input,select')].filter(x => x.offsetParent);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
 const nSel = () => S.filters.size + S.fSender.size + (S.desc ? 1 : 0) + (S.fHide ? 0 : 1);
 
 const B2 = {
@@ -1103,7 +1129,7 @@ const B2 = {
     const gch = filterChips('b2-scr');
     s.f3sender = pw('f-sender', () => 'Sender ▾' + (S.fSender.size ? ' (' + S.fSender.size + ')' : ''), senderBox, { aria: 'Sender wählen', u: ':b', align: 'r' });
     s.f3more = pw('f-mehr', () => 'Mehr ▾', optBox, { aria: 'Mehr Filter', u: ':b', align: 'r' });
-    s.bar = el('div', { class: 'b2-bar' }, days, el('span', { class: 'b2-sepv', 'aria-hidden': 'true' }), gch, s.f3sender, s.f3more);
+    s.bar = el('div', { class: 'b2-bar' }, scrollWrap(days, 'Tage'), el('span', { class: 'b2-sepv', 'aria-hidden': 'true' }), scrollWrap(gch, 'Genres'), s.f3sender, s.f3more);
     B2.pws = [s.f1fb.children[0], s.f1fb.children[1], s.f2, s.f3sender, s.f3more];
     s.content = el('div', { class: 'b-content' });
     s.pane = el('div', { class: 'b-pane b2-pane', hidden: true, role: 'region', 'aria-label': 'Detailbereich' });
@@ -1124,7 +1150,7 @@ const B2 = {
     document.addEventListener('click', e => { if (S.pop && !e.target.closest('.pw')) { S.pop = null; render(); } });
     window.addEventListener('keydown', e => {
       if (e.key !== 'Escape') return;
-      if (S.confirm) { e.stopPropagation(); doConfirm(false); } else if (S.pop) { e.stopPropagation(); S.pop = null; render(); }
+      if (S.confirm) { e.stopPropagation(); doConfirm(false); } else if (S.pop) { e.stopPropagation(); S.pop = null; S.restoreFk = S.popFk; render(); }
     }, true);
   },
   render(app) {
@@ -1174,7 +1200,7 @@ const B2 = {
     // Detail: Modal (Standard, mit Abdunkelung, inert = Fokus-Falle) oder Split >= 2/3
     const open = !!S.sel, modal = open && S.dmode === 'modal';
     s.modal.hidden = !modal; s.modal.replaceChildren();
-    if (modal) s.modal.append(el('div', { class: 'b2-backdrop', onclick: closePanel }), el('div', { class: 'b2-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Sendungsdetails' }, detailNode({ cls: 'b-pn', poster: 'collapse' })));
+    if (modal) s.modal.append(el('div', { class: 'b2-backdrop', onclick: closePanel }), el('div', { class: 'b2-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Sendungsdetails', onkeydown: trapTab }, detailNode({ cls: 'b-pn', poster: 'collapse' })));
     for (const x of [s.head, s.active, s.bar, s.body]) x.inert = modal;
     s.pane.hidden = !(open && S.dmode === 'split'); s.pane.replaceChildren();
     if (!s.pane.hidden) s.pane.append(detailNode({ cls: 'b-pn', poster: 'collapse' }));
