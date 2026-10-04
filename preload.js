@@ -63,6 +63,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getEpgStatus: () => ipcRenderer.invoke('epg:status'),
   refreshEpgCache: () => ipcRenderer.invoke('epg:refresh'),
 
+  // Planung geplanter Aufnahmen (Etappe 2a): feste Whitelist, nichts Generisches.
+  addSchedule: input => ipcRenderer.invoke('schedule:add', input),
+  updateSchedule: (id, patch) => ipcRenderer.invoke('schedule:update', id, patch),
+  removeSchedule: id => ipcRenderer.invoke('schedule:remove', id),
+  listSchedules: () => ipcRenderer.invoke('schedule:list'),
+  checkScheduleConflicts: input => ipcRenderer.invoke('schedule:check-conflicts', input),
+  onScheduleChanged: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('schedule:changed', handler);
+    return () => ipcRenderer.removeListener('schedule:changed', handler);
+  },
+
   // Autoupdate
   checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
   applyUpdate: version => ipcRenderer.invoke('apply-update', version),

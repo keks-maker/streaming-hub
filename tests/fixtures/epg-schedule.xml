@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lokale Test-XMLTV-Datei für die Planung (kein Netz): Das Erste, 05.10.2026 (Europe/Berlin, +0200). -->
+<tv generator-info-name="streaming-hub-test">
+  <channel id="DasErste.de"><display-name>Das Erste</display-name></channel>
+  <channel id="ZDF.de"><display-name>ZDF</display-name></channel>
+  <programme start="20261005200000 +0200" stop="20261005201500 +0200" channel="DasErste.de">
+    <title lang="de">Tagesschau</title>
+    <desc lang="de">Nachrichten</desc>
+  </programme>
+  <programme start="20261005201500 +0200" stop="20261005204500 +0200" channel="DasErste.de">
+    <title lang="de">Tagesthemen</title>
+    <desc lang="de">Das Magazin</desc>
+  </programme>
+  <programme start="20261005200000 +0200" stop="20261005210000 +0200" channel="ZDF.de">
+    <title lang="de">Krimi</title>
+  </programme>
+</tv>

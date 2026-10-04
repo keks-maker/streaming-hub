@@ -34,8 +34,13 @@ test('Altdaten ohne neue Felder laden mit Defaults (Rückwärtskompatibilität)'
     maxParallel: 3,
     maxDurationHours: 6,
     reserveMB: 1024,
+    bufferBeforeMin: 2,
+    bufferAfterMin: 5,
+    lateStart: true,
   });
-  assert.deepEqual(clamped, { maxParallel: false, maxDurationHours: false, reserveMB: false });
+  assert.deepEqual(clamped, {
+    maxParallel: false, maxDurationHours: false, reserveMB: false, bufferBeforeMin: false, bufferAfterMin: false,
+  });
   // null/undefined/Müll → ebenfalls Defaults, kein Wurf
   for (const raw of [null, undefined, 'x', 42, [], {}]) {
     const r = normalizeRecordingSettings(raw).settings;
@@ -110,7 +115,8 @@ test('Handler-Logik get/set: Antwortform, Warnung bei Reserve < 512, nicht gesen
   const got = buildSettingsResponse(normalizeRecordingSettings({ storageRoot: '/x' }));
   assert.deepEqual(got, {
     maxParallel: 3, maxDurationHours: 6, reserveMB: 1024, minReserveMB: 512,
-    clamped: { maxParallel: false, maxDurationHours: false, reserveMB: false },
+    bufferBeforeMin: 2, bufferAfterMin: 5, lateStart: true,
+    clamped: { maxParallel: false, maxDurationHours: false, reserveMB: false, bufferBeforeMin: false, bufferAfterMin: false },
     reserveBelowMinimum: false, reserveWarning: null,
   });
   const stored = { maxParallel: 5, maxDurationHours: 8, reserveMB: 2048 };

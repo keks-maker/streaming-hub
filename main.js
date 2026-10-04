@@ -1,7 +1,7 @@
 // v0.3.6.
-const { compareVersions, cleanChannelName, parseXMLTV, parseM3UFull } = require('@streaming-hub/typed-core');
+const { compareVersions, cleanChannelName, parseXMLTV, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, Notification } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -18,6 +18,9 @@ const {
 } = require('./lib/ipc-validation.js');
 const { RecorderService } = require('./lib/recorder/RecorderService.js');
 const { registerRecorderIpc, ensureDefaultStorageRoot } = require('./lib/recorder/ipc.js');
+const { createScheduleStore } = require('./lib/recorder/ScheduleStore.js');
+const { Scheduler } = require('./lib/recorder/Scheduler.js');
+const { registerScheduleIpc } = require('./lib/recorder/ipc-schedule.js');
 const { TrayController } = require('./lib/recorder/TrayController.js');
 const { sweepOrphans } = require('./lib/orphan-sweep.js');
 const paths = require('./lib/recorder/paths.js');
@@ -55,6 +58,19 @@ let recorder = null;
 // Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
 let epgService = null;
 let trayController = null;
+// Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
+let scheduler = null;
+
+// Test-Hook (E2E): STREAMING_HUB_EPG_FIXTURE=<XMLTV-Datei> ersetzt den EPG-Download
+// durch die lokale Datei — für Main-EpgService UND fetch-epg. Gilt nur in isolierten
+// Läufen (STREAMING_HUB_USER_DATA), nie im Normalbetrieb; es gibt keinen Netzzugriff.
+const epgFixtureFile =
+  process.env.STREAMING_HUB_USER_DATA && process.env.STREAMING_HUB_EPG_FIXTURE
+    ? path.resolve(process.env.STREAMING_HUB_EPG_FIXTURE)
+    : null;
+const epgFixtureFetch = epgFixtureFile
+  ? async () => new Response(fs.readFileSync(epgFixtureFile), { status: 200, headers: { 'content-type': 'application/xml' } })
+  : null;
 
 // Wiedergabe-Protokoll der Aufnahmen (Phase 1c, Karte t_bafa7928):
 // rec://<recId>/<datei> streamt Dateien aus dem Aufnahmen-Root. hls.js kann
@@ -711,7 +727,10 @@ app.whenReady().then(() => {
       logger,
       // Isolierte Testläufe (STREAMING_HUB_USER_DATA, E2E) laden nicht automatisch
       // aus dem Netz; STREAMING_HUB_EPG_REFRESH=on schaltet es dort wieder ein.
-      autoRefresh: !process.env.STREAMING_HUB_USER_DATA || process.env.STREAMING_HUB_EPG_REFRESH === 'on',
+      // Mit Test-Fixture (epgFixtureFetch) wird aus der lokalen Datei geladen, nie aus dem Netz.
+      fetchImpl: epgFixtureFetch || fetch,
+      autoRefresh:
+        !process.env.STREAMING_HUB_USER_DATA || process.env.STREAMING_HUB_EPG_REFRESH === 'on' || !!epgFixtureFetch,
     });
     registerEpgIpc({ ipcMain, epg: epgService, requireMainRenderer });
     epgService.start().catch(e => logger.warn('EPG-Dienst konnte nicht starten:', e.message));
@@ -1011,6 +1030,48 @@ app.whenReady().then(() => {
         appRoot: __dirname,
       });
       trayController.create();
+
+      // ── Planung (Etappe 2a, Konzept §3.4) ──
+      // ScheduleStore in userData, Scheduler nach dem Recorder-Setup (recover()
+      // hat hängende Aufnahmen oben bereits auf `aborted` gesetzt). Läuft im
+      // Main und ist vom Fenster unabhängig; Standby-Resume löst eine
+      // Neubewertung aus (powerMonitor).
+      try {
+        const scheduleStore = createScheduleStore({ dir: app.getPath('userData'), logger });
+        scheduler = new Scheduler({
+          store: scheduleStore,
+          recorder,
+          resolveStream: resolveScheduledStream,
+          getSettings: () => recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()).settings,
+          epgLookup: ({ key, atMs }) => (epgService ? epgService.find(key, atMs) : null),
+          logger,
+        });
+        registerScheduleIpc({
+          ipcMain,
+          scheduler,
+          requireMainRenderer,
+          broadcast: (channel, payload) => {
+            try {
+              mainWindow?.webContents.send(channel, payload);
+            } catch (_) {
+              // Fenster zwischendurch geschlossen — Planung läuft im Main weiter
+            }
+          },
+        });
+        scheduler.on('schedule:notify', ({ message }) => {
+          try {
+            if (Notification.isSupported()) new Notification({ title: 'Streaming Hub — Planung', body: message }).show();
+          } catch (_) {
+            // Benachrichtigungen nicht verfügbar — die Meldung steht auch in der Planungsliste
+          }
+        });
+        powerMonitor.on('resume', () => {
+          scheduler.onResume().catch(e => logger.warn('Planung nach Standby fehlgeschlagen:', e.message));
+        });
+        scheduler.start().catch(e => logger.error('Planung konnte nicht gestartet werden:', e.message));
+      } catch (e) {
+        logger.error('Planung konnte nicht eingerichtet werden:', e.message);
+      }
     } catch (e) {
       logger.error('Aufnahme-Engine konnte nicht gestartet werden:', e.message);
     }
@@ -1023,6 +1084,12 @@ app.on('window-all-closed', () => {
   // aktive Aufnahmen gilt das normale Quit-Verhalten.
   if (recorder && recorder.activeJobs().length > 0) {
     logger.info('Fenster geschlossen — App bleibt wegen laufender Aufnahme(n) im Tray aktiv');
+    return;
+  }
+  // Etappe 2a (§3.5): auch anstehende Planungen (state scheduled, Ende in der
+  // Zukunft) halten die App im Tray — der Scheduler läuft im Main.
+  if (scheduler && scheduler.hasPendingSchedules()) {
+    logger.info('Fenster geschlossen — App bleibt wegen geplanter Aufnahme(n) im Tray aktiv');
     return;
   }
   app.quit();
@@ -1040,6 +1107,7 @@ app.on('window-all-closed', () => {
 // nächsten Start nach (F-FB-10).
 app.on('before-quit', () => {
   if (epgService) epgService.stop();
+  if (scheduler) scheduler.stop();
   if (!recorder) return;
   try {
     recorder.quitSweep();
@@ -1303,6 +1371,43 @@ ipcMain.handle('pick-m3u-file', async event => {
   return realPath;
 });
 
+// Lädt und parst eine M3U-Quelle (URL oder erlaubte Datei). Wirft bei Lade-/
+// Eingabefehlern. Geteilt von fetch-and-parse-m3u (Renderer) und der frischen
+// Stream-Auflösung geplanter Aufnahmen (resolveScheduledStream).
+async function loadM3uChannels(urlOrPath) {
+  const input = validateText(urlOrPath, 'M3U-Quelle', 4096);
+  let content;
+  let baseUrl = '';
+  if (/^https?:\/\//i.test(input)) {
+    const sourceUrl = httpUrl(input, 'M3U-URL');
+    const response = await fetch(remoteHttpUrl(sourceUrl, 'M3U-URL'), {
+      signal: AbortSignal.timeout(20_000),
+      redirect: 'error',
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    content = await readResponseText(response, MAX_PLAYLIST_BYTES);
+    baseUrl = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
+  } else {
+    const realPath = resolveAllowedM3uPath(input, selectedM3uFiles, loadTvSources());
+    if (!realPath) throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
+    const stat = fs.statSync(realPath);
+    if (!stat.isFile() || !/\.m3u8?$/i.test(realPath)) throw new Error('Nur M3U-Dateien sind erlaubt');
+    if (stat.size > MAX_PLAYLIST_BYTES) throw new Error('Datei ist zu groß');
+    content = fs.readFileSync(realPath, 'utf-8');
+    baseUrl = path.dirname(realPath) + path.sep;
+  }
+  const result = parseM3U(content);
+  // Resolve relative URLs for logos
+  const channels = result.channels.map(ch => ({
+    ...ch,
+    logo:
+      ch.logo && !ch.logo.startsWith('http://') && !ch.logo.startsWith('https://') && !ch.logo.startsWith('file://')
+        ? baseUrl + ch.logo
+        : ch.logo,
+  }));
+  return { channels, epgUrls: result.epgUrls, baseUrl };
+}
+
 // Rückgabe: { channels, epgUrls, baseUrl } bei Erfolg, { error } bei Lade-/Eingabefehlern
 // (Netz, HTTP, Datei nicht erlaubt, ungültige Quelle). So meldet Electron abgelehnte
 // Handler nicht als rote Fehler im Terminal; der Renderer markiert die Quelle als
@@ -1310,42 +1415,51 @@ ipcMain.handle('pick-m3u-file', async event => {
 ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
   requireMainRenderer(event);
   try {
-    const input = validateText(urlOrPath, 'M3U-Quelle', 4096);
-    let content;
-    let baseUrl = '';
-    if (/^https?:\/\//i.test(input)) {
-      const sourceUrl = httpUrl(input, 'M3U-URL');
-      const response = await fetch(remoteHttpUrl(sourceUrl, 'M3U-URL'), {
-        signal: AbortSignal.timeout(20_000),
-        redirect: 'error',
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      content = await readResponseText(response, MAX_PLAYLIST_BYTES);
-      baseUrl = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
-    } else {
-      const realPath = resolveAllowedM3uPath(input, selectedM3uFiles, loadTvSources());
-      if (!realPath) throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
-      const stat = fs.statSync(realPath);
-      if (!stat.isFile() || !/\.m3u8?$/i.test(realPath)) throw new Error('Nur M3U-Dateien sind erlaubt');
-      if (stat.size > MAX_PLAYLIST_BYTES) throw new Error('Datei ist zu groß');
-      content = fs.readFileSync(realPath, 'utf-8');
-      baseUrl = path.dirname(realPath) + path.sep;
-    }
-    const result = parseM3U(content);
-    // Resolve relative URLs for logos
-    const channels = result.channels.map(ch => ({
-      ...ch,
-      logo:
-        ch.logo && !ch.logo.startsWith('http://') && !ch.logo.startsWith('https://') && !ch.logo.startsWith('file://')
-          ? baseUrl + ch.logo
-          : ch.logo,
-    }));
-    return { channels, epgUrls: result.epgUrls, baseUrl };
+    return await loadM3uChannels(urlOrPath);
   } catch (err) {
     // Keine URL/Zugangsdaten in Meldung oder Log (describeM3uFetchError gibt nur feste Texte aus).
     return { error: `Fehler beim Laden der M3U: ${describeM3uFetchError(err)}` };
   }
 });
+
+// Stream-URL einer geplanten Aufnahme beim Start FRISCH aus der Senderliste
+// auflösen (Konzept §3.3): Quelle laden, Overrides (tvsources.json) anwenden,
+// Kanal über Kanal-ID bzw. tvg-id finden. Der URL-Snapshot am Planungseintrag
+// gilt nur als Fallback, wenn die Quelle nicht geladen werden kann (Netz weg).
+// Fehlt der Kanal in der geladenen Liste → ok:false mit lesbarer Meldung.
+async function resolveScheduledStream({ sourceId, channelId, tvgId, channelName, sourceUrlSnapshot }) {
+  const sources = loadTvSources();
+  const candidates = sourceId ? sources.filter(s => s.id === sourceId) : sources;
+  const label = channelName || channelId || 'Der Sender';
+  if (!candidates.length) {
+    return { ok: false, message: `Die TV-Quelle von „${label}“ existiert nicht mehr.` };
+  }
+  let loadFailed = false;
+  for (const source of candidates) {
+    let loaded;
+    try {
+      loaded = await loadM3uChannels(source.url);
+    } catch (err) {
+      loadFailed = true;
+      logger.warn('[schedule] Senderliste nicht ladbar:', source.name, describeM3uFetchError(err));
+      continue;
+    }
+    const channels = applyChannelOverrides(loaded.channels, { ...source, baseUrl: loaded.baseUrl });
+    const found =
+      channels.find(c => c.id === channelId) || (tvgId ? channels.find(c => c.tvgId && c.tvgId === tvgId) : null);
+    if (found && typeof found.url === 'string' && /^https?:\/\//i.test(found.url)) {
+      return { ok: true, url: found.url, channelName: found.name || channelName };
+    }
+  }
+  if (loadFailed && sourceUrlSnapshot) {
+    logger.warn('[schedule] Senderliste nicht erreichbar — nutze gespeicherte Stream-URL als Fallback:', label);
+    return { ok: true, url: sourceUrlSnapshot, channelName };
+  }
+  if (loadFailed) {
+    return { ok: false, message: `Die Senderliste konnte nicht geladen werden — „${label}“ wurde nicht gestartet.` };
+  }
+  return { ok: false, message: `„${label}“ ist nicht mehr in der Senderliste — die geplante Aufnahme wurde nicht gestartet.` };
+}
 
 ipcMain.handle('get-app-path', event => {
   requireMainRenderer(event);
@@ -1401,7 +1515,7 @@ ipcMain.handle('fetch-epg', async (event, url) => {
   try {
     // Download-Validierung (remoteHttpUrl, Redirect-Handling) ist mit dem
     // Main-EpgService geteilt: lib/epg/download.js
-    const response = await fetchEpgResponse(url);
+    const response = await fetchEpgResponse(url, epgFixtureFetch ? { fetchImpl: epgFixtureFetch } : undefined);
     const xml = await readResponseText(response, MAX_EPG_BYTES);
     const entries = parseXMLTV(xml);
     if (!entries.length) throw new Error('Die XMLTV-Datei enthält keine gültigen Sendungen');
