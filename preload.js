@@ -137,8 +137,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setRecordingSettings: patch => ipcRenderer.invoke('recording:set-settings', patch),
   checkFfmpegStatus: () => ipcRenderer.invoke('recording:ffmpeg-status'),
   getDefaultRecordingRoot: () => ipcRenderer.invoke('recording:get-default-root'),
+  // Payload: { tab: 'library' | 'planned' } (Tray: „Aufnahmen-Bibliothek“ / „Planung öffnen“)
   onOpenRecordings: cb => {
-    const handler = () => cb();
+    const handler = (_e, data) => cb(data);
     ipcRenderer.on('recordings:open', handler);
     return () => ipcRenderer.removeListener('recordings:open', handler);
   },
