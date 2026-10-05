@@ -1,3 +1,4 @@
+/* eslint-env browser */
 /* Mockup-Steuerung (nicht Teil der App). Setzt data-Attribute auf den .frame-Elementen. */
 (function () {
   'use strict';
