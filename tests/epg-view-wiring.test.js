@@ -78,3 +78,13 @@ test('Raster bleibt ruhig: Block-Toggle nur bei geplanter/laufender Aufnahme, di
   assert.match(list, /const pastOnly = info\.phase === 'past' && toggle\.kind === 'record';/);
   assert.ok(!/kind !== 'record'/.test(list), 'Liste zeigt weiter bei jeder Zeile den Toggle');
 });
+
+test('Marker: geplant rot und statisch, laufend rot und pulsierend (reduced-motion schaltet ab)', () => {
+  const css = read('styles.css');
+  assert.match(css, /\.epg-marker\[data-state="scheduled"\] \{ color: var\(--epg-rec\); \}/);
+  const run = css.match(/\.epg-marker\[data-state="recording"\] \{[^}]*\}/)[0];
+  assert.match(run, /var\(--epg-rec\)/);
+  assert.match(run, /epgPulse/);
+  assert.ok(!/animation/.test(css.match(/\.epg-marker\[data-state="scheduled"\] \{[^}]*\}/)[0]));
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.epg-marker\[data-state="recording"\] \{ animation: none; \}/);
+});

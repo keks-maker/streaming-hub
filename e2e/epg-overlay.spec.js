@@ -682,7 +682,11 @@ test.describe('Programmführer (kleine Fixture)', () => {
       epgStop: iso(slots.first.stop),
     });
     await expect(block('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    expect(await block('Kommende Sendung').locator('.epg-marker').evaluate(el => window.getComputedStyle(el).color)).not.toBe('');
+    const markerStyle = await block('Kommende Sendung').locator('.epg-marker').evaluate(el => {
+      const st = window.getComputedStyle(el);
+      return { color: st.color, animation: st.animationName };
+    });
+    expect(markerStyle).toEqual({ color: 'rgb(255, 93, 93)', animation: 'none' }); // geplant: rot, statisch
     await block('Kommende Sendung').click();
     await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant ✓');
     await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');

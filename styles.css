@@ -2191,9 +2191,9 @@ body {
 .epg-state-text { max-width: 520px; font-size: 13.5px; line-height: 1.5; color: var(--epg-dim); }
 .epg-state-btn { margin-top: 6px; }
 
-/* Marker: geplant (ruhig) / laufend (pulsierend) */
+/* Marker: geplant (rot, statisch) / laufend (rot, pulsierend) */
 .epg-marker { flex: 0 0 auto; font-size: 12px; line-height: 1; }
-.epg-marker[data-state="scheduled"] { color: var(--epg-accent-light); }
+.epg-marker[data-state="scheduled"] { color: var(--epg-rec); } /* geplant: rot, statisch; laufend: rot und pulsierend */
 .epg-marker[data-state="recording"] { color: var(--epg-rec); animation: epgPulse 1.4s ease-in-out infinite; }
 @keyframes epgPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) {
