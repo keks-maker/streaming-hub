@@ -61,3 +61,12 @@ test('Raster-Titel brechen nie mitten im Wort um (V1)', () => {
   assert.ok(!/overflow-wrap:\s*anywhere|word-break:\s*(break-all|break-word)/.test(block));
   assert.match(block, /-webkit-line-clamp: 2/);
 });
+
+test('Senderlogos im Raster: gleiche Quelle und Prüfung wie die Sidebar (Kanalobjekt, safeResourceUrl), img nur per src-Property', () => {
+  assert.match(read('renderer.js'), /sanitizeLogoUrl: url => safeResourceUrl\(url\)/);
+  const view = read('epg-grid-view.js');
+  assert.match(view, /resolveLogoUrl\(entry\.channel, deps\.sanitizeLogoUrl\)/);
+  assert.match(view, /img\.src = logoUrl/);
+  assert.match(view, /addEventListener\('error'/);
+  assert.match(view, /loading: 'lazy'/);
+});

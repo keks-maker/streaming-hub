@@ -2411,6 +2411,10 @@ body {
   font-weight: 700;
   color: #fff;
 }
+.epg-grid-logo { position: relative; overflow: hidden; }
+.epg-grid-logo-img { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); object-fit: contain; display: block; opacity: 0; }
+.epg-grid-logo.has-img { background: rgba(255,255,255,.1); color: transparent; }
+.epg-grid-logo.has-img .epg-grid-logo-img { opacity: 1; }
 .epg-grid-cn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
 .epg-grid-rows {
   position: relative;

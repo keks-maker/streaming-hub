@@ -100,6 +100,20 @@ function blockTooltip(row, clockFn) {
   return `${row.title || '(ohne Titel)'}\n${clockFn(row.start)}–${clockFn(row.stop)} · ${minutes} min${genre ? ` · Genre: ${genre}` : ''}`;
 }
 
+/**
+ * Logo-URL eines Kanals (Playlist-Feld logo): nur was die Prüffunktion des Renderers (safeResourceUrl:
+ * http/https/file, keine Zugangsdaten) durchlässt; sonst '' → Kürzel-Badge.
+ */
+function resolveLogoUrl(channel, sanitize) {
+  if (!channel || typeof channel.logo !== 'string' || !channel.logo.trim() || typeof sanitize !== 'function') return '';
+  try {
+    const url = sanitize(channel.logo.trim());
+    return typeof url === 'string' ? url : '';
+  } catch {
+    return '';
+  }
+}
+
 /** Zwei bis drei Buchstaben für das Sender-Kürzel (Initialen der Wörter, sonst die ersten Buchstaben) und ein Farbton 0–359. */
 function channelBadge(name) {
   const text = typeof name === 'string' ? name.trim() : '';
@@ -261,6 +275,7 @@ module.exports = {
   blockGeometry,
   blockTooltip,
   channelBadge,
+  resolveLogoUrl,
   gridRowsFor,
   rulerMarks,
   loadedKey,

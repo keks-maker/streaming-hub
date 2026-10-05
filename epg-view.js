@@ -155,6 +155,7 @@ function createEpgView(root, deps) {
     onOpen: row => openDetail(row),
     onToggle: (row, element) => runToggle(row, element),
     onChannelClick: typeof deps.onChannelClick === 'function' ? deps.onChannelClick : undefined,
+    sanitizeLogoUrl: typeof deps.sanitizeLogoUrl === 'function' ? deps.sanitizeLogoUrl : undefined,
     onScroll: () => followGrid(),
     onError: err => warn(err),
   });

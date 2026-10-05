@@ -23,6 +23,7 @@ const FETCH_DEBOUNCE_MS = 120;
  *   isSelected(rowId)           Auswahl (gemeinsam mit der Liste)
  *   onOpen(row, element)        Klick auf einen Block → Detail-Modal
  *   onToggle(row, element)      Klick auf den kleinen Aufnahme-Toggle im Block (Aufnehmen/Abbrechen/Stoppen)
+ *   sanitizeLogoUrl(url)        prüft die Logo-URL des Kanals (Renderer: safeResourceUrl); ohne Funktion kein Logo
  *   onChannelClick(channel)     optional (Kanalansicht kommt in 3.4): nur dann sind Sendernamen klickbar
  *   onScroll()                  Scrollposition hat sich geändert (Tab/Anker nachführen)
  *   onError(err)
@@ -156,6 +157,20 @@ function createGridView(deps) {
     const badge = model.channelBadge(name);
     const logo = h('span', { className: 'epg-grid-logo', text: badge.abbr, attrs: { 'aria-hidden': 'true' } });
     logo.style.setProperty('--h', String(badge.hue));
+    // Echtes Senderlogo (Playlist-Kanalobjekt, wie in der Sidebar): img nur über die Property src, lazy;
+    // fehlt es oder scheitert das Laden, bleibt das Kürzel-Badge stehen.
+    const logoUrl = model.resolveLogoUrl(entry.channel, deps.sanitizeLogoUrl);
+    if (logoUrl) {
+      const img = h('img', { className: 'epg-grid-logo-img', attrs: { alt: '', loading: 'lazy', decoding: 'async' } });
+      // Bis das Logo geladen ist, bleibt das Kürzel sichtbar; erst dann ersetzt das Bild das Badge.
+      img.addEventListener('load', () => logo.classList.add('has-img'));
+      img.addEventListener('error', () => {
+        img.remove();
+        logo.classList.remove('has-img');
+      });
+      logo.appendChild(img);
+      img.src = logoUrl;
+    }
     const label = h('span', { className: 'epg-grid-cn', text: name });
     const cell = typeof deps.onChannelClick === 'function'
       ? h('button', { className: 'epg-grid-chan epg-grid-chan-btn', type: 'button' }, [logo, label])
@@ -214,9 +229,9 @@ function createGridView(deps) {
    * Ragt ein Block links über den sichtbaren Rand (rechts der Senderspalte) hinaus, rückt sein Text an
    * diesen Rand nach (margin-left), solange mindestens MIN_TEXT_PX des Blocks übrig bleiben.
    */
-  function keepTextVisible(entry) {
+  function keepTextVisible(entry, scrollLeft) {
     if (!entry.refs.text) return;
-    const raw = el.scrollLeft - entry.left;
+    const raw = scrollLeft - entry.left;
     const shift = raw > 0 ? Math.max(0, Math.min(raw, entry.width - model.MIN_TEXT_WIDTH)) : 0;
     const hasRec = entry.el.classList.contains('has-rec');
     const key = `${shift}|${hasRec}`;
@@ -314,6 +329,7 @@ function createGridView(deps) {
     const data = deps.getMarkerData();
     const markers = order.length ? grid.matchMarkers(order.map(viewModel.markerSlot), data.schedules, data.recordings, nowMs) : [];
     const markerById = new Map(order.map((row, i) => [row.id, markers[i]]));
+    const scrollLeft = el.scrollLeft; // einmal lesen (kein Layout-Zugriff je Block)
     for (const { row, r } of wanted.values()) {
       let entry = blocks.get(row.id);
       if (!entry) {
@@ -326,7 +342,7 @@ function createGridView(deps) {
       const marker = markerById.get(row.id) || null;
       updateBlock(entry, nowMs, marker);
       updateRec(row, entry, r, nowMs, marker);
-      keepTextVisible(entry);
+      keepTextVisible(entry, scrollLeft);
     }
     for (const [key, rec] of recs) {
       if (!wanted.has(key)) {

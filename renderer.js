@@ -2167,6 +2167,7 @@ const epgView = createEpgView(epgOverlay, {
   api: window.electronAPI,
   getChannels: () => tvChannels,
   isFavorite: ch => isFavorite(ch, tvSources),
+  sanitizeLogoUrl: url => safeResourceUrl(url),
   recordProgramme: programme => handleEpgRecordClick(programme),
   stopRecording: recId => stopRecordingById(recId),
   openChannel: channel => {

@@ -294,3 +294,18 @@ test('Block-Toggle und Textrand: Mindestbreiten sind konsistent (Toggle erst ab 
   assert.ok(gm.MIN_REC_BLOCK_WIDTH > gm.MIN_BLOCK_WIDTH);
   assert.ok(gm.MIN_REC_BLOCK_WIDTH - 30 >= gm.MIN_TEXT_WIDTH - 0); // Platz für den 28-px-Toggle neben mindestens 60 px Text
 });
+
+test('resolveLogoUrl: nur geprüfte Playlist-Logo-URLs, sonst leer (→ Kürzel-Badge)', () => {
+  const sanitize = url => (/^https?:\/\/[^@]+$/.test(url) ? url : '');
+  assert.equal(gm.resolveLogoUrl({ logo: 'https://cdn.example/a.png' }, sanitize), 'https://cdn.example/a.png');
+  assert.equal(gm.resolveLogoUrl({ logo: '  https://cdn.example/a.png  ' }, sanitize), 'https://cdn.example/a.png');
+  assert.equal(gm.resolveLogoUrl({ logo: 'javascript:alert(1)' }, sanitize), '');
+  assert.equal(gm.resolveLogoUrl({ logo: 'https://user:pw@cdn.example/a.png' }, sanitize), '');
+  assert.equal(gm.resolveLogoUrl({ logo: '' }, sanitize), '');
+  assert.equal(gm.resolveLogoUrl({}, sanitize), '');
+  assert.equal(gm.resolveLogoUrl(null, sanitize), '');
+  assert.equal(gm.resolveLogoUrl({ logo: 42 }, sanitize), '');
+  assert.equal(gm.resolveLogoUrl({ logo: 'https://cdn.example/a.png' }, undefined), '');
+  assert.equal(gm.resolveLogoUrl({ logo: 'https://cdn.example/a.png' }, () => { throw new Error('x'); }), '');
+  assert.equal(gm.resolveLogoUrl({ logo: 'https://cdn.example/a.png' }, () => null), '');
+});

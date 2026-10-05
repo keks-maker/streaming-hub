@@ -46,9 +46,23 @@ async function launchApp({ prefix, epgXml, channels, favorites }) {
   const fixture = path.join(tmpRoot, 'epg.xml');
   fs.writeFileSync(fixture, epgXml);
   const m3u = path.join(tmpRoot, 'e2e.m3u');
+  // Logo '@file': winzige lokale PNG-Datei (file:-URL); sonst die URL unverändert (tvg-logo der Playlist)
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const logoOf = c => {
+    if (c.logo !== '@file') return c.logo || '';
+    const file = path.join(tmpRoot, `${c.id}.png`);
+    fs.writeFileSync(file, png);
+    return `file://${file}`;
+  };
   fs.writeFileSync(
     m3u,
-    '#EXTM3U\n' + channels.map(c => `#EXTINF:-1 tvg-id="${c.id}" group-title="Test",${c.name}\nhttp://streams.invalid/${c.id}.m3u8\n`).join(''),
+    '#EXTM3U\n' +
+      channels
+        .map(c => {
+          const logo = logoOf(c);
+          return `#EXTINF:-1 tvg-id="${c.id}"${logo ? ` tvg-logo="${logo}"` : ''} group-title="Test",${c.name}\nhttp://streams.invalid/${c.id}.m3u8\n`;
+        })
+        .join(''),
   );
   fs.writeFileSync(
     path.join(userData, 'tvsources.json'),
@@ -173,8 +187,8 @@ test.describe('Programmführer (kleine Fixture)', () => {
       prefix: 'streaming-hub-e2e-epgov-',
       epgXml: xml,
       channels: [
-        { id: 'E2E.de', name: 'E2E Kanal' },
-        { id: 'E2E2.de', name: 'Zweiter Kanal' },
+        { id: 'E2E.de', name: 'E2E Kanal', logo: '@file' },
+        { id: 'E2E2.de', name: 'Zweiter Kanal', logo: 'https://logo.invalid/zweiter.png' },
         { id: 'E2E3.de', name: 'Füllkanal' },
       ],
       favorites: ['E2E.de', 'E2E2.de', 'E2E3.de'],
@@ -579,6 +593,26 @@ test.describe('Programmführer (kleine Fixture)', () => {
       return { checked, bad };
     });
     expect(overlaps.bad).toEqual([]);
+  });
+
+  test('Raster: echte Senderlogos aus der Playlist (img, lazy), Fallback auf das Kürzel-Badge bei defekter oder fehlender URL', async () => {
+    const cells = page.locator('.epg-grid-chan');
+    const first = cells.nth(0).locator('.epg-grid-logo');
+    await expect(first).toHaveClass(/has-img/);
+    const img = first.locator('img.epg-grid-logo-img');
+    await expect(img).toHaveCount(1);
+    await expect(img).toHaveAttribute('loading', 'lazy');
+    await expect(img).toHaveAttribute('alt', '');
+    expect(await img.evaluate(el => el.getAttribute('src'))).toMatch(/^file:\/\/.*E2E\.de\.png$/);
+    expect(await img.evaluate(el => window.getComputedStyle(el).objectFit)).toBe('contain');
+    // defekte URL (https://logo.invalid, Netz gesperrt): Bild entfernt, Kürzel steht
+    const second = cells.nth(1).locator('.epg-grid-logo');
+    await expect(second).toHaveText('ZK');
+    await expect(second.locator('img')).toHaveCount(0);
+    await expect(second).not.toHaveClass(/has-img/);
+    // ohne Logo-Feld: Kürzel
+    await expect(cells.nth(2).locator('.epg-grid-logo')).toHaveText('FÜL');
+    expect(await cells.nth(2).locator('img').count()).toBe(0);
   });
 
   test('Raster: Zoom 3/5/8 hält den Zeitanker, Breite skaliert, Standard ist 5', async () => {
