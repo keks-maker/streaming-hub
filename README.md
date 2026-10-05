@@ -200,19 +200,31 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 Klicke im Live-TV-Dashboard auf **EPG öffnen** (oder in der TV-Seitenleiste auf den EPG-Button), um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
 
+![Programmführer als Liste mit Genre-Chips (Beispieldaten)](assets/screenshots/epg-liste.png)
+
 **Liste, Raster und Jetzt & Gleich:** Oben wechselst du mit dem Schalter **Liste | Raster | Jetzt & Gleich** die Darstellung; Senderauswahl, Tag, Zeitpunkt und Auswahl bleiben dabei erhalten. Womit sich der Programmführer öffnet, stellst du unter **Einstellungen → LiveTV → EPG → Startansicht des Programmführers** ein (Automatisch, Liste, Raster, Jetzt & Gleich); „Automatisch“ zeigt ab 900 Pixel Fensterbreite die Liste, in schmaleren Fenstern „Jetzt & Gleich“. Der Schalter im Programmführer gilt nur für die aktuelle Sitzung.
 - **Liste** (Standard) – Alle Sendungen nach Startzeit mit Zeit, Sender, Titel, Genre und Dauer. Die Trennlinie „Jetzt“ markiert die aktuelle Uhrzeit, die laufende Sendung zeigt Fortschritt und „noch N min“, Vergangenes ist gedämpft, Nachtsendungen vor 05:00 gehören zum Vorabend (Badge „Nacht“).
 - **Raster** – Sender als Zeilen, Sendungen als Blöcke auf einer Zeitachse mit roter Jetzt-Linie, Senderlogos und Zoom (3, 5 oder 8 px/min); Schnellsprünge zu 20:15 und 22:00.
 - **Jetzt & Gleich** – Je Sender die laufende Sendung (mit Fortschritt), die nächste und die übernächste; ein Klick auf eine Sendung öffnet die Details, ein Klick auf den Sendernamen die Kanalansicht. Jede Zelle zeigt links ein kleines Vorschaubild; fehlt es, bleibt ein Platzhalter mit dem Anfangsbuchstaben. Die Anzeige aktualisiert sich alle 30 Sekunden und ist auch in schmalen Fenstern ohne Scrollen zur Seite nutzbar.
 - **Tage** – Die Tabs (Gestern, Heute, Morgen, Wochentage) springen auf 05:00 des jeweiligen TV-Tags; **Jetzt** springt zur aktuellen Zeit. Das Genre erscheint als Spalte und Farbbalken.
 
+![Programmführer als Raster mit Zeitachse (Beispieldaten)](assets/screenshots/epg-raster.png)
+
+![Jetzt & Gleich mit Vorschaubildern (Beispieldaten)](assets/screenshots/epg-jetzt-gleich.png)
+
 **Suche und Senderauswahl:** Das Suchfeld oben durchsucht die Titel der gewählten Sender (ab 2 Zeichen; Umlaute und Groß-/Kleinschreibung spielen keine Rolle). Die Treffer erscheinen als Liste mit Titel, Sender, Wochentag und Uhrzeit; ein Klick springt zum Termin und öffnet die Details, `Esc` leert und verlässt die Suche. Unter **Mehr ▾** lässt sich zusätzlich die Beschreibung durchsuchen und festlegen, ob Sender ohne EPG ausgeblendet werden (Standard). Über **Sender ▾** wählst du Favoriten (Standard), Alle Sender, eine Quelle oder eine Gruppe; die Auswahl gilt in Liste, Raster, Jetzt & Gleich und Suche und bleibt für die Sitzung erhalten.
 
 **Genre-Filter:** Die Chips unter der Kopfzeile filtern nach Genre: Film, Serie, Nachrichten, Sport, Doku, Kinder, Show, Musik und Sonstiges. Du kannst mehrere Gruppen kombinieren; **Alle** oder ein Klick auf das ✕ am aktiven Chip hebt den Filter auf. In Liste und Jetzt & Gleich werden nicht passende Sendungen ausgeblendet, im Raster gedämpft; auch die Suche berücksichtigt den Filter. Sendungen ohne Genre-Angabe passen zu keiner aktiven Gruppe. Der Filter bleibt beim Moduswechsel und beim erneuten Öffnen des Programmführers erhalten, in der Kanalansicht sind die Chips ausgeblendet.
 
+![Liste mit aktivem Genre-Filter Film (Beispieldaten)](assets/screenshots/epg-genre-filter.png)
+
 **Kanalansicht:** Klicke auf einen Sendernamen (Liste oder Raster) oder im Sendungsdetail auf **Alle Sendungen des Senders**, um alle Sendungen dieses Senders für 7 TV-Tage zu sehen. **← Alle Sender** oder `Esc` führt zurück, ohne dass Ansicht und Scrollposition verloren gehen. Mit **+ Weitere Tage** blendest du die Tage 8–14 ein, soweit der Cache reicht.
 
+![Kanalansicht mit allen Sendungen eines Senders (Beispieldaten)](assets/screenshots/epg-kanalansicht.png)
+
 **Sendungsdetails:** Ein Klick auf eine Sendung öffnet die Details mit Beschreibung, einer Infozeile (Genre, Jahr, Dauer, Staffel und Folge), Besetzung (Regie und Mitwirkende), Poster, Untertitel und Altersfreigabe – jeweils nur, wenn die EPG-Quelle diese Angaben liefert. Der Abschnitt **Läuft auch** nennt bis zu 5 weitere Termine derselben Sendung; ein Klick springt dorthin. Außerdem gibt es **Sender öffnen** und **In Mediathek ansehen** (ARD/ZDF/arte, falls verfügbar). `Esc` schließt Details bzw. den Programmführer.
+
+![Sendungsdetails mit Poster, Besetzung und „Läuft auch“ (Beispieldaten)](assets/screenshots/epg-sendung-detail.png)
 
 **Aufnehmen, Abbrechen, Stoppen:** Jede Sendung hat einen Knopf, der zum Zustand passt: **● Aufnehmen** (öffnet den Planungsdialog), **✕ Aufnahme abbrechen** (geplant, mit Rückfrage) oder **■ Aufnahme stoppen** (läuft, mit Rückfrage). Das Beenden einer laufenden Aufnahme meldet zuerst „wird beendet …“ und danach das Ergebnis. Aufnehmen lässt sich nur bei Sendungen, die noch nicht begonnen haben; laufende Sendungen nimmst du im TV-Player auf. Geplant wird bis 8 Tage im Voraus (darüber erscheint ein Hinweis).
 
