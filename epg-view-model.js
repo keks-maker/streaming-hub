@@ -19,10 +19,13 @@
 const grid = require('./lib/epg-grid.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const gridModel = require('./epg-grid-model.js');
+const { cleanGenre } = require('./epg-genres.js');
 
-const ROW_HEIGHT = 44;
-const DAY_HEIGHT = 30;
-const NOW_HEIGHT = 28;
+/** Zeilenhöhen (Mockup B2): kompakt 32 px, laufende Sendung 46 px (Zeit, „noch N min“, Fortschrittsbalken). */
+const ROW_HEIGHT = 32;
+const ROW_HEIGHT_RUN = 46;
+const DAY_HEIGHT = 26;
+const NOW_HEIGHT = 24;
 /** „Jetzt“-Trennlinie steht beim Sprung auf dieser Höhe des Viewports. */
 const NOW_ANCHOR_RATIO = 0.4;
 const PLAN_DAYS = 7;
@@ -175,6 +178,7 @@ function buildDayRows(day, results, channelByKey) {
         channelKey: entry.channelKey,
         channel,
         dayKey: day.key,
+        genre: cleanGenre(slot.genre),
         night: isNightStart(slot.start),
       });
     }
@@ -227,7 +231,7 @@ function buildLayout(dayData, nowMs) {
       if (i === rows.length) break;
       rowIndex.push(items.length);
       items.push({ type: 'row', key: `r:${rows[i].id}`, dayKey: day.key, row: rows[i] });
-      heights.push(ROW_HEIGHT);
+      heights.push(rows[i].start <= nowMs && nowMs < rows[i].stop ? ROW_HEIGHT_RUN : ROW_HEIGHT);
     }
   }
   const offsets = new Float64Array(items.length + 1);
@@ -536,6 +540,7 @@ function createViewState(initial = {}) {
 
 module.exports = {
   ROW_HEIGHT,
+  ROW_HEIGHT_RUN,
   DAY_HEIGHT,
   NOW_HEIGHT,
   NOW_ANCHOR_RATIO,

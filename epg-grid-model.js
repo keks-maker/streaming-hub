@@ -7,6 +7,7 @@
 'use strict';
 
 const grid = require('./lib/epg-grid.js');
+const { cleanGenre, genreLabel } = require('./epg-genres.js');
 
 const ROW_HEIGHT = 64;
 const CHANNEL_COL_WIDTH = 150;
@@ -91,7 +92,20 @@ function blockGeometry(slot, axis, pxPerMin) {
 /** Tooltip: voller Titel, Zeit, Dauer. */
 function blockTooltip(row, clockFn) {
   const minutes = Math.max(0, Math.round((row.stop - row.start) / grid.MINUTE_MS));
-  return `${row.title || '(ohne Titel)'}\n${clockFn(row.start)}–${clockFn(row.stop)} · ${minutes} min`;
+  const genre = genreLabel(row.genre);
+  return `${row.title || '(ohne Titel)'}\n${clockFn(row.start)}–${clockFn(row.stop)} · ${minutes} min${genre ? ` · Genre: ${genre}` : ''}`;
+}
+
+/** Zwei bis drei Buchstaben für das Sender-Kürzel (Initialen der Wörter, sonst die ersten Buchstaben) und ein Farbton 0–359. */
+function channelBadge(name) {
+  const text = typeof name === 'string' ? name.trim() : '';
+  const words = text.split(/[\s\-_.()/]+/).filter(w => /[\p{L}\p{N}]/u.test(w));
+  let abbr;
+  if (words.length >= 2) abbr = words.slice(0, 3).map(w => [...w][0]).join('');
+  else abbr = [...(words[0] || '?')].slice(0, 3).join('');
+  let hue = 0;
+  for (const ch of text) hue = (hue * 31 + ch.codePointAt(0)) % 360;
+  return { abbr: abbr.toUpperCase(), hue };
 }
 
 // ── Zeilen ──
@@ -132,7 +146,7 @@ function rulerMarks(axis, pxPerMin) {
       ms: day.startMs,
       left: xForTime(axis, day.startMs, pxPerMin),
       key: day.key,
-      label: `${WEEKDAYS[day.weekday]} ${pad2(day.day)}.${pad2(day.month)}.`,
+      label: `${WEEKDAYS[day.weekday]} ${pad2(day.day)}.${pad2(day.month)}. · ${pad2(grid.TV_DAY_START_HOUR)}:00`,
     });
     day = grid.tvDayOf(day.endMs);
   }
@@ -197,6 +211,7 @@ function createSlotStore() {
           title: typeof slot.title === 'string' ? slot.title : '',
           channelKey: entry.key,
           channel: entry.channel,
+          genre: cleanGenre(slot.genre),
           night: new Date(slot.start).getHours() < grid.TV_DAY_START_HOUR,
         });
         c.sorted = null;
@@ -239,6 +254,7 @@ module.exports = {
   dayKeyAtTime,
   blockGeometry,
   blockTooltip,
+  channelBadge,
   gridRowsFor,
   rulerMarks,
   loadedKey,

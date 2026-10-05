@@ -23,6 +23,7 @@ const model = require('./epg-view-model.js');
 const gridModel = require('./epg-grid-model.js');
 const { createGridView } = require('./epg-grid-view.js');
 const { h, trapTab } = require('./epg-dom.js');
+const { genreLabel } = require('./epg-genres.js');
 
 const TICK_MS = 30 * 1000;
 const OVERSCAN_PX = 400;
@@ -111,13 +112,13 @@ function createEpgView(root, deps) {
   const modeGridBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeGrid', type: 'button', text: 'Raster' });
   const modeSeg = h('div', { className: 'epg-seg', attrs: { role: 'group', 'aria-label': 'Ansicht' } }, [modeListBtn, modeGridBtn]);
   const header = h('div', { className: 'epg-header' }, [
-    h('div', { className: 'epg-header-left' }, [h('h2', { className: 'epg-title', text: 'Programmführer' }), modeSeg]),
+    h('div', { className: 'epg-header-left' }, [modeSeg]),
     h('div', { className: 'epg-header-actions' }, [nowBtn, standEl, refreshBtn, closeBtn]),
   ]);
   const dayTabs = h('div', { className: 'epg-daytabs', id: 'epgDayTabs', attrs: { role: 'group', 'aria-label': 'Tag' } });
   // Raster-Werkzeuge (nur im Raster sichtbar): Zoom 3/5/8 px/min und Schnellsprünge
   const zoomBtns = gridModel.ZOOMS.map(z => {
-    const btn = h('button', { className: 'epg-seg-btn epg-zoom-btn', type: 'button', text: String(z), attrs: { title: `${z} px pro Minute` } });
+    const btn = h('button', { className: 'epg-seg-btn epg-zoom-btn', type: 'button', text: `${z} px/min`, attrs: { title: `${z} Pixel pro Minute` } });
     btn.dataset.zoom = String(z);
     return btn;
   });
@@ -128,10 +129,13 @@ function createEpgView(root, deps) {
   const filterBar = h('div', { className: 'epg-filterbar' }, [dayTabs, gridTools]);
 
   const listHead = h('div', { className: 'epg-list-head', attrs: { 'aria-hidden': 'true' } }, [
+    h('span'),
     h('span', { text: 'Zeit' }),
     h('span', { text: 'Sender' }),
     h('span', { text: 'Titel' }),
-    h('span', { className: 'epg-col-action-head', text: 'Aktion' }),
+    h('span', { text: 'Genre' }),
+    h('span', { className: 'epg-col-dur-head', text: 'Dauer' }),
+    h('span', { className: 'epg-col-action-head', text: 'Aufnahme' }),
   ]);
   const spacer = h('div', { className: 'epg-list-spacer', id: 'epgListItems', attrs: { role: 'list', 'aria-label': 'Programm' } });
   const scroll = h('div', { className: 'epg-list-scroll', id: 'epgList', attrs: { tabindex: '0' } }, [listHead, spacer]);
@@ -149,6 +153,7 @@ function createEpgView(root, deps) {
     getMarkerData: () => ({ schedules: markerList(), recordings }),
     isSelected: id => viewState.selectedRowId === id,
     onOpen: row => openDetail(row),
+    onToggle: (row, element) => runToggle(row, element),
     onChannelClick: typeof deps.onChannelClick === 'function' ? deps.onChannelClick : undefined,
     onScroll: () => followGrid(),
     onError: err => warn(err),
@@ -220,7 +225,8 @@ function createEpgView(root, deps) {
   );
   const toastEl = h('div', { className: 'epg-toast', id: 'epgToast', attrs: { role: 'status' }, hidden: true });
 
-  root.append(header, filterBar, body, backdrop, confirmEl, toastEl);
+  const frameEl = h('div', { className: 'epg-frame' }, [header, filterBar, body]);
+  root.append(frameEl, backdrop, confirmEl, toastEl);
 
   // ── Hilfen ──
 
@@ -313,6 +319,10 @@ function createEpgView(root, deps) {
     refs.marker.textContent = marker ? '●' : '';
     refs.marker.title = marker ? (marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant') : '';
     refs.marker.setAttribute('aria-label', refs.marker.title);
+    // Vergangene Sendungen: statt des Buttons „vorbei“ (wie im Mockup); die Zukunftsregel-Meldung bleibt im Detail
+    const pastOnly = info.phase === 'past' && toggle.kind === 'record';
+    refs.toggle.hidden = pastOnly;
+    refs.pastNote.hidden = !pastOnly;
     refs.toggle.textContent = toggle.label;
     refs.toggle.dataset.kind = toggle.kind;
     refs.toggle.disabled = toggle.disabled;
@@ -326,38 +336,44 @@ function createEpgView(root, deps) {
   function createRowNode(row) {
     const marker = h('span', { className: 'epg-marker' });
     const time = h('span', { className: 'epg-time', text: model.clock(row.start) });
-    const timeLine = h('div', { className: 'epg-time-line' }, [marker, time]);
+    const timeLine = h('div', { className: 'epg-time-line' }, [time]);
     if (row.night) timeLine.appendChild(h('span', { className: 'epg-night', text: 'Nacht', attrs: { title: 'Nach Mitternacht (Vorabend-TV-Tag)' } }));
     const sub = h('span', { className: 'epg-time-sub' });
     const barFill = h('span', { className: 'epg-progress-fill' });
     const bar = h('span', { className: 'epg-progress', hidden: true }, [barFill]);
-    const subLine = h('div', { className: 'epg-sub-line' }, [sub, bar]);
-    const timeCell = h('div', { className: 'epg-col-time' }, [timeLine, subLine]);
+    const timeCell = h('div', { className: 'epg-col-time' }, [timeLine, sub, bar]);
     const channelCell = h('div', { className: 'epg-col-channel', text: row.channel.name || row.channelKey });
     channelCell.title = row.channel.name || row.channelKey;
     const open = h('button', { className: 'epg-row-open', type: 'button', text: row.title || '(ohne Titel)' });
     open.title = row.title;
+    const label = genreLabel(row.genre);
+    const genreCell = h('div', { className: `epg-col-genre${label ? '' : ' is-none'}`, text: label || '–' });
+    const durCell = h('div', { className: 'epg-col-dur', text: `${model.durationMinutes(row.start, row.stop)} min` });
     const toggle = h('button', { className: 'epg-toggle', type: 'button' });
-    const actionCell = h('div', { className: 'epg-col-action' }, [toggle]);
+    const pastNote = h('span', { className: 'epg-past-note', text: 'vorbei', hidden: true });
+    const actionCell = h('div', { className: 'epg-col-action' }, [toggle, pastNote]);
     const el = h(
       'div',
       { className: 'epg-list-row epg-program', attrs: { role: 'listitem' } },
-      [timeCell, channelCell, h('div', { className: 'epg-col-title' }, [open]), actionCell],
+      [
+        h('div', { className: 'epg-col-mk' }, [marker]),
+        timeCell,
+        channelCell,
+        h('div', { className: 'epg-col-title' }, [open]),
+        genreCell,
+        durCell,
+        actionCell,
+      ],
     );
     el.dataset.rowId = row.id;
-    el.style.height = `${model.ROW_HEIGHT}px`;
-    return { el, refs: { sub, bar, barFill, marker, toggle, open }, sig: '' };
+    if (label) el.dataset.g = row.genre;
+    return { el, refs: { sub, bar, barFill, marker, toggle, pastNote, open }, sig: '' };
   }
 
   function createNode(item) {
     if (item.type === 'row') return createRowNode(item.row);
     const el = h('div', { className: item.type === 'day' ? 'epg-day-head' : 'epg-now-line', attrs: { role: 'presentation' } });
-    if (item.type === 'day') {
-      el.textContent = item.day.heading;
-      el.style.height = `${model.DAY_HEIGHT}px`;
-    } else {
-      el.style.height = `${model.NOW_HEIGHT}px`;
-    }
+    if (item.type === 'day') el.textContent = item.day.heading;
     return { el, refs: {}, sig: '' };
   }
 
@@ -389,10 +405,11 @@ function createEpgView(root, deps) {
         nodes.set(item.key, entry);
       }
       entry.el.style.top = `${layout.offsets[i]}px`;
+      entry.el.style.height = `${layout.offsets[i + 1] - layout.offsets[i]}px`;
       if (item.type === 'row') {
         updateRow(entry, item.row, nowMs, markerByRow.get(item.row.id) || null);
       } else if (item.type === 'now') {
-        const text = `Jetzt ${model.clock(nowMs)}`;
+        const text = `Jetzt ${model.clock(nowMs)} · Vergangenes liegt darüber`;
         if (setRowSignature(entry, text)) entry.el.textContent = text;
       }
       const ref = spacer.children[j];
@@ -710,6 +727,7 @@ function createEpgView(root, deps) {
       axis: gridModel.axisFor({ days, coverageToMs }),
       entries: gridModel.gridRowsFor(channelEntries, channelsWithEpg),
       zoom: viewState.zoom,
+      cornerLabel: viewState.showAll ? 'Alle Sender' : 'Favoriten',
       refetch,
     });
   }
@@ -838,7 +856,7 @@ function createEpgView(root, deps) {
     if (!layout) return;
     if (viewState.mode === 'grid') gridView.tick();
     const next = model.buildLayout(loadedRun(), nowMs);
-    if (next.nowIndex !== layout.nowIndex) rebuildLayout({ keepPosition: true });
+    if (next.nowIndex !== layout.nowIndex || next.total !== layout.total) rebuildLayout({ keepPosition: true });
     renderWindow();
   }
 
@@ -895,7 +913,7 @@ function createEpgView(root, deps) {
       target.focus();
       return;
     }
-    (backdrop.hidden ? scroll : dToggle).focus();
+    (backdrop.hidden ? (viewState.mode === 'grid' ? gridView.el : scroll) : dToggle).focus();
   }
 
   function askConfirm(kind, title, returnTo, onYes) {
@@ -996,7 +1014,8 @@ function createEpgView(root, deps) {
     gridView.invalidate();
     dTitle.textContent = row.title || '(ohne Titel)';
     const minutes = model.durationMinutes(row.start, row.stop);
-    dMeta.textContent = `${model.formatDetailTime(row.start, row.stop)} · ${minutes} min · ${row.channel.name || row.channelKey}`;
+    const genre = genreLabel(row.genre);
+    dMeta.textContent = `${model.formatDetailTime(row.start, row.stop)} · ${minutes} min · ${row.channel.name || row.channelKey}${genre ? ` · ${genre}` : ''}`;
     dDesc.textContent = 'Beschreibung wird geladen …';
     dNotice.hidden = true;
     dNotice.textContent = '';
