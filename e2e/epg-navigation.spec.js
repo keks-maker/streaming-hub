@@ -105,8 +105,8 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(page.locator('#epgSearchInput')).toBeVisible();
     await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Favoriten ▾');
     await expect(page.locator('#epgMoreMenu')).toHaveText('Mehr ▾');
-    // Genre-Chips kommen erst in 3.6
-    await expect(page.locator('.epg-genrechip, .epg-chip')).toHaveCount(0);
+    // Genre-Chips (3.6): „Alle“ + neun Gruppen
+    await expect(page.locator('#epgGenreChips .epg-chip')).toHaveCount(10);
   });
 
   test('Segment-Umschalter wirkt nur für die Sitzung: Moduswechsel wird nicht gespeichert, erneutes Öffnen startet im Startmodus', async () => {
@@ -209,7 +209,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(page.locator('.epg-jng-head')).toBeVisible();
   });
 
-  test('Jetzt & Gleich (Favoriten): je Sender laufend (mit Fortschritt) · nächste · übernächste, ohne Thumbnails; Logo mit Kürzel-Fallback', async () => {
+  test('Jetzt & Gleich (Favoriten): je Sender laufend (mit Fortschritt) · nächste · übernächste, Thumbnail-Platzhalter ohne Bilder; Logo mit Kürzel-Fallback', async () => {
     const row = jngRow('E2E Kanal');
     await expect(row.locator('.epg-jcell')).toHaveCount(3);
     await expect(row.locator('.epg-jcell').nth(0)).toContainText('Laufende Sendung');
@@ -219,7 +219,9 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(row.locator('.epg-jcell').nth(1)).toContainText('Kommende Sendung');
     await expect(row.locator('.epg-jcell').nth(2)).toContainText('Uebernaechste Sendung');
     await expect(row.locator('.epg-jcell').nth(1).locator('.epg-progress')).toBeHidden();
-    await expect(page.locator('.epg-jcell img.thumb, .epg-jcell .epg-thumb')).toHaveCount(0);
+    // Thumbnails (3.6): fester Platzhalter je Zelle; diese Fixture trägt keine Bilder → nie ein Bild-Element
+    await expect(page.locator('.epg-jcell .epg-thumb')).toHaveCount(5);
+    await expect(page.locator('.epg-jcell .epg-thumb-img, .epg-jcell img.thumb')).toHaveCount(0);
     // Vorbei und ferne Sendung stehen nicht darin
     await expect(jngCell('Vorbei Magazin')).toHaveCount(0);
     await expect(jngCell('Ferne Sendung')).toHaveCount(0);

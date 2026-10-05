@@ -179,7 +179,9 @@ test('Beschreibungsschalter: standardmäßig nur Titel; mit includeDesc auch Bes
   // die View ruft epg:search mit includeDesc des Schalters (Standard aus) und nie ohne Optionsobjekt
   const view = read('epg-view.js');
   assert.match(view, /let searchDesc = false;/);
-  assert.match(view, /api\.searchEpg\(chunk, query\.text, plan\.fromMs, plan\.toMs, searchModel\.RESULT_LIMIT, \{ includeDesc: searchDesc \}\)/);
+  assert.match(view, /api\.searchEpg\(chunk, query\.text, plan\.fromMs, plan\.toMs, fetchLimit, \{ includeDesc: searchDesc \}\)/);
+  // Etappe 3.6: ohne Genre-Filter bleibt es bei RESULT_LIMIT, mit Filter werden mehr Treffer geholt und danach gefiltert
+  assert.match(view, /const fetchLimit = genres\.length \? searchModel\.FILTERED_FETCH_LIMIT : searchModel\.RESULT_LIMIT;/);
   assert.match(view, /id: 'epgOptDesc'/);
   assert.match(view, /text: 'Beschreibung durchsuchen'/);
 });
