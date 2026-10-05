@@ -14,6 +14,8 @@ const MAX_QUERY = 80;
 const DEBOUNCE_MS = 250;
 /** Treffer je Anzeige (Main-Obergrenze ist 200); darüber: Hinweis, die Suche einzugrenzen. */
 const RESULT_LIMIT = 100;
+/** Mit aktivem Genre-Filter werden bis zu so viele Treffer geholt (Main-Obergrenze), dann gefiltert und auf RESULT_LIMIT gekürzt. */
+const FILTERED_FETCH_LIMIT = 200;
 /** Kanäle je epg:search-Aufruf (Main-Grenze). */
 const MAX_KEYS_PER_CALL = 600;
 const MAX_RANGE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -94,16 +96,19 @@ function hitParts(row, nowMs) {
 /**
  * Anzeigezustand der Suche.
  *   queryState 'idle'|'short'|'ready', keyCount: Sender in der Auswahl, hasPlan: Zeitraum vorhanden,
- *   loading, error (Text), total (Treffer), truncated
+ *   loading, error (Text), total (Treffer), truncated, genreText (Etappe 3.6: aktive Genre-Filter, '' = keiner)
  * → { kind: 'idle'|'short'|'no-channels'|'loading'|'error'|'empty'|'results', text }
  */
-function deriveSearchState({ queryState, keyCount, hasPlan, loading, error, total, truncated, includeDesc }) {
+function deriveSearchState({ queryState, keyCount, hasPlan, loading, error, total, truncated, includeDesc, genreText = '' }) {
   if (queryState === 'idle') return { kind: 'idle', text: '' };
   if (queryState === 'short') return { kind: 'short', text: `Bitte mindestens ${MIN_QUERY} Zeichen eingeben.` };
   if (!keyCount) return { kind: 'no-channels', text: 'Keine Sender in der Auswahl. Wähle über „Sender“ andere Sender aus.' };
   if (!hasPlan) return { kind: 'empty', text: 'Keine Treffer: Der EPG-Cache enthält noch keine Daten.' };
   if (error) return { kind: 'error', text: `Suche fehlgeschlagen: ${error}` };
   if (loading) return { kind: 'loading', text: 'Suche läuft …' };
+  if (!total && genreText) {
+    return { kind: 'empty', text: `Keine Treffer im Genre ${genreText}. Wähle „Alle“, um den Genre-Filter aufzuheben.` };
+  }
   if (!total) {
     return { kind: 'empty', text: includeDesc ? 'Keine Treffer in Titeln und Beschreibungen.' : 'Keine Treffer in den Titeln. Unter „Mehr“ lässt sich die Beschreibung mitdurchsuchen.' };
   }
@@ -131,6 +136,7 @@ module.exports = {
   MAX_QUERY,
   DEBOUNCE_MS,
   RESULT_LIMIT,
+  FILTERED_FETCH_LIMIT,
   MAX_KEYS_PER_CALL,
   normalizeQuery,
   searchPlan,

@@ -8,23 +8,38 @@
 // Virtualisierung: Zeilen mit fester Höhe (breit/schmal, siehe Modell), nur der sichtbare Bereich
 // plus Überstand liegt im DOM. tick() schreibt den Fortschritt fort und baut nur Zeilen neu auf,
 // deren Zuordnung (laufend/nächste/übernächste) sich geändert hat. Texte nur per textContent.
+//
+// Etappe 3.6: Genre-Filter (setGenres) — die Positionen laufend/nächste/übernächste bleiben, nicht passende Zellen
+// entfallen, Sender ohne passende Zelle verschwinden. Vorschaubilder: Die schlanken Daten (epg:range-many) tragen kein
+// Bild; für die SICHTBAREN Zeilen holt getIcons (epg:range je Sender, nur Zeilen im Viewport, entprellt) die Bild-URLs,
+// setCellThumb setzt sie lazy in den festen Platzhalter. Kein Vorab-Laden, kein eigener Bildcache (nur die URL-Zuordnung
+// bis zum nächsten Datenabruf); fehlt der Bilddienst, bleibt der Platzhalter.
 
 'use strict';
 
 const jngModel = require('./epg-jng-model.js');
-const { createRowNode, updateRowNode } = require('./epg-row-dom.js');
+const { createRowNode, updateRowNode, setCellThumb } = require('./epg-row-dom.js');
 const { h, createChannelLogo } = require('./epg-dom.js');
 
 const OVERSCAN_PX = 400;
+const THUMB_DEBOUNCE_MS = 120;
+const EMPTY_FILTERED = 'Keine Sendungen für die gewählten Genres. Wähle „Alle“, um den Filter aufzuheben.';
 
 /**
  * deps: now(), getMarkers(rows) → Marker je Zeile (wie grid.matchMarkers), isSelected(rowId), onOpen(row),
- * onToggle(row, element), onChannelClick(channel), sanitizeLogoUrl(url).
+ * onToggle(row, element), onChannelClick(channel), sanitizeLogoUrl(url),
+ * getIcons(channelKey, fromMs, toMs) → Promise<Slot[]> (volle Projektion, optional: ohne sind keine Vorschaubilder möglich).
  */
 function createJngView(deps) {
   const now = typeof deps.now === 'function' ? deps.now : () => Date.now();
-  let channels = []; // [{ key, channel, rows, hasEpg }]
-  let assignments = []; // je Kanal { current, next, after }
+  let allChannels = []; // [{ key, channel, rows, hasEpg }] — alle Sender der Auswahl
+  let channels = []; // angezeigte Sender (mit aktivem Genre-Filter nur die mit passender Zelle)
+  let assignments = []; // je angezeigtem Kanal { current, next, after }
+  let genres = []; // aktiver Genre-Filter (leer = kein Filter)
+  let emptyBase = '';
+  const icons = new Map(); // Zeilen-ID → Bild-URL ('' = keine/unbrauchbar); nur bis zum nächsten Datenabruf
+  let thumbTimer = null;
+  let thumbEpoch = 0;
   let nodes = new Map(); // Kanal-Schlüssel → { el, cells: [entry|null ×3], sig, chan }
   let narrow = false;
   let frame = 0;
@@ -50,7 +65,29 @@ function createJngView(deps) {
   }
 
   function recompute(nowMs = now()) {
-    assignments = channels.map(channel => jngModel.assign(channel, nowMs));
+    if (genres.length) {
+      channels = [];
+      assignments = [];
+      for (const channel of allChannels) {
+        const assignment = jngModel.assign(channel, nowMs, genres);
+        if (!jngModel.hasMatch(assignment)) continue;
+        channels.push(channel);
+        assignments.push(assignment);
+      }
+    } else {
+      channels = allChannels;
+      assignments = channels.map(channel => jngModel.assign(channel, nowMs));
+    }
+    const height = `${channels.length * rowHeight()}px`;
+    if (spacer.style.height !== height) spacer.style.height = height;
+    updateEmpty();
+  }
+
+  /** Hinweis, solange nichts zu zeigen ist: Ladezustand/kein Programm (epg-view.js) oder „kein Treffer im Genre-Filter“. */
+  function updateEmpty() {
+    const filteredOut = channels.length === 0 && allChannels.length > 0 && genres.length > 0;
+    emptyEl.hidden = channels.length > 0;
+    emptyEl.textContent = filteredOut ? EMPTY_FILTERED : emptyBase;
   }
 
   function createPlaceholder(text, extraClass = '') {
@@ -88,6 +125,10 @@ function createJngView(deps) {
         cell.row = row;
         entry.cells[i] = cell;
         slot.appendChild(cell.el);
+        return;
+      }
+      if (genres.length) {
+        slot.appendChild(createPlaceholder('–'));
         return;
       }
       if (i === 0 && !channel.rows.length) {
@@ -144,7 +185,79 @@ function createJngView(deps) {
     const markers = deps.getMarkers(visible.map(cell => cell.row));
     visible.forEach((cell, i) => {
       updateRowNode(cell, cell.row, { nowMs, marker: markers[i] || null, selected: !!(deps.isSelected && deps.isSelected(cell.row.id)) });
+      const url = icons.get(cell.row.id);
+      if (url) setCellThumb(cell, url);
     });
+    scheduleThumbs();
+  }
+
+  // ── Vorschaubilder (nur sichtbare Zeilen) ──
+
+  /** Zellen der Zeilen, die tatsächlich im Viewport stehen (ohne Überstand). */
+  function viewportCells() {
+    const height = rowHeight();
+    const first = Math.max(0, Math.floor(scroll.scrollTop / height));
+    const last = Math.min(channels.length, Math.ceil((scroll.scrollTop + viewportH()) / height));
+    const out = [];
+    for (let i = first; i < last; i += 1) {
+      const entry = nodes.get(channels[i].key);
+      if (!entry) continue;
+      for (const cell of entry.cells) if (cell) out.push({ key: channels[i].key, cell });
+    }
+    return out;
+  }
+
+  function scheduleThumbs() {
+    if (typeof deps.getIcons !== 'function') return;
+    clearTimeout(thumbTimer); // entprellt: beim schnellen Scrollen werden nur die Zeilen angefragt, auf denen die Ansicht stehen bleibt
+    thumbTimer = setTimeout(loadThumbs, THUMB_DEBOUNCE_MS);
+  }
+
+  /** Bild-URLs der sichtbaren Zellen holen (ein epg:range je Sender, Zeitfenster seiner sichtbaren Zellen). */
+  function loadThumbs() {
+    thumbTimer = null;
+    if (el.hidden || typeof deps.getIcons !== 'function') return;
+    const epoch = thumbEpoch;
+    const wanted = new Map(); // Sender-Schlüssel → { fromMs, toMs, ids }
+    for (const { key, cell } of viewportCells()) {
+      if (icons.has(cell.row.id)) continue;
+      const w = wanted.get(key) || { fromMs: Infinity, toMs: -Infinity, ids: [] };
+      w.fromMs = Math.min(w.fromMs, cell.row.start);
+      w.toMs = Math.max(w.toMs, cell.row.stop);
+      w.ids.push(cell.row);
+      wanted.set(key, w);
+    }
+    for (const [key, w] of wanted) {
+      for (const row of w.ids) icons.set(row.id, ''); // Abruf läuft (oder ist gescheitert): nicht erneut anfragen
+      Promise.resolve()
+        .then(() => deps.getIcons(key, w.fromMs, w.toMs))
+        .then(slots => {
+          if (epoch !== thumbEpoch) return;
+          for (const row of w.ids) {
+            const slot = (Array.isArray(slots) ? slots : []).find(s => s && s.start === row.start);
+            if (slot && typeof slot.icon === 'string') icons.set(row.id, slot.icon);
+          }
+          if (!el.hidden) applyThumbs();
+        })
+        .catch(() => {});
+    }
+  }
+
+  function applyThumbs() {
+    for (const entry of nodes.values()) {
+      for (const cell of entry.cells) {
+        if (!cell) continue;
+        const url = icons.get(cell.row.id);
+        if (url) setCellThumb(cell, url);
+      }
+    }
+  }
+
+  function resetThumbs() {
+    clearTimeout(thumbTimer);
+    thumbTimer = null;
+    thumbEpoch += 1;
+    icons.clear();
   }
 
   function scheduleRender() {
@@ -181,12 +294,19 @@ function createJngView(deps) {
 
   /** Kanäle samt ihrer Sendungen übernehmen (Neuaufbau; Scrollposition bleibt, soweit möglich). */
   function setChannels(next, loadedAtMs = now()) {
-    channels = Array.isArray(next) ? next : [];
-    emptyEl.hidden = channels.length > 0;
+    allChannels = Array.isArray(next) ? next : [];
+    if (loadedAtMs !== loadedAt) resetThumbs(); // neue Daten: Bild-URLs neu holen
     loadedAt = loadedAtMs;
     clearNodes();
     recompute();
-    spacer.style.height = `${channels.length * rowHeight()}px`;
+    render();
+  }
+
+  /** Genre-Filter (Etappe 3.6): Zeilen neu aufbauen, Scrollposition bleibt. */
+  function setGenres(list) {
+    genres = Array.isArray(list) ? list.slice() : [];
+    clearNodes();
+    recompute();
     render();
   }
 
@@ -202,7 +322,7 @@ function createJngView(deps) {
 
   /** 30-s-Takt: Zuordnung fortschreiben (Wechsel der laufenden Sendung), Fortschritt und Marker aktualisieren. */
   function tick() {
-    if (!channels.length) return;
+    if (!allChannels.length) return;
     recompute();
     render();
   }
@@ -221,9 +341,11 @@ function createJngView(deps) {
   }
 
   function reset() {
+    allChannels = [];
     channels = [];
     assignments = [];
     loadedAt = null;
+    resetThumbs();
     emptyEl.hidden = true;
     clearNodes();
     spacer.style.height = '';
@@ -254,11 +376,14 @@ function createJngView(deps) {
     reset,
     /** Hinweistext, solange keine Sender zu zeigen sind (lädt / kein Programm). */
     setEmptyText: text => {
-      emptyEl.textContent = text || '';
+      emptyBase = text || '';
+      updateEmpty();
     },
+    setGenres,
     channelElement,
     cellElement,
     count: () => channels.length,
+    totalCount: () => allChannels.length,
     loadedAt: () => loadedAt,
     scrollToTop: () => {
       scroll.scrollTop = 0;

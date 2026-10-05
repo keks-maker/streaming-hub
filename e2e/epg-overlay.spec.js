@@ -170,7 +170,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     const backdrop = page.locator('#epgDetailBackdrop');
     await expect(backdrop).toBeVisible();
     await expect(page.locator('#epgDetailTitle')).toHaveText('Folgesendung');
-    await expect(page.locator('#epgDetailMeta')).toContainText('45 min');
+    await expect(page.locator('#epgDetailInfo')).toContainText('45 min'); // Metazeile (3.6): Genre · Jahr · Dauer · Episode
     await expect(page.locator('#epgDetailMeta')).toContainText('E2E Kanal');
     await expect(page.locator('#epgDetailDesc')).toHaveText('Beschreibung & Details zu Folgesendung');
     await expect(page.locator('#epgDetailRecordBtn')).toHaveText('● Aufnehmen');
@@ -544,7 +544,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await block('Folgesendung').click();
     await expect(page.locator('#epgDetailBackdrop')).toBeVisible();
     await expect(page.locator('#epgDetailTitle')).toHaveText('Folgesendung');
-    await expect(page.locator('#epgDetailMeta')).toContainText('45 min');
+    await expect(page.locator('#epgDetailInfo')).toContainText('45 min'); // Metazeile (3.6): Genre · Jahr · Dauer · Episode
     await expect(page.locator('#epgDetailRecordBtn')).toHaveText('● Aufnehmen');
     await page.keyboard.press('Escape');
     await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
@@ -811,11 +811,11 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(withNews.locator('.epg-col-dur')).toHaveText('45 min');
     // Detail: Genre als Text
     await withNews.locator('.epg-row-open').click();
-    await expect(page.locator('#epgDetailMeta')).toContainText('Nachrichten');
+    await expect(page.locator('#epgDetailInfo')).toContainText('Nachrichten');
     await page.keyboard.press('Escape');
     await row('Vergangenes Magazin').locator('.epg-row-open').click();
-    await expect(page.locator('#epgDetailMeta')).not.toContainText('Nachrichten');
-    await expect(page.locator('#epgDetailMeta')).not.toContainText('Sonstiges');
+    await expect(page.locator('#epgDetailInfo')).not.toContainText('Nachrichten');
+    await expect(page.locator('#epgDetailInfo')).not.toContainText('Sonstiges');
     await page.keyboard.press('Escape');
   });
 

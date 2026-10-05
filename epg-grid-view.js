@@ -22,6 +22,7 @@ const FETCH_DEBOUNCE_MS = 120;
  *   getMarkerData()             { schedules, recordings } für grid.matchMarkers
  *   matchMarkers(slots)         optional: ersetzt grid.matchMarkers (z. B. mit Flag `stopping`)
  *   isSelected(rowId)           Auswahl (gemeinsam mit der Liste)
+ *   isDimmed(row)               optional (Etappe 3.6): Block passt nicht zum Genre-Filter → gedämpft (Struktur bleibt)
  *   onOpen(row, element)        Klick auf einen Block → Detail-Modal
  *   onToggle(row, element)      Klick auf den kleinen Aufnahme-Toggle im Block (Aufnehmen/Abbrechen/Stoppen)
  *   sanitizeLogoUrl(url)        prüft die Logo-URL des Kanals (Renderer: safeResourceUrl); ohne Funktion kein Logo
@@ -197,13 +198,15 @@ function createGridView(deps) {
     const info = viewModel.rowPhase(entry.row, nowMs);
     const percent = Math.round(info.progress * 100);
     const selected = deps.isSelected(entry.row.id);
-    const sig = `${info.phase}|${percent}|${info.minutesLeft}|${marker ? marker.state : ''}|${marker && marker.stopping ? 's' : ''}|${selected}`;
+    const dimmed = typeof deps.isDimmed === 'function' && !!deps.isDimmed(entry.row);
+    const sig = `${info.phase}|${percent}|${info.minutesLeft}|${marker ? marker.state : ''}|${marker && marker.stopping ? 's' : ''}|${selected}|${dimmed}`;
     if (entry.sig === sig) return;
     entry.sig = sig;
     const { el: node, refs } = entry;
     node.classList.toggle('is-now', info.phase === 'now');
     node.classList.toggle('is-past', info.phase === 'past');
     node.classList.toggle('is-selected', selected);
+    node.classList.toggle('is-dimmed', dimmed);
     refs.bar.hidden = info.phase !== 'now';
     refs.barFill.style.width = `${percent}%`;
     refs.timeEl.textContent = `${viewModel.clock(entry.row.start)}${info.minutesLeft ? ` · noch ${info.minutesLeft} min` : ''}`;

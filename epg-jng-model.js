@@ -9,6 +9,7 @@
 
 const viewModel = require('./epg-view-model.js');
 const settings = require('./lib/epg-view-settings.js');
+const genreFilter = require('./epg-genre-filter-model.js');
 
 const WINDOW_MS = 12 * 60 * 60 * 1000;
 /** Nach dieser Zeit werden die Sendungen des Fensters neu abgerufen (das Fenster ist dann aufgebraucht). */
@@ -67,8 +68,10 @@ function buildChannels({ entries, results, epgKeys = null, hideNoEpg = true }) {
 /**
  * Laufende, nächste und übernächste Sendung eines Senders zum Zeitpunkt nowMs.
  * Lücken: ohne laufende Sendung (current null) rücken die kommenden Sendungen trotzdem nach.
+ * genres (Etappe 3.6, Genre-Chips): die Positionen bleiben, Zellen mit nicht passendem Genre entfallen (null) —
+ * wie im Mockup; ein Sender ohne passende Zelle fällt per hasMatch() aus der Liste.
  */
-function assign(channel, nowMs) {
+function assign(channel, nowMs, genres = null) {
   let current = null;
   const upcoming = [];
   for (const row of channel.rows) {
@@ -78,7 +81,15 @@ function assign(channel, nowMs) {
       upcoming.push(row);
     }
   }
-  return { current, next: upcoming[0] || null, after: upcoming[1] || null };
+  const picks = { current, next: upcoming[0] || null, after: upcoming[1] || null };
+  if (!genreFilter.isActive(genres)) return picks;
+  const keep = row => (row && genreFilter.matchesGenre(genres, row.genre) ? row : null);
+  return { current: keep(picks.current), next: keep(picks.next), after: keep(picks.after) };
+}
+
+/** Hat der Sender mindestens eine (passende) Zelle? */
+function hasMatch(assignment) {
+  return !!(assignment.current || assignment.next || assignment.after);
 }
 
 /** Signatur der Zuordnung: ändert sie sich, werden die Zellen der Zeile neu aufgebaut (sonst nur aktualisiert). */
@@ -97,5 +108,6 @@ module.exports = {
   needsReload,
   buildChannels,
   assign,
+  hasMatch,
   assignmentSig,
 };
