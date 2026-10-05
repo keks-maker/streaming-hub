@@ -303,6 +303,20 @@
               <div class="settings-status settings-status-left" id="settingsEpgStatus" role="status" aria-live="polite"></div>
             </div>
             <div class="settings-card">
+              <h4 class="settings-card-title">Startansicht des Programmführers</h4>
+              <p class="settings-card-desc">Womit sich der Programmführer öffnet. „Automatisch“ zeigt die Liste ab 900 Pixel Fensterbreite, in schmaleren Fenstern „Jetzt &amp; Gleich“. Der Umschalter im Programmführer gilt nur für die aktuelle Sitzung.</p>
+              <div class="settings-row">
+                <label class="settings-row-label" for="settingsEpgStartView">Startansicht</label>
+                <select class="settings-group-select" id="settingsEpgStartView">
+                  <option value="auto">Automatisch</option>
+                  <option value="list">Liste</option>
+                  <option value="grid">Raster</option>
+                  <option value="jng">Jetzt &amp; Gleich</option>
+                </select>
+              </div>
+              <div class="settings-status settings-status-left" id="settingsEpgStartViewStatus" role="status" aria-live="polite"></div>
+            </div>
+            <div class="settings-card">
               <h4 class="settings-card-title">Wochen-Cache</h4>
               <p class="settings-card-desc">Die App hält das Programm der nächsten Tage im Hintergrund vor — auch bei geschlossenem Fenster.</p>
               <div class="settings-row">

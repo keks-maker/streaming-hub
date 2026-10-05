@@ -19,6 +19,7 @@
 const grid = require('./lib/epg-grid.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const gridModel = require('./epg-grid-model.js');
+const selectionModel = require('./epg-selection-model.js');
 const { cleanGenre } = require('./epg-genres.js');
 
 /** Zeilenhöhen (Mockup B2): kompakt 32 px, laufende Sendung 46 px (Zeit, „noch N min“, Fortschrittsbalken). */
@@ -124,13 +125,17 @@ function epgChannelKey(channel) {
 /**
  * Sender der Liste: nur Sender mit EPG-Schlüssel, je normalisiertem Schlüssel einer
  * (gleiche tvgId in mehreren Quellen → erste Fundstelle). isFavorite filtert, solange
- * showAll nicht gesetzt ist (EPG-E3). Rückgabe: [{ key (roh, für epg:range-many), channel }].
+ * showAll nicht gesetzt ist (EPG-E3). include (optional, Etappe 3.5): Prädikat der Senderauswahl
+ * (Gruppe/Quelle, epg-selection-model.js) — ersetzt dann Favoriten-/showAll-Logik.
+ * Rückgabe: [{ key (roh, für epg:range-many), channel }].
  */
-function selectChannels({ channels, isFavorite, showAll }) {
+function selectChannels({ channels, isFavorite, showAll, include }) {
   const seen = new Set();
   const out = [];
   for (const channel of Array.isArray(channels) ? channels : []) {
-    if (!showAll && !(typeof isFavorite === 'function' && isFavorite(channel))) continue;
+    if (typeof include === 'function') {
+      if (!include(channel)) continue;
+    } else if (!showAll && !(typeof isFavorite === 'function' && isFavorite(channel))) continue;
     const key = epgChannelKey(channel);
     if (!key) continue;
     const norm = grid.normalizeKey(key);
@@ -149,6 +154,22 @@ function chunkKeys(keys, size = 100) {
 }
 
 // ── Zeilen eines TV-Tags ──
+
+/** Zeile (Sendung eines Senders) aus einem schlanken epg:range-many-Slot; gleiche Form in Liste, Suche und Jetzt & Gleich. */
+function slotToRow({ channelKey, channel, slot, order = 0, dayKey = null }) {
+  return {
+    id: `${channelKey}|${slot.start}`,
+    order,
+    start: slot.start,
+    stop: slot.stop,
+    title: typeof slot.title === 'string' ? slot.title : '',
+    channelKey,
+    channel,
+    dayKey: dayKey || grid.tvDayOf(slot.start).key,
+    genre: cleanGenre(slot.genre),
+    night: isNightStart(slot.start),
+  };
+}
 
 /**
  * Zeilen eines TV-Tags aus den epg:range-many-Antworten (eine oder mehrere Antworten,
@@ -170,18 +191,7 @@ function buildDayRows(day, results, channelByKey) {
       const id = `${entry.channelKey}|${slot.start}`;
       if (seen.has(id)) continue;
       seen.add(id);
-      rows.push({
-        id,
-        order,
-        start: slot.start,
-        stop: slot.stop,
-        title: typeof slot.title === 'string' ? slot.title : '',
-        channelKey: entry.channelKey,
-        channel,
-        dayKey: day.key,
-        genre: cleanGenre(slot.genre),
-        night: isNightStart(slot.start),
-      });
+      rows.push(slotToRow({ channelKey: entry.channelKey, channel, slot, order, dayKey: day.key }));
     }
   }
   rows.sort((a, b) => a.start - b.start || a.order - b.order);
@@ -479,11 +489,12 @@ function deriveViewState({ status, loadError, loading, channelCount, hasFavorite
 
 // ── Ansichtszustand (gemeinsam für Liste und Raster) ──
 
-const MODES = ['list', 'grid'];
+const MODES = ['list', 'grid', 'jng'];
 
 /**
- * Gemeinsamer Zustand: Modus, Zoom (Raster, 3/5/8 px/min), Tag, Scroll-Anker (Zeitpunkt statt Pixel → in jedem Modus
- * wiederherstellbar), Auswahl, „Alle Sender“ (Sitzungsvariable, P14). Ein Moduswechsel
+ * Gemeinsamer Zustand: Modus (Liste | Raster | Jetzt & Gleich), Zoom (Raster, 3/5/8 px/min), Tag, Scroll-Anker
+ * (Zeitpunkt statt Pixel → in jedem Modus wiederherstellbar), Auswahl, Senderauswahl (Sitzungszustand, EPG-E3/P14;
+ * `showAll` ist die abgeleitete Kurzform „nicht Favoriten“) und „Sender ohne EPG ausblenden“. Ein Moduswechsel
  * ändert nur den Modus.
  */
 function createViewState(initial = {}) {
@@ -492,7 +503,8 @@ function createViewState(initial = {}) {
     dayKey: initial.dayKey || null,
     anchorMs: Number.isFinite(initial.anchorMs) ? initial.anchorMs : null,
     selectedRowId: initial.selectedRowId || null,
-    showAll: !!initial.showAll,
+    selection: selectionModel.normalizeSelection(initial.selection || (initial.showAll ? { kind: 'all' } : null)),
+    hideNoEpg: initial.hideNoEpg !== false,
     zoom: gridModel.isZoom(initial.zoom) ? initial.zoom : gridModel.DEFAULT_ZOOM,
   };
   return {
@@ -509,7 +521,13 @@ function createViewState(initial = {}) {
       return state.selectedRowId;
     },
     get showAll() {
-      return state.showAll;
+      return state.selection.kind !== 'favorites';
+    },
+    get selection() {
+      return state.selection;
+    },
+    get hideNoEpg() {
+      return state.hideNoEpg;
     },
     get zoom() {
       return state.zoom;
@@ -534,7 +552,13 @@ function createViewState(initial = {}) {
       state.selectedRowId = rowId || null;
     },
     setShowAll(value) {
-      state.showAll = !!value;
+      state.selection = selectionModel.normalizeSelection(value ? { kind: 'all' } : null);
+    },
+    setSelection(selection) {
+      state.selection = selectionModel.normalizeSelection(selection);
+    },
+    setHideNoEpg(value) {
+      state.hideNoEpg = !!value;
     },
     snapshot() {
       return { ...state };
@@ -566,6 +590,7 @@ module.exports = {
   epgChannelKey,
   selectChannels,
   chunkKeys,
+  slotToRow,
   buildDayRows,
   markerSlot,
   buildLayout,

@@ -69,6 +69,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('epg:changed', handler);
     return () => ipcRenderer.removeListener('epg:changed', handler);
   },
+  // Programmführer-Einstellungen (Etappe 3.5): Startansicht (auto | list | grid | jng), im Main validiert
+  getEpgViewSettings: () => ipcRenderer.invoke('epg-view:get-settings'),
+  setEpgViewSettings: patch => ipcRenderer.invoke('epg-view:set-settings', patch),
   getEpgStatus: () => ipcRenderer.invoke('epg:status'),
   refreshEpgCache: () => ipcRenderer.invoke('epg:refresh'),
 

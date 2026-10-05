@@ -1,4 +1,5 @@
-// EPG-Programmführer (Etappe 3.3/3.4, Design B2): Kopfzeile + Tages-Tabs, LISTE, RASTER, KANALANSICHT, Detail-MODAL.
+// EPG-Programmführer (Etappe 3.3–3.5, Design B2/F3): Kopfzeile (Suche, Modus-Segment, Jetzt) + Schnellfilter-Leiste
+// (Tages-Tabs, Sender ▾, Mehr ▾), LISTE, RASTER, JETZT & GLEICH, KANALANSICHT, Suche (Trefferliste), Detail-MODAL.
 //
 // Factory-Muster wie settings-view.js. Liest ausschließlich vom Main-Cache (epg:range-many
 // schlank für die Liste, epg:find für das Detail) und kennt weder den Renderer-Datenweg des alten EPG noch die
@@ -22,8 +23,15 @@ const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const model = require('./epg-view-model.js');
 const gridModel = require('./epg-grid-model.js');
 const channelModel = require('./epg-channel-model.js');
+const selectionModel = require('./epg-selection-model.js');
+const searchModel = require('./epg-search-model.js');
+const jngModel = require('./epg-jng-model.js');
+const viewSettings = require('./lib/epg-view-settings.js');
 const { createGridView } = require('./epg-grid-view.js');
 const { createChannelView } = require('./epg-channel-view.js');
+const { createJngView } = require('./epg-jng-view.js');
+const { createSearchView } = require('./epg-search-view.js');
+const { createMenu } = require('./epg-menu-view.js');
 const { createRowNode, updateRowNode } = require('./epg-row-dom.js');
 const { h, trapTab } = require('./epg-dom.js');
 const { genreLabel } = require('./epg-genres.js');
@@ -34,6 +42,7 @@ const SCROLL_RELOAD_DEBOUNCE_MS = 250;
 const MARKER_DEBOUNCE_MS = 120;
 const TOAST_MS = 5000;
 const FETCH_PARALLEL = 3;
+const SENDER_LABEL_MAX = 28;
 
 /**
  * root: das leere Overlay-Element (#epgOverlay). deps:
@@ -41,6 +50,8 @@ const FETCH_PARALLEL = 3;
  *                  listSchedules, listRecordings, removeSchedule, onEpgChanged, onScheduleChanged,
  *                  onRecordingChanged)
  *   getChannels()  alle Sender (tvChannels);  isFavorite(channel)
+ *   getSources()   optional: Quellen [{ id, name }] (Namen der Senderauswahl „Quelle“)
+ *   getStartView() optional: Promise der gespeicherten Startansicht (auto | list | grid | jng, P20)
  *   recordProgramme(ctx)   „Aufnehmen“ → bestehender Weg (Zukunftsregel, Planungsdialog)
  *   stopRecording(recId)   laufende Aufnahme stoppen
  *   openChannel(channel)   Sender im Player öffnen
@@ -98,6 +109,21 @@ function createEpgView(root, deps) {
   let channelLoading = false;
   let channelError = '';
   let originReady = false;
+  // Jetzt & Gleich (3.5): Rohdaten des Fensters (epg:range-many), gelten bis zum nächsten Laden
+  let jngResults = [];
+  let jngSeq = 0;
+  let jngLoadedAt = null;
+  let jngLoading = false;
+  let jngDirty = true;
+  let openSeq = 0;
+  // Suche (3.5): Zustand lebt nur, solange das Overlay offen ist; Beschreibungsschalter gilt für die Sitzung
+  const searchRequests = searchModel.createRequestCounter();
+  let searchTimer = null;
+  let searchRows = [];
+  let searchLoading = false;
+  let searchError = '';
+  let searchTruncated = false;
+  let searchDesc = false;
 
   // ── DOM-Gerüst ──
   root.textContent = '';
@@ -124,9 +150,22 @@ function createEpgView(root, deps) {
   });
   const modeListBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeList', type: 'button', text: 'Liste' });
   const modeGridBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeGrid', type: 'button', text: 'Raster' });
-  const modeSeg = h('div', { className: 'epg-seg', attrs: { role: 'group', 'aria-label': 'Ansicht' } }, [modeListBtn, modeGridBtn]);
+  const modeJngBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeJng', type: 'button', text: 'Jetzt & Gleich' });
+  const modeSeg = h('div', { className: 'epg-seg', attrs: { role: 'group', 'aria-label': 'Ansicht' } }, [modeListBtn, modeGridBtn, modeJngBtn]);
+  const searchInput = h('input', {
+    className: 'epg-search-input',
+    id: 'epgSearchInput',
+    type: 'search',
+    attrs: {
+      placeholder: 'Titel suchen …',
+      'aria-label': 'Suche in Titeln',
+      autocomplete: 'off',
+      spellcheck: 'false',
+      maxlength: String(searchModel.MAX_QUERY),
+    },
+  });
   const header = h('div', { className: 'epg-header' }, [
-    h('div', { className: 'epg-header-left' }, [modeSeg]),
+    h('div', { className: 'epg-header-left' }, [searchInput, modeSeg]),
     h('div', { className: 'epg-header-actions' }, [nowBtn, standEl, refreshBtn, closeBtn]),
   ]);
   const dayTabs = h('div', { className: 'epg-daytabs', id: 'epgDayTabs', attrs: { role: 'group', 'aria-label': 'Tag' } });
@@ -140,7 +179,21 @@ function createEpgView(root, deps) {
   const jump2015Btn = h('button', { className: 'epg-btn epg-jump-btn', id: 'epgJump2015', type: 'button', text: '20:15' });
   const jump2200Btn = h('button', { className: 'epg-btn epg-jump-btn', id: 'epgJump2200', type: 'button', text: '22:00' });
   const gridTools = h('div', { className: 'epg-grid-tools', id: 'epgGridTools', hidden: true }, [jump2015Btn, jump2200Btn, zoomSeg]);
-  const filterBar = h('div', { className: 'epg-filterbar' }, [dayTabs, gridTools]);
+  // Schnellfilter-Leiste (F3): Tages-Tabs | Sender ▾ | Mehr ▾ (Genre-Chips folgen in 3.6)
+  const senderMenu = createMenu({ id: 'epgSenderMenu', label: 'Sender: Favoriten ▾', ariaLabel: 'Sender wählen', align: 'right', onOpen: panel => renderSenderMenu(panel) });
+  const moreMenu = createMenu({ id: 'epgMoreMenu', label: 'Mehr ▾', ariaLabel: 'Weitere Optionen', align: 'right', onOpen: () => syncMoreMenu() });
+  const menus = [senderMenu, moreMenu];
+  const optDesc = h('input', { id: 'epgOptDesc', type: 'checkbox' });
+  const optHide = h('input', { id: 'epgOptHideNoEpg', type: 'checkbox' });
+  moreMenu.panel.append(
+    h('label', { className: 'epg-menu-check' }, [optDesc, h('span', { text: 'Beschreibung durchsuchen' })]),
+    h('label', { className: 'epg-menu-check' }, [optHide, h('span', { text: 'Sender ohne EPG ausblenden' })]),
+  );
+  const filterBar = h('div', { className: 'epg-filterbar' }, [
+    dayTabs,
+    gridTools,
+    h('div', { className: 'epg-filter-menus' }, [senderMenu.el, moreMenu.el]),
+  ]);
 
   const listHead = h('div', { className: 'epg-list-head', attrs: { 'aria-hidden': 'true' } }, [
     h('span'),
@@ -187,7 +240,17 @@ function createEpgView(root, deps) {
     onScroll: () => followGrid(),
     onError: err => warn(err),
   });
-  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, gridView.el, stateEl, channelView.el]);
+  const jngView = createJngView({
+    now,
+    getMarkers: rows => matchRowMarkers(rows.map(model.markerSlot)),
+    isSelected: id => viewState.selectedRowId === id,
+    onOpen: row => openDetail(row),
+    onToggle: (row, element) => runToggle(row, element),
+    onChannelClick: channel => enterChannel(channel, { returnTo: { type: 'jng-channel', key: model.epgChannelKey(channel) } }),
+    sanitizeLogoUrl: typeof deps.sanitizeLogoUrl === 'function' ? deps.sanitizeLogoUrl : undefined,
+  });
+  const searchView = createSearchView({ onPick: row => pickSearchHit(row), onClose: () => closeSearch({ restoreFocus: true }) });
+  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, gridView.el, jngView.el, stateEl, channelView.el, searchView.el]);
 
   // Detail-Modal
   const dTitle = h('h3', { className: 'epg-detail-title', id: 'epgDetailTitle' });
@@ -464,6 +527,7 @@ function createEpgView(root, deps) {
     nowBtn.disabled = inChannel ? channelView.getState() !== 'ready' : !originReady;
     modeListBtn.disabled = inChannel ? false : !originReady;
     modeGridBtn.disabled = inChannel ? false : !originReady;
+    modeJngBtn.disabled = inChannel ? false : !originReady;
   }
 
   function showState(next) {
@@ -471,6 +535,7 @@ function createEpgView(root, deps) {
     originReady = ready;
     scroll.hidden = !(ready && viewState.mode === 'list');
     gridView.setVisible(ready && viewState.mode === 'grid');
+    jngView.setVisible(ready && viewState.mode === 'jng');
     stateEl.hidden = ready;
     applyControls();
     root.dataset.state = next.kind;
@@ -481,6 +546,84 @@ function createEpgView(root, deps) {
     stateBtn.hidden = !next.action;
     stateBtn.dataset.action = next.action || '';
     stateBtn.textContent = next.action === 'show-all' ? 'Alle Sender zeigen' : 'Jetzt aktualisieren';
+  }
+
+  // ── Senderauswahl (3.5): Favoriten · Alle · Quelle · Gruppe — wirkt in allen Modi und in der Suche ──
+
+  function sourceList() {
+    try {
+      return typeof deps.getSources === 'function' ? deps.getSources() || [] : [];
+    } catch (err) {
+      warn(err);
+      return [];
+    }
+  }
+
+  function selectionText() {
+    const label = selectionModel.selectionLabel(viewState.selection, sourceList());
+    return label.length > SENDER_LABEL_MAX ? `${label.slice(0, SENDER_LABEL_MAX - 1)}…` : label;
+  }
+
+  function updateMenuLabels() {
+    senderMenu.setLabel(`Sender: ${selectionText()} ▾`);
+    senderMenu.button.title = selectionModel.selectionLabel(viewState.selection, sourceList());
+  }
+
+  function renderSenderMenu(panel) {
+    panel.textContent = '';
+    panel.setAttribute('role', 'menu');
+    const channels = deps.getChannels().filter(c => model.epgChannelKey(c));
+    const addItem = (label, selection, count) => {
+      const active = selectionModel.sameSelection(viewState.selection, selection);
+      const btn = h('button', { className: 'epg-menu-item', type: 'button', attrs: { role: 'menuitemradio', 'aria-checked': String(active) } }, [
+        h('span', { text: label }),
+        count === undefined ? h('span') : h('span', { className: 'epg-menu-count', text: String(count) }),
+      ]);
+      btn.classList.toggle('active', active);
+      btn.dataset.kind = selection.kind;
+      btn.dataset.value = selection.value || '';
+      btn.addEventListener('click', () => {
+        senderMenu.close({ restoreFocus: true });
+        applySelection(selection);
+      });
+      panel.appendChild(btn);
+    };
+    addItem('Favoriten', { kind: 'favorites' });
+    addItem('Alle Sender', { kind: 'all' }, channels.length);
+    const sources = selectionModel.listSources(channels, sourceList());
+    if (sources.length > 1) {
+      panel.appendChild(h('div', { className: 'epg-menu-head', text: 'Quelle' }));
+      for (const src of sources) addItem(src.name, { kind: 'source', value: src.id }, src.count);
+    }
+    const groups = selectionModel.listGroups(channels);
+    if (groups.length) {
+      panel.appendChild(h('div', { className: 'epg-menu-head', text: 'Gruppe' }));
+      for (const group of groups) addItem(group.name, { kind: 'group', value: group.name }, group.count);
+    }
+  }
+
+  function syncMoreMenu() {
+    optDesc.checked = searchDesc;
+    optHide.checked = viewState.hideNoEpg;
+  }
+
+  /** Neue Senderauswahl: Daten aller Modi neu laden (Tag, Zeitanker und Modus bleiben); laufende Suche folgt. */
+  function applySelection(selection) {
+    if (selectionModel.sameSelection(viewState.selection, selection)) return;
+    viewState.setSelection(selection);
+    updateMenuLabels();
+    if (!isOpen) return;
+    loadAll({ initial: layout === null });
+  }
+
+  /** „Sender ohne EPG ausblenden“: reine Anzeigeoption — kein Neuladen, Raster und Jetzt & Gleich zeichnen neu. */
+  function applyHideNoEpg(value) {
+    if (viewState.hideNoEpg === !!value) return;
+    viewState.setHideNoEpg(value);
+    if (!isOpen || !layout) return;
+    syncGridData(false);
+    applyJng();
+    renderCurrent();
   }
 
   function applyDerivedState(stillLoading) {
@@ -553,7 +696,10 @@ function createEpgView(root, deps) {
     });
     const channels = deps.getChannels();
     hasFavorites = model.selectChannels({ channels, isFavorite: deps.isFavorite, showAll: false }).length > 0;
-    channelEntries = model.selectChannels({ channels, isFavorite: deps.isFavorite, showAll: viewState.showAll });
+    channelEntries = model.selectChannels({
+      channels,
+      include: selectionModel.selectionPredicate(viewState.selection, deps.isFavorite),
+    });
     channelByKey = new Map(channelEntries.map(c => [c.key, c.channel]));
     return true;
   }
@@ -588,6 +734,9 @@ function createEpgView(root, deps) {
         viewState.setDay(days.find(d => d.isToday)?.key || days[0]?.key || null);
         syncDayTabs();
       }
+      jngDirty = true;
+      if (viewState.mode === 'jng') loadJng();
+      refreshSearch();
       if (!days.length || !channelEntries.length) {
         dayRows = new Map();
         dayPromises = new Map();
@@ -666,6 +815,7 @@ function createEpgView(root, deps) {
       for (const entry of nodes.values()) entry.sig = '';
       renderWindow();
       gridView.invalidate();
+      jngView.invalidate();
       if (channelState.active) channelView.invalidate();
       renderModal();
     } catch (err) {
@@ -679,6 +829,201 @@ function createEpgView(root, deps) {
       markerTimer = null;
       if (isOpen) refreshMarkers();
     }, MARKER_DEBOUNCE_MS);
+  }
+
+  // ── Jetzt & Gleich (3.5): schlanke Daten des Fensters „jetzt … +12 h“ (epg:range-many) ──
+
+  /** Kanäle samt Zuordnung an die Sicht geben (aus den Rohdaten; ohne neuen Abruf, z. B. bei „ohne EPG ausblenden“). */
+  function applyJng() {
+    jngView.setChannels(
+      jngModel.buildChannels({ entries: channelEntries, results: jngResults, epgKeys: channelsWithEpg, hideNoEpg: viewState.hideNoEpg }),
+      jngLoadedAt === null ? now() : jngLoadedAt,
+    );
+    jngView.setEmptyText(jngLoading ? 'Jetzt & Gleich wird geladen …' : 'Für die gewählten Sender liegt kein Programm vor.');
+  }
+
+  async function loadJng() {
+    jngDirty = false;
+    jngSeq += 1;
+    const seq = jngSeq;
+    if (!channelEntries.length) {
+      jngResults = [];
+      jngLoadedAt = now();
+      jngLoading = false;
+      applyJng();
+      return;
+    }
+    jngLoading = jngResults.length === 0;
+    if (jngLoading) applyJng();
+    const nowMs = now();
+    const window_ = jngModel.windowFor(nowMs);
+    try {
+      const keys = model.chunkKeys(channelEntries.map(c => c.key));
+      const results = [];
+      for (let i = 0; i < keys.length; i += FETCH_PARALLEL) {
+        const batch = await Promise.all(keys.slice(i, i + FETCH_PARALLEL).map(chunk => api.getEpgRangeMany(chunk, window_.fromMs, window_.toMs)));
+        if (seq !== jngSeq || !isOpen) return;
+        for (const part of batch) results.push(...(Array.isArray(part) ? part : []));
+      }
+      jngResults = results;
+      jngLoadedAt = nowMs;
+      jngLoading = false;
+      applyJng();
+    } catch (err) {
+      if (seq !== jngSeq || !isOpen) return;
+      warn(err);
+      jngLoading = false;
+      jngDirty = true;
+      loadError = scheduleUi.ipcErrorMessage(err);
+      applyDerivedState(false);
+    }
+  }
+
+  // ── Suche (3.5, M8/P11): Trefferliste im Overlay; Klick springt zum Termin und öffnet das Detail ──
+
+  function renderSearch() {
+    const query = searchModel.normalizeQuery(searchInput.value);
+    const plan = searchModel.searchPlan({ keys: channelEntries.map(c => c.key), days, coverageToMs });
+    const state = searchModel.deriveSearchState({
+      queryState: query.state,
+      keyCount: channelEntries.length,
+      hasPlan: !!plan || loading || !status,
+      loading: searchLoading || (loading && !plan),
+      error: searchError,
+      total: searchRows.length,
+      truncated: searchTruncated,
+      includeDesc: searchDesc,
+    });
+    searchView.render({ state, rows: searchRows, query: query.text, includeDesc: searchDesc, nowMs: now() });
+  }
+
+  function openSearchPanel() {
+    for (const menu of menus) menu.close();
+    if (!searchView.isShown()) {
+      searchView.show();
+      applyInert();
+    }
+  }
+
+  /** Suche beenden: Eingabe leeren, Anfragen verwerfen, Trefferliste ausblenden. */
+  function closeSearch({ restoreFocus = false } = {}) {
+    clearTimeout(searchTimer);
+    searchTimer = null;
+    searchRequests.cancel();
+    searchRows = [];
+    searchLoading = false;
+    searchError = '';
+    searchTruncated = false;
+    searchInput.value = '';
+    if (searchView.isShown()) {
+      searchView.hide();
+      applyInert();
+    }
+    if (restoreFocus) searchInput.focus();
+  }
+
+  async function runSearch() {
+    searchTimer = null;
+    const query = searchModel.normalizeQuery(searchInput.value);
+    if (!isOpen || query.state !== 'ready') return;
+    const plan = searchModel.searchPlan({ keys: channelEntries.map(c => c.key), days, coverageToMs });
+    const id = searchRequests.next();
+    searchError = '';
+    searchTruncated = false;
+    if (!plan) {
+      searchRows = [];
+      searchLoading = false;
+      renderSearch();
+      return;
+    }
+    searchLoading = true;
+    renderSearch();
+    try {
+      const parts = [];
+      for (const chunk of plan.chunks) {
+        const part = await api.searchEpg(chunk, query.text, plan.fromMs, plan.toMs, searchModel.RESULT_LIMIT, { includeDesc: searchDesc });
+        if (!searchRequests.isCurrent(id) || !isOpen) return; // veraltet: neuere Eingabe oder Suche geschlossen
+        parts.push(part);
+      }
+      const merged = searchModel.mergeResults(parts);
+      searchRows = searchModel.hitsToRows(merged.results, channelByKey, rowsById);
+      searchTruncated = merged.truncated;
+      searchLoading = false;
+    } catch (err) {
+      if (!searchRequests.isCurrent(id) || !isOpen) return;
+      warn(err);
+      searchRows = [];
+      searchError = scheduleUi.ipcErrorMessage(err);
+      searchLoading = false;
+    }
+    renderSearch();
+  }
+
+  /** Laufende Suche neu ausführen (Senderauswahl, Beschreibungsschalter, EPG-Stand geändert). */
+  function refreshSearch() {
+    if (!searchView.isShown()) return;
+    clearTimeout(searchTimer);
+    searchTimer = null;
+    if (searchModel.normalizeQuery(searchInput.value).state === 'ready') runSearch();
+    else renderSearch();
+  }
+
+  function onSearchInput() {
+    clearTimeout(searchTimer);
+    searchTimer = null;
+    const query = searchModel.normalizeQuery(searchInput.value);
+    if (query.state === 'idle') {
+      closeSearch();
+      return;
+    }
+    openSearchPanel();
+    searchRows = [];
+    searchError = '';
+    searchTruncated = false;
+    if (query.state === 'short') {
+      searchRequests.cancel();
+      searchLoading = false;
+      renderSearch();
+      return;
+    }
+    searchLoading = true; // „Suche läuft …“ schon während der Entprellung
+    renderSearch();
+    searchTimer = setTimeout(runSearch, searchModel.DEBOUNCE_MS);
+  }
+
+  /** Sprung zum Termin im aktuellen Modus (Tag, Zeitanker); false, wenn der Tag nicht in der Tagesleiste liegt. */
+  async function jumpToRow(row) {
+    const day = days.find(d => d.key === row.dayKey);
+    if (!day || !layout) return false;
+    const seq = loadSeq;
+    viewState.setDay(day.key);
+    viewState.setAnchor(row.start);
+    dayPin = null;
+    if (viewState.mode === 'jng') return true; // keine Zeitachse: Tag/Anker gelten beim Wechsel in Liste oder Raster
+    if (viewState.mode === 'grid') {
+      gridView.scrollTime(row.start, 0.1);
+      gridView.revealChannel(row.channelKey);
+      followGrid();
+      syncDayTabs();
+      return true;
+    }
+    await goToDay(day.key);
+    if (seq !== loadSeq || !isOpen || !layout) return false;
+    const idx = layout.indexOfKey(`r:${row.id}`);
+    if (idx >= 0) {
+      scroll.scrollTop = Math.max(0, layout.offsets[idx] - model.ROW_HEIGHT * 2);
+      dayPin = { key: day.key, top: scroll.scrollTop }; // der Tag des Termins bleibt aktiv, solange die Liste dort steht
+      renderWindow();
+      updateFollow();
+    }
+    return true;
+  }
+
+  async function pickSearchHit(row) {
+    closeSearch();
+    if (channelState.active) exitChannel({ restoreFocus: false });
+    await jumpToRow(row);
+    if (isOpen) openDetail(rowsById.get(row.id) || row);
   }
 
   // ── Scrollen und Sprünge ──
@@ -706,6 +1051,7 @@ function createEpgView(root, deps) {
 
   /** Raster/Liste: Zeitanker und gewählten Tag nachführen (Scrollposition des aktiven Modus). */
   function follow() {
+    if (viewState.mode === 'jng') return; // Jetzt & Gleich hat keine Zeitachse: Tag und Zeitanker bleiben, wie sie sind
     if (viewState.mode === 'grid') followGrid();
     else updateFollow();
   }
@@ -729,10 +1075,12 @@ function createEpgView(root, deps) {
 
   function renderCurrent() {
     if (viewState.mode === 'grid') gridView.render();
+    else if (viewState.mode === 'jng') jngView.render();
     else renderWindow();
   }
 
   function jumpNow() {
+    if (viewState.mode === 'jng') return;
     if (viewState.mode === 'grid') {
       gridView.scrollToNow();
       followGrid();
@@ -743,24 +1091,25 @@ function createEpgView(root, deps) {
   function syncGridData(refetch) {
     gridView.configure({
       axis: gridModel.axisFor({ days, coverageToMs }),
-      entries: gridModel.gridRowsFor(channelEntries, channelsWithEpg),
+      entries: gridModel.gridRowsFor(channelEntries, viewState.hideNoEpg ? channelsWithEpg : null),
       zoom: viewState.zoom,
-      cornerLabel: viewState.showAll ? 'Alle Sender' : 'Favoriten',
+      cornerLabel: selectionModel.selectionLabel(viewState.selection, sourceList()),
       refetch,
     });
   }
 
   function syncModeUi() {
     const inChannel = channelState.active;
-    const grid_ = viewState.mode === 'grid';
-    // in der Kanalansicht ist weder Liste noch Raster aktiv (kein dritter Segment-Button); ein Klick führt zurück
-    const listOn = !inChannel && !grid_;
-    const gridOn = !inChannel && grid_;
-    modeListBtn.classList.toggle('active', listOn);
-    modeGridBtn.classList.toggle('active', gridOn);
-    modeListBtn.setAttribute('aria-pressed', String(listOn));
-    modeGridBtn.setAttribute('aria-pressed', String(gridOn));
+    // in der Kanalansicht ist kein Modus des Segments aktiv; ein Klick führt zurück (und wechselt ggf. den Modus)
+    const listOn = !inChannel && viewState.mode === 'list';
+    const gridOn = !inChannel && viewState.mode === 'grid';
+    const jngOn = !inChannel && viewState.mode === 'jng';
+    for (const [btn, on] of [[modeListBtn, listOn], [modeGridBtn, gridOn], [modeJngBtn, jngOn]]) {
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    }
     gridTools.hidden = !gridOn;
+    dayTabs.hidden = jngOn; // Jetzt & Gleich zeigt „jetzt“: keine Tage
     for (const btn of zoomBtns) {
       const active = Number(btn.dataset.zoom) === viewState.zoom;
       btn.classList.toggle('active', active);
@@ -768,7 +1117,7 @@ function createEpgView(root, deps) {
     }
   }
 
-  /** Moduswechsel Liste ↔ Raster: Tag, Zeitanker und Auswahl bleiben erhalten. */
+  /** Moduswechsel Liste | Raster | Jetzt & Gleich: Senderauswahl, Tag, Zeitanker und Auswahl bleiben erhalten. */
   function setMode(mode) {
     if (!isOpen || !layout || mode === viewState.mode) return;
     follow();
@@ -776,20 +1125,24 @@ function createEpgView(root, deps) {
     if (!viewState.setMode(mode)) return;
     dayPin = null;
     syncModeUi();
-    if (mode === 'grid') {
+    scroll.hidden = mode !== 'list';
+    gridView.setVisible(mode === 'grid');
+    jngView.setVisible(mode === 'jng');
+    if (mode === 'jng') {
+      if (jngDirty) loadJng();
+      else jngView.tick();
+      jngView.scrollToTop();
+    } else if (mode === 'grid') {
       syncGridData(false);
-      scroll.hidden = true;
-      gridView.setVisible(true);
       if (Number.isFinite(anchor)) gridView.scrollTime(anchor);
       else gridView.scrollToNow();
       const selected = viewState.selectedRowId;
       if (selected) gridView.revealChannel(selected.slice(0, selected.lastIndexOf('|')));
       followGrid();
     } else {
-      gridView.setVisible(false);
-      scroll.hidden = false;
       const top = Number.isFinite(anchor) ? model.scrollTopForTime(layout, anchor) : null;
       if (top !== null) scroll.scrollTop = top;
+      else jumpToNow();
       renderWindow();
       updateFollow();
     }
@@ -811,11 +1164,16 @@ function createEpgView(root, deps) {
   }
 
   async function goToNow() {
+    if (searchView.isShown()) closeSearch();
     if (channelState.active) {
       channelGoToNow();
       return;
     }
     dayPin = null;
+    if (viewState.mode === 'jng') {
+      jngView.scrollToTop();
+      return;
+    }
     if (viewState.mode === 'grid') {
       gridView.scrollToNow();
       followGrid();
@@ -871,6 +1229,8 @@ function createEpgView(root, deps) {
     if (!isOpen) return;
     scheduleRender();
     gridView.scheduleRender();
+    jngView.setNarrow(jngModel.isNarrow(window.innerWidth));
+    jngView.scheduleRender();
   }
 
   // ── Tick (30 s): Fortschritt ohne Neuaufbau ──
@@ -884,6 +1244,11 @@ function createEpgView(root, deps) {
     }
     renderStand();
     if (channelState.active) channelView.update(); // nur Fortschritt/Klassen/Kennzeichen, kein Neuaufbau
+    if (viewState.mode === 'jng') {
+      // Fortschritt, Marker und Wechsel der laufenden Sendung per Update (kein Neuaufbau); nach einer Stunde Neuabruf
+      jngView.tick();
+      if (jngModel.needsReload(jngLoadedAt, nowMs)) loadJng();
+    }
     if (!layout) return;
     if (viewState.mode === 'grid') gridView.tick();
     const next = model.buildLayout(loadedRun(), nowMs);
@@ -944,7 +1309,16 @@ function createEpgView(root, deps) {
       target.focus();
       return;
     }
-    (backdrop.hidden ? (channelState.active ? channelView.list : viewState.mode === 'grid' ? gridView.el : scroll) : dToggle).focus();
+    (backdrop.hidden
+      ? channelState.active
+        ? channelView.list
+        : viewState.mode === 'grid'
+          ? gridView.el
+          : viewState.mode === 'jng'
+            ? jngView.scroll
+            : scroll
+      : dToggle
+    ).focus();
   }
 
   function askConfirm(kind, title, returnTo, onYes) {
@@ -1068,6 +1442,7 @@ function createEpgView(root, deps) {
     for (const entry of nodes.values()) entry.sig = '';
     renderWindow();
     gridView.invalidate();
+    jngView.invalidate();
     if (channelState.active) channelView.invalidate();
     dChannel.hidden = channelState.active && channelState.key === row.channelKey; // schon in dieser Kanalansicht
     dTitle.textContent = row.title || '(ohne Titel)';
@@ -1100,8 +1475,10 @@ function createEpgView(root, deps) {
     const rowId = viewState.selectedRowId;
     const entry = rowId ? nodes.get(`r:${rowId}`) : null;
     gridView.invalidate();
+    jngView.invalidate();
     if (!restoreFocus) return;
     if (channelState.active) focusOpener(rowId ? channelView.rowOpenElement(rowId) : null);
+    else if (viewState.mode === 'jng') focusOpener(rowId ? jngView.cellElement(rowId) : null);
     else focusOpener(viewState.mode === 'grid' ? gridView.blockElement(rowId) : entry ? entry.refs.open : null);
   }
 
@@ -1110,8 +1487,13 @@ function createEpgView(root, deps) {
   // position und Auswahl werden beim Einstieg zusätzlich als Snapshot gemerkt und beim Zurück geprüft.
   // Aufnehmen/Abbrechen/Stoppen laufen über runToggle (derselbe Weg wie Liste, Raster und Modal).
 
-  function setOriginInert(on) {
-    for (const node of [scroll, gridView.el, stateEl]) node.inert = on;
+  /** Darunterliegende Ansichten sind während Kanalansicht bzw. Suche nicht bedienbar (Fokus, Tab, Lesehilfen). */
+  function applyInert() {
+    const searching = searchView.isShown();
+    for (const node of [scroll, gridView.el, jngView.el, stateEl]) node.inert = channelState.active || searching;
+    channelView.el.inert = searching;
+    dayTabs.inert = searching;
+    gridTools.inert = searching;
   }
 
   function captureOrigin(returnTo) {
@@ -1124,6 +1506,7 @@ function createEpgView(root, deps) {
       selectedRowId: viewState.selectedRowId,
       listScrollTop: scroll.scrollTop,
       gridScroll: { left: gridView.scrollLeft(), top: gridView.scrollTop() },
+      jngScrollTop: jngView.scrollTop(),
       returnTo,
     };
   }
@@ -1132,9 +1515,11 @@ function createEpgView(root, deps) {
   function originFocusElement(target) {
     if (!target) return null;
     if (target.type === 'grid-channel') return gridView.channelElement(target.key);
+    if (target.type === 'jng-channel') return jngView.channelElement(target.key);
     const entry = nodes.get(`r:${target.rowId}`);
     if (target.type === 'list-row') return entry ? entry.refs.chan : null;
     if (viewState.mode === 'grid') return gridView.blockElement(target.rowId) || gridView.channelElement(target.rowId.slice(0, target.rowId.lastIndexOf('|')));
+    if (viewState.mode === 'jng') return jngView.cellElement(target.rowId) || jngView.channelElement(target.rowId.slice(0, target.rowId.lastIndexOf('|')));
     return entry ? entry.refs.open : null;
   }
 
@@ -1232,7 +1617,7 @@ function createEpgView(root, deps) {
     channelError = '';
     channelDays = channelModel.channelDays({ nowMs: now(), coverageToMs, extended: false });
     channelState.setDay(todayKey || null);
-    setOriginInert(true);
+    applyInert();
     channelView.reset();
     channelView.setChannel(channelState.meta, channel);
     channelView.el.hidden = false;
@@ -1251,7 +1636,10 @@ function createEpgView(root, deps) {
     viewState.setAnchor(origin.anchorMs);
     viewState.setZoom(origin.zoom);
     viewState.select(origin.selectedRowId);
-    if (origin.mode === 'grid') {
+    if (origin.mode === 'jng') {
+      if (Math.abs(jngView.scrollTop() - origin.jngScrollTop) > 1) jngView.setScrollTop(origin.jngScrollTop);
+      jngView.invalidate();
+    } else if (origin.mode === 'grid') {
       if (Math.abs(gridView.scrollLeft() - origin.gridScroll.left) > 1 || Math.abs(gridView.scrollTop() - origin.gridScroll.top) > 1) {
         gridView.setScroll(origin.gridScroll);
       }
@@ -1276,7 +1664,7 @@ function createEpgView(root, deps) {
     channelPin = null;
     channelLoading = false;
     channelError = '';
-    setOriginInert(false);
+    applyInert();
     restoreOrigin(origin);
     syncModeUi();
     applyControls();
@@ -1298,6 +1686,7 @@ function createEpgView(root, deps) {
 
   /** Segment Liste/Raster: in der Kanalansicht führt der Klick zurück (und wechselt ggf. den Modus). */
   function onModeClick(mode) {
+    if (searchView.isShown()) closeSearch();
     if (channelState.active) exitChannel({ restoreFocus: false });
     setMode(mode);
   }
@@ -1322,6 +1711,13 @@ function createEpgView(root, deps) {
   }
 
   function onRootKeydown(event) {
+    // Der globale Esc-Handler des Renderers überspringt Eingabefelder: Suche und Optionen leiten Esc selbst in die Kette
+    if (event.key === 'Escape' && event.target && event.target.tagName === 'INPUT') {
+      event.preventDefault();
+      event.stopPropagation();
+      handleEscape();
+      return;
+    }
     if (!confirmEl.hidden) {
       trapTab(event, confirmEl);
       return;
@@ -1346,6 +1742,30 @@ function createEpgView(root, deps) {
     addHandler(nowBtn, 'click', () => goToNow());
     addHandler(modeListBtn, 'click', () => onModeClick('list'));
     addHandler(modeGridBtn, 'click', () => onModeClick('grid'));
+    addHandler(modeJngBtn, 'click', () => onModeClick('jng'));
+    addHandler(searchInput, 'input', onSearchInput);
+    addHandler(searchInput, 'focus', () => {
+      if (searchModel.normalizeQuery(searchInput.value).state !== 'idle') openSearchPanel();
+    });
+    addHandler(searchInput, 'keydown', event => {
+      if (event.key !== 'ArrowDown') return;
+      const first = searchView.firstHit();
+      if (first) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+    for (const menu of menus) {
+      addHandler(menu.button, 'click', () => {
+        if (!menu.isOpen()) return;
+        for (const other of menus) if (other !== menu) other.close();
+      });
+    }
+    addHandler(optDesc, 'change', () => {
+      searchDesc = optDesc.checked;
+      refreshSearch();
+    });
+    addHandler(optHide, 'change', () => applyHideNoEpg(optHide.checked));
     addHandler(moreBtn, 'click', () => toggleExtended());
     addHandler(jump2015Btn, 'click', () => jumpToClock(20, 15));
     addHandler(jump2200Btn, 'click', () => jumpToClock(22, 0));
@@ -1354,7 +1774,8 @@ function createEpgView(root, deps) {
     addHandler(refreshBtn, 'click', () => refresh());
     addHandler(stateBtn, 'click', () => {
       if (stateBtn.dataset.action === 'show-all') {
-        viewState.setShowAll(true);
+        viewState.setSelection({ kind: 'all' });
+        updateMenuLabels();
         loadAll({ initial: true });
       } else {
         refresh();
@@ -1415,7 +1836,8 @@ function createEpgView(root, deps) {
     clearTimeout(reloadTimer);
     clearTimeout(markerTimer);
     clearTimeout(toastTimer);
-    reloadTimer = markerTimer = toastTimer = null;
+    clearTimeout(searchTimer);
+    reloadTimer = markerTimer = toastTimer = searchTimer = null;
     if (frame) {
       window.cancelAnimationFrame(frame);
       frame = 0;
@@ -1457,19 +1879,47 @@ function createEpgView(root, deps) {
     detailCache = new Map();
     viewState.select(null);
     syncModeUi();
+    updateMenuLabels();
+    jngView.setNarrow(jngModel.isNarrow(window.innerWidth));
     bind();
     showState({ kind: 'loading', title: 'EPG wird geladen …', text: '', action: null });
     refreshMarkers();
     nowBtn.focus();
-    loadAll({ initial: true });
     notifyOpenChange(true);
+    // Startansicht (P20): gespeicherte Einstellung beim Öffnen; der Segment-Umschalter wirkt nur für diese Sitzung
+    openSeq += 1;
+    const token = openSeq;
+    resolveStartMode().then(mode => {
+      if (!isOpen || token !== openSeq) return;
+      viewState.setMode(mode);
+      syncModeUi();
+      loadAll({ initial: true });
+    });
+  }
+
+  /** Startmodus aus Einstellung und Fensterbreite; ohne lesbare Einstellung gilt „Automatisch“. */
+  async function resolveStartMode() {
+    let startView = viewSettings.DEFAULT_START_VIEW;
+    if (typeof deps.getStartView === 'function') {
+      try {
+        const value = await deps.getStartView();
+        if (viewSettings.isStartView(value)) startView = value;
+      } catch (err) {
+        warn(err);
+      }
+    }
+    return viewSettings.resolveStartMode(startView, window.innerWidth);
   }
 
   function close() {
     if (!isOpen) return;
     isOpen = false;
     loadSeq += 1;
+    openSeq += 1;
+    jngSeq += 1;
     closeConfirm({ restoreFocus: false });
+    for (const menu of menus) menu.close();
+    closeSearch();
     backdrop.hidden = true;
     modalRow = null;
     modalSeq += 1;
@@ -1486,13 +1936,18 @@ function createEpgView(root, deps) {
     channelState.leave();
     channelView.el.hidden = true;
     channelView.reset();
-    setOriginInert(false);
+    applyInert();
     channelDays = [];
     channelDayData = [];
     channelPin = null;
     channelLoading = false;
     channelError = '';
     gridView.reset();
+    jngView.reset();
+    jngResults = [];
+    jngLoadedAt = null;
+    jngLoading = false;
+    jngDirty = true;
     channelsWithEpg = new Set();
     coverageToMs = null;
     spacer.style.height = '';
@@ -1522,7 +1977,7 @@ function createEpgView(root, deps) {
     }
   }
 
-  /** Esc-Kette: erst Rückfrage, dann Detail-Modal, dann Kanalansicht (zurück zur Herkunft), dann Overlay. true = Taste verbraucht. */
+  /** Esc-Kette: Rückfrage, Detail-Modal, geöffnetes Menü, Suche (leert und verlässt sie), Kanalansicht (zurück zur Herkunft), Overlay. true = Taste verbraucht. */
   function handleEscape() {
     if (!isOpen) return false;
     if (!confirmEl.hidden) {
@@ -1531,6 +1986,15 @@ function createEpgView(root, deps) {
     }
     if (!backdrop.hidden) {
       closeDetail();
+      return true;
+    }
+    const openMenu = menus.find(menu => menu.isOpen());
+    if (openMenu) {
+      openMenu.close({ restoreFocus: true });
+      return true;
+    }
+    if (searchView.isShown()) {
+      closeSearch({ restoreFocus: true });
       return true;
     }
     if (channelState.active) {

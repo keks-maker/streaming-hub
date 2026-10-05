@@ -25,7 +25,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 
 - **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken, Aufnahmen und Einstellungen
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
-- **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste oder Raster, Kanalansicht mit 7 Tagen je Sender, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
+- **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste, Raster oder „Jetzt & Gleich“, Suche, Senderauswahl, Kanalansicht mit 7 Tagen je Sender, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
 - **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, aus dem EPG im Voraus planen und später in der App abspielen
 - **Zeitversetztes Fernsehen (Timeshift)** – Bei unterstützten Live-Streams zurückspulen und Sendungen per EPG-Marker anspringen
 - **Mediathek-Suche** – ARD, ZDF und ARTE direkt aus der Programmübersicht durchsuchen
@@ -200,10 +200,13 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 Klicke im Live-TV-Dashboard auf **EPG öffnen** (oder in der TV-Seitenleiste auf den EPG-Button), um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
 
-**Liste und Raster:** Oben wechselst du mit dem Schalter **Liste | Raster** die Darstellung; Tag, Zeitpunkt und Auswahl bleiben dabei erhalten.
+**Liste, Raster und Jetzt & Gleich:** Oben wechselst du mit dem Schalter **Liste | Raster | Jetzt & Gleich** die Darstellung; Senderauswahl, Tag, Zeitpunkt und Auswahl bleiben dabei erhalten. Womit sich der Programmführer öffnet, stellst du unter **Einstellungen → LiveTV → EPG → Startansicht des Programmführers** ein (Automatisch, Liste, Raster, Jetzt & Gleich); „Automatisch“ zeigt ab 900 Pixel Fensterbreite die Liste, in schmaleren Fenstern „Jetzt & Gleich“. Der Schalter im Programmführer gilt nur für die aktuelle Sitzung.
 - **Liste** (Standard) – Alle Sendungen nach Startzeit mit Zeit, Sender, Titel, Genre und Dauer. Die Trennlinie „Jetzt“ markiert die aktuelle Uhrzeit, die laufende Sendung zeigt Fortschritt und „noch N min“, Vergangenes ist gedämpft, Nachtsendungen vor 05:00 gehören zum Vorabend (Badge „Nacht“).
 - **Raster** – Sender als Zeilen, Sendungen als Blöcke auf einer Zeitachse mit roter Jetzt-Linie, Senderlogos und Zoom (3, 5 oder 8 px/min); Schnellsprünge zu 20:15 und 22:00.
+- **Jetzt & Gleich** – Je Sender die laufende Sendung (mit Fortschritt), die nächste und die übernächste; ein Klick auf eine Sendung öffnet die Details, ein Klick auf den Sendernamen die Kanalansicht. Die Anzeige aktualisiert sich alle 30 Sekunden und ist auch in schmalen Fenstern ohne Scrollen zur Seite nutzbar.
 - **Tage** – Die Tabs (Gestern, Heute, Morgen, Wochentage) springen auf 05:00 des jeweiligen TV-Tags; **Jetzt** springt zur aktuellen Zeit. Das Genre erscheint als Spalte und Farbbalken.
+
+**Suche und Senderauswahl:** Das Suchfeld oben durchsucht die Titel der gewählten Sender (ab 2 Zeichen; Umlaute und Groß-/Kleinschreibung spielen keine Rolle). Die Treffer erscheinen als Liste mit Titel, Sender, Wochentag und Uhrzeit; ein Klick springt zum Termin und öffnet die Details, `Esc` leert und verlässt die Suche. Unter **Mehr ▾** lässt sich zusätzlich die Beschreibung durchsuchen und festlegen, ob Sender ohne EPG ausgeblendet werden (Standard). Über **Sender ▾** wählst du Favoriten (Standard), Alle Sender, eine Quelle oder eine Gruppe; die Auswahl gilt in Liste, Raster, Jetzt & Gleich und Suche und bleibt für die Sitzung erhalten.
 
 **Kanalansicht:** Klicke auf einen Sendernamen (Liste oder Raster) oder im Sendungsdetail auf **Alle Sendungen des Senders**, um alle Sendungen dieses Senders für 7 TV-Tage zu sehen. **← Alle Sender** oder `Esc` führt zurück, ohne dass Ansicht und Scrollposition verloren gehen. Mit **+ Weitere Tage** blendest du die Tage 8–14 ein, soweit der Cache reicht.
 
