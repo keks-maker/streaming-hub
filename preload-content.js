@@ -139,15 +139,6 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Forward clicks: sidebar auto-close when clicking inside webview
-document.addEventListener(
-  'click',
-  () => {
-    ipcRenderer.sendToHost('sidebar-close');
-  },
-  true,
-);
-
 // Native host → TV-player command bridge. This avoids relying on window.postMessage
 // between the host renderer and the embedded file:// page.
 ipcRenderer.on('tv-player-command', (_event, data) => {
