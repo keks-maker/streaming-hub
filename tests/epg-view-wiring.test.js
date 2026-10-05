@@ -48,7 +48,7 @@ test('Raster-Verdrahtung: Modus-Segment, Zoom, kein Hook-Button ohne Handler, go
   assert.match(view, /async function goToNow\(\) \{\s*dayPin = null;/, 'W1: „Jetzt“ hebt die Tag-Bindung auf');
   const gridView = read('epg-grid-view.js');
   assert.match(gridView, /typeof deps\.onChannelClick === 'function'\s*\?/, 'Sendername nur klickbar, wenn ein Hook vorhanden ist');
-  for (const file of ['epg-grid-view.js', 'epg-grid-model.js', 'epg-dom.js']) {
+  for (const file of ['epg-grid-view.js', 'epg-grid-model.js', 'epg-dom.js', 'epg-genres.js']) {
     const src = read(file);
     assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML|tvEpgIndex|decodeEntities/.test(src), file);
   }

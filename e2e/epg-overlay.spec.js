@@ -127,9 +127,9 @@ test.describe('Programmführer (kleine Fixture)', () => {
     const base = Math.floor(Date.now() / MIN) * MIN;
     slots = {
       past: { title: 'Vergangenes Magazin', start: base - 120 * MIN, stop: base - 60 * MIN },
-      running: { title: 'Laufende Sendung', start: base - 30 * MIN, stop: base + 30 * MIN },
+      running: { title: 'Laufende Sendung', start: base - 30 * MIN, stop: base + 30 * MIN, cat: 'Xyzzy-unbekannt' },
       first: { title: 'Kommende Sendung', start: base + 45 * MIN, stop: base + 90 * MIN },
-      second: { title: 'Folgesendung', start: base + 90 * MIN, stop: base + 135 * MIN },
+      second: { title: 'Folgesendung', start: base + 90 * MIN, stop: base + 135 * MIN, cat: 'Nachrichten' },
       // Titel mit literalem „&amp;lt;“ (im XML doppelt maskiert): darf nie erneut dekodiert werden
       tom: { title: 'Tom &amp;lt; Jerry', start: base + 180 * MIN, stop: base + 210 * MIN },
       end: { title: 'Letzte Sendung', start: base + 9 * 24 * HOUR, stop: base + 9 * 24 * HOUR + HOUR },
@@ -152,10 +152,11 @@ test.describe('Programmführer (kleine Fixture)', () => {
     }
     const second = { title: 'Zweitlauf', start: base - 10 * MIN, stop: base + 50 * MIN };
     const nightSlot = { title: 'Nachtkrimi', start: nightStart, stop: nightStart + HOUR };
-    const short = { title: 'Kurzmeldung', start: base + 55 * MIN, stop: base + 58 * MIN }; // 3 min → im Raster schmaler Block
+    const short = { title: 'Kurzmeldung', start: base + 55 * MIN, stop: base + 58 * MIN, cat: 'Sport' }; // 3 min → im Raster schmaler Block
     const programme = (channel, s) => {
       const title = s.title.replace(/&/g, '&amp;');
-      return `<programme start="${xmltvTime(s.start)}" stop="${xmltvTime(s.stop)}" channel="${channel}"><title>${title}</title><desc>Beschreibung &amp; Details zu ${title}</desc></programme>`;
+      const category = s.cat ? `<category lang="de">${s.cat}</category>` : '';
+      return `<programme start="${xmltvTime(s.start)}" stop="${xmltvTime(s.stop)}" channel="${channel}"><title>${title}</title>${category}<desc>Beschreibung &amp; Details zu ${title}</desc></programme>`;
     };
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?><tv>' +
@@ -206,7 +207,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     expect(tabs.filter(t => t !== 'Gestern').length).toBeLessThanOrEqual(7);
     await expect(page.locator('.epg-daytab.active')).toHaveText('Heute');
     // „Jetzt“-Linie mit Uhrzeit, ca. 40 % der Listenhöhe (Toleranz wegen Tabellenkopf)
-    await expect(page.locator('.epg-now-line')).toHaveText(/^Jetzt \d\d:\d\d$/);
+    await expect(page.locator('.epg-now-line')).toHaveText(/^Jetzt \d\d:\d\d · Vergangenes liegt darüber$/);
     const ratio = await page.evaluate(() => {
       const list = window.document.getElementById('epgList').getBoundingClientRect();
       const line = window.document.querySelector('.epg-now-line').getBoundingClientRect();
@@ -461,7 +462,8 @@ test.describe('Programmführer (kleine Fixture)', () => {
     // Auswahl bleibt (Block der gewählten Sendung ist markiert)
     await expect(page.locator('.epg-block.is-selected')).toContainText('Laufende Sendung');
     // nur Sender mit EPG, je Zeile 64 px, Senderspalte 150 px
-    await expect(page.locator('.epg-grid-chan')).toHaveText(['E2E Kanal', 'Zweiter Kanal', 'Füllkanal']);
+    await expect(page.locator('.epg-grid-cn')).toHaveText(['E2E Kanal', 'Zweiter Kanal', 'Füllkanal']);
+    await expect(page.locator('.epg-grid-corner')).toHaveText('Favoriten');
     const dims = await page.evaluate(() => {
       const c = window.document.querySelector('.epg-grid-chan').getBoundingClientRect();
       const col = window.document.querySelector('.epg-grid-chancol').getBoundingClientRect();
@@ -501,7 +503,8 @@ test.describe('Programmführer (kleine Fixture)', () => {
     // Zeitleiste: Stundenmarken und beschriftete Tagesgrenzen 05:00; Gitterlinien alle 30 min (Hintergrund = 30 × px/min)
     await expect(page.locator('.epg-ruler-hour').first()).toHaveText(/^\d\d:00$/);
     expect(await page.locator('.epg-ruler-day').count()).toBeGreaterThanOrEqual(8);
-    await expect(page.locator('.epg-ruler-day').first()).toHaveText(/^(Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.$/);
+    await expect(page.locator('.epg-ruler-day').first()).toHaveText(/^(Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\. · 05:00$/);
+    await expect(page.locator('.epg-grid-nowlabel')).toHaveText(/^jetzt \d\d:\d\d$/);
     expect(await page.locator('.epg-grid-dayline').count()).toBe(await page.locator('.epg-ruler-day').count());
     expect(await page.locator('#epgGridRows').evaluate(el => window.getComputedStyle(el).backgroundSize)).toContain('150px'); // 30 min × 5 px/min
     await page.locator('#epgNowBtn').click();
@@ -511,11 +514,11 @@ test.describe('Programmführer (kleine Fixture)', () => {
     const running = block('Laufende Sendung');
     await expect(running).toHaveCount(1);
     await expect(running.locator('.epg-block-title')).toHaveText('Laufende Sendung');
-    await expect(running.locator('.epg-block-time')).toHaveText(/^\d\d:\d\d–\d\d:\d\d$/);
+    await expect(running.locator('.epg-block-time')).toHaveText(/^\d\d:\d\d · noch \d+ min$/);
     expect(Number(await running.locator('.epg-block-title').evaluate(el => window.getComputedStyle(el).fontWeight))).toBeGreaterThanOrEqual(600);
     await expect(running.locator('.epg-block-bar')).toBeVisible();
     await expect(running).toHaveClass(/is-now/);
-    await expect(running).toHaveAttribute('title', /^Laufende Sendung\n\d\d:\d\d–\d\d:\d\d · 60 min$/);
+    await expect(running).toHaveAttribute('title', /^Laufende Sendung\n\d\d:\d\d–\d\d:\d\d · 60 min · Genre: Sonstiges$/);
     await expect(block('Vergangenes Magazin')).toHaveClass(/is-past/);
     expect(Number(await block('Vergangenes Magazin').evaluate(el => window.getComputedStyle(el).opacity))).toBeLessThan(1);
     // 3-Minuten-Sendung: schmaler Block ohne Text, aber mit vollem Titel im Tooltip
@@ -533,7 +536,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
   });
 
   test('Raster: Zoom 3/5/8 hält den Zeitanker, Breite skaliert, Standard ist 5', async () => {
-    await expect(page.locator('.epg-zoom-btn.active')).toHaveText('5');
+    await expect(page.locator('.epg-zoom-btn.active')).toHaveText('5 px/min');
     const probe = () =>
       page.evaluate(() => {
         const g = window.document.getElementById('epgGrid');
@@ -546,7 +549,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     });
     const p5 = await probe();
     await page.locator('.epg-zoom-btn[data-zoom="8"]').click();
-    await expect(page.locator('.epg-zoom-btn.active')).toHaveText('8');
+    await expect(page.locator('.epg-zoom-btn.active')).toHaveText('8 px/min');
     const p8 = await probe();
     await page.locator('.epg-zoom-btn[data-zoom="3"]').click();
     const p3 = await probe();
@@ -607,6 +610,30 @@ test.describe('Programmführer (kleine Fixture)', () => {
     expect(await scheduledEntries()).toHaveLength(0);
   });
 
+  test('Raster: kleiner Aufnahme-Toggle im Block (Aufnehmen → Planungsdialog, Abbrechen mit Rückfrage), nicht bei Vergangenem', async () => {
+    const recFor = async title => {
+      const id = await block(title).getAttribute('data-block-key');
+      return page.locator(`.epg-block-rec[data-rec-key="${id}"]`);
+    };
+    await expect(block('Vergangenes Magazin')).toHaveCount(1);
+    await expect(page.locator('.epg-block-rec[data-rec-key*="|' + (slots.past.start) + '"]')).toHaveCount(0);
+    const upcoming = await recFor('Kommende Sendung');
+    await expect(upcoming).toHaveText('●');
+    await upcoming.click();
+    await expect(page.locator('#recScheduleOverlay')).toHaveClass(/open/);
+    await expect(page.locator('#recScheduleProg')).toHaveText('Kommende Sendung — E2E Kanal');
+    await page.locator('#recScheduleConfirm').click();
+    await expect(page.locator('#recScheduleOverlay')).not.toHaveClass(/open/);
+    await expect(block('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
+    await expect(upcoming).toHaveText('✕');
+    await upcoming.click();
+    await expect(page.locator('#epgConfirm')).toBeVisible();
+    await page.locator('#epgConfirmYes').click();
+    await expect(upcoming).toHaveText('●');
+    await expect(block('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', '');
+    expect(await scheduledEntries()).toHaveLength(0);
+  });
+
   test('Raster: P9 — Sendung mehr als 8 Tage voraus: Hinweis sichtbar, Aufnehmen deaktiviert; Tages-Tab und Schnellsprung', async () => {
     await gridEval(el => {
       el.scrollLeft = el.scrollWidth;
@@ -635,6 +662,53 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(page.locator('.epg-day-head', { hasText: 'Morgen' })).toBeVisible();
     await page.locator('#epgNowBtn').click();
     await expect(page.locator('.epg-daytab.active')).toHaveText('Heute');
+  });
+
+
+  test('Genre: Spalte und Farbbalken in der Liste, Text im Detail, neutral ohne Kategorie', async () => {
+    const withNews = row('Folgesendung');
+    await expect(withNews.locator('.epg-col-genre')).toHaveText('Nachrichten');
+    await expect(withNews).toHaveAttribute('data-g', 'news');
+    const bar = await withNews.evaluate(el => window.getComputedStyle(el).boxShadow);
+    expect(bar).toContain('rgb(74, 163, 255)'); // --g-news, 4 px links
+    expect(bar).toContain('inset');
+    // Kategorie ohne Zuordnung → „Sonstiges“ (neutraler Balken), keine Kategorie → „–“ ohne Balken
+    await expect(row('Laufende Sendung').locator('.epg-col-genre')).toHaveText('Sonstiges');
+    await expect(row('Laufende Sendung')).toHaveAttribute('data-g', 'sonstiges');
+    const none = row('Vergangenes Magazin');
+    await expect(none.locator('.epg-col-genre')).toHaveText('–');
+    expect(await none.getAttribute('data-g')).toBeNull();
+    expect(await none.evaluate(el => window.getComputedStyle(el).boxShadow)).toBe('none');
+    await expect(page.locator('.epg-list-head')).toContainText('Genre');
+    await expect(page.locator('.epg-list-head')).toContainText('Dauer');
+    await expect(withNews.locator('.epg-col-dur')).toHaveText('45 min');
+    // Detail: Genre als Text
+    await withNews.locator('.epg-row-open').click();
+    await expect(page.locator('#epgDetailMeta')).toContainText('Nachrichten');
+    await page.keyboard.press('Escape');
+    await row('Vergangenes Magazin').locator('.epg-row-open').click();
+    await expect(page.locator('#epgDetailMeta')).not.toContainText('Nachrichten');
+    await expect(page.locator('#epgDetailMeta')).not.toContainText('Sonstiges');
+    await page.keyboard.press('Escape');
+  });
+
+  test('Genre im Raster: Farbbalken links im Block (4 px), Genre als Text im Tooltip, neutral ohne Kategorie', async () => {
+    await page.locator('#epgModeGrid').click();
+    await expect(grid()).toBeVisible();
+    const news = block('Folgesendung');
+    await expect(news).toHaveAttribute('data-g', 'news');
+    await expect(news).toHaveAttribute('title', /Genre: Nachrichten$/);
+    expect(await news.evaluate(el => window.getComputedStyle(el).borderLeftWidth)).toBe('4px');
+    expect(await news.evaluate(el => window.getComputedStyle(el).borderLeftColor)).toBe('rgb(74, 163, 255)');
+    const sport = page.locator('.epg-block.is-narrow[title^="Kurzmeldung"]');
+    await expect(sport).toHaveAttribute('title', /Genre: Sport$/);
+    await expect(sport).toHaveAttribute('data-g', 'sport');
+    const none = block('Vergangenes Magazin');
+    expect(await none.getAttribute('data-g')).toBeNull();
+    await expect(none).not.toHaveAttribute('title', /Genre/);
+    expect(await none.evaluate(el => window.getComputedStyle(el).borderLeftWidth)).toBe('1px');
+    await page.locator('#epgModeList').click();
+    await expect(page.locator('#epgList')).toBeVisible();
   });
 
   test('Wiederholtes Öffnen/Schließen: keine Listener-, Timer- oder DOM-Reste', async () => {
@@ -797,7 +871,7 @@ test.describe('Programmführer (Großfixture 438 Kanäle × 10 Tage)', () => {
       const g = window.document.getElementById('epgGrid');
       g.scrollTop = g.scrollHeight;
     });
-    await expect(page.locator('.epg-grid-chan', { hasText: /^Sender 438$/ })).toHaveCount(1);
+    await expect(page.locator('.epg-grid-cn', { hasText: /^Sender 438$/ })).toHaveCount(1);
     c = await counts();
     expect(c.chans).toBeLessThan(60);
     // Sprung auf „Jetzt“: Block im Sichtbereich in < 300 ms (Daten dieses Fensters werden dafür nachgeladen)

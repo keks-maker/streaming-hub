@@ -105,10 +105,12 @@ test('blockGeometry: Lücke, Mindestbreite 28 px (schmal = nur Farbfläche), Bre
   assert.equal(gm.blockGeometry({ start, stop: start + 9 * MIN }, axis, 8).narrow, false);
 });
 
-test('blockTooltip: voller Titel, Zeit und Dauer', () => {
+test('blockTooltip: voller Titel, Zeit, Dauer und (falls vorhanden) Genre als Text', () => {
   const row = { title: 'Ein sehr langer Titel einer Sendung', start: local(2026, 10, 5, 20, 15), stop: local(2026, 10, 5, 21, 0) };
   assert.equal(gm.blockTooltip(row, vm.clock), 'Ein sehr langer Titel einer Sendung\n20:15–21:00 · 45 min');
   assert.match(gm.blockTooltip({ ...row, title: '' }, vm.clock), /^\(ohne Titel\)/);
+  assert.equal(gm.blockTooltip({ ...row, genre: 'film' }, vm.clock), 'Ein sehr langer Titel einer Sendung\n20:15–21:00 · 45 min · Genre: Film');
+  assert.equal(gm.blockTooltip({ ...row, genre: 'unbekannt' }, vm.clock), 'Ein sehr langer Titel einer Sendung\n20:15–21:00 · 45 min');
 });
 
 test('gridRowsFor: nur Sender mit EPG in der Reihenfolge der Auswahl', () => {
@@ -120,8 +122,8 @@ test('gridRowsFor: nur Sender mit EPG in der Reihenfolge der Auswahl', () => {
 
 test('rulerMarks: Stundenmarken ohne Tagesbeginn, Tagesgrenzen 05:00 beschriftet', () => {
   const marks = gm.rulerMarks(axis, 5);
-  assert.equal(marks.days[0].label, 'So 04.10.');
-  assert.equal(marks.days[1].label, 'Mo 05.10.');
+  assert.equal(marks.days[0].label, 'So 04.10. · 05:00');
+  assert.equal(marks.days[1].label, 'Mo 05.10. · 05:00');
   assert.equal(marks.days[0].left, 0);
   assert.equal(marks.days[1].left, gm.xForTime(axis, local(2026, 10, 5, 5, 0), 5));
   assert.ok(marks.hours.every(m => new Date(m.ms).getHours() !== grid.TV_DAY_START_HOUR));
@@ -261,4 +263,27 @@ test('Großfixture 438 Kanäle × 10 Tage: Rasterfenster bleibt klein, Nachladen
   let blocks = 0;
   for (const key of keys) blocks += store.window(key, win.fromMs, win.toMs).length;
   assert.ok(blocks > 0 && blocks < 1200, `Blöcke im Fenster: ${blocks}`);
+});
+
+test('Slot-Speicher übernimmt das schlanke Genre (nur bekannte Gruppen), ohne Genre bleibt es leer', () => {
+  const store = gm.createSlotStore();
+  const entry = { key: 'a.de', channel: { id: 'a.de', name: 'A' } };
+  const t = local(2026, 10, 5, 20, 0);
+  store.ingest(entry, [
+    { start: t, stop: t + HOUR, title: 'A', genre: 'film' },
+    { start: t + HOUR, stop: t + 2 * HOUR, title: 'B', genre: '' },
+    { start: t + 2 * HOUR, stop: t + 3 * HOUR, title: 'C', genre: '<img>' },
+    { start: t + 3 * HOUR, stop: t + 4 * HOUR, title: 'D' },
+  ]);
+  assert.deepEqual(store.window('a.de', t, t + 4 * HOUR).map(r => r.genre), ['film', '', '', '']);
+});
+
+test('channelBadge: Kürzel aus Wortanfängen oder den ersten Buchstaben, stabiler Farbton', () => {
+  assert.equal(gm.channelBadge('Das Erste HD').abbr, 'DEH');
+  assert.equal(gm.channelBadge('ZDF').abbr, 'ZDF');
+  assert.equal(gm.channelBadge('arte').abbr, 'ART');
+  assert.equal(gm.channelBadge('rbb Fernsehen Brandenburg').abbr, 'RFB');
+  assert.equal(gm.channelBadge('').abbr, '?');
+  assert.equal(gm.channelBadge('ZDF').hue, gm.channelBadge('ZDF').hue);
+  assert.ok(gm.channelBadge('RTL').hue >= 0 && gm.channelBadge('RTL').hue < 360);
 });

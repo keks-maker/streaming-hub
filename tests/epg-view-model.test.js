@@ -179,7 +179,7 @@ function dayDataFor(slotsByChannel, nowMs = NOW, coverageToMs = NOW + 5 * 24 * H
   return days.map(day => ({ day, rows: model.buildDayRows(day, results, channelByKey) }));
 }
 
-test('buildLayout: Tag-Köpfe, „Jetzt“-Trennlinie vor der ersten späteren Sendung, feste Höhen', () => {
+test('buildLayout: Tag-Köpfe, „Jetzt“-Trennlinie vor der ersten späteren Sendung, Höhen je Zeilenart', () => {
   const at = (d, h, m) => local(2026, 10, d, h, m);
   const slots = {
     'a.de': [
@@ -194,10 +194,14 @@ test('buildLayout: Tag-Köpfe, „Jetzt“-Trennlinie vor der ersten späteren S
   const types = layout.items.map(i => (i.type === 'row' ? i.row.title : i.type));
   assert.deepEqual(types, ['day', 'Vorher', 'Läuft', 'now', 'Danach', 'day', 'Morgen']);
   assert.equal(layout.nowIndex, 3);
-  const expectTotal = 2 * model.DAY_HEIGHT + model.NOW_HEIGHT + 4 * model.ROW_HEIGHT;
+  // laufende Sendung („Läuft“) ist höher (Zeit, noch N min, Fortschrittsbalken), alle übrigen kompakt
+  const expectTotal = 2 * model.DAY_HEIGHT + model.NOW_HEIGHT + 3 * model.ROW_HEIGHT + model.ROW_HEIGHT_RUN;
   assert.equal(layout.total, expectTotal);
   assert.equal(layout.offsets[1], model.DAY_HEIGHT);
-  assert.equal(layout.offsets[4], model.DAY_HEIGHT + 2 * model.ROW_HEIGHT + model.NOW_HEIGHT);
+  assert.equal(layout.offsets[3] - layout.offsets[2], model.ROW_HEIGHT_RUN);
+  assert.equal(layout.offsets[2] - layout.offsets[1], model.ROW_HEIGHT);
+  assert.equal(layout.offsets[4], model.DAY_HEIGHT + model.ROW_HEIGHT + model.ROW_HEIGHT_RUN + model.NOW_HEIGHT);
+  assert.ok(model.ROW_HEIGHT < model.ROW_HEIGHT_RUN);
   assert.equal(layout.dayIndex.get('2026-10-06'), 5);
   // Schlüssel eindeutig und auffindbar
   assert.equal(new Set(layout.items.map(i => i.key)).size, layout.count);
@@ -461,4 +465,50 @@ test('Neuer Code: kein innerHTML, kein tvEpgIndex, kein decodeEntities', () => {
 
 test('Kanal-Schlüssel der Großfixture sind abfragbar', () => {
   assert.equal(model.epgChannelKey({ tvgId: channelId(0) }), 'sender001.de');
+});
+
+// ── Genre (Etappe 3.3, vorgezogen aus 3.6; M4) ──
+
+test('Genre: Zeilen übernehmen nur bekannte Gruppen aus der schlanken Projektion; Beschriftung als Text', () => {
+  const { genreLabel, cleanGenre, GENRES } = require('../epg-genres.js');
+  const [today] = model.planDays({ nowMs: NOW, coverageFromMs: null, coverageToMs: NOW + 5 * 24 * HOUR });
+  const start = local(2026, 10, 5, 21, 0);
+  const rows = rowsFor(today, {
+    'a.de': [
+      { start, stop: start + HOUR, title: 'Film', genre: 'film' },
+      { start: start + HOUR, stop: start + 2 * HOUR, title: 'Ohne' },
+      { start: start + 2 * HOUR, stop: start + 3 * HOUR, title: 'Sonst', genre: 'sonstiges' },
+      { start: start + 3 * HOUR, stop: start + 4 * HOUR, title: 'Böse', genre: '<b>x</b>' },
+    ],
+  });
+  assert.deepEqual(rows.map(r => r.genre), ['film', '', 'sonstiges', '']);
+  assert.equal(genreLabel('film'), 'Film');
+  assert.equal(genreLabel('news'), 'Nachrichten');
+  assert.equal(genreLabel(''), '');
+  assert.equal(genreLabel('toString'), '');
+  assert.equal(cleanGenre('x'), '');
+  assert.deepEqual(Object.keys(GENRES), ['news', 'sport', 'doku', 'kinder', 'serie', 'film', 'show', 'musik', 'sonstiges']);
+});
+
+test('Genre: alle Gruppen aus lib/epg/genre.js haben eine Beschriftung und ein Farbtoken (Kontrast ≥ 3:1 auf dem dunklen Hintergrund)', () => {
+  const { GENRE_TABLE } = require('../lib/epg/genre.js');
+  const { GENRES } = require('../epg-genres.js');
+  for (const group of GENRE_TABLE.priority) assert.ok(GENRES[group], `Beschriftung für ${group}`);
+  const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+  const lum = hex => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const surfaces = ['#12121b', '#191925', '#242438'].filter(c => css.includes(c));
+  assert.equal(surfaces.length, 3);
+  for (const group of Object.keys(GENRES)) {
+    const match = css.match(new RegExp(`--g-${group}:\\s*(#[0-9a-fA-F]{6})`));
+    assert.ok(match, `Token --g-${group}`);
+    for (const surface of surfaces) assert.ok(contrast(match[1], surface) >= 3, `--g-${group} ${match[1]} auf ${surface}: ${contrast(match[1], surface).toFixed(2)}`);
+    assert.ok(css.includes(`[data-g="${group}"]`), `Zuordnung data-g=${group}`);
+  }
 });

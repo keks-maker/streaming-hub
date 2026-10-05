@@ -10,6 +10,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { normalizeGenre } = require('../lib/epg/genre.js');
 const { EpgService } = require('../lib/epg/EpgService.js');
 const { createEpgStore, RANGE_MANY_MAX_SLOTS } = require('../lib/epg/EpgStore.js');
 const { registerEpgIpc } = require('../lib/epg/ipc.js');
@@ -39,14 +40,14 @@ function smallStore() {
   return store;
 }
 
-test('rangeMany: schlanke Slots (start, stop, title — kein desc), Eingabereihenfolge, Normalisierung', () => {
+test('rangeMany: schlanke Slots (start, stop, title, genre — kein desc), Eingabereihenfolge, Normalisierung', () => {
   const store = smallStore();
   const res = store.rangeMany(['ZDF.de', 'daserste.de', 'Unbekannt.de'], NOW, NOW + 10 * HOUR);
   assert.deepEqual(res.map(r => r.channelKey), ['ZDF.de', 'daserste.de', 'Unbekannt.de']);
   assert.equal(res[0].slots.length, 3);
   assert.equal(res[1].slots.length, 3);
   assert.deepEqual(res[2].slots, []);
-  assert.deepEqual(Object.keys(res[0].slots[0]).sort(), ['start', 'stop', 'title']);
+  assert.deepEqual(Object.keys(res[0].slots[0]).sort(), ['genre', 'start', 'stop', 'title']);
   assert.equal(res[1].slots[0].title, 'Erste 1');
 });
 
@@ -58,7 +59,7 @@ test('rangeMany: gleiche Überlappungsregel wie range (stop > from, start < to),
   assert.deepEqual(edge.slots.map(s => s.title), ['Erste 1', 'Erste 2']);
   for (const [from, to] of [[NOW - DAY, NOW + DAY], [NOW + 30 * MIN, NOW + 90 * MIN], [NOW + 10 * HOUR, NOW + 11 * HOUR]]) {
     const lean = store.rangeMany(['ZDF.de'], from, to)[0].slots;
-    const full = store.range('ZDF.de', from, to).map(({ start, stop, title }) => ({ start, stop, title }));
+    const full = store.range('ZDF.de', from, to).map(({ start, stop, title, categories }) => ({ start, stop, title, genre: normalizeGenre(categories) }));
     assert.deepEqual(lean, full);
   }
 });
@@ -164,5 +165,27 @@ test('Großfixture als XMLTV durch den echten Parser: rangeMany liefert die erwa
   const expected = generateChannelSlots({ channels: 20, days: 3, startMs: NOW - DAY })
     .get(channelId(3))
     .filter(s => s.stop > NOW && s.start < NOW + 6 * HOUR);
-  assert.deepEqual(r.slots, expected.map(({ start, stop, title }) => ({ start, stop, title })));
+  assert.deepEqual(r.slots, expected.map(({ start, stop, title }) => ({ start, stop, title, genre: '' })));
+});
+
+test('rangeMany: liefert schlank das normalisierte Genre (normalizeGenre der Kategorien), leer ohne Kategorie', () => {
+  const store = createEpgStore({ dir: tmpDir() });
+  const base = { stop: NOW + HOUR, desc: 'x' };
+  store.setSource('https://epg.example/g.xml', {
+    fetchedAt: NOW,
+    channelSlots: new Map([
+      [
+        'G.de',
+        [
+          { ...base, start: NOW, title: 'Nachrichten', categories: ['Nachrichten'] },
+          { ...base, start: NOW + HOUR, stop: NOW + 2 * HOUR, title: 'Ohne', categories: [] },
+          { ...base, start: NOW + 2 * HOUR, stop: NOW + 3 * HOUR, title: 'Merkwürdig', categories: ['Xyzzy-unbekannt'] },
+        ],
+      ],
+    ]),
+  });
+  const [r] = store.rangeMany(['G.de'], NOW, NOW + 4 * HOUR);
+  assert.deepEqual(r.slots.map(s => s.genre), ['news', '', 'sonstiges']);
+  assert.equal(r.slots[0].genre, normalizeGenre(['Nachrichten']));
+  assert.ok(!('categories' in r.slots[0]) && !('desc' in r.slots[0]), 'keine weiteren Zusatzfelder in der schlanken Projektion');
 });
