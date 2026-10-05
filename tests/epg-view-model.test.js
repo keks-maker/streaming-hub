@@ -512,3 +512,14 @@ test('Genre: alle Gruppen aus lib/epg/genre.js haben eine Beschriftung und ein F
     assert.ok(css.includes(`[data-g="${group}"]`), `Zuordnung data-g=${group}`);
   }
 });
+
+test('toggleState: Stopp bestätigt (marker.stopping) → deaktivierter Zustand „Wird beendet …“', () => {
+  const row = { start: 1_000_000, stop: 5_000_000 };
+  const running = model.toggleState({ row, marker: { state: 'recording', ids: ['rec_a'] }, nowMs: 2_000_000 });
+  assert.equal(running.kind, 'stop');
+  assert.equal(running.disabled, false);
+  const stopping = model.toggleState({ row, marker: { state: 'recording', ids: ['rec_a'], stopping: true }, nowMs: 2_000_000 });
+  assert.equal(stopping.kind, 'stopping');
+  assert.equal(stopping.label, model.LABEL_STOPPING);
+  assert.equal(stopping.disabled, true);
+});

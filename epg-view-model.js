@@ -36,6 +36,7 @@ const MSG_TOO_FAR = 'Planung nur bis 8 Tage im Voraus';
 const LABEL_RECORD = '● Aufnehmen';
 const LABEL_CANCEL = '✕ Aufnahme abbrechen';
 const LABEL_STOP = '■ Aufnahme stoppen';
+const LABEL_STOPPING = '■ Wird beendet …';
 
 const MAX_KEY_LENGTH = 200;
 
@@ -367,6 +368,9 @@ function rowPhase(row, nowMs) {
  *   stop:   „■ Aufnahme stoppen“ (laufend, immer mit Rückfrage)
  */
 function toggleState({ row, marker, nowMs }) {
+  if (marker && marker.state === 'recording' && marker.stopping) {
+    return { kind: 'stopping', label: LABEL_STOPPING, disabled: true, hint: '', verdict: null };
+  }
   if (marker && marker.state === 'recording') {
     return { kind: 'stop', label: LABEL_STOP, disabled: false, hint: '', verdict: null };
   }
@@ -550,6 +554,7 @@ module.exports = {
   LABEL_RECORD,
   LABEL_CANCEL,
   LABEL_STOP,
+  LABEL_STOPPING,
   clock,
   calendarLabel,
   dayTabLabel,

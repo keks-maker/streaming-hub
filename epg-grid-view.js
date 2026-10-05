@@ -10,7 +10,7 @@
 const grid = require('./lib/epg-grid.js');
 const model = require('./epg-grid-model.js');
 const viewModel = require('./epg-view-model.js');
-const { h } = require('./epg-dom.js');
+const { h, createChannelLogo } = require('./epg-dom.js');
 const { genreLabel } = require('./epg-genres.js');
 
 const FETCH_DEBOUNCE_MS = 120;
@@ -20,11 +20,12 @@ const FETCH_DEBOUNCE_MS = 120;
  *   api.getEpgRangeMany(keys, fromMs, toMs)
  *   now()                       Uhr
  *   getMarkerData()             { schedules, recordings } für grid.matchMarkers
+ *   matchMarkers(slots)         optional: ersetzt grid.matchMarkers (z. B. mit Flag `stopping`)
  *   isSelected(rowId)           Auswahl (gemeinsam mit der Liste)
  *   onOpen(row, element)        Klick auf einen Block → Detail-Modal
  *   onToggle(row, element)      Klick auf den kleinen Aufnahme-Toggle im Block (Aufnehmen/Abbrechen/Stoppen)
  *   sanitizeLogoUrl(url)        prüft die Logo-URL des Kanals (Renderer: safeResourceUrl); ohne Funktion kein Logo
- *   onChannelClick(channel)     optional (Kanalansicht kommt in 3.4): nur dann sind Sendernamen klickbar
+ *   onChannelClick(channel)     optional: nur dann sind Sendernamen klickbar (Einstieg in die Kanalansicht, 3.4)
  *   onScroll()                  Scrollposition hat sich geändert (Tab/Anker nachführen)
  *   onError(err)
  */
@@ -154,28 +155,14 @@ function createGridView(deps) {
   function createChannelCell(index) {
     const entry = entries[index];
     const name = entry.channel.name || entry.key;
-    const badge = model.channelBadge(name);
-    const logo = h('span', { className: 'epg-grid-logo', text: badge.abbr, attrs: { 'aria-hidden': 'true' } });
-    logo.style.setProperty('--h', String(badge.hue));
-    // Echtes Senderlogo (Playlist-Kanalobjekt, wie in der Sidebar): img nur über die Property src, lazy;
-    // fehlt es oder scheitert das Laden, bleibt das Kürzel-Badge stehen.
-    const logoUrl = model.resolveLogoUrl(entry.channel, deps.sanitizeLogoUrl);
-    if (logoUrl) {
-      const img = h('img', { className: 'epg-grid-logo-img', attrs: { alt: '', loading: 'lazy', decoding: 'async' } });
-      // Bis das Logo geladen ist, bleibt das Kürzel sichtbar; erst dann ersetzt das Bild das Badge.
-      img.addEventListener('load', () => logo.classList.add('has-img'));
-      img.addEventListener('error', () => {
-        img.remove();
-        logo.classList.remove('has-img');
-      });
-      logo.appendChild(img);
-      img.src = logoUrl;
-    }
+    const logo = createChannelLogo({ name, channel: entry.channel, sanitizeLogoUrl: deps.sanitizeLogoUrl });
     const label = h('span', { className: 'epg-grid-cn', text: name });
-    const cell = typeof deps.onChannelClick === 'function'
+    const clickable = typeof deps.onChannelClick === 'function';
+    const cell = clickable
       ? h('button', { className: 'epg-grid-chan epg-grid-chan-btn', type: 'button' }, [logo, label])
       : h('div', { className: 'epg-grid-chan' }, [logo, label]);
-    cell.title = name;
+    cell.title = clickable ? `Alle Sendungen von ${name}` : name;
+    if (clickable) cell.setAttribute('aria-label', `Alle Sendungen von ${name}`);
     cell.style.top = `${index * model.ROW_HEIGHT}px`;
     cell.style.height = `${model.ROW_HEIGHT}px`;
     cell.dataset.channelKey = entry.key;
@@ -210,7 +197,7 @@ function createGridView(deps) {
     const info = viewModel.rowPhase(entry.row, nowMs);
     const percent = Math.round(info.progress * 100);
     const selected = deps.isSelected(entry.row.id);
-    const sig = `${info.phase}|${percent}|${info.minutesLeft}|${marker ? marker.state : ''}|${selected}`;
+    const sig = `${info.phase}|${percent}|${info.minutesLeft}|${marker ? marker.state : ''}|${marker && marker.stopping ? 's' : ''}|${selected}`;
     if (entry.sig === sig) return;
     entry.sig = sig;
     const { el: node, refs } = entry;
@@ -220,9 +207,9 @@ function createGridView(deps) {
     refs.bar.hidden = info.phase !== 'now';
     refs.barFill.style.width = `${percent}%`;
     refs.timeEl.textContent = `${viewModel.clock(entry.row.start)}${info.minutesLeft ? ` · noch ${info.minutesLeft} min` : ''}`;
-    refs.marker.dataset.state = marker ? marker.state : '';
+    refs.marker.dataset.state = marker ? (marker.stopping ? 'stopping' : marker.state) : '';
     refs.marker.textContent = marker ? '●' : '';
-    refs.marker.title = marker ? (marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant') : '';
+    refs.marker.title = !marker ? '' : marker.stopping ? 'Aufnahme wird beendet' : marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant';
   }
 
   /**
@@ -241,7 +228,7 @@ function createGridView(deps) {
     entry.refs.text.style.maxWidth = shift ? `calc(100% - ${shift + (hasRec ? 30 : 0)}px)` : '';
   }
 
-  const REC_SYMBOL = { record: '●', cancel: '✕', stop: '■' };
+  const REC_SYMBOL = { record: '●', cancel: '✕', stop: '■', stopping: '■' };
   const REC_WIDTH = 28;
 
   /** Kleiner Toggle rechts im Block: nur bei geplanter/laufender Aufnahme und ausreichend breitem Block. */
@@ -328,7 +315,8 @@ function createGridView(deps) {
       }
     }
     const data = deps.getMarkerData();
-    const markers = order.length ? grid.matchMarkers(order.map(viewModel.markerSlot), data.schedules, data.recordings, nowMs) : [];
+    const slots = order.map(viewModel.markerSlot);
+    const markers = !order.length ? [] : typeof deps.matchMarkers === 'function' ? deps.matchMarkers(slots) : grid.matchMarkers(slots, data.schedules, data.recordings, nowMs);
     const markerById = new Map(order.map((row, i) => [row.id, markers[i]]));
     const scrollLeft = el.scrollLeft; // einmal lesen (kein Layout-Zugriff je Block)
     for (const { row, r } of wanted.values()) {
@@ -509,6 +497,15 @@ function createGridView(deps) {
     reset,
     tick: render,
     scrollLeft: () => el.scrollLeft,
+    scrollTop: () => el.scrollTop,
+    /** Scrollposition (beide Achsen) wiederherstellen; Zeichnen und Nachladen folgen dem Scroll-Ereignis. */
+    setScroll: ({ left, top }) => {
+      if (Number.isFinite(left)) el.scrollLeft = left;
+      if (Number.isFinite(top)) el.scrollTop = top;
+      render();
+    },
+    /** Sendername-Button einer Zeile (Fokus-Rückgabe aus der Kanalansicht) oder null. */
+    channelElement: key => chancol.querySelector(`.epg-grid-chan-btn[data-channel-key="${CSS.escape(key)}"]`),
     setScrollLeft: px => {
       el.scrollLeft = px;
     },
