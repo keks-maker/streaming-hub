@@ -6,13 +6,16 @@
 // Varianten:
 //   'list'    Zeile der virtualisierten Programmliste (Spalte „Sender“ mit Link in die Kanalansicht)
 //   'channel' Zeile der Kanalansicht (ohne Senderspalte; Kennzeichen „Jetzt“/„Nächste“)
-//   'jng'     Zelle von „Jetzt & Gleich“ (Etappe 3.5: Titel, Zeit, Fortschritt, Marker und derselbe Toggle)
+//   'jng'     Zelle von „Jetzt & Gleich“ (Etappe 3.5: Titel, Zeit, Fortschritt, Marker und derselbe Toggle;
+//             Etappe 3.6: kleines Vorschaubild links — fester Platzhalter, das Bild setzt setCellThumb nach safeIconUrl)
 
 'use strict';
 
 const model = require('./epg-view-model.js');
 const { h } = require('./epg-dom.js');
 const { genreLabel } = require('./epg-genres.js');
+const detailModel = require('./epg-detail-model.js');
+const gridModel = require('./epg-grid-model.js');
 
 function senderName(row) {
   return row.channel.name || row.channelKey;
@@ -43,14 +46,18 @@ function createRowNode(row, { variant = 'list' } = {}) {
   const hint = channelVariant ? h('span', { className: 'epg-row-hint', hidden: true }) : null;
   const actionCell = h('div', { className: 'epg-col-action' }, hint ? [hint, toggle, pastNote] : [toggle, pastNote]);
   if (cellVariant) {
+    // Fester Platzhalter (Anfangsbuchstabe auf Farbfläche): die Zelle springt nicht, wenn das Bild kommt oder fehlt
+    const thumb = h('span', { className: 'epg-thumb', text: [...(row.title || '').trim()][0] || '·', attrs: { 'aria-hidden': 'true' } });
+    thumb.style.setProperty('--h', String(gridModel.channelBadge(row.title).hue));
     const cell = h('div', { className: 'epg-jcell epg-program', attrs: { role: 'group' } }, [
+      thumb,
       marker,
       h('div', { className: 'epg-jcell-main' }, [open, h('div', { className: 'epg-jcell-time' }, [time, sub]), bar]),
       h('div', { className: 'epg-jcell-action' }, [toggle, pastNote]),
     ]);
     cell.dataset.rowId = row.id;
     if (label) cell.dataset.g = row.genre;
-    return { el: cell, refs: { sub, bar, barFill, marker, toggle, pastNote, open, flag: null, chan: null, hint: null }, sig: '', variant };
+    return { el: cell, refs: { sub, bar, barFill, marker, toggle, pastNote, open, thumb, flag: null, chan: null, hint: null }, sig: '', variant };
   }
   const cells = [h('div', { className: 'epg-col-mk' }, [marker]), timeCell];
   let chan = null;
@@ -126,4 +133,25 @@ function updateRowNode(entry, row, { nowMs, marker, selected, flag = '' }) {
   return true;
 }
 
-module.exports = { createRowNode, updateRowNode };
+/**
+ * Vorschaubild in den Platzhalter einer J&G-Zelle setzen. Nur Bild-URLs, die safeIconUrl durchlassen (http/https);
+ * der Browser lädt es lazy und ohne Referrer. Fehler → Bild entfällt, der Platzhalter bleibt. Gibt true zurück,
+ * wenn ein Bild-Element angelegt wurde.
+ */
+function setCellThumb(entry, url) {
+  const box = entry && entry.refs ? entry.refs.thumb : null;
+  const safe = detailModel.safeIconUrl(url);
+  if (!box || !safe) return false;
+  if (box.querySelector('img')) return false;
+  const img = h('img', { className: 'epg-thumb-img', attrs: { alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' } });
+  img.addEventListener('load', () => box.classList.add('has-img'));
+  img.addEventListener('error', () => {
+    img.remove();
+    box.classList.remove('has-img');
+  });
+  box.appendChild(img);
+  img.src = safe;
+  return true;
+}
+
+module.exports = { createRowNode, updateRowNode, setCellThumb };

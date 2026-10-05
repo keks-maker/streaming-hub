@@ -1,5 +1,6 @@
-// EPG-Programmführer (Etappe 3.3–3.5, Design B2/F3): Kopfzeile (Suche, Modus-Segment, Jetzt) + Schnellfilter-Leiste
-// (Tages-Tabs, Sender ▾, Mehr ▾), LISTE, RASTER, JETZT & GLEICH, KANALANSICHT, Suche (Trefferliste), Detail-MODAL.
+// EPG-Programmführer (Etappe 3.3–3.6, Design B2/F3): Kopfzeile (Suche, Modus-Segment, Jetzt) + Schnellfilter-Leiste
+// (Tages-Tabs, Genre-Chips, Sender ▾, Mehr ▾), LISTE, RASTER, JETZT & GLEICH, KANALANSICHT, Suche (Trefferliste),
+// Detail-MODAL (Poster, Metazeile, Besetzung, „Läuft auch“).
 //
 // Factory-Muster wie settings-view.js. Liest ausschließlich vom Main-Cache (epg:range-many
 // schlank für die Liste, epg:find für das Detail) und kennt weder den Renderer-Datenweg des alten EPG noch die
@@ -26,15 +27,18 @@ const channelModel = require('./epg-channel-model.js');
 const selectionModel = require('./epg-selection-model.js');
 const searchModel = require('./epg-search-model.js');
 const jngModel = require('./epg-jng-model.js');
+const genreModel = require('./epg-genre-filter-model.js');
+const detailModel = require('./epg-detail-model.js');
 const viewSettings = require('./lib/epg-view-settings.js');
 const { createGridView } = require('./epg-grid-view.js');
 const { createChannelView } = require('./epg-channel-view.js');
 const { createJngView } = require('./epg-jng-view.js');
 const { createSearchView } = require('./epg-search-view.js');
 const { createMenu } = require('./epg-menu-view.js');
+const { createGenreChips } = require('./epg-genre-chips-view.js');
+const { createDetailView } = require('./epg-detail-view.js');
 const { createRowNode, updateRowNode } = require('./epg-row-dom.js');
 const { h, trapTab } = require('./epg-dom.js');
-const { genreLabel } = require('./epg-genres.js');
 
 const TICK_MS = 30 * 1000;
 const OVERSCAN_PX = 400;
@@ -46,7 +50,7 @@ const SENDER_LABEL_MAX = 28;
 
 /**
  * root: das leere Overlay-Element (#epgOverlay). deps:
- *   api            window.electronAPI-Teilmenge (getEpgStatus, getEpgRangeMany, findEpg, refreshEpgCache,
+ *   api            window.electronAPI-Teilmenge (getEpgStatus, getEpgRangeMany, getEpgRange, findEpg, searchEpg, refreshEpgCache,
  *                  listSchedules, listRecordings, removeSchedule, onEpgChanged, onScheduleChanged,
  *                  onRecordingChanged)
  *   getChannels()  alle Sender (tvChannels);  isFavorite(channel)
@@ -65,6 +69,7 @@ function createEpgView(root, deps) {
   const now = typeof deps.now === 'function' ? deps.now : () => Date.now();
   const viewState = model.createViewState();
   const channelState = channelModel.createChannelState();
+  const genreFilter = genreModel.createGenreFilter(); // Sitzungszustand wie die Senderauswahl (kein Setting)
 
   // ── Laufzeitdaten (nur zwischen open() und close()) ──
   let isOpen = false;
@@ -88,6 +93,7 @@ function createEpgView(root, deps) {
   let refreshing = false;
   let nodes = new Map(); // item.key → { el, refs, sig }
   let detailCache = new Map();
+  let alsoCache = new Map(); // Zeilen-ID → „Läuft auch“-Ergebnis
   let opener = null;
   let subs = [];
   let tickTimer = null;
@@ -179,7 +185,8 @@ function createEpgView(root, deps) {
   const jump2015Btn = h('button', { className: 'epg-btn epg-jump-btn', id: 'epgJump2015', type: 'button', text: '20:15' });
   const jump2200Btn = h('button', { className: 'epg-btn epg-jump-btn', id: 'epgJump2200', type: 'button', text: '22:00' });
   const gridTools = h('div', { className: 'epg-grid-tools', id: 'epgGridTools', hidden: true }, [jump2015Btn, jump2200Btn, zoomSeg]);
-  // Schnellfilter-Leiste (F3): Tages-Tabs | Sender ▾ | Mehr ▾ (Genre-Chips folgen in 3.6)
+  // Schnellfilter-Leiste (F3): Tages-Tabs | Genre-Chips | Sender ▾ | Mehr ▾
+  const chips = createGenreChips({ onToggle: genre => applyGenres(genreFilter.toggle(genre)), onClear: () => applyGenres([]) });
   const senderMenu = createMenu({ id: 'epgSenderMenu', label: 'Sender: Favoriten ▾', ariaLabel: 'Sender wählen', align: 'right', onOpen: panel => renderSenderMenu(panel) });
   const moreMenu = createMenu({ id: 'epgMoreMenu', label: 'Mehr ▾', ariaLabel: 'Weitere Optionen', align: 'right', onOpen: () => syncMoreMenu() });
   const menus = [senderMenu, moreMenu];
@@ -192,6 +199,7 @@ function createEpgView(root, deps) {
   const filterBar = h('div', { className: 'epg-filterbar' }, [
     dayTabs,
     gridTools,
+    chips.el,
     h('div', { className: 'epg-filter-menus' }, [senderMenu.el, moreMenu.el]),
   ]);
 
@@ -206,6 +214,13 @@ function createEpgView(root, deps) {
   ]);
   const spacer = h('div', { className: 'epg-list-spacer', id: 'epgListItems', attrs: { role: 'list', 'aria-label': 'Programm' } });
   const scroll = h('div', { className: 'epg-list-scroll', id: 'epgList', attrs: { tabindex: '0' } }, [listHead, spacer]);
+  // Liste mit aktivem Genre-Filter ohne passende Sendung (Raster dämpft nur, J&G und Suche haben eigene Hinweise)
+  const filterEmptyBtn = h('button', { className: 'epg-btn', id: 'epgFilterEmptyBtn', type: 'button', text: 'Genre-Filter aufheben' });
+  const filterEmpty = h('div', { className: 'epg-filter-empty', id: 'epgFilterEmpty', attrs: { role: 'status' }, hidden: true }, [
+    h('div', { className: 'epg-state-title', text: 'Keine passenden Sendungen' }),
+    h('div', { className: 'epg-state-text', text: 'In den geladenen Tagen gibt es für die gewählten Genres keine Sendung.' }),
+    filterEmptyBtn,
+  ]);
   const stateTitle = h('div', { className: 'epg-state-title' });
   const stateText = h('div', { className: 'epg-state-text' });
   const stateBtn = h('button', { className: 'epg-btn epg-state-btn', type: 'button', hidden: true });
@@ -233,6 +248,7 @@ function createEpgView(root, deps) {
     getMarkerData: () => ({ schedules: markerList(), recordings }),
     matchMarkers: slots => matchRowMarkers(slots),
     isSelected: id => viewState.selectedRowId === id,
+    isDimmed: row => genreFilter.isActive() && !genreFilter.matches(row.genre),
     onOpen: row => openDetail(row),
     onToggle: (row, element) => runToggle(row, element),
     onChannelClick: channel => enterChannel(channel, { returnTo: { type: 'grid-channel', key: model.epgChannelKey(channel) } }),
@@ -242,6 +258,7 @@ function createEpgView(root, deps) {
   });
   const jngView = createJngView({
     now,
+    getIcons: (key, fromMs, toMs) => (typeof api.getEpgRange === 'function' ? api.getEpgRange(key, fromMs, toMs) : Promise.resolve([])),
     getMarkers: rows => matchRowMarkers(rows.map(model.markerSlot)),
     isSelected: id => viewState.selectedRowId === id,
     onOpen: row => openDetail(row),
@@ -250,7 +267,7 @@ function createEpgView(root, deps) {
     sanitizeLogoUrl: typeof deps.sanitizeLogoUrl === 'function' ? deps.sanitizeLogoUrl : undefined,
   });
   const searchView = createSearchView({ onPick: row => pickSearchHit(row), onClose: () => closeSearch({ restoreFocus: true }) });
-  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, gridView.el, jngView.el, stateEl, channelView.el, searchView.el]);
+  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, filterEmpty, gridView.el, jngView.el, stateEl, channelView.el, searchView.el]);
 
   // Detail-Modal
   const dTitle = h('h3', { className: 'epg-detail-title', id: 'epgDetailTitle' });
@@ -262,6 +279,8 @@ function createEpgView(root, deps) {
     text: '×',
   });
   const dMeta = h('div', { className: 'epg-detail-meta', id: 'epgDetailMeta' });
+  // Poster, Metazeile, Besetzung, Untertitel/Altersfreigabe (oben) und „Läuft auch“ (unten) — epg-detail-view.js
+  const detailView = createDetailView({ metaEl: dMeta, now, onPickAlso: row => pickAlsoRow(row) });
   const dToggle = h('button', { className: 'epg-toggle epg-toggle-primary', id: 'epgDetailRecordBtn', type: 'button' });
   const dPlanned = h('div', { className: 'epg-detail-planned', id: 'epgDetailPlanned', hidden: true });
   const dPlannedText = h('span', { className: 'epg-detail-planned-text' });
@@ -297,11 +316,12 @@ function createEpgView(root, deps) {
     },
     [
       h('div', { className: 'epg-detail-header' }, [dTitle, dClose]),
-      dMeta,
+      detailView.top,
       h('div', { className: 'epg-detail-primary' }, [dToggle, dPlanned]),
       dHint,
       dNotice,
       dDesc,
+      detailView.also,
       dActions,
     ],
   );
@@ -361,7 +381,8 @@ function createEpgView(root, deps) {
     return matchRowMarkers([model.markerSlot(row)])[0] || null;
   }
 
-  function loadedRun() {
+  /** Zusammenhängender Lauf geladener Tage (ungefiltert). */
+  function loadedRunAll() {
     if (!days.length) return [];
     let start = days.findIndex(d => d.isToday);
     if (start < 0) start = 0;
@@ -374,6 +395,14 @@ function createEpgView(root, deps) {
     while (lo > 0 && dayRows.has(days[lo - 1].key)) lo -= 1;
     while (hi < days.length - 1 && dayRows.has(days[hi + 1].key)) hi += 1;
     return days.slice(lo, hi + 1).map(day => ({ day, rows: dayRows.get(day.key) }));
+  }
+
+  /** Lauf geladener Tage für die Liste: mit aktivem Genre-Filter nur passende Sendungen (die Tage bleiben als Köpfe). */
+  function loadedRun() {
+    const run = loadedRunAll();
+    if (!genreFilter.isActive()) return run;
+    const genres = genreFilter.list();
+    return run.map(entry => ({ day: entry.day, rows: genreModel.filterRows(entry.rows, genres) }));
   }
 
   function rowCount() {
@@ -393,10 +422,10 @@ function createEpgView(root, deps) {
       anchorKey = old.items[idx].key;
       anchorDelta = top - old.offsets[idx];
     }
-    const run = loadedRun();
-    layout = model.buildLayout(run, now());
+    // rowsById führt ALLE geladenen Zeilen (auch die vom Genre-Filter ausgeblendeten): Suche und Detail brauchen sie
     rowsById = new Map();
-    for (const idx of layout.rowIndex) rowsById.set(layout.items[idx].row.id, layout.items[idx].row);
+    for (const entry of loadedRunAll()) for (const row of entry.rows) rowsById.set(row.id, row);
+    layout = model.buildLayout(loadedRun(), now());
     spacer.style.height = `${layout.total}px`;
     if (anchorKey !== null) {
       const idx = layout.indexOfKey(anchorKey);
@@ -406,6 +435,13 @@ function createEpgView(root, deps) {
         if (t !== null) scroll.scrollTop = t;
       }
     }
+    syncFilterEmpty();
+  }
+
+  /** Hinweis in der Liste, wenn der Genre-Filter keine der geladenen Sendungen übrig lässt. */
+  function syncFilterEmpty() {
+    const show = !scroll.hidden && genreFilter.isActive() && !!layout && layout.rowIndex.length === 0 && rowCount() > 0;
+    filterEmpty.hidden = !show;
   }
 
   // ── Rendern ──
@@ -537,6 +573,7 @@ function createEpgView(root, deps) {
     gridView.setVisible(ready && viewState.mode === 'grid');
     jngView.setVisible(ready && viewState.mode === 'jng');
     stateEl.hidden = ready;
+    syncFilterEmpty();
     applyControls();
     root.dataset.state = next.kind;
     if (ready) return;
@@ -624,6 +661,27 @@ function createEpgView(root, deps) {
     syncGridData(false);
     applyJng();
     renderCurrent();
+  }
+
+  /**
+   * Genre-Filter geändert (Chips). Liste: wirklich filtern (Layout neu, Position bleibt); Raster: Blöcke dämpfen;
+   * Jetzt & Gleich: Zellen/Sender filtern; Suche: neu ausführen (filtert die Treffer). Der Filter ist Sitzungszustand
+   * und bleibt beim Moduswechsel und beim Schließen/Öffnen des Overlays.
+   */
+  function applyGenres(genres) {
+    genreFilter.set(genres);
+    chips.render(genreFilter.list());
+    if (!isOpen) return;
+    jngView.setGenres(genreFilter.list());
+    if (layout) {
+      rebuildLayout({ keepPosition: true });
+      if (viewState.mode === 'list') {
+        renderWindow();
+        updateFollow();
+      }
+    }
+    gridView.invalidate();
+    refreshSearch();
   }
 
   function applyDerivedState(stillLoading) {
@@ -893,6 +951,7 @@ function createEpgView(root, deps) {
       total: searchRows.length,
       truncated: searchTruncated,
       includeDesc: searchDesc,
+      genreText: genreModel.describe(genreFilter.list()),
     });
     searchView.render({ state, rows: searchRows, query: query.text, includeDesc: searchDesc, nowMs: now() });
   }
@@ -939,15 +998,30 @@ function createEpgView(root, deps) {
     searchLoading = true;
     renderSearch();
     try {
+      // Mit Genre-Filter mehr Treffer holen (der Filter greift erst danach, siehe unten)
+      const genres = genreFilter.list();
+      const fetchLimit = genres.length ? searchModel.FILTERED_FETCH_LIMIT : searchModel.RESULT_LIMIT;
       const parts = [];
       for (const chunk of plan.chunks) {
-        const part = await api.searchEpg(chunk, query.text, plan.fromMs, plan.toMs, searchModel.RESULT_LIMIT, { includeDesc: searchDesc });
+        const part = await api.searchEpg(chunk, query.text, plan.fromMs, plan.toMs, fetchLimit, { includeDesc: searchDesc });
         if (!searchRequests.isCurrent(id) || !isOpen) return; // veraltet: neuere Eingabe oder Suche geschlossen
         parts.push(part);
       }
-      const merged = searchModel.mergeResults(parts);
-      searchRows = searchModel.hitsToRows(merged.results, channelByKey, rowsById);
-      searchTruncated = merged.truncated;
+      const merged = searchModel.mergeResults(parts, fetchLimit);
+      let rows = searchModel.hitsToRows(merged.results, channelByKey, rowsById);
+      let truncated = merged.truncated;
+      if (genres.length) {
+        // Treffer tragen kein Genre: aus den geladenen Zeilen (hitsToRows), sonst je Sender nachschlagen
+        rows = await lookUpGenres(rows, id);
+        if (!searchRequests.isCurrent(id) || !isOpen) return;
+        rows = genreModel.filterRows(rows, genres);
+        if (rows.length > searchModel.RESULT_LIMIT) {
+          rows = rows.slice(0, searchModel.RESULT_LIMIT);
+          truncated = true;
+        }
+      }
+      searchRows = rows;
+      searchTruncated = truncated;
       searchLoading = false;
     } catch (err) {
       if (!searchRequests.isCurrent(id) || !isOpen) return;
@@ -957,6 +1031,28 @@ function createEpgView(root, deps) {
       searchLoading = false;
     }
     renderSearch();
+  }
+
+  /** Genre für Treffer ohne bekanntes Genre per epg:range-many nachschlagen (je Sender ein Abruf, höchstens drei parallel). */
+  async function lookUpGenres(rows, requestId) {
+    const lookups = genreModel.planGenreLookups(rows, rowId => rowsById.has(rowId));
+    if (!lookups.length) return rows;
+    const found = new Map();
+    for (let i = 0; i < lookups.length; i += FETCH_PARALLEL) {
+      await Promise.all(
+        lookups.slice(i, i + FETCH_PARALLEL).map(async lookup => {
+          try {
+            const result = await api.getEpgRangeMany([lookup.key], lookup.fromMs, lookup.toMs);
+            const entry = (Array.isArray(result) ? result : []).find(e => e && e.channelKey === lookup.key);
+            if (entry && Array.isArray(entry.slots)) found.set(lookup.key, entry.slots);
+          } catch (err) {
+            warn(err); // Treffer ohne Genre passen zu keiner aktiven Gruppe
+          }
+        }),
+      );
+      if (!searchRequests.isCurrent(requestId) || !isOpen) return rows;
+    }
+    return genreModel.applyLookedUpGenres(rows, found);
   }
 
   /** Laufende Suche neu ausführen (Senderauswahl, Beschreibungsschalter, EPG-Stand geändert). */
@@ -1109,6 +1205,7 @@ function createEpgView(root, deps) {
       btn.setAttribute('aria-pressed', String(on));
     }
     gridTools.hidden = !gridOn;
+    chips.setHidden(inChannel); // die Kanalansicht kennt keinen Genre-Filter
     dayTabs.hidden = jngOn; // Jetzt & Gleich zeigt „jetzt“: keine Tage
     for (const btn of zoomBtns) {
       const active = Number(btn.dataset.zoom) === viewState.zoom;
@@ -1126,6 +1223,7 @@ function createEpgView(root, deps) {
     dayPin = null;
     syncModeUi();
     scroll.hidden = mode !== 'list';
+    syncFilterEmpty();
     gridView.setVisible(mode === 'grid');
     jngView.setVisible(mode === 'jng');
     if (mode === 'jng') {
@@ -1446,9 +1544,9 @@ function createEpgView(root, deps) {
     if (channelState.active) channelView.invalidate();
     dChannel.hidden = channelState.active && channelState.key === row.channelKey; // schon in dieser Kanalansicht
     dTitle.textContent = row.title || '(ohne Titel)';
-    const minutes = model.durationMinutes(row.start, row.stop);
-    const genre = genreLabel(row.genre);
-    dMeta.textContent = `${model.formatDetailTime(row.start, row.stop)} · ${minutes} min · ${row.channel.name || row.channelKey}${genre ? ` · ${genre}` : ''}`;
+    dMeta.textContent = `${model.formatDetailTime(row.start, row.stop)} · ${row.channel.name || row.channelKey}`;
+    // Metazeile: Genre und Dauer stehen sofort, Jahr/Episode/Besetzung/Poster folgen mit der Antwort von epg:find
+    detailView.reset({ genre: row.genre, minutes: model.durationMinutes(row.start, row.stop) });
     dDesc.textContent = 'Beschreibung wird geladen …';
     dNotice.hidden = true;
     dNotice.textContent = '';
@@ -1463,7 +1561,51 @@ function createEpgView(root, deps) {
     resolveDetail(row).then(slot => {
       if (seq !== modalSeq || backdrop.hidden) return;
       dDesc.textContent = slot && slot.desc ? slot.desc : 'Keine Beschreibung verfügbar.';
+      detailView.setExtra(slot);
     });
+    loadAlso(row, seq);
+  }
+
+  /**
+   * „Läuft auch“ (EPG-Konzept B4): weitere Termine desselben Titels im Cache — epg:search mit dem exakten Titel über
+   * alle Sender mit EPG, ab jetzt; der geöffnete Termin ist ausgeschlossen, angezeigt werden höchstens 5.
+   */
+  async function loadAlso(row, seq) {
+    const query = detailModel.alsoQuery(row.title);
+    if (!query || coverageToMs === null) return;
+    try {
+      let result = alsoCache.get(row.id);
+      if (!result) {
+        const nowMs = now();
+        const entries = model.selectChannels({ channels: deps.getChannels(), include: () => true });
+        const plan = searchModel.searchPlan({ keys: entries.map(e => e.key), days: [{ startMs: nowMs }], coverageToMs });
+        if (!plan) return;
+        const parts = [];
+        for (const chunk of plan.chunks) {
+          const part = await api.searchEpg(chunk, query, plan.fromMs, plan.toMs, detailModel.ALSO_FETCH_LIMIT, {});
+          if (seq !== modalSeq || backdrop.hidden) return;
+          parts.push(part);
+        }
+        const merged = searchModel.mergeResults(parts, detailModel.ALSO_FETCH_LIMIT);
+        result = detailModel.alsoPicks({
+          hits: merged.results,
+          current: row,
+          channelByKey: new Map(entries.map(e => [e.key, e.channel])),
+          nowMs,
+        });
+        alsoCache.set(row.id, result);
+      }
+      if (seq !== modalSeq || backdrop.hidden) return;
+      detailView.setAlso(result);
+    } catch (err) {
+      warn(err); // „Läuft auch“ ist Zugabe: bei Fehlern bleibt der Abschnitt weg
+    }
+  }
+
+  /** Klick auf einen „Läuft auch“-Termin: Modal schließen, zum Termin springen, dessen Detail öffnen. */
+  async function pickAlsoRow(row) {
+    closeDetail({ restoreFocus: false });
+    await pickSearchHit(rowsById.get(row.id) || row);
   }
 
   function closeDetail({ restoreFocus = true } = {}) {
@@ -1472,6 +1614,7 @@ function createEpgView(root, deps) {
     backdrop.hidden = true;
     modalRow = null;
     modalSeq += 1;
+    detailView.reset(); // Poster-Bild verwerfen, laufende „Läuft auch“-Antworten sind durch modalSeq veraltet
     const rowId = viewState.selectedRowId;
     const entry = rowId ? nodes.get(`r:${rowId}`) : null;
     gridView.invalidate();
@@ -1766,6 +1909,7 @@ function createEpgView(root, deps) {
       refreshSearch();
     });
     addHandler(optHide, 'change', () => applyHideNoEpg(optHide.checked));
+    addHandler(filterEmptyBtn, 'click', () => applyGenres([]));
     addHandler(moreBtn, 'click', () => toggleExtended());
     addHandler(jump2015Btn, 'click', () => jumpToClock(20, 15));
     addHandler(jump2200Btn, 'click', () => jumpToClock(22, 0));
@@ -1877,6 +2021,7 @@ function createEpgView(root, deps) {
     opener = document.activeElement;
     root.style.display = 'flex';
     detailCache = new Map();
+    alsoCache = new Map();
     viewState.select(null);
     syncModeUi();
     updateMenuLabels();
@@ -1929,6 +2074,8 @@ function createEpgView(root, deps) {
     dayRows = new Map();
     dayPromises = new Map();
     detailCache = new Map();
+    alsoCache = new Map();
+    detailView.reset();
     rowsById = new Map();
     layout = null;
     dayPin = null;
@@ -2011,7 +2158,7 @@ function createEpgView(root, deps) {
     handleEscape,
     isOpen: () => isOpen,
     notify: setNotice,
-    getState: () => viewState.snapshot(),
+    getState: () => ({ ...viewState.snapshot(), genres: genreFilter.list() }),
     getChannelState: () => ({ active: channelState.active, key: channelState.key, dayKey: channelState.dayKey, extended: channelState.extended }),
   };
 }
