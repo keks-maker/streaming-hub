@@ -1,0 +1,90 @@
+'use strict';
+
+// Tests: Verdrahtung des neuen Programmführers (Etappe 3.3) — Altcode ist ersetzt, ohne tote
+// Referenzen; Einstiege, Esc-Kette und Planungsweg laufen über epg-view.js und die bestehende
+// Planungs-Logik (handleEpgRecordClick → classifyProgramme → openSchedulePlanningDialog).
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+
+test('Altcode entfernt: keine Referenzen auf Zeitslot-Buttons, altes Raster und altes Detail-Modal', () => {
+  const dead = ['epgSlotHours', 'epgRangeLabel', 'epg-slot-btn', 'epg-timeslots', 'renderEpg', 'showEpgDetail', 'closeEpgDetail', 'setEpgDetailNotice', 'epgDetailActions'];
+  for (const file of ['renderer.js', 'index.html', 'styles.css']) {
+    const src = read(file);
+    for (const name of dead) assert.ok(!src.includes(name), `${file} enthält noch ${name}`);
+  }
+  for (const name of ['.epg-grid {', '.epg-row {', '.epg-row.epg-ruler', '.epg-programs-col', '.epg-channel-col', '.epg-time-marker', 'epgFadeIn']) {
+    assert.ok(!read('styles.css').includes(name), `styles.css enthält noch ${name}`);
+  }
+});
+
+test('Verdrahtung: Einstiege und Esc-Kette laufen über epg-view (Einstiege umgehängt)', () => {
+  const renderer = read('renderer.js');
+  assert.match(renderer, /dashboardEpgOpen\.addEventListener\('click', openEpgView\)/);
+  assert.match(renderer, /tvSidebarEpgBtn\.addEventListener\('click', openEpgView\)/);
+  assert.match(renderer, /epgView\.handleEscape\(\)/);
+  assert.match(renderer, /createEpgView\(epgOverlay,/);
+  // Planungsweg bleibt der bestehende: handleEpgRecordClick → classifyProgramme → openSchedulePlanningDialog
+  assert.match(renderer, /function handleEpgRecordClick\(programme\)[\s\S]*classifyProgramme[\s\S]*openSchedulePlanningDialog/);
+  // Titel/Beschreibung gehen unverändert in den Planungsdialog (kein Doppel-Decode)
+  const fn = renderer.slice(renderer.indexOf('function handleEpgRecordClick'), renderer.indexOf('let recSchedulePending'));
+  assert.ok(!fn.includes('decodeEntities'));
+  const html = read('index.html');
+  assert.equal(html.split('id="epgOverlay"').length - 1, 1);
+  for (const gone of ['epgDetailBackdrop', 'epgBody', 'epgCloseBtn']) assert.ok(!html.includes(`id="${gone}"`), gone);
+});
+
+
+test('Raster-Verdrahtung: Modus-Segment, Zoom, kein Hook-Button ohne Handler, goToNow löst die Tag-Bindung', () => {
+  const view = read('epg-view.js');
+  assert.match(view, /id: 'epgModeList'/);
+  assert.match(view, /id: 'epgModeGrid'/);
+  assert.match(view, /function setMode\(mode\)/);
+  assert.match(view, /async function goToNow\(\) \{\s*dayPin = null;/, 'W1: „Jetzt“ hebt die Tag-Bindung auf');
+  const gridView = read('epg-grid-view.js');
+  assert.match(gridView, /typeof deps\.onChannelClick === 'function'\s*\?/, 'Sendername nur klickbar, wenn ein Hook vorhanden ist');
+  for (const file of ['epg-grid-view.js', 'epg-grid-model.js', 'epg-dom.js', 'epg-genres.js']) {
+    const src = read(file);
+    assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML|tvEpgIndex|decodeEntities/.test(src), file);
+  }
+  assert.ok(!/onChannelClick/.test(read('renderer.js')), 'Kanalansicht kommt erst in 3.4: kein Hook im Renderer verdrahtet');
+});
+
+test('Raster-Titel brechen nie mitten im Wort um (V1)', () => {
+  const css = read('styles.css');
+  const block = css.slice(css.indexOf('.epg-block-title {'), css.indexOf('}', css.indexOf('.epg-block-title {')));
+  assert.ok(!/overflow-wrap:\s*anywhere|word-break:\s*(break-all|break-word)/.test(block));
+  assert.match(block, /-webkit-line-clamp: 2/);
+});
+
+test('Senderlogos im Raster: gleiche Quelle und Prüfung wie die Sidebar (Kanalobjekt, safeResourceUrl), img nur per src-Property', () => {
+  assert.match(read('renderer.js'), /sanitizeLogoUrl: url => safeResourceUrl\(url\)/);
+  const view = read('epg-grid-view.js');
+  assert.match(view, /resolveLogoUrl\(entry\.channel, deps\.sanitizeLogoUrl\)/);
+  assert.match(view, /img\.src = logoUrl/);
+  assert.match(view, /addEventListener\('error'/);
+  assert.match(view, /loading: 'lazy'/);
+});
+
+test('Raster bleibt ruhig: Block-Toggle nur bei geplanter/laufender Aufnahme, die Liste behält „Aufnehmen“ je Zeile', () => {
+  const view = read('epg-grid-view.js');
+  assert.match(view, /const show = wide && toggle\.kind !== 'record';/);
+  const list = read('epg-view.js');
+  assert.match(list, /const pastOnly = info\.phase === 'past' && toggle\.kind === 'record';/);
+  assert.ok(!/kind !== 'record'/.test(list), 'Liste zeigt weiter bei jeder Zeile den Toggle');
+});
+
+test('Marker: geplant rot und statisch, laufend rot und pulsierend (reduced-motion schaltet ab)', () => {
+  const css = read('styles.css');
+  assert.match(css, /\.epg-marker\[data-state="scheduled"\] \{ color: var\(--epg-rec\); \}/);
+  const run = css.match(/\.epg-marker\[data-state="recording"\] \{[^}]*\}/)[0];
+  assert.match(run, /var\(--epg-rec\)/);
+  assert.match(run, /epgPulse/);
+  assert.ok(!/animation/.test(css.match(/\.epg-marker\[data-state="scheduled"\] \{[^}]*\}/)[0]));
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.epg-marker\[data-state="recording"\] \{ animation: none; \}/);
+});

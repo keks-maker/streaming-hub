@@ -111,7 +111,7 @@ export default [
   },
   // ── Renderer (Browser only) ──
   {
-    files: ['renderer.js', 'settings-view.js', 'settings-tv-sources.js', 'settings-tv-channels.js'],
+    files: ['renderer.js', 'settings-view.js', 'settings-tv-sources.js', 'settings-tv-channels.js', 'epg-view.js', 'epg-view-model.js', 'epg-grid-model.js', 'epg-grid-view.js', 'epg-dom.js', 'epg-genres.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -137,6 +137,7 @@ export default [
         addEventListener: 'readable',
         removeEventListener: 'readable',
         customElements: 'readable',
+        requestAnimationFrame: 'readable',
         // Global vars from script context
         tvSources: 'writable',
         tvChannels: 'writable',

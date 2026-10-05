@@ -5,6 +5,8 @@
 // erzeugten XMLTV-Datei (Test-Hook STREAMING_HUB_EPG_FIXTURE, gilt nur zusammen mit
 // STREAMING_HUB_USER_DATA) — sowohl für das Renderer-EPG (fetch-epg) als auch für den
 // Main-EPG-Cache (EpgService). Die Netzsperre der Plattform-Argumente bleibt aktiv.
+// Seit Etappe 3.3 ist der Programmführer (epg-view.js) eine LISTE mit Detail-MODAL; die Zeilen tragen
+// weiterhin die Klasse .epg-program, das Modal die IDs #epgDetailBackdrop/#epgDetailRecordBtn/#epgDetailNotice.
 const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
@@ -201,6 +203,9 @@ test('Planungsdialog: Vorbelegung, Hinweis, Esc verwirft, Planen legt den Eintra
   await page.locator('#recScheduleConfirm').click();
   await expect(dialog).not.toHaveClass(/open/);
   await expect(page.locator('#epgDetailNotice')).toContainText('Aufnahme geplant: Kommende Sendung');
+  // Marker und Toggle ziehen live nach (schedule:changed): „Aufnahme geplant ✓“ + „✕ Aufnahme abbrechen“
+  await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant ✓');
+  await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');
   const list = await page.evaluate(() => window.electronAPI.listSchedules());
   expect(list).toHaveLength(1);
   expect(list[0].state).toBe('scheduled');

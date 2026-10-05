@@ -273,7 +273,8 @@ test('search: Standard bleibt schlank, options.full liefert die volle Projektion
   full.results[0].categories.push('X');
   assert.deepEqual((await store.search(['ZDF.de'], 'tatort', 0, Infinity, { full: true })).results[0].categories, ['Krimi', 'Drama']);
   const many = store.rangeMany(['ZDF.de'], NOW, NOW + HOUR);
-  assert.deepEqual(Object.keys(many[0].slots[0]).sort(), ['start', 'stop', 'title']);
+  assert.deepEqual(Object.keys(many[0].slots[0]).sort(), ['genre', 'start', 'stop', 'title']);
+  assert.equal(many[0].slots[0].genre, require('../lib/epg/genre.js').normalizeGenre(['Krimi', 'Drama']));
 });
 
 test('Mehrere Quellen: Duplikate werden vereinigt, die volle Projektion bleibt erhalten', () => {
