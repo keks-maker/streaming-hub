@@ -261,7 +261,7 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 Über **+** fügst du eigene Streaming-Dienste oder Mediatheken hinzu (Name, URL, Icon, Farbe); mit dem ×-Button entfernst du sie wieder.
 
 #### TV-Modus
-- **FreeTV** – TV-Button öffnet die Sidebar mit eigenen M3U-Sendern
+- **FreeTV** – LiveTV öffnet das Dashboard mit den Sendern aus deinen eigenen M3U-Quellen
 - **MagentaTV** – TV-Button öffnet web.magentatv.de im Webview
 
 ### Tastaturkürzel
