@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup LiveTV-Hub – NavBar (P21)</title>
+<link rel="stylesheet" href="hub-common.css">
+<style>.lead{max-width:880px;margin:0 auto;padding:16px;color:var(--text-dim)}.mk-row{margin:0}</style>
+</head>
+<body>
+<div class="mk"><div class="mk-row"><span class="mk-badge">Mockup – nicht die App</span><strong>LiveTV-Hub · NavBar (P21)</strong><a href="index.html">Übersicht</a></div></div>
+<p class="lead">Die NavBar hat keinen Aufnahmen-Eintrag mehr. Gezeigt wird ein Streamingdienst (Nutzer ist nicht im LiveTV), links der Normalfall, danach die Indikator-Optionen bei laufender Aufnahme. Punkt und Zahl pulsieren (bei „Bewegung reduzieren“ statisch). Ganz unten: Indikator am LiveTV-Eintrag, während man schon im LiveTV-Dashboard ist.</p>
+<main class="frames">
+<div class="frame-wrap" style="--w:880px"><p class="frame-label">1 · Keine Aufnahme läuft (Streamingdienst)</p><div class="frame compact" data-state="normal" data-ind="off" data-view="svc"><nav class="nbar" aria-label="Hauptnavigation (Mockup)">
+    <button class="ni ni-tv" type="button"><span class="ni-ic">TV<span class="ind ind-dot"></span><span class="ind ind-badge">1</span></span><span>LiveTV</span><span class="sr" data-for="running">Aufnahme läuft</span></button>
+    <button class="ni ni-st" type="button"><span class="ni-ic">S</span><span>Streaming</span></button>
+    <button class="ni ni-me" type="button"><span class="ni-ic">M</span><span>Mediatheken</span></button>
+    <button class="ni ni-se" type="button"><span class="ni-ic">⚙</span><span>Einstellungen</span></button>
+  </nav><div class="v-svc"><div class="svc-bar"><strong>Streamingdienst</strong><span>(Platzhalter: Inhalt eines Dienstes im Webview)</span></div><div class="svc-hero"></div><div class="svc-row"><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+<div class="frame-wrap" style="--w:880px"><p class="frame-label">2 · Aufnahme läuft, ohne Indikator (Option „kein Indikator“)</p><div class="frame compact" data-state="running" data-ind="off" data-view="svc"><nav class="nbar" aria-label="Hauptnavigation (Mockup)">
+    <button class="ni ni-tv" type="button"><span class="ni-ic">TV<span class="ind ind-dot"></span><span class="ind ind-badge">1</span></span><span>LiveTV</span><span class="sr" data-for="running">Aufnahme läuft</span></button>
+    <button class="ni ni-st" type="button"><span class="ni-ic">S</span><span>Streaming</span></button>
+    <button class="ni ni-me" type="button"><span class="ni-ic">M</span><span>Mediatheken</span></button>
+    <button class="ni ni-se" type="button"><span class="ni-ic">⚙</span><span>Einstellungen</span></button>
+  </nav><div class="v-svc"><div class="svc-bar"><strong>Streamingdienst</strong><span>(Platzhalter: Inhalt eines Dienstes im Webview)</span></div><div class="svc-hero"></div><div class="svc-row"><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+<div class="frame-wrap" style="--w:880px"><p class="frame-label">3 · Aufnahme läuft, kleiner Punkt am LiveTV-Eintrag</p><div class="frame compact" data-state="running" data-ind="dot" data-view="svc"><nav class="nbar" aria-label="Hauptnavigation (Mockup)">
+    <button class="ni ni-tv" type="button"><span class="ni-ic">TV<span class="ind ind-dot"></span><span class="ind ind-badge">1</span></span><span>LiveTV</span><span class="sr" data-for="running">Aufnahme läuft</span></button>
+    <button class="ni ni-st" type="button"><span class="ni-ic">S</span><span>Streaming</span></button>
+    <button class="ni ni-me" type="button"><span class="ni-ic">M</span><span>Mediatheken</span></button>
+    <button class="ni ni-se" type="button"><span class="ni-ic">⚙</span><span>Einstellungen</span></button>
+  </nav><div class="v-svc"><div class="svc-bar"><strong>Streamingdienst</strong><span>(Platzhalter: Inhalt eines Dienstes im Webview)</span></div><div class="svc-hero"></div><div class="svc-row"><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+<div class="frame-wrap" style="--w:880px"><p class="frame-label">4 · Aufnahme läuft, Punkt + Zahl am LiveTV-Eintrag</p><div class="frame compact" data-state="running" data-ind="badge" data-view="svc"><nav class="nbar" aria-label="Hauptnavigation (Mockup)">
+    <button class="ni ni-tv" type="button"><span class="ni-ic">TV<span class="ind ind-dot"></span><span class="ind ind-badge">1</span></span><span>LiveTV</span><span class="sr" data-for="running">Aufnahme läuft</span></button>
+    <button class="ni ni-st" type="button"><span class="ni-ic">S</span><span>Streaming</span></button>
+    <button class="ni ni-me" type="button"><span class="ni-ic">M</span><span>Mediatheken</span></button>
+    <button class="ni ni-se" type="button"><span class="ni-ic">⚙</span><span>Einstellungen</span></button>
+  </nav><div class="v-svc"><div class="svc-bar"><strong>Streamingdienst</strong><span>(Platzhalter: Inhalt eines Dienstes im Webview)</span></div><div class="svc-hero"></div><div class="svc-row"><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+<div class="frame-wrap" style="--w:880px"><p class="frame-label">5 · Im LiveTV-Dashboard, Punkt am aktiven Eintrag (Karte „Aufnahmen“ zeigt dasselbe)</p><div class="frame compact" data-state="running" data-ind="dot" data-view="livetv"><nav class="nbar" aria-label="Hauptnavigation (Mockup)">
+    <button class="ni ni-tv" type="button"><span class="ni-ic">TV<span class="ind ind-dot"></span><span class="ind ind-badge">1</span></span><span>LiveTV</span><span class="sr" data-for="running">Aufnahme läuft</span></button>
+    <button class="ni ni-st" type="button"><span class="ni-ic">S</span><span>Streaming</span></button>
+    <button class="ni ni-me" type="button"><span class="ni-ic">M</span><span>Mediatheken</span></button>
+    <button class="ni ni-se" type="button"><span class="ni-ic">⚙</span><span>Einstellungen</span></button>
+  </nav><div class="v-live"><section class="hub"><header class="hub-head"><div><span class="eyebrow">Streaming Hub</span><h1 class="title">LiveTV</h1></div></header><div class="cards" style="grid-template-columns:1fr 1fr"><article class="hcard prog">
+    <span class="hc-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="20"/></svg></span>
+    <div class="hc-body">
+      <h2 class="hc-title"><button class="hc-main" type="button">Programmübersicht</button></h2>
+      <p class="hc-status" data-for="normal norec noffmpeg running">EPG aktuell · 12 Favoriten</p>
+      <p class="hc-status warn" data-for="nofav">Favorisiere Sender, um die Programmübersicht zu sehen</p>
+      <p class="hc-status dim" data-for="nofav2">Noch keine Favoriten</p>
+      <p class="hc-hint" data-for="normal norec noffmpeg running">Sendungen suchen, filtern und Aufnahmen planen</p>
+      <p class="hc-hint" data-for="nofav">Klick öffnet das Programm aller Sender</p>
+    </div>
+    <button class="hc-extra" type="button" data-for="nofav2">Alle Sender zeigen</button>
+    <span class="hc-chev" aria-hidden="true">›</span>
+  </article><article class="hcard rec">
+    <span class="hc-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg></span>
+    <div class="hc-body">
+      <h2 class="hc-title"><button class="hc-main" type="button">Aufnahmen</button></h2>
+      <p class="hc-status" data-for="normal nofav nofav2"><span class="rdot plan" aria-hidden="true"></span>2 geplant · 3 fertig</p>
+      <p class="hc-status" data-for="running"><span class="rdot" aria-hidden="true"></span>1 läuft · 2 geplant</p>
+      <p class="hc-status dim" data-for="norec">Noch keine Aufnahmen</p>
+      <p class="hc-status warn" data-for="noffmpeg"><span class="wmark" aria-hidden="true">!</span>ffmpeg fehlt · Aufnehmen nicht möglich</p>
+      <p class="hc-hint" data-for="normal nofav nofav2 running">Geplant, laufend und fertig an einem Ort</p>
+      <p class="hc-hint" data-for="norec">Plane Aufnahmen in der Programmübersicht</p>
+      <p class="hc-hint" data-for="noffmpeg">Klick zeigt Hinweis zur Installation</p>
+    </div>
+    <span class="hc-chev" aria-hidden="true">›</span>
+  </article></div></section></div></div></div>
+</main>
+<script>document.querySelectorAll('.frame').forEach(function(f){var s=f.getAttribute('data-state');f.querySelectorAll('[data-for]').forEach(function(e){e.hidden=e.getAttribute('data-for').split(' ').indexOf(s)===-1;});});</script>
+</body>
+</html>
