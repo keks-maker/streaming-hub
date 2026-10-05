@@ -23,7 +23,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 
 ## Funktionen
 
-- **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken, Aufnahmen und Einstellungen
+- **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken und Einstellungen
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
 - **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste, Raster oder „Jetzt & Gleich“, Suche, Senderauswahl, Genre-Filter, Kanalansicht mit 7 Tagen je Sender, Details mit Poster, Besetzung und weiteren Terminen, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
 - **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, aus dem EPG im Voraus planen und später in der App abspielen
@@ -85,13 +85,13 @@ Installationen über den In-App-Updater oder den Installer sind nicht betroffen
 
 ### Startseite
 
-Die Startseite bündelt die Bereiche Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen. Wähle eine Kachel, um den Bereich zu öffnen.
+Die Startseite bündelt die Bereiche Live-TV, Streaming, Mediatheken und Einstellungen; die Aufnahmen erreichst du über die Karte **Aufnahmen** im Live-TV-Dashboard. Wähle eine Kachel, um den Bereich zu öffnen.
 
-![Start-Dashboard mit den Bereichen Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen](assets/screenshots/startseite.png)
+![Start-Dashboard mit den Bereichen Live-TV, Streaming, Mediatheken und Einstellungen](assets/screenshots/startseite.png)
 
 ### Navigationsleiste
 
-In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen.
+In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
 
 ![Navigationsleiste und Streaming-Dashboard](assets/screenshots/navbar.png)
 
@@ -103,7 +103,7 @@ Nach dem Klick auf einen Dienst wird die Webseite im Hauptbereich geladen. Deine
 
 #### Live-TV-Dashboard öffnen
 
-Wähle in der Navigationsleiste **LiveTV**. Das Dashboard zeigt geladene Sender als Kacheln, Favoriten sowie die aktuelle EPG-Programmübersicht. Über **Alle Sender** öffnest du die Senderverwaltung.
+Wähle in der Navigationsleiste **LiveTV**. Oben stehen zwei große Karten: **Programmübersicht** öffnet den Programmführer (die Statuszeile nennt den EPG-Stand und die Zahl der Favoriten), **Aufnahmen** öffnet den Aufnahmen-Bereich (die Statuszeile zeigt, wie viele Aufnahmen laufen, geplant oder fertig sind; fehlt ffmpeg, steht dort ein Hinweis). Darunter folgt eine Werkzeugleiste mit **Senderverwaltung**, **Status** und **EPG aktualisieren**, danach die Favoriten als Kacheln.
 
 ![Live-TV-Dashboard mit Favoriten und aktueller Sendung](assets/screenshots/livetv-dashboard.png)
 
@@ -125,7 +125,7 @@ Favoriten und Anpassungen bleiben beim Bearbeiten einer Quelle erhalten. Eine vo
 
 #### Sender auswählen
 
-Klicke eine Sender-Kachel im Live-TV-Dashboard oder einen Eintrag in der Senderverwaltung an, um den Stream zu starten. Die Senderverwaltung lässt sich über **Alle Sender** öffnen und bietet Suche sowie Gruppen.
+Klicke eine Sender-Kachel im Live-TV-Dashboard oder einen Eintrag in der Senderverwaltung an, um den Stream zu starten. Die Senderverwaltung lässt sich über **Senderverwaltung** im Live-TV-Dashboard öffnen und bietet Suche sowie Gruppen; im Programmführer wählst du über **Sender ▾** auch **Alle Sender**.
 
 #### Favoriten
 
@@ -182,7 +182,7 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 **Laufende Aufnahme:** Oben im Player zeigt ein „REC“-Hinweis mit Laufzeit, Sender und Sendung, dass aufgenommen wird – auch wenn du den Sender wechselst. Ein Klick darauf (oder auf den roten Aufnahme-Button) öffnet die Verwaltung zum Beenden. Aufnahmen laufen weiter, wenn du das Fenster schließt: Die App bleibt dann im Tray (Symbol rot bei laufender Aufnahme) und lässt sich von dort öffnen oder die Aufnahme stoppen. Reißt die Verbindung kurz ab, versucht die App automatisch, die Aufnahme fortzusetzen; nach einem Absturz werden unvollständige Aufnahmen beim nächsten Start gerettet.
 
-**Aufnahmen ansehen:** Öffne auf der Startseite die Kachel **Aufnahmen** oder drücke `Strg` + `R`. Die Übersicht zeigt Titel, Sender, Datum, Dauer und Status jeder Aufnahme. Hier kannst du Aufnahmen abspielen und löschen. Während eine Aufnahme nach dem Beenden in das MP4-Format umgewandelt wird, siehst du den Fortschritt; fertige Aufnahmen liegen als normale MP4-Dateien im Speicherordner und lassen sich auch mit anderen Playern öffnen.
+**Aufnahmen ansehen:** Öffne im Live-TV-Dashboard die Karte **Aufnahmen** oder drücke `Strg` + `R`. Die Übersicht zeigt Titel, Sender, Datum, Dauer und Status jeder Aufnahme. Hier kannst du Aufnahmen abspielen und löschen. Während eine Aufnahme nach dem Beenden in das MP4-Format umgewandelt wird, siehst du den Fortschritt; fertige Aufnahmen liegen als normale MP4-Dateien im Speicherordner und lassen sich auch mit anderen Playern öffnen.
 
 ![Aufnahmen-Übersicht](assets/screenshots/aufnahmen-dashboard.png)
 
@@ -198,7 +198,7 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 ### EPG – Programmführer
 
-Klicke im Live-TV-Dashboard auf **EPG öffnen** (oder in der TV-Seitenleiste auf den EPG-Button), um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
+Klicke im Live-TV-Dashboard auf die Karte **Programmübersicht**, um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
 
 ![Programmführer als Liste mit Genre-Chips (Beispieldaten)](assets/screenshots/epg-liste.png)
 
@@ -261,7 +261,7 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 Über **+** fügst du eigene Streaming-Dienste oder Mediatheken hinzu (Name, URL, Icon, Farbe); mit dem ×-Button entfernst du sie wieder.
 
 #### TV-Modus
-- **FreeTV** – TV-Button öffnet die Sidebar mit eigenen M3U-Sendern
+- **FreeTV** – LiveTV öffnet das Dashboard mit den Sendern aus deinen eigenen M3U-Quellen
 - **MagentaTV** – TV-Button öffnet web.magentatv.de im Webview
 
 ### Tastaturkürzel

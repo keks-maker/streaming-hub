@@ -242,7 +242,9 @@ test('Direkt anschließende Sendung: Mittelpunkt-Regel und „Eine durchgehende 
 });
 
 test('Planungsliste „Geplant“: Eintrag sichtbar, Puffer bearbeiten, live per schedule:changed, Absagen, Leerzustand', async () => {
-  await page.locator('#overlayNav [data-section="recording"]').click();
+  // 3.6b: Aufnahmen-Bereich über die Karte im LiveTV-Dashboard (kein NavBar-Eintrag mehr)
+  await page.locator('#overlayNav [data-section="livetv"]').click();
+  await page.locator('#dashboardRecordingsOpen').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
   await page.locator('#recordingsTab-planned').click();
   const row = page.locator('.recording-entry[data-schedule-id]');

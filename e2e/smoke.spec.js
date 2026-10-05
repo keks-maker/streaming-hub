@@ -127,12 +127,14 @@ test('Hauptfenster rendert Titel und Kern-DOM', async () => {
   // Auf der Startseite ist die Navbar by design ausgeblendet (display:none) — nur im DOM prüfen.
   await expect(page.locator('#overlayBar')).toBeAttached();
   await expect(page.locator('#contentArea')).toBeAttached();
-  // Startdashboard mit allen fünf Bereichs-Kacheln (renderStartDashboard).
+  // Startdashboard mit den vier Bereichs-Kacheln (renderStartDashboard); „Aufnahmen“ ist seit 3.6b eine Karte im LiveTV-Dashboard.
   await expect(page.locator('#dashboardView')).toBeVisible();
   await expect(page.locator('#dashboardTitle')).toHaveText('Was möchtest du sehen?');
-  for (const key of ['livetv', 'streaming', 'mediathek', 'recording', 'settings']) {
+  for (const key of ['livetv', 'streaming', 'mediathek', 'settings']) {
     await expect(page.locator(`.dashboard-section-tile[data-section="${key}"]`)).toBeVisible();
   }
+  await expect(page.locator('.dashboard-section-tile')).toHaveCount(4);
+  await expect(page.locator('.dashboard-section-tile[data-section="recording"]')).toHaveCount(0);
   await expect(page.locator('#versionTag')).toHaveText(`v${PKG_VERSION}`);
 });
 
@@ -155,25 +157,17 @@ test('Isolation: userData im Temp-Verzeichnis, kein Updater-Lauf', async () => {
   }
 });
 
-test('LiveTV: Favoriten-UI (Senderliste, Favoriten-Tab, Reihenfolge) erreichbar', async () => {
+test('LiveTV: Werkzeugleiste (Senderverwaltung, Status, EPG aktualisieren); das alte „Alle Sender“-Overlay ist entfernt', async () => {
   await page.locator('.dashboard-section-tile[data-section="livetv"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
-  const manage = page.locator('#dashboardTvManage');
-  await expect(manage).toBeVisible();
-  await manage.click();
-
-  const overlay = page.locator('#tvChannelManagerOverlay');
-  await expect(overlay).toHaveClass(/open/);
-  await expect(page.locator('#tvChannelViewAll')).toHaveAttribute('aria-selected', 'true');
-
-  await page.locator('#tvChannelViewFavorites').click();
-  await expect(page.locator('#tvChannelViewFavorites')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#tvChannelViewAll')).toHaveAttribute('aria-selected', 'false');
-  await expect(page.locator('#tvFavoriteSortToggle')).toBeVisible();
-  await expect(page.locator('#tvChannelManagerList')).toBeAttached();
-
-  await page.locator('#tvChannelManagerClose').click();
-  await expect(overlay).not.toHaveClass(/open/);
+  await expect(page.locator('#dashboardTvActions .dashboard-hub-tool')).toHaveCount(3);
+  for (const id of ['dashboardTvSettings', 'dashboardTvStatusBtn', 'dashboardTvRefresh']) await expect(page.locator(`#${id}`)).toBeVisible();
+  await expect(page.locator('#dashboardTvManage, #tvChannelManagerOverlay')).toHaveCount(0);
+  // Senderverwaltung führt auf die Einstellungs-Seite „Sender“
+  await page.locator('#dashboardTvSettings').click();
+  await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+  await expect(page.locator('#settingsTab-livetv-channels')).toHaveAttribute('aria-selected', 'true');
+  await page.locator('#overlayNav [data-section="livetv"]').click();
 });
 
 // LiveTV-Gruppe der Einstellungs-Seitenleiste aufklappen (falls zugeklappt).
@@ -186,7 +180,10 @@ async function expandSettingsLiveTv() {
 test('Aufnahmen: Dashboard-Einstieg und Speicherort-Einstellung erreichbar', async () => {
   // Navigation über die Navbar (nach dem Betreten eines Bereichs ist sie sichtbar).
   const nav = page.locator('#overlayNav');
-  await nav.locator('[data-section="recording"]').click();
+  // 3.6b (P21): kein NavBar-Eintrag mehr; Einstieg über die Karte „Aufnahmen“ im LiveTV-Dashboard
+  await expect(nav.locator('[data-section="recording"]')).toHaveCount(0);
+  await nav.locator('[data-section="livetv"]').click();
+  await page.locator('#dashboardRecordingsOpen').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
   await expect(page.locator('#dashboardView')).toHaveClass(/recordings-dashboard/);
   await expect(page.locator('.recordings-dashboard-title')).toHaveText('Aufnahmen');

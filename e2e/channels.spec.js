@@ -451,7 +451,7 @@ test('Logo-Vorschau: nicht ladbares Logo wird ausgeblendet', async () => {
   await page.locator('#settingsTvChannelsSearch').fill('');
 });
 
-test('Deep-Links: LiveTV-Dashboard und Senderauswahl führen zur Senderverwaltung; alte Modals sind entfernt', async () => {
+test('Deep-Link: LiveTV-Dashboard führt zur Senderverwaltung; alte Modals und das „Alle Sender“-Overlay sind entfernt', async () => {
   await expect(page.locator('#tvModalOverlay')).toHaveCount(0);
   await expect(page.locator('#tvChModalOverlay')).toHaveCount(0);
 
@@ -463,14 +463,10 @@ test('Deep-Links: LiveTV-Dashboard und Senderauswahl führen zur Senderverwaltun
   await expect(page.locator('#settingsTab-livetv-channels')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#settingsTvChannelsList')).toBeVisible();
 
-  // Senderauswahl-Overlay ("Alle Sender") bleibt Sender-Picker und verlinkt auf die Verwaltung
+  // Das alte Senderauswahl-Overlay „Alle Sender“ gibt es nicht mehr (Einstieg war der entfernte Button #dashboardTvManage)
   await page.locator('#settingsTab-general').click();
   await page.locator('#overlayNav [data-section="livetv"]').click();
-  await page.locator('#dashboardTvManage').click();
-  await expect(page.locator('#tvChannelManagerOverlay')).toHaveClass(/open/);
-  await page.locator('#tvChannelManagerSettings').click();
-  await expect(page.locator('#tvChannelManagerOverlay')).not.toHaveClass(/open/);
-  await expect(page.locator('#settingsTab-livetv-channels')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#dashboardTvManage, #tvChannelManagerOverlay')).toHaveCount(0);
 });
 
 test('Keine uncaught Exceptions / unerwarteten Konsolen-Errors', async () => {

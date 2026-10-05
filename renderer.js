@@ -12,9 +12,6 @@ const {
   isFavorite,
   buildChannelList,
   getNextChannelId,
-  filterChannels,
-  groupChannels,
-  separateFavorites,
   applyChannelOverrides,
   applySortOrder,
   selectEpgWindowEntries,
@@ -30,6 +27,7 @@ const {
   isProbablyNetworkPath,
 } = require('./lib/recorder/ui-model.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
+const { createDashboardHub } = require('./dashboard-hub-view.js');
 
 function safeResourceUrl(value, { allowRelative = true } = {}) {
   if (typeof value !== 'string' || !value.trim()) return '';
@@ -57,11 +55,7 @@ let currentDashboardGroup = null;
 let tvSources = [];
 let tvChannels = [];
 let tvEpgData = [];
-let tvSidebarOpen = false;
 let tvActiveChannelId = null;
-let tvSearchFilter = '';
-let tvSelectedSourceIds = [];
-let tvCollapsedGroups = {};
 let tvEpgRefreshing = false;
 let tvSourcesRefreshing = false;
 let tvSourceStatus = 'idle';
@@ -101,6 +95,15 @@ function activeRecordingForChannel(channelId) {
 
 function recordingActive() {
   return !!(recordingState.active && recordingState.active.length);
+}
+
+// NavBar-Indikator (P21): Punkt am LiveTV-Eintrag, solange eine Aufnahme läuft (Punkt ohne Zahl, Screenreader-Text)
+function updateNavRecordingIndicator() {
+  const running = recordingActive();
+  const dot = nav.querySelector('.nav-live-dot');
+  const sr = nav.querySelector('.nav-live-sr');
+  if (dot) dot.hidden = !running;
+  if (sr) sr.hidden = !running;
 }
 
 /**
@@ -183,6 +186,8 @@ function applyRecordingState(status) {
   notifyRecordingStatusListeners();
   pushRecordingStatusToTvView();
   updateRecordingsScreenIfVisible();
+  updateNavRecordingIndicator();
+  scheduleDashboardHubRefresh();
 }
 
 function pushRecordingStatusToTvView() {
@@ -382,7 +387,6 @@ const nav = document.getElementById('overlayNav');
 const updateBtn = document.getElementById('updateBtn');
 const dashboardUpdateSlot = document.getElementById('dashboardUpdateSlot');
 const overlayUpdateSlot = document.getElementById('overlayUpdateSlot');
-let tvBtn = null;
 
 function placeUpdateButton(slot, inDashboard = false) {
   if (updateBtn.parentElement !== slot) slot.appendChild(updateBtn);
@@ -454,18 +458,14 @@ const dashboardTitle = document.getElementById('dashboardTitle');
 const dashboardCount = document.getElementById('dashboardCount');
 const dashboardGrid = document.getElementById('dashboardGrid');
 const dashboardEmpty = document.getElementById('dashboardEmpty');
-const dashboardEpg = document.getElementById('dashboardEpg');
-const dashboardEpgList = document.getElementById('dashboardEpgList');
-const dashboardEpgOpen = document.getElementById('dashboardEpgOpen');
-const dashboardEpgRefresh = document.getElementById('dashboardEpgRefresh');
-const dashboardTvActions = document.getElementById('dashboardTvActions');
+const dashboardHub = document.getElementById('dashboardHub');
+const dashboardHubCards = document.getElementById('dashboardHubCards');
 const dashboardTvStatus = document.getElementById('dashboardTvStatus');
 const dashboardTvStatusBtn = document.getElementById('dashboardTvStatusBtn');
 const dashboardTvRefresh = document.getElementById('dashboardTvRefresh');
 const dashboardPlayer = document.getElementById('dashboardPlayer');
 const dashboardPlayerStage = document.getElementById('dashboardPlayerStage');
 const dashboardPlayerClose = document.getElementById('dashboardPlayerClose');
-const dashboardTvManage = document.getElementById('dashboardTvManage');
 const overlayLocation = document.getElementById('overlayLocation');
 const backBtn = document.getElementById('backBtn');
 // Fix-Set 4: settings-/pip-Buttons sind aus der Navbar entfernt; die Elemente
@@ -477,129 +477,51 @@ const historyBtn = document.getElementById('historyBtn');
 const historyList = document.getElementById('historyList');
 const historyClose = document.getElementById('historyClose');
 const historyClear = document.getElementById('historyClear');
-const tvChannelManagerOverlay = document.getElementById('tvChannelManagerOverlay');
-const tvChannelManagerClose = document.getElementById('tvChannelManagerClose');
-const tvChannelManagerList = document.getElementById('tvChannelManagerList');
-const tvChannelManagerSearch = document.getElementById('tvChannelManagerSearch');
-const tvChannelManagerSources = document.getElementById('tvChannelManagerSources');
-const tvChannelViewAll = document.getElementById('tvChannelViewAll');
-const tvChannelViewFavorites = document.getElementById('tvChannelViewFavorites');
-const tvFavoriteSortToggle = document.getElementById('tvFavoriteSortToggle');
-let tvChannelView = 'all';
-let tvFavoriteSortMode = false;
-let tvChannelManagerReturnFocus = null;
-
-// TV DOM references
-const tvSidebar = document.getElementById('tvSidebar');
-const tvSidebarTrigger = document.getElementById('tvSidebarTrigger');
-
-const tvSidebarManage = document.getElementById('tvSidebarManage');
-const tvSidebarEpgRefresh = document.getElementById('tvSidebarEpgRefresh');
-const tvSidebarSourcesRefresh = document.getElementById('tvSidebarSourcesRefresh');
-const tvSidebarSources = document.getElementById('tvSidebarSources');
-const tvSidebarChannels = document.getElementById('tvSidebarChannels');
-const tvSidebarStatus = document.getElementById('tvSidebarStatus');
-const tvSearchInput = document.getElementById('tvSearchInput');
-const tvSidebarEdit = document.getElementById('tvSidebarEdit');
-
 // EPG Overlay DOM
 const epgOverlay = document.getElementById('epgOverlay');
 let epgViewReady = false; // epgView wird weiter unten erzeugt; Navigationsfunktionen laufen auch davor
-const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
-dashboardEpgOpen.addEventListener('click', openEpgView);
-
-function openTvChannelManager() {
-  if (!tvChannelManagerOverlay) return;
-  tvChannelManagerReturnFocus = document.activeElement;
-  if (!tvSelectedSourceIds.length && tvSources.length) tvSelectedSourceIds = tvSources.map(s => s.id);
-  tvChannelManagerOverlay.classList.add('open');
-  tvChannelManagerOverlay.setAttribute('aria-hidden', 'false');
-  dashboardTvManage.setAttribute('aria-expanded', 'true');
-  tvFavoriteSortMode = false;
-  tvFavoriteSortToggle.textContent = 'Reihenfolge bearbeiten';
-  renderTvManagerSources();
-  renderTvChannels();
-  tvChannelManagerSearch.focus();
-}
-
-function closeTvChannelManager() {
-  if (!tvChannelManagerOverlay) return;
-  tvChannelManagerOverlay.classList.remove('open');
-  tvChannelManagerOverlay.setAttribute('aria-hidden', 'true');
-  dashboardTvManage.setAttribute('aria-expanded', 'false');
-  tvFavoriteSortMode = false;
-  if (tvChannelManagerReturnFocus && typeof tvChannelManagerReturnFocus.focus === 'function') {
-    tvChannelManagerReturnFocus.focus();
-  }
-  tvChannelManagerReturnFocus = null;
-}
-
-dashboardTvManage.addEventListener('click', openTvChannelManager);
 const dashboardTvSettings = document.getElementById('dashboardTvSettings');
 if (dashboardTvSettings) dashboardTvSettings.addEventListener('click', () => openSettingsPage('livetv-channels'));
-const tvChannelManagerSettings = document.getElementById('tvChannelManagerSettings');
-if (tvChannelManagerSettings) {
-  tvChannelManagerSettings.addEventListener('click', () => {
-    closeTvChannelManager();
-    openSettingsPage('livetv-channels');
-  });
-}
-tvChannelManagerClose.addEventListener('click', closeTvChannelManager);
-tvChannelManagerOverlay.addEventListener('click', e => {
-  if (e.target === tvChannelManagerOverlay) closeTvChannelManager();
-});
-tvChannelViewAll.addEventListener('click', () => {
-  tvChannelView = 'all';
-  tvChannelViewAll.classList.add('active');
-  tvChannelViewFavorites.classList.remove('active');
-  tvChannelViewAll.setAttribute('aria-selected', 'true');
-  tvChannelViewFavorites.setAttribute('aria-selected', 'false');
-  renderTvChannels();
-});
-tvChannelViewFavorites.addEventListener('click', () => {
-  tvChannelView = 'favorites';
-  tvChannelViewFavorites.classList.add('active');
-  tvChannelViewAll.classList.remove('active');
-  tvChannelViewFavorites.setAttribute('aria-selected', 'true');
-  tvChannelViewAll.setAttribute('aria-selected', 'false');
-  renderTvChannels();
-});
-tvFavoriteSortToggle.addEventListener('click', () => {
-  tvFavoriteSortMode = !tvFavoriteSortMode;
-  tvFavoriteSortToggle.textContent = tvFavoriteSortMode ? 'Sortieren beenden' : 'Reihenfolge bearbeiten';
-  renderTvChannels();
-});
-tvChannelManagerSearch.addEventListener('input', () => {
-  tvSearchFilter = tvChannelManagerSearch.value;
-  renderTvChannels();
-});
-
+const dashboardTvRefreshLabel = dashboardTvRefresh.querySelector('.dashboard-hub-tool-label');
 dashboardTvRefresh.addEventListener('click', async () => {
   dashboardTvRefresh.disabled = true;
-  dashboardTvRefresh.textContent = 'Wird aktualisiert…';
+  dashboardTvRefreshLabel.textContent = 'Wird aktualisiert…';
   try {
     await refreshEpg();
     renderDashboard('livetv');
   } finally {
     dashboardTvRefresh.disabled = false;
-    dashboardTvRefresh.textContent = 'EPG aktualisieren';
+    dashboardTvRefreshLabel.textContent = 'EPG aktualisieren';
   }
 });
 dashboardTvStatusBtn.addEventListener('click', () => {
   dashboardTvStatus.classList.toggle('expanded');
 });
-dashboardEpgRefresh.addEventListener('click', async () => {
-  dashboardEpgRefresh.disabled = true;
-  dashboardEpgRefresh.textContent = 'EPG wird aktualisiert…';
-  try {
-    await refreshEpg();
-    if (currentDashboardGroup === 'livetv') renderDashboard('livetv');
-  } finally {
-    dashboardEpgRefresh.disabled = false;
-    dashboardEpgRefresh.textContent = 'EPG aktualisieren';
-  }
+
+// ── LiveTV-Hub (Etappe 3.6b): Einstiegskarten „Programmübersicht“ und „Aufnahmen“ ──
+// Die Karten zeigen nur eine Statuszeile (keine Senderliste); Klick öffnet den Programmführer bzw. den Aufnahmen-Bereich.
+const dashboardHubView = createDashboardHub(dashboardHubCards, {
+  api: window.electronAPI,
+  logger,
+  getEpgInput: () => ({ favoriteCount: getOrderedFavoriteChannels().length, epgStatus: tvEpgStatus }),
+  onOpenEpg: () => openEpgView(),
+  onOpenRecordings: () => showDashboard('recording'),
 });
+
+function isLiveTvDashboardVisible() {
+  return currentDashboardGroup === 'livetv' && !currentProvider;
+}
+
+// Statuszeile der Aufnahmen-Karte nachführen (Planung/Aufnahme-Events), gebündelt und nur bei sichtbarem LiveTV-Dashboard
+let dashboardHubRefreshTimer = null;
+function scheduleDashboardHubRefresh() {
+  if (!isLiveTvDashboardVisible() || dashboardHubRefreshTimer) return;
+  dashboardHubRefreshTimer = setTimeout(() => {
+    dashboardHubRefreshTimer = null;
+    if (isLiveTvDashboardVisible()) dashboardHubView.refresh();
+  }, 250);
+}
 dashboardPlayerClose.addEventListener('click', closeDashboardPlayer);
 dashboardPlayer.addEventListener('dblclick', closeDashboardPlayer);
 document.addEventListener('fullscreenchange', () => {
@@ -844,9 +766,8 @@ function getOrderedFavoriteChannels(channels = tvChannels) {
 
 function renderLiveTvDashboard() {
   const favorites = getOrderedFavoriteChannels();
-  dashboardTvActions.hidden = false;
+  dashboardHub.hidden = false;
   dashboardGrid.innerHTML = '';
-  dashboardEpg.style.display = '';
   dashboardCount.textContent = `${favorites.length} ${favorites.length === 1 ? 'Favorit' : 'Favoriten'}`;
   if (!favorites.length) {
     dashboardEmpty.textContent = tvChannels.length
@@ -857,32 +778,7 @@ function renderLiveTvDashboard() {
     dashboardEmpty.style.display = 'none';
     favorites.forEach(ch => dashboardGrid.appendChild(renderLiveTvTile(ch)));
   }
-  renderDashboardEpg(favorites);
-}
-
-function renderDashboardEpg(channels) {
-  dashboardEpgList.innerHTML = '';
-  channels.slice(0, 8).forEach(ch => {
-    const current = getCurrentEpg(ch);
-    const row = document.createElement('button');
-    row.className = 'dashboard-epg-row';
-    row.type = 'button';
-    const channel = document.createElement('span');
-    channel.className = 'dashboard-epg-channel';
-    channel.textContent = ch.name;
-    const program = document.createElement('span');
-    program.className = 'dashboard-epg-program';
-    program.textContent = current ? decodeEntities(current.title) : 'Kein EPG verfügbar';
-    const time = document.createElement('span');
-    time.className = 'dashboard-epg-time';
-    time.textContent = current ? `${formatEpgTime(current.start)} – ${formatEpgTime(current.stop)}` : '';
-    row.append(channel, program, time);
-    row.addEventListener('click', () => selectTvChannel(ch, { suppressChannelList: true }));
-    dashboardEpgList.appendChild(row);
-  });
-  if (!channels.length)
-    dashboardEpgList.innerHTML =
-      '<div class="dashboard-epg-empty">Favorisiere Sender, um die Programmübersicht zu sehen.</div>';
+  dashboardHubView.render();
 }
 
 function renderStartDashboard() {
@@ -898,17 +794,13 @@ function renderStartDashboard() {
   dashboardCount.textContent = '';
   dashboardGrid.setAttribute('aria-label', 'Bereiche');
   dashboardGrid.innerHTML = '';
-  dashboardEpg.style.display = 'none';
-  dashboardTvActions.hidden = true;
+  dashboardHub.hidden = true;
   dashboardEmpty.style.display = 'none';
   const sections = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
-    // Fix-Set 4: Aufnahmen als eigene Kachel zwischen Mediatheken und
-    // Einstellungen; art = generiertes Kachel-Bild (assets/recordings-tile.png)
-    // im Stil der übrigen Section-Kachel-Familie.
-    { key: 'recording', label: 'Aufnahmen', icon: null, color: '#fb923c' },
+    // 3.6b: keine Kachel „Aufnahmen“ mehr (wie der NavBar-Eintrag, P21); der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
     { key: 'settings', label: 'Einstellungen', icon: null, color: '#64748b' },
   ];
   sections.forEach(section => {
@@ -917,7 +809,7 @@ function renderStartDashboard() {
     tile.type = 'button';
     tile.dataset.section = section.key;
     tile.style.setProperty('--tile-color', section.color);
-    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.key === 'recording' ? '<span class="rec-dot" aria-hidden="true"></span>' : section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
+    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
     tile.addEventListener('click', () => {
       overlayBar.classList.remove('nav-collapsed');
       showDashboard(section.key);
@@ -959,12 +851,11 @@ function renderDashboard(groupKey, opts = {}) {
           ? 'Deine Mediatheken'
           : 'Deine Streamingdienste';
   dashboardTitle.textContent = title;
-  dashboardTvActions.hidden = !isTv;
+  dashboardHub.hidden = !isTv;
   dashboardCount.textContent = isTv || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
   dashboardGrid.setAttribute('aria-label', title);
   settingsPanelHost.hidden = groupKey !== 'settings';
   dashboardGrid.innerHTML = '';
-  dashboardEpg.style.display = 'none';
   dashboardEmpty.style.display = 'none';
   if (isSettings) {
     settingsPanelHost.hidden = false;
@@ -1030,7 +921,10 @@ function showDashboard(groupKey, opts = {}) {
               : 'Streaming';
   overlayBar.classList.add('always-visible');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
-  if (tvSidebarOpen) closeTvSidebar();
+  if (groupKey === 'livetv') {
+    ensureTvDataLoaded();
+    dashboardHubView.refresh();
+  }
 }
 
 function getIconSrc(svc) {
@@ -1053,9 +947,7 @@ function renderNav() {
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png' },
-    // Fix-Set 4: Aufnahmen in der Navbar — accessor-icon + Label, gleicher
-    // nav-section-item-Stil wie Mediatheken (kein Action-Button).
-    { key: 'recording', label: 'Aufnahmen', icon: 'recordings-nav@2x.png' },
+    // 3.6b (P21): kein Aufnahmen-Eintrag mehr; der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
   ];
 
   groups.forEach(group => {
@@ -1065,6 +957,19 @@ function renderNav() {
     btn.dataset.section = group.key;
     btn.innerHTML = `<span class="nav-section-icon"><img src="assets/icons/${group.icon}" alt=""></span><span class="nav-section-label">${group.label}</span>`;
     btn.addEventListener('click', () => showDashboard(group.key));
+    if (group.key === 'livetv') {
+      // Aufnahme-Indikator (P21): Punkt ohne Zahl, solange eine Aufnahme läuft; Screenreader-Text statt Farbe allein
+      const icon = btn.querySelector('.nav-section-icon');
+      const dot = document.createElement('span');
+      dot.className = 'nav-live-dot';
+      dot.hidden = true;
+      dot.setAttribute('aria-hidden', 'true');
+      const sr = document.createElement('span');
+      sr.className = 'sr-only nav-live-sr';
+      sr.hidden = true;
+      sr.textContent = 'Aufnahme läuft';
+      icon.append(dot, sr);
+    }
     nav.appendChild(btn);
   });
 
@@ -1077,7 +982,7 @@ function renderNav() {
   settingsItem.addEventListener('click', () => showDashboard('settings'));
   nav.appendChild(settingsItem);
   nav.appendChild(overlayUpdateSlot);
-  tvBtn = nav.querySelector('[data-section="livetv"]');
+  updateNavRecordingIndicator();
 }
 
 function createDivider() {
@@ -1225,7 +1130,6 @@ function navigateTo(svc) {
   } else {
     pendingNav = targetUrl;
   }
-  if (tvSidebarOpen) closeTvSidebar();
 }
 
 function getCurrentSvc() {
@@ -1582,63 +1486,20 @@ function saveSettingsService() {
 
 settingsAddSave.addEventListener('click', saveSettingsService);
 
-// ── TV Sidebar ──
-
-function toggleTvSidebar() {
-  if (tvMode === 'magenta') {
-    currentUA = safariUA;
-    const svc = services.find(s => s.id === 'magentatv');
-    if (svc) {
-      navigateTo(svc);
-      return;
-    }
-    if (!restoringNav) pushNavState();
-    webview.loadURL('https://web.magentatv.de');
-    currentProvider = 'magentatv';
-    lastMediaTitle = '';
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    switchWebview(false);
-    welcomeScreen.style.display = 'none';
-    overlayBar.classList.remove('always-visible');
-    if (tvSidebarOpen) closeTvSidebar();
-    return;
-  }
-  if (tvSidebarOpen) {
-    closeTvSidebar();
-  } else {
-    openTvSidebar();
-  }
-}
-
-function openTvSidebar() {
-  tvSidebarOpen = true;
-  tvSidebar.classList.add('open');
-  if (tvBtn) tvBtn.classList.add('active');
-
-  // Restore collapsed groups from localStorage
-  try {
-    const saved = localStorage.getItem('tv-collapsed-groups');
-    if (saved) tvCollapsedGroups = JSON.parse(saved);
-  } catch {}
-
-  // If no sources selected, select all
-  if (!tvSelectedSourceIds.length && tvSources.length) {
-    tvSelectedSourceIds = tvSources.map(s => s.id);
-  }
-
-  renderSourcePills();
+// ── Fester Ladeweg für Senderliste und EPG-Index ──
+// Start (getTvSources), Quellenänderung (refreshTvSourcesAndEpg) und Öffnen des LiveTV-Dashboards.
+// Früher lud zusätzlich das Öffnen der linken TV-Sidebar nach (nur wenn der Index fehlte bzw. „unavailable“ war);
+// dieser Nachladeweg liegt jetzt hier und läuft nie parallel zu einem laufenden Ladevorgang.
+function ensureTvDataLoaded() {
+  if (!tvSources.length) return;
+  if (tvSourcesRefreshing || tvEpgRefreshing || tvSourceStatus === 'loading' || tvEpgStatus === 'loading') return;
+  const needsChannels = tvChannels.length === 0;
+  const needsEpg = !tvEpgIndex || tvEpgStatus === 'unavailable';
+  if (!needsChannels && !needsEpg) return;
   loadTvChannels().then(result => {
-    if (!tvEpgIndex || tvEpgStatus === 'unavailable') {
-      return loadEpgData(collectEpgUrls(result.epgUrls));
-    }
+    if (!tvEpgIndex || tvEpgStatus === 'unavailable') return loadEpgData(collectEpgUrls(result.epgUrls));
     return null;
   });
-}
-
-function closeTvSidebar() {
-  tvSidebarOpen = false;
-  tvSidebar.classList.remove('open');
-  if (tvBtn) tvBtn.classList.remove('active');
 }
 
 function renderTvStatus() {
@@ -1658,7 +1519,6 @@ function renderTvStatus() {
       else statusText = sourceText;
     }
   }
-  tvSidebarStatus.textContent = statusText;
   dashboardTvStatus.textContent = statusText;
   dashboardTvStatus.title = statusText;
   if (settingsTvSourcesView) settingsTvSourcesView.updateEpgInfo();
@@ -1679,8 +1539,6 @@ async function loadTvChannels(forceReload) {
     tvChannels = [];
     tvSourceErrors = [];
     tvSourceStatus = 'success';
-    tvSidebarChannels.innerHTML =
-      '<div class="tv-sidebar-empty">Keine Sender geladen.<br>Füge eine TV-Quelle hinzu.</div>';
     renderTvStatus();
     return { epgUrls: [], failedSources: [] };
   }
@@ -1688,7 +1546,6 @@ async function loadTvChannels(forceReload) {
   tvSourceStatus = 'loading';
   tvSourceErrors = [];
   renderTvStatus();
-  tvSidebarChannels.innerHTML = '<div class="tv-sidebar-empty">Lade Sender…</div>';
   const sourceChannelMap = {};
   const sourceChannelOriginalUrlMap = {};
   const sourceEpgUrls = [];
@@ -1765,8 +1622,6 @@ async function refreshTvSourcesAndEpg() {
   if (tvSourcesRefreshing) return;
   tvSourcesRefreshing = true;
   tvEpgRefreshing = true;
-  tvSidebarSourcesRefresh.classList.add('refreshing');
-  tvSidebarSourcesRefresh.disabled = true;
   renderTvStatus();
   try {
     const sourceResult = await loadTvChannels(true);
@@ -1774,8 +1629,6 @@ async function refreshTvSourcesAndEpg() {
   } finally {
     tvSourcesRefreshing = false;
     tvEpgRefreshing = false;
-    tvSidebarSourcesRefresh.classList.remove('refreshing');
-    tvSidebarSourcesRefresh.disabled = false;
     renderTvStatus();
   }
 }
@@ -1784,264 +1637,26 @@ function updateEpgStatus() {
   renderTvStatus();
 }
 
-function renderTvManagerSources() {
-  tvChannelManagerSources.innerHTML = '';
-  tvSources.forEach(src => {
-    const pill = document.createElement('button');
-    pill.type = 'button';
-    const isActive = tvSelectedSourceIds.includes(src.id);
-    pill.className = 'tv-source-pill' + (isActive ? ' active' : '');
-    pill.innerHTML = `<span class="tv-source-pill-dot"></span>${escapeHtml(src.name)}`;
-    pill.querySelector('.tv-source-pill-dot').style.background = safeColor(src.color, '#a78bfa');
-    pill.addEventListener('click', () => toggleSource(src.id));
-    tvChannelManagerSources.appendChild(pill);
-  });
-}
-
-function renderSourcePills() {
-  renderTvManagerSources();
-}
-
-function toggleSource(sourceId) {
-  const idx = tvSelectedSourceIds.indexOf(sourceId);
-  if (idx !== -1) {
-    if (tvSelectedSourceIds.length > 1) {
-      tvSelectedSourceIds.splice(idx, 1);
-    }
-  } else {
-    tvSelectedSourceIds.push(sourceId);
-  }
-  renderSourcePills();
-  renderTvChannels();
-}
-
-function toggleFavorite(ch) {
-  const source = tvSources.find(s => s.id === ch.sourceId);
-  if (!source) return;
-  if (!source.favorites) source.favorites = [];
-  const fIdx = source.favorites.indexOf(ch.id);
-  if (fIdx !== -1) {
-    source.favorites.splice(fIdx, 1);
-  } else {
-    source.favorites.push(ch.id);
-  }
-  window.electronAPI.updateTvSource(source.id, { favorites: source.favorites });
-  renderTvChannels();
-  if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
-}
-
 async function refreshEpg() {
   if (tvEpgRefreshing || tvSourcesRefreshing) return;
   tvEpgRefreshing = true;
-  tvSidebarEpgRefresh.classList.add('refreshing');
-  tvSidebarEpgRefresh.disabled = true;
   try {
     await loadEpgData(collectEpgUrls());
   } finally {
     tvEpgRefreshing = false;
-    tvSidebarEpgRefresh.classList.remove('refreshing');
-    tvSidebarEpgRefresh.disabled = false;
     renderTvStatus();
   }
 }
 
-function renderTvChannelItem(ch, showFav) {
-  const item = document.createElement('div');
-  item.className = 'tv-channel-item' + (ch.id === tvActiveChannelId ? ' active' : '');
-  item.dataset.channelId = ch.id;
-
-  const now = new Date();
-  const normId = id =>
-    (id || '')
-      .replace(/@[^.@]*/g, '')
-      .toLowerCase()
-      .trim();
-  const chNorm = normId(ch.tvgId);
-  let currentEpg = null;
-  const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
-  if (epgList) {
-    currentEpg = epgList.find(e => {
-      const start = parseEpgTime(e.start);
-      const stop = parseEpgTime(e.stop);
-      return start <= now && stop >= now;
-    });
-  }
-
-  const srcIdx = tvSources.findIndex(s => s.id === ch.sourceId);
-  const srcColor = srcIdx !== -1 ? tvSources[srcIdx].color || '#a78bfa' : '#a78bfa';
-  const fav = isFavorite(ch, tvSources);
-  const isMultiSource = tvSelectedSourceIds.length > 1;
-  const canReorder = tvFavoriteSortMode && fav;
-
-  const safeLogo = safeResourceUrl(ch.logo);
-  item.innerHTML = `
-    <img class="tv-channel-logo" alt="" loading="lazy">
-    <div class="tv-channel-info">
-      <div class="tv-channel-name">
-        ${isMultiSource ? '<span class="tv-channel-source-dot"></span>' : ''}
-        ${escapeHtml(ch.name)}
-      </div>
-      <div class="tv-channel-epg">${currentEpg ? escapeHtml(decodeEntities(currentEpg.title)) : tvEpgStatus === 'loading' ? 'EPG wird geladen…' : tvEpgStatus === 'error' ? 'EPG konnte nicht geladen werden' : tvEpgStatus === 'unavailable' ? 'Keine EPG-Quelle' : 'Kein aktuelles Programm'}</div>
-    </div>
-    <button class="tv-channel-fav ${fav ? 'active' : ''}" type="button" title="${fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}" aria-label="${fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}" aria-pressed="${fav}">${fav ? '★' : '☆'}</button>
-    <span class="tv-channel-drag ${canReorder ? 'visible' : ''}" draggable="${canReorder}">⠿</span>
-  `;
-  const logo = item.querySelector('.tv-channel-logo');
-  if (safeLogo) logo.src = safeLogo;
-  else logo.style.display = 'none';
-  if (isMultiSource) item.querySelector('.tv-channel-source-dot').style.background = safeColor(srcColor, '#a78bfa');
-
-  item.addEventListener('click', e => {
-    if (e.target.closest('.tv-channel-drag')) return;
-    if (e.target.closest('.tv-channel-fav')) {
-      e.stopPropagation();
-      toggleFavorite(ch);
-      return;
-    }
-    selectTvChannel(ch, { suppressChannelList: true });
-  });
-
-  const dragHandle = item.querySelector('.tv-channel-drag');
-  if (!canReorder) return item;
-
-  dragHandle.addEventListener('dragstart', e => {
-    e.dataTransfer.setData('text/plain', ch.id);
-    item.classList.add('dragging');
-  });
-  dragHandle.addEventListener('dragend', () => {
-    item.classList.remove('dragging');
-    document.querySelectorAll('.tv-channel-item.drag-over').forEach(el => el.classList.remove('drag-over'));
-  });
-  item.addEventListener('dragover', e => {
-    e.preventDefault();
-    item.classList.add('drag-over');
-  });
-  item.addEventListener('dragleave', () => {
-    item.classList.remove('drag-over');
-  });
-  item.addEventListener('drop', e => {
-    e.preventDefault();
-    item.classList.remove('drag-over');
-    const draggedId = e.dataTransfer.getData('text/plain');
-    if (draggedId && draggedId !== ch.id) {
-      reorderChannel(draggedId, ch.id);
-    }
-  });
-
-  return item;
-}
-
+// Die frühere „Alle Sender“-Liste (Overlay) ist entfernt; übrig bleibt das Auffrischen der Senderverwaltung in den Einstellungen.
 function renderTvChannels() {
   if (settingsTvChannelsView) settingsTvChannelsView.render();
-  const container = tvChannelManagerList;
-  if (!container) return;
-  container.innerHTML = '';
-
-  if (!tvChannels.length) {
-    container.innerHTML = '<div class="tv-sidebar-empty">Keine Sender geladen.</div>';
-    return;
-  }
-
-  const filtered = filterChannels(tvChannels, tvSelectedSourceIds, tvSearchFilter);
-  const visibleChannels = tvChannelView === 'favorites' ? filtered.filter(ch => isFavorite(ch, tvSources)) : filtered;
-
-  if (!visibleChannels.length) {
-    container.innerHTML = `<div class="tv-sidebar-empty">${tvChannelView === 'favorites' ? 'Keine Favoriten vorhanden.' : 'Keine Sender gefunden.'}</div>`;
-    return;
-  }
-
-  const { favorites: favoriteChannels, regular: regularChannels } = separateFavorites(visibleChannels, tvSources);
-  const orderedFavorites = getOrderedFavoriteChannels(favoriteChannels);
-  const groups = groupChannels(tvChannelView === 'favorites' ? [] : regularChannels);
-  const groupNames = Object.keys(groups).sort((a, b) => a.localeCompare(b));
-
-  if (orderedFavorites.length) {
-    const groupEl = document.createElement('div');
-    groupEl.className = 'tv-channel-group';
-    const favHeader = document.createElement('div');
-    favHeader.className = 'tv-channel-group-header';
-    favHeader.innerHTML = `<span class="tv-channel-group-arrow">▼</span> Favoriten (${orderedFavorites.length})`;
-    groupEl.appendChild(favHeader);
-    const favContent = document.createElement('div');
-    favContent.className = 'tv-channel-group-content';
-    orderedFavorites.forEach(ch => favContent.appendChild(renderTvChannelItem(ch, true)));
-    groupEl.appendChild(favContent);
-    container.appendChild(groupEl);
-  }
-
-  groupNames.forEach(groupName => {
-    const groupEl = document.createElement('div');
-    groupEl.className = 'tv-channel-group';
-    const header = document.createElement('div');
-    header.className = 'tv-channel-group-header';
-    if (tvCollapsedGroups[groupName]) header.classList.add('collapsed');
-    const totalInGroup = tvChannels.filter(
-      c => c.group === groupName && tvSelectedSourceIds.includes(c.sourceId),
-    ).length;
-    const showCount = groups[groupName].length;
-    const countStr = showCount < totalInGroup ? `${showCount}/${totalInGroup}` : String(totalInGroup);
-    header.innerHTML = `<span class="tv-channel-group-arrow">▼</span> ${escapeHtml(groupName)} (${countStr})`;
-    header.addEventListener('click', () => {
-      header.classList.toggle('collapsed');
-      tvCollapsedGroups[groupName] = header.classList.contains('collapsed');
-      try {
-        localStorage.setItem('tv-collapsed-groups', JSON.stringify(tvCollapsedGroups));
-      } catch {}
-    });
-    groupEl.appendChild(header);
-    const content = document.createElement('div');
-    content.className = 'tv-channel-group-content';
-    if (tvCollapsedGroups[groupName]) content.style.display = 'none';
-    groups[groupName].forEach(ch => content.appendChild(renderTvChannelItem(ch, false)));
-    groupEl.appendChild(content);
-    container.appendChild(groupEl);
-  });
 }
 
 // ── TV Channel Editor: Senderverwaltung liegt in settings-tv-channels.js ──
 let tvOriginalChannelUrls = {}; // {sourceId: {channelId: Original-URL}} für die Sender-Seite
 
-function reorderChannel(draggedId, targetId) {
-  const dragged = tvChannels.find(ch => ch.id === draggedId);
-  const target = tvChannels.find(ch => ch.id === targetId);
-  if (!dragged || !target) return;
-
-  if (tvFavoriteSortMode && isFavorite(dragged, tvSources) && isFavorite(target, tvSources)) {
-    const source = tvSources.find(s => s.id === dragged.sourceId);
-    if (!source || source.id !== target.sourceId) return;
-    const favorites = Array.isArray(source.favorites) ? source.favorites : [];
-    const fromIdx = favorites.indexOf(draggedId);
-    const toIdx = favorites.indexOf(targetId);
-    if (fromIdx === -1 || toIdx === -1) return;
-    const [moved] = favorites.splice(fromIdx, 1);
-    favorites.splice(toIdx, 0, moved);
-    source.favorites = favorites;
-    window.electronAPI.updateTvSource(source.id, { favorites });
-    renderTvChannels();
-    if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
-    return;
-  }
-
-  const fromIdx = tvChannels.findIndex(c => c.id === draggedId);
-  const toIdx = tvChannels.findIndex(c => c.id === targetId);
-  if (fromIdx === -1 || toIdx === -1) return;
-  const [moved] = tvChannels.splice(fromIdx, 1);
-  tvChannels.splice(toIdx, 0, moved);
-  renderTvChannels();
-
-  const sourceIds = [...new Set(tvChannels.map(c => c.sourceId))];
-  sourceIds.forEach(sid => {
-    const order = tvChannels.filter(c => c.sourceId === sid).map(c => c.id);
-    const source = tvSources.find(s => s.id === sid);
-    if (source) {
-      source.sortOrder = order;
-      window.electronAPI.updateTvSource(sid, { sortOrder: order });
-    }
-  });
-}
-
 async function selectTvChannel(ch, options = {}) {
-  closeTvChannelManager();
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
   tvActiveChannelId = ch.id;
@@ -2049,7 +1664,6 @@ async function selectTvChannel(ch, options = {}) {
   overlayBar.classList.remove('is-fullscreen');
   placeUpdateButton(overlayUpdateSlot);
   renderTvChannels();
-  closeTvSidebar();
 
   // Save to history
   window.electronAPI.saveHistoryEntry({
@@ -2209,7 +1823,6 @@ const epgView = createEpgView(epgOverlay, {
     const ch = tvChannels.find(c => c.id === channel.id);
     if (!ch) return;
     selectTvChannel(ch, { suppressChannelList: true });
-    openTvSidebar();
   },
   getMediathek: (channel, title) => {
     const mediathek = getMediathekForChannel(channel.tvgId || channel.name);
@@ -2507,7 +2120,8 @@ function renderHistory(entries) {
       if (svc) {
         navigateTo(svc);
       } else if (e.serviceKey === '__tv__') {
-        openTvSidebar();
+        // Verlaufseintrag „TV“: zurück ins LiveTV-Dashboard (Sendersuche/Favoriten), keine Seitenleiste mehr
+        showDashboard('livetv');
       }
     });
 
@@ -2715,8 +2329,8 @@ function renderRecordingsInto(listEl) {
 }
 
 // Fix-Set 4 (User-Ergänzung 01.10):
-// Bibliothekseinstieg läuft über Startdashboard-Kachel „Aufnahmen“ und den
-// Navbar-Eintrag; das alte recordings-Overlay ist entfernt.
+// Bibliothekseinstieg läuft über die Karte „Aufnahmen“ im LiveTV-Dashboard, Strg+R und das Tray-Menü;
+// das alte recordings-Overlay ist entfernt.
 function openRecordingsScreen() {
   showDashboard('recording');
 }
@@ -3359,7 +2973,6 @@ tvView.addEventListener('permissionrequest', e => {
 
 // TV channel navigation from tv.html in tvView
 tvView.addEventListener('ipc-message', e => {
-  if (e.channel === 'sidebar-close' && tvSidebarOpen) closeTvSidebar();
   if (e.channel === 'tv-channel' && e.args[0] && e.args[0].source === 'tv-player') {
     if (e.args[0].action === 'channel-next') switchTvChannel(1);
     else if (e.args[0].action === 'channel-prev') switchTvChannel(-1);
@@ -3453,66 +3066,6 @@ historyClear.addEventListener('click', () => {
   window.electronAPI.clearHistory().then(renderHistory);
 });
 
-// TV event listeners
-tvSidebarManage.addEventListener('click', () => openSettingsPage('livetv-sources'));
-tvSidebarSourcesRefresh.addEventListener('click', refreshTvSourcesAndEpg);
-tvSidebarEpgRefresh.addEventListener('click', refreshEpg);
-tvSidebarTrigger.addEventListener('mouseenter', () => {
-  if (tvMode === 'magenta') return;
-  if (!tvSidebarOpen) openTvSidebar();
-});
-
-let tvSidebarAwaySince = null;
-setInterval(() => {
-  if (!tvSidebarOpen) {
-    tvSidebarAwaySince = null;
-    return;
-  }
-  if (tvSidebar.matches(':hover') || tvSidebarTrigger.matches(':hover')) {
-    tvSidebarAwaySince = null;
-    return;
-  }
-  const now = Date.now();
-  if (!tvSidebarAwaySince) tvSidebarAwaySince = now;
-  else if (now - tvSidebarAwaySince > 2000) {
-    closeTvSidebar();
-    tvSidebarAwaySince = null;
-  }
-}, 400);
-
-tvSearchInput.addEventListener('input', () => {
-  tvSearchFilter = tvSearchInput.value;
-  renderTvChannels();
-});
-
-tvSearchInput.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    tvSearchInput.value = '';
-    tvSearchFilter = '';
-    renderTvChannels();
-    tvSearchInput.blur();
-  }
-});
-
-// Senderverwaltung liegt in den Einstellungen (Deep-Link)
-tvSidebarEdit.addEventListener('click', () => openSettingsPage('livetv-channels'));
-
-// Close sidebar when clicking outside (not on start page)
-document.addEventListener('click', e => {
-  if (
-    tvSidebarOpen &&
-    currentProvider !== '' &&
-    !tvSidebar.contains(e.target) &&
-    !tvBtn.contains(e.target) &&
-    !tvSidebarTrigger.contains(e.target)
-  ) {
-    closeTvSidebar();
-  }
-});
-
-// ── EPG Event Wiring ──
-tvSidebarEpgBtn.addEventListener('click', openEpgView);
-
 // Keyboard shortcut handler (shared for document + webview forwarding)
 function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   if (key === 'Escape') {
@@ -3530,16 +3083,8 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
       goToStartPage();
       return true;
     }
-    if (tvSidebarOpen) {
-      closeTvSidebar();
-      return true;
-    }
     if (historyOverlay.classList.contains('open')) {
       closeHistory();
-      return true;
-    }
-    if (tvChannelManagerOverlay.classList.contains('open')) {
-      closeTvChannelManager();
       return true;
     }
     // Don't consume Escape if nothing is open (let webview handle it)
@@ -3897,7 +3442,6 @@ document.querySelectorAll('input[name="tvMode"]').forEach(r => {
   r.addEventListener('change', () => {
     tvMode = r.value;
     localStorage.setItem('tvMode', tvMode);
-    if (tvMode === 'magenta') closeTvSidebar();
   });
 });
 
@@ -3942,14 +3486,12 @@ window.electronAPI.onFullscreenState(state => {
 window.electronAPI.getServices().then(svcs => {
   services = svcs;
   renderNav();
-  tvBtn = document.getElementById('tvBtn');
   updateBackBtn();
 });
 
 window.electronAPI.onServicesChanged(svcs => {
   services = svcs;
   renderNav();
-  tvBtn = document.getElementById('tvBtn');
   renderSettingsServices();
   if (currentDashboardGroup && currentDashboardGroup !== 'settings' && !currentProvider)
     renderDashboard(currentDashboardGroup);
@@ -3973,7 +3515,6 @@ renderStartDashboard();
 // TV Sources laden
 window.electronAPI.getTvSources().then(async sources => {
   tvSources = sources;
-  tvSelectedSourceIds = sources.map(s => s.id);
   const result = await loadTvChannels(true);
   await loadEpgData(collectEpgUrls(result.epgUrls));
   if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
@@ -3994,17 +3535,11 @@ window.electronAPI.onTvSourcesChanged(sources => {
       );
     });
   tvSources = sources;
-  tvSelectedSourceIds = tvSelectedSourceIds.filter(id => sources.some(s => s.id === id));
-  if (!tvSelectedSourceIds.length && sources.length) tvSelectedSourceIds = sources.map(s => s.id);
 
   settingsTvSourcesView.render();
   if (settingsTvChannelsView) settingsTvChannelsView.render();
   if (structuralChange) {
-    if (tvSidebarOpen) renderSourcePills();
     refreshTvSourcesAndEpg();
-  } else if (tvSidebarOpen) {
-    renderSourcePills();
-    renderTvChannels();
   }
 });
 
@@ -4072,11 +3607,13 @@ window.electronAPI.onScheduleChanged?.(data => {
   if (currentDashboardGroup === 'recording' && recordingDashboardTab === 'planned' && !scheduleEditingId) {
     renderRecordingDashboard();
   }
+  scheduleDashboardHubRefresh();
 });
 window.electronAPI.onRecordingChanged(data => {
   // Statuswechsel einer Aufnahme (failed/aborted/completed) → Bibliothek + Chip
   if (data && typeof data === 'object' && data.recId) remuxProgressMap.delete(data.recId);
   refreshRecordingSnapshot();
+  scheduleDashboardHubRefresh();
   // Fix-Set 3 · Punkt 5: MP4-Fertig-Meldung schließt den Stopp-Flow ab —
   // der Beenden-Chip geht mit dieser Meldung in den normalen Zustand über.
   const status = data?.meta?.status;

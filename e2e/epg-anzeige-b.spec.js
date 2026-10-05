@@ -210,7 +210,7 @@ test.describe('Programmführer 3.6 (Genre-Chips, Detail-Modal)', () => {
     await chip('news').click();
     await page.locator('#epgCloseBtn').click();
     await expect(page.locator('#epgOverlay')).toBeHidden();
-    await page.locator('#tvSidebarEpgBtn, #dashboardEpgOpen').first().evaluate(el => el.click());
+    await page.locator('#dashboardEpgOpen').evaluate(el => el.click());
     await expect(page.locator('#epgOverlay')).toBeVisible();
     await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
     await expect(chip('news')).toHaveAttribute('aria-pressed', 'true');
@@ -438,7 +438,7 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     await page.locator('#epgModeList').click();
     await page.locator('#epgCloseBtn').click();
     await expect(page.locator('#epgOverlay')).toBeHidden();
-    await page.locator('#tvSidebarEpgBtn, #dashboardEpgOpen').first().evaluate(el => el.click());
+    await page.locator('#dashboardEpgOpen').evaluate(el => el.click());
     await expect(page.locator('#epgOverlay')).toBeVisible();
     await page.locator('#epgModeJng').click();
     await expect(page.locator('#epgJngItems .epg-jrow').first()).toBeVisible();
@@ -462,7 +462,7 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     for (let i = 0; i < 6; i += 1) {
       await page.locator('#epgCloseBtn').click();
       await expect(page.locator('#epgOverlay')).toBeHidden();
-      await page.locator('#tvSidebarEpgBtn, #dashboardEpgOpen').first().evaluate(el => el.click());
+      await page.locator('#dashboardEpgOpen').evaluate(el => el.click());
       await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
       await page.locator('.epg-list-row').first().waitFor();
       const ms = await page.evaluate(

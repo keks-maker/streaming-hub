@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup LiveTV-Hub A – Zwei gleiche Karten</title>
+<link rel="stylesheet" href="hub-common.css">
+<style>
+
+.hub-a .cards{grid-template-columns:1fr 1fr}
+.hub-a .hcard{grid-template-columns:auto 1fr auto;grid-template-areas:"ic body chev" "extra extra extra";min-height:150px;padding:26px}
+.hub-a .hc-ic{grid-area:ic;width:56px;height:56px}.hub-a .hc-body{grid-area:body;display:flex;flex-direction:column;gap:6px}
+.hub-a .hc-extra{grid-area:extra;margin-top:6px}.hub-a .hc-chev{grid-area:chev}
+.hub-a .hc-title{font-size:26px}
+.hub-a .toolbar{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px 0}
+@container frame (max-width:899px){.hub-a .hcard{min-height:0;padding:16px;grid-template-columns:auto 1fr}.hub-a .hc-chev{display:none}.hub-a .hc-ic{width:44px;height:44px}.hub-a .hc-title{font-size:19px}.hub-a .hc-hint{display:none}.hub-a .hcard{grid-template-areas:"ic body" "extra extra"}}
+@container frame (max-width:640px){.hub-a .cards{grid-template-columns:1fr;gap:12px}.hub-a .tb-l{display:none}.hub-a .tb{padding:8px 10px}}
+
+</style>
+</head>
+<body>
+<div class="mk" id="mk"></div>
+<main class="frames" id="frames"></main>
+<div id="proto" hidden>
+ <div class="frame">
+  <nav class="nbar" aria-label="Hauptnavigation (Mockup)">
+    <button class="ni ni-tv" type="button"><span class="ni-ic">TV<span class="ind ind-dot"></span><span class="ind ind-badge">1</span></span><span>LiveTV</span><span class="sr" data-for="running">Aufnahme läuft</span></button>
+    <button class="ni ni-st" type="button"><span class="ni-ic">S</span><span>Streaming</span></button>
+    <button class="ni ni-me" type="button"><span class="ni-ic">M</span><span>Mediatheken</span></button>
+    <button class="ni ni-se" type="button"><span class="ni-ic">⚙</span><span>Einstellungen</span></button>
+  </nav>
+  <div class="v-live"><section class="hub hub-a">
+  <header class="hub-head"><div><span class="eyebrow">Streaming Hub</span><h1 class="title">LiveTV</h1></div><div class="head-actions"><button class="upd" type="button" aria-label="Update prüfen" title="Update prüfen"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="8 14 12 18 16 14"/><line x1="12" y1="6" x2="12" y2="18"/></svg></button></div></header>
+  <div class="cards">
+  <article class="hcard prog">
+    <span class="hc-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="20"/></svg></span>
+    <div class="hc-body">
+      <h2 class="hc-title"><button class="hc-main" type="button">Programmübersicht</button></h2>
+      <p class="hc-status" data-for="normal norec noffmpeg running">EPG aktuell · 12 Favoriten</p>
+      <p class="hc-status warn" data-for="nofav">Favorisiere Sender, um die Programmübersicht zu sehen</p>
+      <p class="hc-status dim" data-for="nofav2">Noch keine Favoriten</p>
+      <p class="hc-hint" data-for="normal norec noffmpeg running">Sendungen suchen, filtern und Aufnahmen planen</p>
+      <p class="hc-hint" data-for="nofav">Klick öffnet das Programm aller Sender</p>
+    </div>
+    <button class="hc-extra" type="button" data-for="nofav2">Alle Sender zeigen</button>
+    <span class="hc-chev" aria-hidden="true">›</span>
+  </article><article class="hcard rec">
+    <span class="hc-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg></span>
+    <div class="hc-body">
+      <h2 class="hc-title"><button class="hc-main" type="button">Aufnahmen</button></h2>
+      <p class="hc-status" data-for="normal nofav nofav2"><span class="rdot plan" aria-hidden="true"></span>2 geplant · 3 fertig</p>
+      <p class="hc-status" data-for="running"><span class="rdot" aria-hidden="true"></span>1 läuft · <span class="rdot plan" aria-hidden="true"></span>2 geplant</p>
+      <p class="hc-status dim" data-for="norec">Noch keine Aufnahmen</p>
+      <p class="hc-status warn" data-for="noffmpeg"><span class="wmark" aria-hidden="true">!</span>ffmpeg fehlt · Aufnehmen nicht möglich</p>
+      <p class="hc-hint" data-for="normal nofav nofav2 running">Geplant, laufend und fertig an einem Ort</p>
+      <p class="hc-hint" data-for="norec">Plane Aufnahmen in der Programmübersicht</p>
+      <p class="hc-hint" data-for="noffmpeg">Klick zeigt Hinweis zur Installation</p>
+    </div>
+    <span class="hc-chev" aria-hidden="true">›</span>
+  </article>
+  </div>
+  <div class="toolbar " role="toolbar" aria-label="LiveTV-Werkzeuge">
+  <button class="tb" type="button" title="Alle Sender"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span class="tb-l">Alle Sender</span></button>
+  <button class="tb" type="button" title="Senderverwaltung"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="tb-l">Senderverwaltung</span></button>
+  <button class="tb" type="button" title="Status"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="tb-l">Status</span></button>
+  <button class="tb" type="button" title="EPG aktualisieren"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/></svg><span class="tb-l">EPG aktualisieren</span></button>
+  <span class="tb-sp"></span><span class="tb-meta">48 Sender</span>
+</div>
+  <div class="tiles" aria-label="Senderraster (unverändert)"><button class="tile" type="button" style="--tc:#c0392b">Das Erste</button><button class="tile" type="button" style="--tc:#e67e22">ZDF</button><button class="tile" type="button" style="--tc:#2e86de">RTL</button><button class="tile" type="button" style="--tc:#8e44ad">Sat.1</button><button class="tile" type="button" style="--tc:#16a085">ProSieben</button><button class="tile" type="button" style="--tc:#d35400">VOX</button><button class="tile" type="button" style="--tc:#c0392b">kabel eins</button><button class="tile" type="button" style="--tc:#2980b9">arte</button><button class="tile" type="button" style="--tc:#27ae60">3sat</button><button class="tile" type="button" style="--tc:#7f8c8d">ONE</button><button class="tile" type="button" style="--tc:#34495e">tagesschau24</button><button class="tile" type="button" style="--tc:#e84393">phoenix</button></div>
+ </section></div>
+  <div class="v-svc"><div class="svc-bar"><strong>Streamingdienst</strong><span>(Platzhalter: Inhalt eines Dienstes im Webview)</span></div><div class="svc-hero"></div><div class="svc-row"><i></i><i></i><i></i><i></i><i></i></div></div>
+ </div>
+</div>
+<script src="hub-common.js"></script>
+<script>HubMock.init('LiveTV-Hub · Variante A · Zwei gleiche Karten');</script>
+</body>
+</html>

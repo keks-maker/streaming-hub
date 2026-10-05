@@ -770,14 +770,14 @@ test.describe('Programmführer (kleine Fixture)', () => {
     expect(probe.onBar).toBe(true);
     expect(probe.height).toBeLessThan(20);
     await page.mouse.move(probe.x, 4);
-    await expect(page.locator('.nav-section-item[data-section="recording"]')).toBeVisible();
+    await expect(page.locator('.nav-section-item[data-section="mediathek"]')).toBeVisible();
     await expect.poll(() => page.locator('#overlayBar').evaluate(el => Math.round(el.getBoundingClientRect().height))).toBeGreaterThan(60);
     // Overlay-Layout bleibt: Rahmen und Kopfzeile unverändert unter der Navbar
     await expect(page.locator('#epgNowBtn')).toBeVisible();
-    await page.locator('.nav-section-item[data-section="recording"]').click();
+    await page.locator('.nav-section-item[data-section="mediathek"]').click();
     await expect(page.locator('#epgOverlay')).toBeHidden();
     await expect(page.locator('body')).not.toHaveClass(/epg-open/);
-    await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
+    await expect(page.locator('#dashboardTitle')).toHaveText('Mediatheken');
     await expect(page.locator('#overlayBar')).toHaveClass(/always-visible/);
     await page.locator('.nav-section-item[data-section="livetv"]').click();
     await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
