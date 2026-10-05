@@ -1,8 +1,8 @@
-/* Gemeinsame Basis der LiveTV-Hub-Mockups (Etappe 3.6b). Tokens aus styles.css (:root), nur dunkles Theme. */
+/* Gemeinsame Basis der LiveTV-Hub-Mockups (Etappe 3.6b). Tokens aus styles.css (:root), nur dunkles Theme. Nur Mockup (nicht in styles.css): --border-strong, --accent-light, --warn, --rec. */
 :root{
   --bg:#0a0a0f; --glass:rgba(255,255,255,0.04); --glass-hover:rgba(255,255,255,0.09);
   --border:rgba(255,255,255,0.07); --border-strong:rgba(255,255,255,0.16);
-  --text:#f0f0f5; --text-dim:rgba(240,240,245,0.62); --text-muted:rgba(240,240,245,0.38);
+  --text:#f0f0f5; --text-dim:rgba(240,240,245,0.55); --text-muted:rgba(240,240,245,0.3);
   --accent:#6c5ce7; --accent-light:#a99bff; --accent-glow:rgba(108,92,231,0.3);
   --warn:#f5b84a; --rec:#ff5d5d; --t:0.25s cubic-bezier(0.4,0,0.2,1);
   color-scheme:dark;
@@ -94,7 +94,7 @@ a{color:var(--accent-light)}
 .frame[data-state=noffmpeg] .hcard.rec{--c:var(--warn)}
 .frame[data-state=running] .hcard.rec{border-color:color-mix(in srgb,var(--rec) 70%,transparent);box-shadow:0 18px 36px rgba(0,0,0,.22),0 0 0 1px color-mix(in srgb,var(--rec) 30%,transparent)}
 .rdot{width:10px;height:10px;border-radius:50%;background:var(--rec);flex:none;animation:pulse 1.6s ease-in-out infinite;box-shadow:0 0 0 0 rgba(255,93,93,.6)}
-.rdot.plan{background:#a99bff;animation:none}
+.rdot.plan{background:var(--rec);animation:none;box-shadow:none}
 .wmark{width:16px;height:16px;border-radius:50%;background:var(--warn);color:#1a1200;font-size:11px;font-weight:800;display:inline-grid;place-items:center;flex:none}
 @media (prefers-reduced-motion:reduce){.rdot,.ind-dot,.ind-badge::before{animation:none}.hcard,.hc-chev{transition:none}.hcard:hover{transform:none}.frame[data-demo=on] .hcard:last-child{transform:none}}
 
