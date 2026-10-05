@@ -2042,6 +2042,15 @@ body {
 }
 
 
+/* Navbar über dem Programmführer (Etappe 3.4): Das Overlay (z-index 100) deckt sonst die eingeklappte Navbar und
+   ihre Hover-Zone ab. Die Navbar ist eingeklappt (12 px) und liegt im 14-px-Rand oberhalb des Rahmens; beim Hover
+   blendet sie sich wie in jeder Ansicht über den Kopf ein. */
+body.epg-open .overlay-bar { z-index: 105; }
+/* Eingeklappt (ohne Hover) fängt die unsichtbare Navbar keine Klicks ab: .nav-settings-item/.active setzen
+   pointer-events per !important und lägen sonst als unsichtbare Fläche über der Kopfzeile des Programmführers. */
+.overlay-bar.nav-collapsed:not(.is-fullscreen):not(:hover) .overlay-nav *,
+.overlay-bar.nav-collapsed:not(.is-fullscreen):not(:hover) .back-btn { pointer-events: none !important; }
+
 /* ── EPG-Programmführer (Etappe 3.3, Design B2 nach docs/mockups/etappe3/variant-b2.html) ── */
 .epg-overlay {
   --epg-surface: #12121b;
@@ -2195,6 +2204,7 @@ body {
 .epg-marker { flex: 0 0 auto; font-size: 12px; line-height: 1; }
 .epg-marker[data-state="scheduled"] { color: var(--epg-rec); } /* geplant: rot, statisch; laufend: rot und pulsierend */
 .epg-marker[data-state="recording"] { color: var(--epg-rec); animation: epgPulse 1.4s ease-in-out infinite; }
+.epg-marker[data-state="stopping"] { color: var(--epg-rec); opacity: .6; } /* Stopp bestätigt: statisch gedämpft bis der Main fertig ist */
 @keyframes epgPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) {
   .epg-marker[data-state="recording"] { animation: none; }
@@ -2601,11 +2611,10 @@ body {
 }
 .epg-block-rec:hover, .epg-block-rec:focus-visible { opacity: 1; }
 .epg-block-rec[data-kind="record"] { color: var(--epg-rec); }
-.epg-block-rec[data-kind="stop"] { color: var(--epg-rec); animation: epgPulse 1.4s ease-in-out infinite; }
+/* laufend: links pulsiert der Marker; der Knopf rechts ist ein statischer Stopp-Knopf (■, kein Pulsieren) */
+.epg-block-rec[data-kind="stop"] { color: #fff; background: var(--epg-rec); border-color: var(--epg-rec); opacity: .9; }
+.epg-block-rec[data-kind="stopping"] { color: var(--epg-dim); }
 .epg-block-rec:disabled { opacity: .3; cursor: not-allowed; }
-@media (prefers-reduced-motion: reduce) {
-  .epg-block-rec[data-kind="stop"] { animation: none; }
-}
 
 /* Rückfrage und Hinweis */
 .epg-confirm {

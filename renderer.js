@@ -504,6 +504,7 @@ const tvSidebarEdit = document.getElementById('tvSidebarEdit');
 
 // EPG Overlay DOM
 const epgOverlay = document.getElementById('epgOverlay');
+let epgViewReady = false; // epgView wird weiter unten erzeugt; Navigationsfunktionen laufen auch davor
 const tvSidebarEpgBtn = document.getElementById('tvSidebarEpgBtn');
 
 dashboardEpgOpen.addEventListener('click', openEpgView);
@@ -998,6 +999,7 @@ function openSettingsPage(page) {
 }
 
 function showDashboard(groupKey, opts = {}) {
+  closeEpgForNavigation();
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
   currentProvider = '';
@@ -1189,6 +1191,7 @@ function goToStartPage() {
 }
 
 function navigateTo(svc) {
+  closeEpgForNavigation();
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
   dashboardView.classList.remove('start-page');
@@ -2192,8 +2195,32 @@ const epgView = createEpgView(epgOverlay, {
     scheduleEditingId = null;
     showDashboard('recording');
   },
+  onOpenChange: handleEpgOpenChange,
   onError: err => logger.warn('EPG-Programmführer:', err?.message || err),
 });
+epgViewReady = true;
+
+// Navbar über dem Programmführer: Das Overlay (z-index 100) deckt die Navbar sonst samt ihrer Hover-Zone ab.
+// Solange es offen ist, steht die Navbar eingeklappt darüber (body.epg-open hebt sie über das Overlay) und
+// blendet sich per Hover wie in jeder Ansicht ein; beim Schließen kommt der vorherige Zustand zurück.
+let epgBarSaved = null;
+function handleEpgOpenChange(open) {
+  document.body.classList.toggle('epg-open', open);
+  if (open) {
+    epgBarSaved = { always: overlayBar.classList.contains('always-visible'), collapsed: overlayBar.classList.contains('nav-collapsed') };
+    overlayBar.classList.remove('always-visible');
+    overlayBar.classList.add('nav-collapsed');
+  } else if (epgBarSaved) {
+    overlayBar.classList.toggle('always-visible', epgBarSaved.always);
+    overlayBar.classList.toggle('nav-collapsed', epgBarSaved.collapsed);
+    epgBarSaved = null;
+  }
+}
+
+/** Jede Navigation aus der Navbar beendet den Programmführer zuerst (er läge sonst über dem Ziel). */
+function closeEpgForNavigation() {
+  if (epgViewReady && epgView.isOpen()) epgView.close();
+}
 
 function openEpgView() {
   epgView.open();

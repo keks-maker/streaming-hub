@@ -59,6 +59,12 @@ function createRowNode(row, { variant = 'list' } = {}) {
   return { el, refs: { sub, bar, barFill, marker, toggle, pastNote, open, flag, chan, hint }, sig: '', variant };
 }
 
+function markerTitle(marker) {
+  if (!marker) return '';
+  if (marker.stopping) return 'Aufnahme wird beendet';
+  return marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant';
+}
+
 /**
  * Aktualisiert Klassen, Fortschritt, Marker und Toggle einer Zeile; nichts, wenn sich nichts geändert hat
  * (Signatur). marker: grid.matchMarkers-Ergebnis; flag: 'now' | 'next' | '' (nur Kanalansicht).
@@ -68,7 +74,7 @@ function updateRowNode(entry, row, { nowMs, marker, selected, flag = '' }) {
   const toggle = model.toggleState({ row, marker, nowMs });
   const minutesText = info.minutesLeft ? `noch ${info.minutesLeft} min` : '';
   const percent = Math.round(info.progress * 100);
-  const sig = [info.phase, minutesText, percent, marker ? marker.state : '', toggle.kind, toggle.disabled, selected, flag].join('|');
+  const sig = [info.phase, minutesText, percent, marker ? marker.state : '', marker && marker.stopping ? 's' : '', toggle.kind, toggle.disabled, selected, flag].join('|');
   if (entry.sig === sig) return false;
   entry.sig = sig;
   const { el, refs } = entry;
@@ -85,9 +91,9 @@ function updateRowNode(entry, row, { nowMs, marker, selected, flag = '' }) {
     refs.flag.dataset.flag = flag;
     refs.flag.textContent = flag === 'now' ? 'Jetzt' : flag === 'next' ? 'Nächste' : '';
   }
-  refs.marker.dataset.state = marker ? marker.state : '';
+  refs.marker.dataset.state = marker ? (marker.stopping ? 'stopping' : marker.state) : '';
   refs.marker.textContent = marker ? '●' : '';
-  refs.marker.title = marker ? (marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant') : '';
+  refs.marker.title = markerTitle(marker);
   refs.marker.setAttribute('aria-label', refs.marker.title);
   // Vergangene Sendungen: statt des Buttons „vorbei“ (wie im Mockup); die Zukunftsregel-Meldung bleibt im Detail
   const pastOnly = info.phase === 'past' && toggle.kind === 'record';

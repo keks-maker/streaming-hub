@@ -20,6 +20,7 @@ const FETCH_DEBOUNCE_MS = 120;
  *   api.getEpgRangeMany(keys, fromMs, toMs)
  *   now()                       Uhr
  *   getMarkerData()             { schedules, recordings } für grid.matchMarkers
+ *   matchMarkers(slots)         optional: ersetzt grid.matchMarkers (z. B. mit Flag `stopping`)
  *   isSelected(rowId)           Auswahl (gemeinsam mit der Liste)
  *   onOpen(row, element)        Klick auf einen Block → Detail-Modal
  *   onToggle(row, element)      Klick auf den kleinen Aufnahme-Toggle im Block (Aufnehmen/Abbrechen/Stoppen)
@@ -196,7 +197,7 @@ function createGridView(deps) {
     const info = viewModel.rowPhase(entry.row, nowMs);
     const percent = Math.round(info.progress * 100);
     const selected = deps.isSelected(entry.row.id);
-    const sig = `${info.phase}|${percent}|${info.minutesLeft}|${marker ? marker.state : ''}|${selected}`;
+    const sig = `${info.phase}|${percent}|${info.minutesLeft}|${marker ? marker.state : ''}|${marker && marker.stopping ? 's' : ''}|${selected}`;
     if (entry.sig === sig) return;
     entry.sig = sig;
     const { el: node, refs } = entry;
@@ -206,9 +207,9 @@ function createGridView(deps) {
     refs.bar.hidden = info.phase !== 'now';
     refs.barFill.style.width = `${percent}%`;
     refs.timeEl.textContent = `${viewModel.clock(entry.row.start)}${info.minutesLeft ? ` · noch ${info.minutesLeft} min` : ''}`;
-    refs.marker.dataset.state = marker ? marker.state : '';
+    refs.marker.dataset.state = marker ? (marker.stopping ? 'stopping' : marker.state) : '';
     refs.marker.textContent = marker ? '●' : '';
-    refs.marker.title = marker ? (marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant') : '';
+    refs.marker.title = !marker ? '' : marker.stopping ? 'Aufnahme wird beendet' : marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant';
   }
 
   /**
@@ -227,7 +228,7 @@ function createGridView(deps) {
     entry.refs.text.style.maxWidth = shift ? `calc(100% - ${shift + (hasRec ? 30 : 0)}px)` : '';
   }
 
-  const REC_SYMBOL = { record: '●', cancel: '✕', stop: '■' };
+  const REC_SYMBOL = { record: '●', cancel: '✕', stop: '■', stopping: '■' };
   const REC_WIDTH = 28;
 
   /** Kleiner Toggle rechts im Block: nur bei geplanter/laufender Aufnahme und ausreichend breitem Block. */
@@ -314,7 +315,8 @@ function createGridView(deps) {
       }
     }
     const data = deps.getMarkerData();
-    const markers = order.length ? grid.matchMarkers(order.map(viewModel.markerSlot), data.schedules, data.recordings, nowMs) : [];
+    const slots = order.map(viewModel.markerSlot);
+    const markers = !order.length ? [] : typeof deps.matchMarkers === 'function' ? deps.matchMarkers(slots) : grid.matchMarkers(slots, data.schedules, data.recordings, nowMs);
     const markerById = new Map(order.map((row, i) => [row.id, markers[i]]));
     const scrollLeft = el.scrollLeft; // einmal lesen (kein Layout-Zugriff je Block)
     for (const { row, r } of wanted.values()) {

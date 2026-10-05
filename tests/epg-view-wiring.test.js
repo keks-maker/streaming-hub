@@ -160,3 +160,46 @@ test('Kanalansicht: Layer liegt über der Herkunftsansicht, Fokusanzeige am Send
   assert.match(css, /\.epg-chan-link:focus-visible/);
   assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.epg-marker\[data-state="recording"\] \{ animation: none; \}/);
 });
+
+test('Abnahme 3.4 (1): Raster — Marker pulsiert, der Stopp-Knopf rechts ist statisch (■); Reduced-Motion bleibt beachtet', () => {
+  const css = read('styles.css');
+  const rule = css.slice(css.indexOf('.epg-block-rec[data-kind="stop"] {'), css.indexOf('}', css.indexOf('.epg-block-rec[data-kind="stop"] {')));
+  assert.ok(rule && !/animation/.test(rule), 'Stopp-Knopf pulsiert nicht');
+  assert.ok(!/\.epg-block-rec[^{]*\{[^}]*animation/.test(css), 'kein .epg-block-rec pulsiert');
+  assert.match(css, /\.epg-marker\[data-state="recording"\] \{[^}]*animation: epgPulse/);
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.epg-marker\[data-state="recording"\] \{ animation: none; \}/);
+  assert.match(read('epg-grid-view.js'), /stop: '■'/);
+});
+
+test('Abnahme 3.4 (2): Stopp — Rückmeldung, Zwischenzustand und Marker-Filter über einen gemeinsamen Pfad', () => {
+  const view = read('epg-view.js');
+  // ein Stopp-Weg für Liste, Raster, Kanalansicht und Modal; Ergebnis wird ausgewertet (Erfolg und Fehler)
+  assert.equal((view.match(/deps\.stopRecording\(/g) || []).length, 1);
+  const fn = view.slice(view.indexOf('async function stopRuns('), view.indexOf('// ── Modal ──'));
+  assert.match(fn, /wird beendet …/);
+  assert.match(fn, /beendet\. Sie liegt in der Aufnahmen-Bibliothek\./);
+  assert.match(fn, /Nachbearbeitung ist fehlgeschlagen/);
+  assert.match(fn, /Aufnahme konnte nicht gestoppt werden/);
+  assert.match(fn, /await refreshMarkers\(\)/);
+  assert.match(fn, /stoppingRecIds\.delete/);
+  // Planungseintrag 'recording' zählt nicht mehr, sobald die Bibliothek die Aufnahme nicht mehr als laufend führt
+  assert.match(view, /recStatus\.get\(entry\.recId\) !== 'recording'/);
+  // alle Marker-Abfragen (Liste, Kanalansicht, Raster, Modal) laufen über matchRowMarkers
+  assert.ok(!/grid\.matchMarkers\(/.test(view.replace(/function matchRowMarkers[\s\S]*?\n {2}\}\n/, '')), 'nur matchRowMarkers ruft grid.matchMarkers');
+  assert.match(view, /matchMarkers: slots => matchRowMarkers\(slots\)/);
+});
+
+test('Abnahme 3.4 (3): Navbar über dem Programmführer — Hook, Zustand sichern/wiederherstellen, Navigation schließt das Overlay', () => {
+  const renderer = read('renderer.js');
+  assert.match(renderer, /onOpenChange: handleEpgOpenChange/);
+  assert.match(renderer, /function handleEpgOpenChange\(open\) \{[\s\S]*classList\.toggle\('epg-open', open\)[\s\S]*nav-collapsed[\s\S]*epgBarSaved/);
+  assert.match(renderer, /function showDashboard\(groupKey, opts = \{\}\) \{\s*closeEpgForNavigation\(\);/);
+  assert.match(renderer, /function navigateTo\(svc\) \{\s*closeEpgForNavigation\(\);/);
+  assert.match(renderer, /epgViewReady = true;/);
+  const css = read('styles.css');
+  const overlayZ = Number(/\.epg-overlay \{[^}]*z-index: (\d+)/.exec(css)[1]);
+  const barZ = Number(/body\.epg-open \.overlay-bar \{ z-index: (\d+)/.exec(css)[1]);
+  assert.ok(barZ > overlayZ, 'Navbar liegt über dem Overlay');
+  const view = read('epg-view.js');
+  assert.match(view, /function notifyOpenChange\(open\)/);
+});

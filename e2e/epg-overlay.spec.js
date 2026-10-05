@@ -771,6 +771,143 @@ test.describe('Programmführer (kleine Fixture)', () => {
   });
 
 
+  // Main-Simulation einer laufenden Aufnahme (Stoppen braucht ffmpeg): Planungseintrag bleibt wie beim echten
+  // Scheduler bis zum nächsten 30-s-Takt 'recording'; recording:stop antwortet erst nach der Nachbearbeitung.
+  const installFakeRecording = async (mode, entry) => {
+    await ctx.electronApp.evaluate(
+      ({ ipcMain, BrowserWindow }, { fake, stopMode }) => {
+        const g = globalThis;
+        const broadcast = (channel, payload) => {
+          for (const win of BrowserWindow.getAllWindows()) win.webContents.send(channel, payload);
+        };
+        if (!g.__fakeInstalled) {
+          g.__fakeInstalled = true;
+          g.__origScheduleList = ipcMain._invokeHandlers.get('schedule:list');
+          g.__origRecordingList = ipcMain._invokeHandlers.get('recording:list');
+          ipcMain.removeHandler('schedule:list');
+          ipcMain.handle('schedule:list', async event => {
+            const real = await g.__origScheduleList(event);
+            return g.__fakeEntry ? [...real, g.__fakeEntry] : real;
+          });
+          ipcMain.removeHandler('recording:list');
+          ipcMain.handle('recording:list', async event => {
+            const real = await g.__origRecordingList(event);
+            return g.__fakeRec ? [...real, g.__fakeRec] : real;
+          });
+          ipcMain.removeHandler('recording:stop');
+          ipcMain.handle('recording:stop', async () => {
+            g.__stopCalls = (g.__stopCalls || 0) + 1;
+            await new Promise(resolve => setTimeout(resolve, 1200)); // ffmpeg beendet den Job
+            g.__fakeRec = { ...g.__fakeRec, status: 'remux-pending' };
+            broadcast('recording:changed', { recId: g.__fakeRec.id, meta: g.__fakeRec });
+            await new Promise(resolve => setTimeout(resolve, 1200)); // Remux
+            if (g.__stopMode === 'fail') throw new Error('Remux fehlgeschlagen');
+            g.__fakeRec = { ...g.__fakeRec, status: 'completed' };
+            return g.__fakeRec;
+          });
+        }
+        g.__stopMode = stopMode;
+        g.__fakeEntry = fake;
+        g.__fakeRec = fake ? { id: fake.recId, status: 'recording', channelId: fake.channelId, startedAt: fake.epgStart } : null;
+        broadcast('schedule:changed', {});
+      },
+      {
+        stopMode: mode,
+        fake: entry && {
+          id: 'sch_e2efake',
+          state: 'recording',
+          recId: 'rec_e2efake',
+          title: 'Laufende Sendung',
+          tvgId: 'E2E.de',
+          channelId: 'E2E.de',
+          channelName: 'E2E Kanal',
+          epgStart: new Date(entry.start).toISOString(),
+          epgStop: new Date(entry.stop).toISOString(),
+        },
+      },
+    );
+  };
+
+  test('Raster, laufende Aufnahme: links pulsiert der Marker, der Toggle rechts ist ein statischer Stopp-Knopf (■); Stoppen gibt Rückmeldung und der Marker verschwindet', async () => {
+    await page.locator('#epgModeGrid').click();
+    await installFakeRecording('ok', slots.running);
+    const live = block('Laufende Sendung');
+    await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', 'recording');
+    const rec = page.locator(`.epg-block-rec[data-rec-key="${await live.getAttribute('data-block-key')}"]`);
+    await expect(rec).toHaveText('■');
+    await expect(rec).toHaveAttribute('data-kind', 'stop');
+    const anim = el => window.getComputedStyle(el).animationName;
+    expect(await live.locator('.epg-marker').evaluate(anim)).toBe('epgPulse');
+    expect(await rec.evaluate(anim)).toBe('none'); // genau ein pulsierender Punkt
+    await rec.click();
+    await expect(page.locator('#epgConfirmText')).toContainText('Laufende Aufnahme „Laufende Sendung“ stoppen?');
+    await page.locator('#epgConfirmYes').click();
+    // sofortige Rückmeldung; Main arbeitet noch: Marker gedämpft ohne Pulsieren, Knopf deaktiviert
+    await expect(page.locator('#epgToast')).toContainText('Aufnahme „Laufende Sendung“ wird beendet');
+    await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', 'stopping');
+    expect(await live.locator('.epg-marker').evaluate(anim)).toBe('none');
+    await expect(rec).toBeDisabled();
+    // Bibliothek meldet die Aufnahme nicht mehr als laufend (recording:changed): Marker weg, obwohl der Planungseintrag noch 'recording' ist
+    await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', '');
+    await expect(rec).toHaveCount(0);
+    // IPC-Antwort nach der Nachbearbeitung: Erfolgsmeldung
+    await expect(page.locator('#epgToast')).toContainText('Aufnahme „Laufende Sendung“ beendet. Sie liegt in der Aufnahmen-Bibliothek.');
+    await expect(page.locator('#epgToast')).toHaveClass(/ok/);
+    expect(await ctx.electronApp.evaluate(() => globalThis.__stopCalls)).toBe(1);
+  });
+
+  test('Liste, laufende Aufnahme: Stopp mit Fehler der Nachbearbeitung zeigt eine Meldung, der Marker verschwindet trotzdem', async () => {
+    await page.locator('#epgModeList').click();
+    await installFakeRecording('fail', slots.running);
+    const live = row('Laufende Sendung');
+    await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', 'recording');
+    await expect(live.locator('.epg-toggle')).toHaveText('■ Aufnahme stoppen');
+    await live.locator('.epg-toggle').click();
+    await page.locator('#epgConfirmYes').click();
+    await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', 'stopping');
+    await expect(live.locator('.epg-toggle')).toHaveText('■ Wird beendet …');
+    await expect(live.locator('.epg-toggle')).toBeDisabled();
+    await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', '');
+    await expect(page.locator('#epgToast')).toContainText('Aufnahme beendet, die Nachbearbeitung ist fehlgeschlagen: Remux fehlgeschlagen');
+    await installFakeRecording('ok', null); // Simulation zurücknehmen
+    ctx.problems = ctx.problems.filter(p => !p.includes("recording:stop': Error: Remux fehlgeschlagen")); // beabsichtigter Simulationsfehler
+    await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', '');
+  });
+
+  test('Navbar im Programmführer: eingeklappte Navbar liegt über dem Overlay, Hover blendet sie ein, Navigation beendet den Programmführer; danach stimmt der Navbar-Zustand', async () => {
+    await expect(page.locator('body')).toHaveClass(/epg-open/);
+    await expect(page.locator('#overlayBar')).toHaveClass(/nav-collapsed/);
+    const probe = await page.evaluate(() => {
+      const bar = window.document.getElementById('overlayBar').getBoundingClientRect();
+      const x = bar.left + bar.width / 2;
+      const hit = window.document.elementFromPoint(x, 4);
+      return { x, onBar: !!(hit && hit.closest('#overlayBar')), height: bar.height };
+    });
+    expect(probe.onBar).toBe(true);
+    expect(probe.height).toBeLessThan(20);
+    await page.mouse.move(probe.x, 4);
+    await expect(page.locator('.nav-section-item[data-section="recording"]')).toBeVisible();
+    await expect.poll(() => page.locator('#overlayBar').evaluate(el => Math.round(el.getBoundingClientRect().height))).toBeGreaterThan(60);
+    // Overlay-Layout bleibt: Rahmen und Kopfzeile unverändert unter der Navbar
+    await expect(page.locator('#epgNowBtn')).toBeVisible();
+    await page.locator('.nav-section-item[data-section="recording"]').click();
+    await expect(page.locator('#epgOverlay')).toBeHidden();
+    await expect(page.locator('body')).not.toHaveClass(/epg-open/);
+    await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
+    await expect(page.locator('#overlayBar')).toHaveClass(/always-visible/);
+    await page.locator('.nav-section-item[data-section="livetv"]').click();
+    await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
+    await page.locator('#dashboardEpgOpen').click();
+    await expect(page.locator('#epgOverlay')).toBeVisible();
+    // Esc schließt wie bisher und stellt den Navbar-Zustand des Dashboards her
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#epgOverlay')).toBeHidden();
+    await expect(page.locator('body')).not.toHaveClass(/epg-open/);
+    await expect(page.locator('#overlayBar')).toHaveClass(/always-visible/);
+    await page.locator('#dashboardEpgOpen').click();
+    await expect(page.locator('#epgOverlay')).toBeVisible();
+  });
+
   test('Genre: Spalte und Farbbalken in der Liste, Text im Detail, neutral ohne Kategorie', async () => {
     const withNews = row('Folgesendung');
     await expect(withNews.locator('.epg-col-genre')).toHaveText('Nachrichten');

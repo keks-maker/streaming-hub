@@ -72,6 +72,7 @@ function createEpgView(root, deps) {
   let rowsById = new Map();
   let schedules = [];
   let recordings = [];
+  const stoppingRecIds = new Set(); // Stopp bestätigt, IPC-Antwort (inkl. Nachbearbeitung) steht noch aus
   let loading = false;
   let refreshing = false;
   let nodes = new Map(); // item.key → { el, refs, sig }
@@ -163,7 +164,7 @@ function createEpgView(root, deps) {
   const channelView = createChannelView({
     now,
     sanitizeLogoUrl: typeof deps.sanitizeLogoUrl === 'function' ? deps.sanitizeLogoUrl : undefined,
-    getMarkers: rows => grid.matchMarkers(rows.map(model.markerSlot), markerList(), recordings, now()),
+    getMarkers: rows => matchRowMarkers(rows.map(model.markerSlot)),
     isSelected: id => viewState.selectedRowId === id,
     onBack: () => exitChannel(),
     onOpen: row => openDetail(row),
@@ -177,6 +178,7 @@ function createEpgView(root, deps) {
     api,
     now,
     getMarkerData: () => ({ schedules: markerList(), recordings }),
+    matchMarkers: slots => matchRowMarkers(slots),
     isSelected: id => viewState.selectedRowId === id,
     onOpen: row => openDetail(row),
     onToggle: (row, element) => runToggle(row, element),
@@ -268,13 +270,32 @@ function createEpgView(root, deps) {
   }
 
   function markerList() {
+    // Der Scheduler schließt einen Eintrag erst im nächsten 30-s-Takt ab. Ist die Aufnahme laut Bibliothek
+    // schon nicht mehr 'recording' (gestoppt, Remux läuft), zählt der Eintrag nicht mehr als laufend.
+    const recStatus = new Map();
+    for (const rec of recordings) if (rec && typeof rec.id === 'string') recStatus.set(rec.id, rec.status);
     const out = [];
-    for (const entry of schedules) if (entry && (entry.state === 'scheduled' || entry.state === 'recording')) out.push(entry);
+    for (const entry of schedules) {
+      if (!entry || (entry.state !== 'scheduled' && entry.state !== 'recording')) continue;
+      if (entry.state === 'recording' && entry.recId && recStatus.has(entry.recId) && recStatus.get(entry.recId) !== 'recording') continue;
+      out.push(entry);
+    }
     return out;
   }
 
+  /** grid.matchMarkers plus Flag `stopping` (Stopp bestätigt, Main arbeitet noch): Marker bleibt, aber ohne Pulsieren. */
+  function matchRowMarkers(slots, nowMs = now()) {
+    const markers = grid.matchMarkers(slots, markerList(), recordings, nowMs);
+    if (!stoppingRecIds.size) return markers;
+    return markers.map(marker => {
+      if (!marker || marker.state !== 'recording') return marker;
+      const recIds = model.resolveMarkerTargets(marker, schedules).recIds;
+      return recIds.length && recIds.every(id => stoppingRecIds.has(id)) ? { ...marker, stopping: true } : marker;
+    });
+  }
+
   function markerFor(row) {
-    return grid.matchMarkers([model.markerSlot(row)], markerList(), recordings, now())[0] || null;
+    return matchRowMarkers([model.markerSlot(row)])[0] || null;
   }
 
   function loadedRun() {
@@ -341,7 +362,7 @@ function createEpgView(root, deps) {
     const range = model.visibleItems(layout, scroll.scrollTop, viewportH, OVERSCAN_PX);
     const rows = [];
     for (let i = range.from; i < range.to; i += 1) if (layout.items[i].type === 'row') rows.push(layout.items[i].row);
-    const markers = rows.length ? grid.matchMarkers(rows.map(model.markerSlot), markerList(), recordings, nowMs) : [];
+    const markers = rows.length ? matchRowMarkers(rows.map(model.markerSlot), nowMs) : [];
     const markerByRow = new Map(rows.map((row, i) => [row.id, markers[i]]));
 
     const wanted = new Set();
@@ -983,16 +1004,41 @@ function createEpgView(root, deps) {
       setNotice('Die laufende Aufnahme konnte nicht zugeordnet werden. Stoppe sie im Player oder in der Aufnahmen-Bibliothek.');
       return;
     }
-    askConfirm('stop', targets.titles.join(' · ') || row.title, returnTo, async () => {
-      for (const recId of targets.recIds) {
-        try {
-          await deps.stopRecording(recId);
-        } catch (err) {
-          setNotice(`Aufnahme konnte nicht gestoppt werden: ${scheduleUi.ipcErrorMessage(err)}`);
-        }
+    askConfirm('stop', targets.titles.join(' · ') || row.title, returnTo, () => stopRuns(targets.recIds, targets.titles.join(' · ') || row.title));
+  }
+
+  /**
+   * Stoppen nach Rückfrage. recording:stop antwortet erst NACH der Nachbearbeitung (Remux) — das kann dauern.
+   * Darum sofort „Wird beendet …“ (Marker/Toggle im Zustand `stopping`, ohne Pulsieren) und Meldung; der
+   * Marker verschwindet, sobald die Bibliothek die Aufnahme nicht mehr als laufend führt (recording:changed).
+   */
+  async function stopRuns(recIds, title) {
+    const label = scheduleUi.sanitizeLabel(title, 80) || 'Aufnahme';
+    for (const id of recIds) stoppingRecIds.add(id);
+    setNotice(`Aufnahme „${label}“ wird beendet …`, true);
+    refreshMarkers();
+    let failure = null;
+    for (const recId of recIds) {
+      try {
+        await deps.stopRecording(recId);
+      } catch (err) {
+        failure = err;
       }
-      refreshMarkers();
-    });
+    }
+    for (const id of recIds) stoppingRecIds.delete(id);
+    await refreshMarkers();
+    if (!isOpen) return;
+    if (!failure) {
+      setNotice(`Aufnahme „${label}“ beendet. Sie liegt in der Aufnahmen-Bibliothek.`, true);
+      return;
+    }
+    const stillRunning = recIds.some(id => recordings.some(rec => rec && rec.id === id && rec.status === 'recording'));
+    const reason = scheduleUi.ipcErrorMessage(failure);
+    setNotice(
+      stillRunning
+        ? `Aufnahme konnte nicht gestoppt werden: ${reason}`
+        : `Aufnahme beendet, die Nachbearbeitung ist fehlgeschlagen: ${reason}. Der aufgenommene Teil bleibt erhalten.`,
+    );
   }
 
   // ── Modal ──
@@ -1416,6 +1462,7 @@ function createEpgView(root, deps) {
     refreshMarkers();
     nowBtn.focus();
     loadAll({ initial: true });
+    notifyOpenChange(true);
   }
 
   function close() {
@@ -1461,7 +1508,18 @@ function createEpgView(root, deps) {
     toastEl.hidden = true;
     const back = opener;
     opener = null;
+    notifyOpenChange(false);
     if (back && back.isConnected && typeof back.focus === 'function') back.focus();
+  }
+
+  /** Hook für die App-Hülle (Navbar über dem Overlay einblendbar halten); Fehler dort stören das Overlay nicht. */
+  function notifyOpenChange(open) {
+    if (typeof deps.onOpenChange !== 'function') return;
+    try {
+      deps.onOpenChange(open);
+    } catch (err) {
+      warn(err);
+    }
   }
 
   /** Esc-Kette: erst Rückfrage, dann Detail-Modal, dann Kanalansicht (zurück zur Herkunft), dann Overlay. true = Taste verbraucht. */
