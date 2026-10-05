@@ -25,7 +25,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 
 - **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken, Aufnahmen und Einstellungen
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
-- **EPG (Programmübersicht)** – Vollbild-Ansicht mit Favoriten und Zeitslots (2/4/8/12/24h)
+- **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste oder Raster, Kanalansicht mit 7 Tagen je Sender, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
 - **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, aus dem EPG im Voraus planen und später in der App abspielen
 - **Zeitversetztes Fernsehen (Timeshift)** – Bei unterstützten Live-Streams zurückspulen und Sendungen per EPG-Marker anspringen
 - **Mediathek-Suche** – ARD, ZDF und ARTE direkt aus der Programmübersicht durchsuchen
@@ -186,7 +186,7 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 ![Aufnahmen-Übersicht](assets/screenshots/aufnahmen-dashboard.png)
 
-**Aufnahmen planen:** Öffne im EPG eine Sendung, die in der Zukunft liegt, und klicke auf **Aufnehmen**. Der Planungsdialog zeigt Vor- und Nachlauf (Puffer) und warnt bei Konflikten mit dem Parallel-Limit. Geplante Aufnahmen siehst du im Tab **Geplant** der Aufnahmen-Übersicht; dort kannst du die Puffer ändern oder den Eintrag absagen. Die Aufnahme startet im Hintergrund, auch bei geschlossenem Fenster – die App muss dafür laufen (im Tray genügt). Verschiebt sich die Sendung im EPG, übernimmt die App die neuen Zeiten und weist am Eintrag darauf hin; verschwindet die Sendung aus dem EPG, wird nur gewarnt. Wurde der Start verpasst (App aus, Standby), startet die Aufnahme bei noch laufender Sendung sofort. Das Programm der nächsten Tage hält die App als Wochen-Cache vor und aktualisiert es im Hintergrund.
+**Aufnahmen planen:** Klicke im Programmführer bei einer Sendung, die in der Zukunft liegt, auf **Aufnehmen** (in Liste, Raster, Kanalansicht oder Details). Der Planungsdialog zeigt Vor- und Nachlauf (Puffer) und warnt bei Konflikten mit dem Parallel-Limit. Geplante Aufnahmen siehst du im Tab **Geplant** der Aufnahmen-Übersicht; dort kannst du die Puffer ändern oder den Eintrag absagen. Die Aufnahme startet im Hintergrund, auch bei geschlossenem Fenster – die App muss dafür laufen (im Tray genügt). Verschiebt sich die Sendung im EPG, übernimmt die App die neuen Zeiten und weist am Eintrag darauf hin; verschwindet die Sendung aus dem EPG, wird nur gewarnt. Wurde der Start verpasst (App aus, Standby), startet die Aufnahme bei noch laufender Sendung sofort. Das Programm der nächsten Tage hält die App als Wochen-Cache vor und aktualisiert es im Hintergrund.
 
 **Beenden und Tray:** Steht innerhalb der nächsten 24 Stunden eine Aufnahme an, fragt die App beim Schließen oder Beenden nach, ob sie im Hintergrund bleiben soll (**Im Hintergrund behalten** / **Trotzdem beenden**). Das Tray-Menü listet die nächsten geplanten Aufnahmen und bietet **Planung öffnen**. Während einer Aufnahme (und kurz vor geplanten Aufnahmen) verhindert die App ihre Suspendierung; einen schlafenden Rechner weckt sie nicht.
 
@@ -196,26 +196,26 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 > **Hinweis:** Aufnahmen funktionieren für Live-TV-Sender aus deinen M3U-Quellen, nicht für DRM-geschützte Streaming-Dienste.
 
-### EPG – Programmübersicht
+### EPG – Programmführer
 
-Klicke im Live-TV-Dashboard auf **EPG öffnen**, um die vollständige Programmübersicht aufzurufen.
+Klicke im Live-TV-Dashboard auf **EPG öffnen** (oder in der TV-Seitenleiste auf den EPG-Button), um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
 
-![EPG-Programmübersicht](assets/screenshots/epg-uebersicht.png)
+**Liste und Raster:** Oben wechselst du mit dem Schalter **Liste | Raster** die Darstellung; Tag, Zeitpunkt und Auswahl bleiben dabei erhalten.
+- **Liste** (Standard) – Alle Sendungen nach Startzeit mit Zeit, Sender, Titel, Genre und Dauer. Die Trennlinie „Jetzt“ markiert die aktuelle Uhrzeit, die laufende Sendung zeigt Fortschritt und „noch N min“, Vergangenes ist gedämpft, Nachtsendungen vor 05:00 gehören zum Vorabend (Badge „Nacht“).
+- **Raster** – Sender als Zeilen, Sendungen als Blöcke auf einer Zeitachse mit roter Jetzt-Linie, Senderlogos und Zoom (3, 5 oder 8 px/min); Schnellsprünge zu 20:15 und 22:00.
+- **Tage** – Die Tabs (Gestern, Heute, Morgen, Wochentage) springen auf 05:00 des jeweiligen TV-Tags; **Jetzt** springt zur aktuellen Zeit. Das Genre erscheint als Spalte und Farbbalken.
 
-Die EPG-Ansicht zeigt:
-- **Zeitleiste** – Alle Favoriten-Sender mit Sendungen als Balken
-- **Jetzt-Linie** – Vertikale Linie für die aktuelle Uhrzeit
-- **Zeitslots** – Wähle 2h, 4h, 8h, 12h oder 24h Ansicht
+**Kanalansicht:** Klicke auf einen Sendernamen (Liste oder Raster) oder im Sendungsdetail auf **Alle Sendungen des Senders**, um alle Sendungen dieses Senders für 7 TV-Tage zu sehen. **← Alle Sender** oder `Esc` führt zurück, ohne dass Ansicht und Scrollposition verloren gehen. Mit **+ Weitere Tage** blendest du die Tage 8–14 ein, soweit der Cache reicht.
 
-Klicke auf eine Sendung für Details:
-- **Sender öffnen** – Sender direkt starten
-- **In Mediathek ansehen** – Sendung in ARD/ZDF/arte Mediathek suchen (falls verfügbar)
+**Sendungsdetails:** Ein Klick auf eine Sendung öffnet die Details mit Beschreibung, **Sender öffnen** und **In Mediathek ansehen** (ARD/ZDF/arte, falls verfügbar). `Esc` schließt Details bzw. den Programmführer.
 
-![EPG-Sendungsdetails mit Aktionen](assets/screenshots/epg-sendung.png)
+**Aufnehmen, Abbrechen, Stoppen:** Jede Sendung hat einen Knopf, der zum Zustand passt: **● Aufnehmen** (öffnet den Planungsdialog), **✕ Aufnahme abbrechen** (geplant, mit Rückfrage) oder **■ Aufnahme stoppen** (läuft, mit Rückfrage). Das Beenden einer laufenden Aufnahme meldet zuerst „wird beendet …“ und danach das Ergebnis. Aufnehmen lässt sich nur bei Sendungen, die noch nicht begonnen haben; laufende Sendungen nimmst du im TV-Player auf. Geplant wird bis 8 Tage im Voraus (darüber erscheint ein Hinweis).
+
+**Marker:** Ein roter Punkt kennzeichnet Sendungen mit Aufnahme: statisch bei geplanter, pulsierend bei laufender Aufnahme. Die Marker aktualisieren sich live.
 
 ### Mediathek-Suche
 
-Aus der EPG-Übersicht kannst du Sendungen direkt in den Mediatheken suchen. Der Button "In Mediathek ansehen" öffnet den entsprechenden Dienst (ARD, ZDF oder ARTE) mit dem Sendungstitel als Suchbegriff.
+Aus dem Programmführer kannst du Sendungen direkt in den Mediatheken suchen. Der Button "In Mediathek ansehen" öffnet den entsprechenden Dienst (ARD, ZDF oder ARTE) mit dem Sendungstitel als Suchbegriff.
 
 ### Verlauf
 
