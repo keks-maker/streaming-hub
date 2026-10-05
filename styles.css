@@ -2205,6 +2205,7 @@ body {
 
 /* LISTE (virtualisiert: feste Zeilenhöhe, absolut positioniert) */
 .epg-list-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; }
+.epg-list-scroll, .epg-grid-scroll { scrollbar-color: rgba(255,255,255,.28) transparent; }
 .epg-list-head,
 .epg-list-row {
   display: grid;
@@ -2453,9 +2454,14 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
   font-weight: 700;
 }
+/* Titel/Zeit rücken (per Skript, margin-left) an den sichtbaren linken Rand, solange der Block hineinragt */
+.epg-block-text { min-width: 0; align-self: flex-start; max-width: 100%; }
+.epg-block.has-rec .epg-block-text { max-width: calc(100% - 30px); }
 .epg-block-time { font-size: 11px; color: var(--epg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .epg-block-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.14); }
 .epg-block-bar[hidden] { display: none; }

@@ -18,6 +18,10 @@ const DEFAULT_ZOOM = 5;
 const NOW_RATIO = 0.25;
 const MIN_BLOCK_WIDTH = 28;
 const BLOCK_GAP = 2;
+/** Erst ab dieser Blockbreite sitzt der Aufnahme-Toggle im Block (der Text wird um seinen Platz eingerückt). */
+const MIN_REC_BLOCK_WIDTH = 90;
+/** Mindestbreite, die vom Text eines links angeschnittenen Blocks sichtbar bleibt (Text rückt nur so weit nach). */
+const MIN_TEXT_WIDTH = 60;
 const BUCKET_MS = 6 * 60 * 60 * 1000;
 const MAX_AXIS_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_KEYS_PER_CALL = 100;
@@ -240,6 +244,8 @@ module.exports = {
   NOW_RATIO,
   MIN_BLOCK_WIDTH,
   BLOCK_GAP,
+  MIN_REC_BLOCK_WIDTH,
+  MIN_TEXT_WIDTH,
   BUCKET_MS,
   MAX_AXIS_MS,
   MAX_KEYS_PER_CALL,

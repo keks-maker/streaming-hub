@@ -54,3 +54,10 @@ test('Raster-Verdrahtung: Modus-Segment, Zoom, kein Hook-Button ohne Handler, go
   }
   assert.ok(!/onChannelClick/.test(read('renderer.js')), 'Kanalansicht kommt erst in 3.4: kein Hook im Renderer verdrahtet');
 });
+
+test('Raster-Titel brechen nie mitten im Wort um (V1)', () => {
+  const css = read('styles.css');
+  const block = css.slice(css.indexOf('.epg-block-title {'), css.indexOf('}', css.indexOf('.epg-block-title {')));
+  assert.ok(!/overflow-wrap:\s*anywhere|word-break:\s*(break-all|break-word)/.test(block));
+  assert.match(block, /-webkit-line-clamp: 2/);
+});

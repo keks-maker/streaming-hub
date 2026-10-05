@@ -287,3 +287,10 @@ test('channelBadge: Kürzel aus Wortanfängen oder den ersten Buchstaben, stabil
   assert.equal(gm.channelBadge('ZDF').hue, gm.channelBadge('ZDF').hue);
   assert.ok(gm.channelBadge('RTL').hue >= 0 && gm.channelBadge('RTL').hue < 360);
 });
+
+test('Block-Toggle und Textrand: Mindestbreiten sind konsistent (Toggle erst ab 90 px, Text behält ≥ 60 px)', () => {
+  assert.equal(gm.MIN_REC_BLOCK_WIDTH, 90);
+  assert.equal(gm.MIN_TEXT_WIDTH, 60);
+  assert.ok(gm.MIN_REC_BLOCK_WIDTH > gm.MIN_BLOCK_WIDTH);
+  assert.ok(gm.MIN_REC_BLOCK_WIDTH - 30 >= gm.MIN_TEXT_WIDTH - 0); // Platz für den 28-px-Toggle neben mindestens 60 px Text
+});

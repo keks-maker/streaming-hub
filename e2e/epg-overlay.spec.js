@@ -535,6 +535,52 @@ test.describe('Programmführer (kleine Fixture)', () => {
     expect(tops.b - tops.a).toBe(64);
   });
 
+  test('Raster: Titel brechen nur an Wortgrenzen um, Text rückt bei links angeschnittenen Blöcken an den sichtbaren Rand, Aufnahme-Toggle überlappt nie den Text', async () => {
+    // V1: kein Umbruch mitten im Wort (nur Wortgrenzen, höchstens 2 Zeilen)
+    const wrap = await page.locator('.epg-block-title').first().evaluate(el => {
+      const st = window.getComputedStyle(el);
+      return { wrap: st.overflowWrap, brk: st.wordBreak, clamp: st.webkitLineClamp };
+    });
+    expect(wrap).toEqual({ wrap: 'normal', brk: 'normal', clamp: '2' });
+    // V3: „Laufende Sendung“ (300 px breit) so scrollen, dass der Blockanfang 120 px links vom sichtbaren Rand liegt
+    await page.locator('#epgNowBtn').click();
+    const probe = () =>
+      page.evaluate(() => {
+        const g = window.document.getElementById('epgGrid');
+        const b = [...window.document.querySelectorAll('.epg-block')].find(x => x.textContent.includes('Laufende Sendung'));
+        const edge = g.getBoundingClientRect().left + 150; // rechts der Senderspalte
+        const box = b.getBoundingClientRect();
+        const text = b.querySelector('.epg-block-text').getBoundingClientRect();
+        return { edge, blockLeft: box.left, textLeft: text.left, textRight: text.right, blockRight: box.right };
+      });
+    await gridEval(el => {
+      const b = [...el.querySelectorAll('.epg-block')].find(x => x.textContent.includes('Laufende Sendung'));
+      el.scrollLeft = b.offsetLeft + 120;
+    });
+    await expect.poll(async () => (await probe()).blockLeft < (await probe()).edge - 100).toBe(true);
+    await expect.poll(async () => {
+      const p = await probe();
+      return p.textLeft >= p.edge - 1 && p.textLeft <= p.edge + 16;
+    }).toBe(true);
+    const cut = await probe();
+    expect(cut.textRight).toBeLessThanOrEqual(cut.blockRight + 0.5);
+    await page.locator('#epgNowBtn').click();
+    // V2: bei jedem Block mit Aufnahme-Toggle endet der Textbereich vor dem Toggle
+    const overlaps = await page.evaluate(() => {
+      let checked = 0;
+      const bad = [];
+      for (const b of window.document.querySelectorAll('.epg-block.has-rec')) {
+        const rec = window.document.querySelector(`.epg-block-rec[data-rec-key="${b.dataset.blockKey}"]`);
+        const text = b.querySelector('.epg-block-text').getBoundingClientRect();
+        const title = b.querySelector('.epg-block-title').getBoundingClientRect();
+        checked += 1;
+        if (!rec || text.right > rec.getBoundingClientRect().left + 0.5 || title.right > rec.getBoundingClientRect().left + 0.5) bad.push(b.dataset.blockKey);
+      }
+      return { checked, bad };
+    });
+    expect(overlaps.bad).toEqual([]);
+  });
+
   test('Raster: Zoom 3/5/8 hält den Zeitanker, Breite skaliert, Standard ist 5', async () => {
     await expect(page.locator('.epg-zoom-btn.active')).toHaveText('5 px/min');
     const probe = () =>
@@ -852,6 +898,24 @@ test.describe('Programmführer (Großfixture 438 Kanäle × 10 Tage)', () => {
     let c = await counts();
     expect(c.chans).toBeLessThan(60);
     expect(c.blocks).toBeLessThan(1500);
+    // V2 auf der Großfixture (viele Blockbreiten): Toggle nur ab 90 px und nie über dem Text
+    const rec = await page.evaluate(() => {
+      let withRec = 0;
+      const bad = [];
+      for (const b of window.document.querySelectorAll('.epg-block')) {
+        const width = b.getBoundingClientRect().width;
+        const r = window.document.querySelector(`.epg-block-rec[data-rec-key="${b.dataset.blockKey}"]`);
+        if (r) {
+          withRec += 1;
+          const rb = r.getBoundingClientRect();
+          const t = b.querySelector('.epg-block-text').getBoundingClientRect();
+          if (width < 90 || t.right > rb.left + 0.5) bad.push(b.dataset.blockKey);
+        }
+      }
+      return { withRec, bad };
+    });
+    expect(rec.withRec).toBeGreaterThan(10);
+    expect(rec.bad).toEqual([]);
     // horizontal scrollen: DOM bleibt begrenzt, Frames hängen nicht
     const scroll = await page.evaluate(async () => {
       const g = window.document.getElementById('epgGrid');

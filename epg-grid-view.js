@@ -174,7 +174,9 @@ function createGridView(deps) {
     const barFill = h('span', { className: 'epg-progress-fill' });
     const bar = h('span', { className: 'epg-block-bar', hidden: true }, [barFill]);
     const head = h('div', { className: 'epg-block-head' }, [marker, titleEl]);
-    const button = h('button', { className: 'epg-block', type: 'button' }, geometry.narrow ? [marker, bar] : [head, timeEl, bar]);
+    // Textcontainer bleibt beim Scrollen am sichtbaren linken Rand (sticky), solange der Block hineinragt
+    const text = h('div', { className: 'epg-block-text' }, [head, timeEl]);
+    const button = h('button', { className: 'epg-block', type: 'button' }, geometry.narrow ? [marker, bar] : [text, bar]);
     button.title = model.blockTooltip(row, viewModel.clock);
     const genre = genreLabel(row.genre);
     button.setAttribute(
@@ -186,7 +188,7 @@ function createGridView(deps) {
     button.dataset.blockKey = row.id;
     button.style.left = `${geometry.left}px`;
     button.style.width = `${geometry.width}px`;
-    return { el: button, refs: { marker, bar, barFill, timeEl }, row, sig: '' };
+    return { el: button, refs: { marker, bar, barFill, timeEl, text: geometry.narrow ? null : text }, row, sig: '', shift: '0|false', left: geometry.left, width: geometry.width };
   }
 
   function updateBlock(entry, nowMs, marker) {
@@ -208,15 +210,32 @@ function createGridView(deps) {
     refs.marker.title = marker ? (marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant') : '';
   }
 
+  /**
+   * Ragt ein Block links über den sichtbaren Rand (rechts der Senderspalte) hinaus, rückt sein Text an
+   * diesen Rand nach (margin-left), solange mindestens MIN_TEXT_PX des Blocks übrig bleiben.
+   */
+  function keepTextVisible(entry) {
+    if (!entry.refs.text) return;
+    const raw = el.scrollLeft - entry.left;
+    const shift = raw > 0 ? Math.max(0, Math.min(raw, entry.width - model.MIN_TEXT_WIDTH)) : 0;
+    const hasRec = entry.el.classList.contains('has-rec');
+    const key = `${shift}|${hasRec}`;
+    if (key === entry.shift) return;
+    entry.shift = key;
+    entry.refs.text.style.marginLeft = shift ? `${shift}px` : '';
+    entry.refs.text.style.maxWidth = shift ? `calc(100% - ${shift + (hasRec ? 30 : 0)}px)` : '';
+  }
+
   const REC_SYMBOL = { record: '●', cancel: '✕', stop: '■' };
   const REC_WIDTH = 28;
 
   /** Kleiner Toggle rechts im Block (wie im Mockup): nur bei ausreichend breiten Blöcken, nicht bei Vergangenem. */
   function updateRec(row, blockEntry, rowIndex, nowMs, marker) {
     const toggle = viewModel.toggleState({ row, marker, nowMs });
-    const wide = !blockEntry.el.classList.contains('is-narrow') && parseFloat(blockEntry.el.style.width) >= 90;
+    const wide = !blockEntry.el.classList.contains('is-narrow') && parseFloat(blockEntry.el.style.width) >= model.MIN_REC_BLOCK_WIDTH;
     const show = wide && !(toggle.kind === 'record' && viewModel.rowPhase(row, nowMs).phase === 'past');
     let rec = recs.get(row.id);
+    blockEntry.el.classList.toggle('has-rec', show);
     if (!show) {
       if (rec) {
         rec.el.remove();
@@ -307,6 +326,7 @@ function createGridView(deps) {
       const marker = markerById.get(row.id) || null;
       updateBlock(entry, nowMs, marker);
       updateRec(row, entry, r, nowMs, marker);
+      keepTextVisible(entry);
     }
     for (const [key, rec] of recs) {
       if (!wanted.has(key)) {
