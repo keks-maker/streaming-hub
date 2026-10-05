@@ -45,7 +45,7 @@ test('Raster-Verdrahtung: Modus-Segment, Zoom, kein Hook-Button ohne Handler, go
   assert.match(view, /id: 'epgModeList'/);
   assert.match(view, /id: 'epgModeGrid'/);
   assert.match(view, /function setMode\(mode\)/);
-  assert.match(view, /async function goToNow\(\) \{(?:\s*if \(channelState\.active\) \{\s*channelGoToNow\(\);\s*return;\s*\})?\s*dayPin = null;/, 'W1: „Jetzt“ hebt die Tag-Bindung auf');
+  assert.match(view, /async function goToNow\(\) \{(?:\s*if \(searchView\.isShown\(\)\) closeSearch\(\);)?(?:\s*if \(channelState\.active\) \{\s*channelGoToNow\(\);\s*return;\s*\})?\s*dayPin = null;/, 'W1: „Jetzt“ hebt die Tag-Bindung auf');
   const gridView = read('epg-grid-view.js');
   assert.match(gridView, /const clickable = typeof deps\.onChannelClick === 'function';\s*const cell = clickable\s*\?/, 'Sendername nur klickbar, wenn ein Hook vorhanden ist');
   for (const file of ['epg-grid-view.js', 'epg-grid-model.js', 'epg-dom.js', 'epg-genres.js', 'epg-row-dom.js', 'epg-channel-model.js', 'epg-channel-view.js']) {
@@ -95,14 +95,21 @@ test('Marker: geplant rot und statisch, laufend rot und pulsierend (reduced-moti
 
 // ── Etappe 3.4: Kanalansicht ──
 
-test('Kanalansicht: Modus im Overlay, kein dritter Segment-Button, Esc-Kette Rückfrage → Modal → Kanalmodus → Overlay', () => {
+test('Kanalansicht: Modus im Overlay, kein Segment-Button dafür, Esc-Kette Rückfrage → Modal → Menü → Suche → Kanalmodus → Overlay', () => {
   const view = read('epg-view.js');
-  assert.equal((view.match(/className: 'epg-seg-btn'/g) || []).length, 2, 'Segment bleibt Liste | Raster');
+  assert.equal((view.match(/className: 'epg-seg-btn'/g) || []).length, 3, 'Segment: Liste | Raster | Jetzt & Gleich (Etappe 3.5)');
   assert.ok(!/epgModeChannel/.test(view));
   const start = view.indexOf('function handleEscape()');
   const esc = view.slice(start, view.indexOf('return {', start));
-  const order = [esc.indexOf('closeConfirm()'), esc.indexOf('closeDetail()'), esc.indexOf('exitChannel()'), esc.indexOf('close();')];
-  assert.ok(order.every(i => i >= 0), 'alle vier Stufen vorhanden');
+  const order = [
+    esc.indexOf('closeConfirm()'),
+    esc.indexOf('closeDetail()'),
+    esc.indexOf('openMenu.close('),
+    esc.indexOf('closeSearch('),
+    esc.indexOf('exitChannel()'),
+    esc.indexOf('close();'),
+  ];
+  assert.ok(order.every(i => i >= 0), 'alle sechs Stufen vorhanden');
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'Reihenfolge der Stufen');
   // Renderer reicht Esc nur durch (epgView.handleEscape): die Kette liegt komplett in epg-view
   assert.match(read('renderer.js'), /if \(epgView\.handleEscape\(\)\) return true;/);
@@ -114,7 +121,8 @@ test('Kanalansicht: Einstiege nur Sendername (Liste, Raster) und Modal-Link, nic
   assert.match(view, /onChannelClick: channel => enterChannel\(channel,/);
   assert.match(view, /addHandler\(dChannel, 'click'[\s\S]*closeDetail\(\{ restoreFocus: false \}\)[\s\S]*enterChannel\(row\.channel/);
   assert.match(view, /text: 'Alle Sendungen des Senders'/);
-  assert.equal((view.match(/enterChannel\(/g) || []).length, 4, 'Definition + drei Einstiege');
+  assert.equal((view.match(/enterChannel\(/g) || []).length, 5, 'Definition + vier Einstiege (Liste, Raster, Jetzt & Gleich, Modal)');
+  assert.match(view, /returnTo: \{ type: 'jng-channel'/);
   const rowDom = read('epg-row-dom.js');
   assert.match(rowDom, /'aria-label': `Alle Sendungen von \$\{senderName\(row\)\}`/);
   assert.match(rowDom, /className: 'epg-chan-link',\s*type: 'button'/, 'Button: Enter/Space nativ');
@@ -139,7 +147,7 @@ test('Kanalansicht: ein Toggle-Weg, Zeilen, Raster, Modal und Kanalansicht rufen
 
 test('Kanalansicht: keine toten Referenzen, jede Funktion/jedes Element ist verdrahtet, 30-s-Tick baut nichts neu', () => {
   const view = read('epg-view.js');
-  for (const name of ['enterChannel', 'exitChannel', 'loadChannel', 'positionChannel', 'followChannel', 'goToChannelDay', 'channelGoToNow', 'toggleExtended', 'onModeClick', 'restoreOrigin', 'captureOrigin', 'originFocusElement', 'setOriginInert']) {
+  for (const name of ['enterChannel', 'exitChannel', 'loadChannel', 'positionChannel', 'followChannel', 'goToChannelDay', 'channelGoToNow', 'toggleExtended', 'onModeClick', 'restoreOrigin', 'captureOrigin', 'originFocusElement', 'applyInert']) {
     assert.ok((view.match(new RegExp(`\\b${name}\\(`, 'g')) || []).length >= 2, `${name} wird definiert und genutzt`);
   }
   for (const id of ['epgChannel', 'epgChannelBack', 'epgChannelList', 'epgChannelName', 'epgChannelNow', 'epgChannelState']) {

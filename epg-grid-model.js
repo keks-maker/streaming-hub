@@ -128,9 +128,13 @@ function channelBadge(name) {
 
 // ── Zeilen ──
 
-/** Nur Sender mit EPG (Schlüssel aus epgKeys), in der Reihenfolge der Senderauswahl. */
+/**
+ * Zeilen des Rasters in der Reihenfolge der Senderauswahl: nur Sender mit EPG (Schlüssel aus epgKeys);
+ * epgKeys = null zeigt alle gewählten Sender („Sender ohne EPG ausblenden“ aus, Etappe 3.5).
+ */
 function gridRowsFor(entries, epgKeys) {
-  return (Array.isArray(entries) ? entries : []).filter(entry => epgKeys.has(entry.key));
+  const list = Array.isArray(entries) ? entries : [];
+  return epgKeys ? list.filter(entry => epgKeys.has(entry.key)) : list.slice();
 }
 
 // ── Ruler ──

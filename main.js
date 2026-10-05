@@ -30,6 +30,7 @@ const paths = require('./lib/recorder/paths.js');
 const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
 const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
+const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { fetchEpgResponse } = require('./lib/epg/download.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 
@@ -817,6 +818,8 @@ app.whenReady().then(() => {
   } catch (e) {
     logger.error('EPG-Dienst konnte nicht eingerichtet werden:', e.message);
   }
+  // Startansicht des Programmführers (Etappe 3.5): unabhängig vom EPG-Dienst, damit die Einstellung immer erreichbar bleibt
+  registerEpgViewSettingsIpc({ ipcMain, storage: userStorage, requireMainRenderer });
 
   // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
   // "vorhanden + ausführbar + -version ok". Fehlschlag wird als sichtbarer

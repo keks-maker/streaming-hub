@@ -977,6 +977,7 @@ function renderDashboard(groupKey, opts = {}) {
     settingsTvSourcesView.render();
     // Aufnahmen-Settings (Phase 1c): Speicherort + ffmpeg-Diagnose laden
     if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
+    loadEpgStartViewUi();
   } else if (isTv) {
     renderLiveTvDashboard();
   } else if (isRecording) {
@@ -1376,6 +1377,35 @@ if (settingsEpgCacheRefreshBtn) {
       settingsEpgCacheStatus.textContent = 'Aktualisierung fehlgeschlagen: ' + (e?.message || e);
     } finally {
       settingsEpgCacheRefreshBtn.disabled = false;
+    }
+  });
+}
+
+// ── Settings „LiveTV: EPG“: Startansicht des Programmführers (Etappe 3.5, P20) ──
+// Die Menge der Werte prüft der Main (lib/ipc-validation.js); hier nur Anzeige und Speichern.
+const settingsEpgStartView = document.getElementById('settingsEpgStartView');
+const settingsEpgStartViewStatus = document.getElementById('settingsEpgStartViewStatus');
+
+async function loadEpgStartViewUi() {
+  if (!settingsEpgStartView || !window.electronAPI.getEpgViewSettings) return;
+  try {
+    const saved = await window.electronAPI.getEpgViewSettings();
+    settingsEpgStartView.value = saved.startView;
+    settingsEpgStartViewStatus.textContent = '';
+  } catch (e) {
+    settingsEpgStartViewStatus.textContent = 'Startansicht nicht verfügbar: ' + (e?.message || e);
+  }
+}
+
+if (settingsEpgStartView) {
+  settingsEpgStartView.addEventListener('change', async () => {
+    try {
+      const saved = await window.electronAPI.setEpgViewSettings({ startView: settingsEpgStartView.value });
+      settingsEpgStartView.value = saved.startView;
+      settingsEpgStartViewStatus.textContent = 'Gespeichert. Gilt beim nächsten Öffnen des Programmführers.';
+    } catch (e) {
+      settingsEpgStartViewStatus.textContent = 'Speichern fehlgeschlagen: ' + (e?.message || e);
+      loadEpgStartViewUi();
     }
   });
 }
@@ -2169,6 +2199,8 @@ function switchTvChannel(dir) {
 const epgView = createEpgView(epgOverlay, {
   api: window.electronAPI,
   getChannels: () => tvChannels,
+  getSources: () => tvSources.map(source => ({ id: source.id, name: source.name })),
+  getStartView: () => window.electronAPI.getEpgViewSettings().then(saved => saved && saved.startView),
   isFavorite: ch => isFavorite(ch, tvSources),
   sanitizeLogoUrl: url => safeResourceUrl(url),
   recordProgramme: programme => handleEpgRecordClick(programme),

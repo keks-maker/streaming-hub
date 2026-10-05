@@ -6,6 +6,7 @@
 // Varianten:
 //   'list'    Zeile der virtualisierten Programmliste (Spalte „Sender“ mit Link in die Kanalansicht)
 //   'channel' Zeile der Kanalansicht (ohne Senderspalte; Kennzeichen „Jetzt“/„Nächste“)
+//   'jng'     Zelle von „Jetzt & Gleich“ (Etappe 3.5: Titel, Zeit, Fortschritt, Marker und derselbe Toggle)
 
 'use strict';
 
@@ -20,8 +21,9 @@ function senderName(row) {
 /** Knoten einer Sendung → { el, refs, sig, variant }. */
 function createRowNode(row, { variant = 'list' } = {}) {
   const channelVariant = variant === 'channel';
+  const cellVariant = variant === 'jng';
   const marker = h('span', { className: 'epg-marker' });
-  const time = h('span', { className: 'epg-time', text: channelVariant ? `${model.clock(row.start)}–${model.clock(row.stop)}` : model.clock(row.start) });
+  const time = h('span', { className: 'epg-time', text: channelVariant || cellVariant ? `${model.clock(row.start)}–${model.clock(row.stop)}` : model.clock(row.start) });
   const timeLine = h('div', { className: 'epg-time-line' }, [time]);
   if (row.night) timeLine.appendChild(h('span', { className: 'epg-night', text: 'Nacht', attrs: { title: 'Nach Mitternacht (Vorabend-TV-Tag)' } }));
   const sub = h('span', { className: 'epg-time-sub' });
@@ -40,6 +42,16 @@ function createRowNode(row, { variant = 'list' } = {}) {
   // Kanalansicht: Hinweis „Planung nur bis 8 Tage im Voraus“ sichtbar neben dem deaktivierten Button (P9)
   const hint = channelVariant ? h('span', { className: 'epg-row-hint', hidden: true }) : null;
   const actionCell = h('div', { className: 'epg-col-action' }, hint ? [hint, toggle, pastNote] : [toggle, pastNote]);
+  if (cellVariant) {
+    const cell = h('div', { className: 'epg-jcell epg-program', attrs: { role: 'group' } }, [
+      marker,
+      h('div', { className: 'epg-jcell-main' }, [open, h('div', { className: 'epg-jcell-time' }, [time, sub]), bar]),
+      h('div', { className: 'epg-jcell-action' }, [toggle, pastNote]),
+    ]);
+    cell.dataset.rowId = row.id;
+    if (label) cell.dataset.g = row.genre;
+    return { el: cell, refs: { sub, bar, barFill, marker, toggle, pastNote, open, flag: null, chan: null, hint: null }, sig: '', variant };
+  }
   const cells = [h('div', { className: 'epg-col-mk' }, [marker]), timeCell];
   let chan = null;
   if (!channelVariant) {
