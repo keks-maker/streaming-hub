@@ -28,7 +28,7 @@ async function closeOverlay(page) {
 }
 
 async function reopenOverlay(page) {
-  await page.locator('#tvSidebarEpgBtn, #dashboardEpgOpen').first().evaluate(el => el.click());
+  await page.locator('#dashboardEpgOpen').evaluate(el => el.click());
   await expect(page.locator('#epgOverlay')).toBeVisible();
 }
 

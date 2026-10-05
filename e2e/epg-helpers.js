@@ -119,6 +119,9 @@ async function openOverlayFromDashboard(page) {
   await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
   await page.locator('#dashboardEpgOpen').click();
   await expect(page.locator('#epgOverlay')).toBeVisible();
+  // Bei langen Dashboards (viele Favoriten) scrollt Playwright die Karte nach oben und lässt den Mauszeiger unter der
+  // Navbar stehen; deren Hover-Zustand würde sonst Klicks auf die Kopfzeile des Programmführers abfangen.
+  await page.mouse.move(640, 600);
 }
 
 module.exports = { MIN, HOUR, MSG_RUNNING, isHarmless, xmltvTime, launchApp, waitForEpgChannels, openOverlayFromDashboard };

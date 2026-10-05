@@ -186,7 +186,10 @@ async function expandSettingsLiveTv() {
 test('Aufnahmen: Dashboard-Einstieg und Speicherort-Einstellung erreichbar', async () => {
   // Navigation über die Navbar (nach dem Betreten eines Bereichs ist sie sichtbar).
   const nav = page.locator('#overlayNav');
-  await nav.locator('[data-section="recording"]').click();
+  // 3.6b (P21): kein NavBar-Eintrag mehr; Einstieg über die Karte „Aufnahmen“ im LiveTV-Dashboard
+  await expect(nav.locator('[data-section="recording"]')).toHaveCount(0);
+  await nav.locator('[data-section="livetv"]').click();
+  await page.locator('#dashboardRecordingsOpen').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
   await expect(page.locator('#dashboardView')).toHaveClass(/recordings-dashboard/);
   await expect(page.locator('.recordings-dashboard-title')).toHaveText('Aufnahmen');

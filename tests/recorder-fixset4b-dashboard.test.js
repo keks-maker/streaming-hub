@@ -42,12 +42,11 @@ test('FIX 3a: Kachel-Art nutzt generiertes Bild im Familien-Stil', () => {
   assert.ok(fs.existsSync(path.join(ROOT, 'assets', 'icons', 'recordings-tile.png')), 'Kachel-Bild fehlt in assets/icons/');
 });
 
-test('FIX 3b: Navbar-Eintrag „Aufnahmen“ im Mediatheken-Stil (nav-section-item)', () => {
+test('FIX 3b (3.6b, P21): kein Navbar-Eintrag „Aufnahmen“ mehr; nav-section-item-Stil bleibt für die übrigen Gruppen', () => {
   const groupsLiteral = /const groups = \[[\s\S]*?\];/.exec(rendererJs)?.[0] || '';
-  assert.ok(groupsLiteral.includes("key: 'recording'"), 'recording-Gruppe fehlt in renderNav');
-  // gleicher nav-section-item-Stil wie Mediatheken:
+  assert.ok(!groupsLiteral.includes("key: 'recording'"), 'recording darf nicht mehr in renderNav stehen');
+  assert.ok(groupsLiteral.includes("key: 'livetv'") && groupsLiteral.includes("key: 'mediathek'"), 'übrige Gruppen fehlen');
   assert.ok(rendererJs.includes("btn.className = 'nav-item nav-section-item'"), 'nav-section-item-Klasse nicht gesetzt');
-  assert.ok(rendererJs.includes("label: 'Aufnahmen'"), 'Label „Aufnahmen“ fehlt in renderNav');
 });
 
 test('FIX 3c: showDashboard behandelt recording als Dashboard-Gruppe (kein Overlay)', () => {

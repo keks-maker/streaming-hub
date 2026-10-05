@@ -25,8 +25,10 @@ test('Altcode entfernt: keine Referenzen auf Zeitslot-Buttons, altes Raster und 
 
 test('Verdrahtung: Einstiege und Esc-Kette laufen über epg-view (Einstiege umgehängt)', () => {
   const renderer = read('renderer.js');
-  assert.match(renderer, /dashboardEpgOpen\.addEventListener\('click', openEpgView\)/);
-  assert.match(renderer, /tvSidebarEpgBtn\.addEventListener\('click', openEpgView\)/);
+  // 3.6b: einziger Einstieg ist die Karte „Programmübersicht“ (ID dashboardEpgOpen, P22) im LiveTV-Hub; die TV-Sidebar ist entfernt
+  assert.match(renderer, /onOpenEpg: \(\) => openEpgView\(\)/);
+  assert.match(read('dashboard-hub-view.js'), /id: 'dashboardEpgOpen'/);
+  assert.ok(!/tvSidebar/.test(renderer), 'renderer.js enthält noch tvSidebar-Reste');
   assert.match(renderer, /epgView\.handleEscape\(\)/);
   assert.match(renderer, /createEpgView\(epgOverlay,/);
   // Planungsweg bleibt der bestehende: handleEpgRecordClick → classifyProgramme → openSchedulePlanningDialog
