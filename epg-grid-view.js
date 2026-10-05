@@ -10,7 +10,7 @@
 const grid = require('./lib/epg-grid.js');
 const model = require('./epg-grid-model.js');
 const viewModel = require('./epg-view-model.js');
-const { h } = require('./epg-dom.js');
+const { h, createChannelLogo } = require('./epg-dom.js');
 const { genreLabel } = require('./epg-genres.js');
 
 const FETCH_DEBOUNCE_MS = 120;
@@ -24,7 +24,7 @@ const FETCH_DEBOUNCE_MS = 120;
  *   onOpen(row, element)        Klick auf einen Block → Detail-Modal
  *   onToggle(row, element)      Klick auf den kleinen Aufnahme-Toggle im Block (Aufnehmen/Abbrechen/Stoppen)
  *   sanitizeLogoUrl(url)        prüft die Logo-URL des Kanals (Renderer: safeResourceUrl); ohne Funktion kein Logo
- *   onChannelClick(channel)     optional (Kanalansicht kommt in 3.4): nur dann sind Sendernamen klickbar
+ *   onChannelClick(channel)     optional: nur dann sind Sendernamen klickbar (Einstieg in die Kanalansicht, 3.4)
  *   onScroll()                  Scrollposition hat sich geändert (Tab/Anker nachführen)
  *   onError(err)
  */
@@ -154,28 +154,14 @@ function createGridView(deps) {
   function createChannelCell(index) {
     const entry = entries[index];
     const name = entry.channel.name || entry.key;
-    const badge = model.channelBadge(name);
-    const logo = h('span', { className: 'epg-grid-logo', text: badge.abbr, attrs: { 'aria-hidden': 'true' } });
-    logo.style.setProperty('--h', String(badge.hue));
-    // Echtes Senderlogo (Playlist-Kanalobjekt, wie in der Sidebar): img nur über die Property src, lazy;
-    // fehlt es oder scheitert das Laden, bleibt das Kürzel-Badge stehen.
-    const logoUrl = model.resolveLogoUrl(entry.channel, deps.sanitizeLogoUrl);
-    if (logoUrl) {
-      const img = h('img', { className: 'epg-grid-logo-img', attrs: { alt: '', loading: 'lazy', decoding: 'async' } });
-      // Bis das Logo geladen ist, bleibt das Kürzel sichtbar; erst dann ersetzt das Bild das Badge.
-      img.addEventListener('load', () => logo.classList.add('has-img'));
-      img.addEventListener('error', () => {
-        img.remove();
-        logo.classList.remove('has-img');
-      });
-      logo.appendChild(img);
-      img.src = logoUrl;
-    }
+    const logo = createChannelLogo({ name, channel: entry.channel, sanitizeLogoUrl: deps.sanitizeLogoUrl });
     const label = h('span', { className: 'epg-grid-cn', text: name });
-    const cell = typeof deps.onChannelClick === 'function'
+    const clickable = typeof deps.onChannelClick === 'function';
+    const cell = clickable
       ? h('button', { className: 'epg-grid-chan epg-grid-chan-btn', type: 'button' }, [logo, label])
       : h('div', { className: 'epg-grid-chan' }, [logo, label]);
-    cell.title = name;
+    cell.title = clickable ? `Alle Sendungen von ${name}` : name;
+    if (clickable) cell.setAttribute('aria-label', `Alle Sendungen von ${name}`);
     cell.style.top = `${index * model.ROW_HEIGHT}px`;
     cell.style.height = `${model.ROW_HEIGHT}px`;
     cell.dataset.channelKey = entry.key;
@@ -509,6 +495,15 @@ function createGridView(deps) {
     reset,
     tick: render,
     scrollLeft: () => el.scrollLeft,
+    scrollTop: () => el.scrollTop,
+    /** Scrollposition (beide Achsen) wiederherstellen; Zeichnen und Nachladen folgen dem Scroll-Ereignis. */
+    setScroll: ({ left, top }) => {
+      if (Number.isFinite(left)) el.scrollLeft = left;
+      if (Number.isFinite(top)) el.scrollTop = top;
+      render();
+    },
+    /** Sendername-Button einer Zeile (Fokus-Rückgabe aus der Kanalansicht) oder null. */
+    channelElement: key => chancol.querySelector(`.epg-grid-chan-btn[data-channel-key="${CSS.escape(key)}"]`),
     setScrollLeft: px => {
       el.scrollLeft = px;
     },

@@ -2313,6 +2313,118 @@ body {
 .epg-toggle:disabled { opacity: .45; cursor: not-allowed; }
 .epg-toggle-primary { padding: 6px 14px; font-size: 13px; }
 
+/* Sendername in der Liste: Einstieg in die Kanalansicht (Button, Tastatur Enter/Space) */
+.epg-chan-link {
+  display: block;
+  max-width: 100%;
+  padding: 3px 4px;
+  margin-left: -4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--epg-dim);
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.epg-chan-link:hover { color: var(--text); text-decoration: underline; }
+.epg-chan-link:focus-visible, .epg-grid-chan-btn:focus-visible, .epg-channel-list:focus-visible, .epg-more-tab:focus-visible {
+  outline: 2px solid var(--epg-accent-light);
+  outline-offset: -2px;
+}
+
+/* KANALANSICHT (Modus im Overlay, liegt über Liste/Raster): Kopf, Programmliste über 7 TV-Tage */
+.epg-channel {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--epg-surface);
+}
+.epg-channel[hidden], .epg-channel-list[hidden], .epg-row-hint[hidden], .epg-flag[hidden] { display: none; }
+.epg-channel-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--epg-line);
+}
+.epg-channel-logo-host { display: flex; flex: none; }
+.epg-grid-logo.epg-channel-logo { width: 44px; height: 44px; font-size: 14px; border-radius: 10px; }
+.epg-channel-title { min-width: 0; flex: 1 1 200px; }
+.epg-channel-name { margin: 0; font-size: 18px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epg-channel-now { font-size: 13px; color: var(--epg-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epg-channel-now b { color: var(--text); font-weight: 600; }
+.epg-channel-span { font-size: 12px; color: var(--epg-dim); white-space: nowrap; }
+.epg-channel-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; padding: 0 8px 16px; scrollbar-color: rgba(255,255,255,.28) transparent; }
+.epg-channel-state { flex: 1; }
+.epg-daytab.is-empty { opacity: .5; }
+.epg-daytab.is-empty.active { opacity: 1; }
+.epg-more-tab { flex: none; border-style: dashed; }
+.epg-more-tab.active { border-style: solid; }
+.epg-cday { position: relative; }
+.epg-cday-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  background: #1f1d33;
+  border-bottom: 1px solid var(--border);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  color: var(--epg-accent-light);
+}
+.epg-cday-note { margin: 0; padding: 14px 10px; font-size: 13px; color: var(--epg-dim); }
+.epg-crow {
+  display: grid;
+  grid-template-columns: 26px 128px minmax(0, 1fr) 118px 74px minmax(150px, auto);
+  align-items: center;
+  column-gap: 8px;
+  min-height: 46px;
+  padding: 3px 10px 3px 0;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+}
+.epg-crow[data-g] { box-shadow: inset 4px 0 0 var(--gc); }
+.epg-crow:hover { background: var(--glass-hover); }
+.epg-crow.is-now { background: rgba(108,92,231,.14); }
+.epg-crow.is-now:hover { background: rgba(108,92,231,.22); }
+.epg-crow.is-next { background: var(--glass); }
+.epg-crow.is-past { opacity: .45; }
+.epg-crow.is-selected { outline: 2px solid var(--epg-accent-light); outline-offset: -2px; }
+.epg-crow .epg-col-title { display: flex; align-items: center; gap: 8px; }
+.epg-crow .epg-row-open { flex: 1 1 auto; min-width: 0; width: auto; }
+.epg-flag {
+  flex: none;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #3b3b52;
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 17px;
+}
+.epg-flag[data-flag="now"] { background: var(--accent); }
+.epg-row-hint { margin-right: 8px; font-size: 11.5px; color: var(--epg-dim); text-align: right; }
+.epg-crow .epg-col-action { flex-wrap: wrap; row-gap: 2px; }
+.epg-crow .epg-toggle:focus-visible { outline: 2px solid var(--epg-accent-light); outline-offset: 1px; }
+@media (max-width: 880px) {
+  .epg-crow { grid-template-columns: 26px 108px minmax(0, 1fr) auto; }
+  .epg-crow .epg-col-genre, .epg-crow .epg-col-dur { display: none; }
+}
+
 /* RASTER (zweiter Modus): Senderspalte und Zeitleiste sticky, Blöcke absolut positioniert */
 .epg-grid-scroll { flex: 1; min-height: 0; overflow: auto; position: relative; }
 .epg-grid-scroll[hidden] { display: none; }

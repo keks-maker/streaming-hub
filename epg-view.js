@@ -1,4 +1,4 @@
-// EPG-Programmführer (Etappe 3.3, Design B2): Kopfzeile + Tages-Tabs, LISTE, Detail-MODAL.
+// EPG-Programmführer (Etappe 3.3/3.4, Design B2): Kopfzeile + Tages-Tabs, LISTE, RASTER, KANALANSICHT, Detail-MODAL.
 //
 // Factory-Muster wie settings-view.js. Liest ausschließlich vom Main-Cache (epg:range-many
 // schlank für die Liste, epg:find für das Detail) und kennt weder den Renderer-Datenweg des alten EPG noch die
@@ -21,7 +21,10 @@ const grid = require('./lib/epg-grid.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const model = require('./epg-view-model.js');
 const gridModel = require('./epg-grid-model.js');
+const channelModel = require('./epg-channel-model.js');
 const { createGridView } = require('./epg-grid-view.js');
+const { createChannelView } = require('./epg-channel-view.js');
+const { createRowNode, updateRowNode } = require('./epg-row-dom.js');
 const { h, trapTab } = require('./epg-dom.js');
 const { genreLabel } = require('./epg-genres.js');
 
@@ -41,6 +44,7 @@ const FETCH_PARALLEL = 3;
  *   recordProgramme(ctx)   „Aufnehmen“ → bestehender Weg (Zukunftsregel, Planungsdialog)
  *   stopRecording(recId)   laufende Aufnahme stoppen
  *   openChannel(channel)   Sender im Player öffnen
+ *   sanitizeLogoUrl(url)   Logo-URL prüfen (safeResourceUrl)
  *   getMediathek(channel, title) → { label, open() } | null
  *   showPlanned()          Sprung zur Geplant-Liste
  *   onError(err)           optionale Fehlerprotokollierung;  now()  Uhr (Standard Date.now)
@@ -49,6 +53,7 @@ function createEpgView(root, deps) {
   const api = deps.api;
   const now = typeof deps.now === 'function' ? deps.now : () => Date.now();
   const viewState = model.createViewState();
+  const channelState = channelModel.createChannelState();
 
   // ── Laufzeitdaten (nur zwischen open() und close()) ──
   let isOpen = false;
@@ -84,6 +89,14 @@ function createEpgView(root, deps) {
   let confirmCtx = null;
   let mediathekOpen = null;
   let dayPin = null;
+  // Kanalansicht (3.4): Daten gelten nur, solange channelState.active
+  let channelDays = [];
+  let channelDayData = [];
+  let channelPin = null;
+  let channelSeq = 0;
+  let channelLoading = false;
+  let channelError = '';
+  let originReady = false;
 
   // ── DOM-Gerüst ──
   root.textContent = '';
@@ -147,6 +160,19 @@ function createEpgView(root, deps) {
     stateText,
     stateBtn,
   ]);
+  const channelView = createChannelView({
+    now,
+    sanitizeLogoUrl: typeof deps.sanitizeLogoUrl === 'function' ? deps.sanitizeLogoUrl : undefined,
+    getMarkers: rows => grid.matchMarkers(rows.map(model.markerSlot), markerList(), recordings, now()),
+    isSelected: id => viewState.selectedRowId === id,
+    onBack: () => exitChannel(),
+    onOpen: row => openDetail(row),
+    onToggle: (row, element) => runToggle(row, element),
+    onAction: () => refresh(),
+    onScroll: () => followChannel(),
+  });
+  const moreBtn = h('button', { className: 'epg-daytab epg-more-tab', id: 'epgChannelMore', type: 'button', text: '+ Weitere Tage' });
+  moreBtn.title = 'Tage 8–14, soweit im EPG-Cache vorhanden (Planung nur bis 8 Tage im Voraus)';
   const gridView = createGridView({
     api,
     now,
@@ -154,12 +180,12 @@ function createEpgView(root, deps) {
     isSelected: id => viewState.selectedRowId === id,
     onOpen: row => openDetail(row),
     onToggle: (row, element) => runToggle(row, element),
-    onChannelClick: typeof deps.onChannelClick === 'function' ? deps.onChannelClick : undefined,
+    onChannelClick: channel => enterChannel(channel, { returnTo: { type: 'grid-channel', key: model.epgChannelKey(channel) } }),
     sanitizeLogoUrl: typeof deps.sanitizeLogoUrl === 'function' ? deps.sanitizeLogoUrl : undefined,
     onScroll: () => followGrid(),
     onError: err => warn(err),
   });
-  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, gridView.el, stateEl]);
+  const body = h('div', { className: 'epg-body', id: 'epgBody' }, [scroll, gridView.el, stateEl, channelView.el]);
 
   // Detail-Modal
   const dTitle = h('h3', { className: 'epg-detail-title', id: 'epgDetailTitle' });
@@ -191,7 +217,13 @@ function createEpgView(root, deps) {
     type: 'button',
     hidden: true,
   });
-  const dActions = h('div', { className: 'epg-detail-actions', id: 'epgDetailActions' }, [dWatch, dMediathek]);
+  const dChannel = h('button', {
+    className: 'epg-action-btn epg-channel-btn',
+    id: 'epgDetailChannelBtn',
+    type: 'button',
+    text: 'Alle Sendungen des Senders',
+  });
+  const dActions = h('div', { className: 'epg-detail-actions', id: 'epgDetailActions' }, [dWatch, dChannel, dMediathek]);
   const modal = h(
     'div',
     {
@@ -294,85 +326,8 @@ function createEpgView(root, deps) {
 
   // ── Rendern ──
 
-  function setRowSignature(entry, sig) {
-    if (entry.sig === sig) return false;
-    entry.sig = sig;
-    return true;
-  }
-
-  function updateRow(entry, row, nowMs, marker) {
-    const info = model.rowPhase(row, nowMs);
-    const toggle = model.toggleState({ row, marker, nowMs });
-    const minutesText = info.minutesLeft ? `noch ${info.minutesLeft} min` : '';
-    const percent = Math.round(info.progress * 100);
-    const selected = viewState.selectedRowId === row.id;
-    const sig = [info.phase, minutesText, percent, marker ? marker.state : '', toggle.kind, toggle.disabled, selected].join('|');
-    if (!setRowSignature(entry, sig)) return;
-    const { el, refs } = entry;
-    el.classList.toggle('is-now', info.phase === 'now');
-    el.classList.toggle('is-past', info.phase === 'past');
-    el.classList.toggle('is-selected', selected);
-    el.dataset.phase = info.phase;
-    refs.sub.textContent = minutesText;
-    refs.bar.hidden = info.phase !== 'now';
-    refs.barFill.style.width = `${percent}%`;
-    refs.marker.dataset.state = marker ? marker.state : '';
-    refs.marker.textContent = marker ? '●' : '';
-    refs.marker.title = marker ? (marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant') : '';
-    refs.marker.setAttribute('aria-label', refs.marker.title);
-    // Vergangene Sendungen: statt des Buttons „vorbei“ (wie im Mockup); die Zukunftsregel-Meldung bleibt im Detail
-    const pastOnly = info.phase === 'past' && toggle.kind === 'record';
-    refs.toggle.hidden = pastOnly;
-    refs.pastNote.hidden = !pastOnly;
-    refs.toggle.textContent = toggle.label;
-    refs.toggle.dataset.kind = toggle.kind;
-    refs.toggle.disabled = toggle.disabled;
-    refs.toggle.title = toggle.hint;
-    refs.toggle.setAttribute(
-      'aria-label',
-      `${toggle.label.replace(/^[●✕■]\s*/, '')}: ${row.title} (${row.channel.name || row.channelKey}, ${model.clock(row.start)})`,
-    );
-  }
-
-  function createRowNode(row) {
-    const marker = h('span', { className: 'epg-marker' });
-    const time = h('span', { className: 'epg-time', text: model.clock(row.start) });
-    const timeLine = h('div', { className: 'epg-time-line' }, [time]);
-    if (row.night) timeLine.appendChild(h('span', { className: 'epg-night', text: 'Nacht', attrs: { title: 'Nach Mitternacht (Vorabend-TV-Tag)' } }));
-    const sub = h('span', { className: 'epg-time-sub' });
-    const barFill = h('span', { className: 'epg-progress-fill' });
-    const bar = h('span', { className: 'epg-progress', hidden: true }, [barFill]);
-    const timeCell = h('div', { className: 'epg-col-time' }, [timeLine, sub, bar]);
-    const channelCell = h('div', { className: 'epg-col-channel', text: row.channel.name || row.channelKey });
-    channelCell.title = row.channel.name || row.channelKey;
-    const open = h('button', { className: 'epg-row-open', type: 'button', text: row.title || '(ohne Titel)' });
-    open.title = row.title;
-    const label = genreLabel(row.genre);
-    const genreCell = h('div', { className: `epg-col-genre${label ? '' : ' is-none'}`, text: label || '–' });
-    const durCell = h('div', { className: 'epg-col-dur', text: `${model.durationMinutes(row.start, row.stop)} min` });
-    const toggle = h('button', { className: 'epg-toggle', type: 'button' });
-    const pastNote = h('span', { className: 'epg-past-note', text: 'vorbei', hidden: true });
-    const actionCell = h('div', { className: 'epg-col-action' }, [toggle, pastNote]);
-    const el = h(
-      'div',
-      { className: 'epg-list-row epg-program', attrs: { role: 'listitem' } },
-      [
-        h('div', { className: 'epg-col-mk' }, [marker]),
-        timeCell,
-        channelCell,
-        h('div', { className: 'epg-col-title' }, [open]),
-        genreCell,
-        durCell,
-        actionCell,
-      ],
-    );
-    el.dataset.rowId = row.id;
-    if (label) el.dataset.g = row.genre;
-    return { el, refs: { sub, bar, barFill, marker, toggle, pastNote, open }, sig: '' };
-  }
-
   function createNode(item) {
-    if (item.type === 'row') return createRowNode(item.row);
+    if (item.type === 'row') return createRowNode(item.row, { variant: 'list' });
     const el = h('div', { className: item.type === 'day' ? 'epg-day-head' : 'epg-now-line', attrs: { role: 'presentation' } });
     if (item.type === 'day') el.textContent = item.day.heading;
     return { el, refs: {}, sig: '' };
@@ -408,10 +363,13 @@ function createEpgView(root, deps) {
       entry.el.style.top = `${layout.offsets[i]}px`;
       entry.el.style.height = `${layout.offsets[i + 1] - layout.offsets[i]}px`;
       if (item.type === 'row') {
-        updateRow(entry, item.row, nowMs, markerByRow.get(item.row.id) || null);
+        updateRowNode(entry, item.row, { nowMs, marker: markerByRow.get(item.row.id) || null, selected: viewState.selectedRowId === item.row.id });
       } else if (item.type === 'now') {
         const text = `Jetzt ${model.clock(nowMs)} · Vergangenes liegt darüber`;
-        if (setRowSignature(entry, text)) entry.el.textContent = text;
+        if (entry.sig !== text) {
+          entry.sig = text;
+          entry.el.textContent = text;
+        }
       }
       const ref = spacer.children[j];
       if (ref !== entry.el) spacer.insertBefore(entry.el, ref || null);
@@ -423,21 +381,46 @@ function createEpgView(root, deps) {
     if (!frame) frame = window.requestAnimationFrame(renderWindow);
   }
 
+  function activeDays() {
+    return channelState.active ? channelDays : days;
+  }
+
+  function activeDayKey() {
+    return channelState.active ? channelState.dayKey : viewState.dayKey;
+  }
+
   function renderDayTabs() {
     dayTabs.textContent = '';
-    for (const day of days) {
+    const inChannel = channelState.active;
+    for (const day of activeDays()) {
       const btn = h('button', { className: 'epg-daytab', type: 'button', text: day.label });
       btn.dataset.dayKey = day.key;
       btn.title = `${model.calendarLabel(day.startMs)} (TV-Tag 05:00–05:00)`;
+      if (inChannel) {
+        const data = channelDayData.find(entry => entry.day.key === day.key);
+        // Tage ohne Sendungen bleiben anwählbar (Hinweis in der Liste), sind aber ausgegraut
+        if (data && data.empty) {
+          btn.classList.add('is-empty');
+          btn.title += ' — keine Sendungen im Cache';
+        }
+      }
       btn.addEventListener('click', () => goToDay(day.key));
       dayTabs.appendChild(btn);
+    }
+    if (inChannel && channelModel.hasMoreDays({ nowMs: now(), coverageToMs })) {
+      moreBtn.setAttribute('aria-pressed', String(channelState.extended));
+      moreBtn.classList.toggle('active', channelState.extended);
+      moreBtn.textContent = channelState.extended ? '− Weitere Tage' : '+ Weitere Tage';
+      dayTabs.appendChild(moreBtn);
     }
     syncDayTabs();
   }
 
   function syncDayTabs() {
+    const current = activeDayKey();
     for (const btn of dayTabs.children) {
-      const active = btn.dataset.dayKey === viewState.dayKey;
+      if (!btn.dataset.dayKey) continue;
+      const active = btn.dataset.dayKey === current;
       btn.classList.toggle('active', active);
       btn.setAttribute('aria-pressed', String(active));
       if (active && typeof btn.scrollIntoView === 'function') btn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -454,14 +437,21 @@ function createEpgView(root, deps) {
     standEl.textContent = `Stand ${sameDay ? '' : `${model.calendarLabel(at)} `}${model.clock(at)}`;
   }
 
+  /** Jetzt/Modus-Segment: in der Kanalansicht richtet sich „Jetzt“ nach deren Zustand, das Segment bleibt zum Zurückkehren bedienbar. */
+  function applyControls() {
+    const inChannel = channelState.active;
+    nowBtn.disabled = inChannel ? channelView.getState() !== 'ready' : !originReady;
+    modeListBtn.disabled = inChannel ? false : !originReady;
+    modeGridBtn.disabled = inChannel ? false : !originReady;
+  }
+
   function showState(next) {
     const ready = next.kind === 'ready';
+    originReady = ready;
     scroll.hidden = !(ready && viewState.mode === 'list');
     gridView.setVisible(ready && viewState.mode === 'grid');
     stateEl.hidden = ready;
-    nowBtn.disabled = !ready;
-    modeListBtn.disabled = !ready;
-    modeGridBtn.disabled = !ready;
+    applyControls();
     root.dataset.state = next.kind;
     if (ready) return;
     stateTitle.textContent = next.title;
@@ -567,6 +557,11 @@ function createEpgView(root, deps) {
     try {
       if (!(await loadStatusAndPlan(seq))) return;
       renderStand();
+      if (channelState.active) {
+        // Neuladen (epg:changed, Aktualisieren): Kanalansicht mit neuem Cache-Stand, Position bleibt
+        channelDays = channelModel.channelDays({ nowMs: now(), coverageToMs, extended: channelState.extended });
+        loadChannel();
+      }
       renderDayTabs();
       if (!viewState.dayKey || !days.some(d => d.key === viewState.dayKey)) {
         viewState.setDay(days.find(d => d.isToday)?.key || days[0]?.key || null);
@@ -650,6 +645,7 @@ function createEpgView(root, deps) {
       for (const entry of nodes.values()) entry.sig = '';
       renderWindow();
       gridView.invalidate();
+      if (channelState.active) channelView.invalidate();
       renderModal();
     } catch (err) {
       warn(err);
@@ -734,12 +730,16 @@ function createEpgView(root, deps) {
   }
 
   function syncModeUi() {
+    const inChannel = channelState.active;
     const grid_ = viewState.mode === 'grid';
-    modeListBtn.classList.toggle('active', !grid_);
-    modeGridBtn.classList.toggle('active', grid_);
-    modeListBtn.setAttribute('aria-pressed', String(!grid_));
-    modeGridBtn.setAttribute('aria-pressed', String(grid_));
-    gridTools.hidden = !grid_;
+    // in der Kanalansicht ist weder Liste noch Raster aktiv (kein dritter Segment-Button); ein Klick führt zurück
+    const listOn = !inChannel && !grid_;
+    const gridOn = !inChannel && grid_;
+    modeListBtn.classList.toggle('active', listOn);
+    modeGridBtn.classList.toggle('active', gridOn);
+    modeListBtn.setAttribute('aria-pressed', String(listOn));
+    modeGridBtn.setAttribute('aria-pressed', String(gridOn));
+    gridTools.hidden = !gridOn;
     for (const btn of zoomBtns) {
       const active = Number(btn.dataset.zoom) === viewState.zoom;
       btn.classList.toggle('active', active);
@@ -790,6 +790,10 @@ function createEpgView(root, deps) {
   }
 
   async function goToNow() {
+    if (channelState.active) {
+      channelGoToNow();
+      return;
+    }
     dayPin = null;
     if (viewState.mode === 'grid') {
       gridView.scrollToNow();
@@ -805,6 +809,10 @@ function createEpgView(root, deps) {
   }
 
   async function goToDay(dayKey) {
+    if (channelState.active) {
+      goToChannelDay(dayKey);
+      return;
+    }
     const idx = days.findIndex(d => d.key === dayKey);
     if (idx < 0) return;
     viewState.setDay(dayKey);
@@ -854,6 +862,7 @@ function createEpgView(root, deps) {
       return;
     }
     renderStand();
+    if (channelState.active) channelView.update(); // nur Fortschritt/Klassen/Kennzeichen, kein Neuaufbau
     if (!layout) return;
     if (viewState.mode === 'grid') gridView.tick();
     const next = model.buildLayout(loadedRun(), nowMs);
@@ -914,7 +923,7 @@ function createEpgView(root, deps) {
       target.focus();
       return;
     }
-    (backdrop.hidden ? (viewState.mode === 'grid' ? gridView.el : scroll) : dToggle).focus();
+    (backdrop.hidden ? (channelState.active ? channelView.list : viewState.mode === 'grid' ? gridView.el : scroll) : dToggle).focus();
   }
 
   function askConfirm(kind, title, returnTo, onYes) {
@@ -1013,6 +1022,8 @@ function createEpgView(root, deps) {
     for (const entry of nodes.values()) entry.sig = '';
     renderWindow();
     gridView.invalidate();
+    if (channelState.active) channelView.invalidate();
+    dChannel.hidden = channelState.active && channelState.key === row.channelKey; // schon in dieser Kanalansicht
     dTitle.textContent = row.title || '(ohne Titel)';
     const minutes = model.durationMinutes(row.start, row.stop);
     const genre = genreLabel(row.genre);
@@ -1034,7 +1045,7 @@ function createEpgView(root, deps) {
     });
   }
 
-  function closeDetail() {
+  function closeDetail({ restoreFocus = true } = {}) {
     if (backdrop.hidden) return;
     closeConfirm({ restoreFocus: false });
     backdrop.hidden = true;
@@ -1043,7 +1054,206 @@ function createEpgView(root, deps) {
     const rowId = viewState.selectedRowId;
     const entry = rowId ? nodes.get(`r:${rowId}`) : null;
     gridView.invalidate();
-    focusOpener(viewState.mode === 'grid' ? gridView.blockElement(rowId) : entry ? entry.refs.open : null);
+    if (!restoreFocus) return;
+    if (channelState.active) focusOpener(rowId ? channelView.rowOpenElement(rowId) : null);
+    else focusOpener(viewState.mode === 'grid' ? gridView.blockElement(rowId) : entry ? entry.refs.open : null);
+  }
+
+  // ── Kanalansicht (Etappe 3.4): Modus im Overlay, liegt über Liste/Raster ──
+  // Liste/Raster bleiben darunter unverändert bestehen (inert); Modus, Tag, Zeitanker, Zoom, Scroll-
+  // position und Auswahl werden beim Einstieg zusätzlich als Snapshot gemerkt und beim Zurück geprüft.
+  // Aufnehmen/Abbrechen/Stoppen laufen über runToggle (derselbe Weg wie Liste, Raster und Modal).
+
+  function setOriginInert(on) {
+    for (const node of [scroll, gridView.el, stateEl]) node.inert = on;
+  }
+
+  function captureOrigin(returnTo) {
+    follow();
+    return {
+      mode: viewState.mode,
+      dayKey: viewState.dayKey,
+      anchorMs: viewState.anchorMs,
+      zoom: viewState.zoom,
+      selectedRowId: viewState.selectedRowId,
+      listScrollTop: scroll.scrollTop,
+      gridScroll: { left: gridView.scrollLeft(), top: gridView.scrollTop() },
+      returnTo,
+    };
+  }
+
+  /** Element der Herkunft, das nach dem Zurück den Fokus bekommt (null → Container der Ansicht). */
+  function originFocusElement(target) {
+    if (!target) return null;
+    if (target.type === 'grid-channel') return gridView.channelElement(target.key);
+    const entry = nodes.get(`r:${target.rowId}`);
+    if (target.type === 'list-row') return entry ? entry.refs.chan : null;
+    if (viewState.mode === 'grid') return gridView.blockElement(target.rowId) || gridView.channelElement(target.rowId.slice(0, target.rowId.lastIndexOf('|')));
+    return entry ? entry.refs.open : null;
+  }
+
+  function showChannelState() {
+    const next = channelModel.deriveChannelState({
+      status,
+      loadError: channelError,
+      loading: channelLoading,
+      rowCount: channelModel.rowTotal(channelDayData),
+      hasCoverage: coverageToMs !== null,
+      channelName: channelState.meta ? channelState.meta.name : '',
+    });
+    channelView.setState(next);
+    applyControls();
+    return next;
+  }
+
+  /** Springt auf „Jetzt“ (heute) bzw. 05:00 des gewählten Tages. */
+  function positionChannel() {
+    const target = channelModel.initialTarget({ dayData: channelDayData, dayKey: channelState.dayKey, todayKey, nowMs: now() });
+    if (!target) return;
+    channelState.setDay(target.kind === 'day' ? target.dayKey : todayKey);
+    const top = channelView.scrollToTarget(target);
+    channelPin = target.kind === 'day' && top !== null ? { key: target.dayKey, top } : null;
+    syncDayTabs();
+  }
+
+  /** Aktiver Tag folgt der Scrollposition der Kanal-Liste. */
+  function followChannel() {
+    if (!channelState.active || channelView.getState() !== 'ready') return;
+    const active = channelModel.resolveActiveDay(channelView.dayTops(), channelView.scrollTop(), channelPin);
+    channelPin = active.pin;
+    if (active.key && active.key !== channelState.dayKey) {
+      channelState.setDay(active.key);
+      syncDayTabs();
+    }
+  }
+
+  function goToChannelDay(dayKey) {
+    if (!channelDays.some(d => d.key === dayKey)) return;
+    channelState.setDay(dayKey);
+    const top = channelView.scrollToDay(dayKey);
+    channelPin = top === null ? null : { key: dayKey, top };
+    syncDayTabs();
+  }
+
+  function channelGoToNow() {
+    channelPin = null;
+    const today = channelDays.find(d => d.isToday);
+    channelState.setDay(today ? today.key : null);
+    positionChannel();
+  }
+
+  async function loadChannel({ position = false } = {}) {
+    const key = channelState.key;
+    if (!key) return;
+    channelSeq += 1;
+    const seq = channelSeq;
+    const first = !channelView.hasRows();
+    channelError = '';
+    channelLoading = first;
+    if (first) showChannelState();
+    try {
+      const range = channelModel.channelRange(channelDays);
+      let slots = [];
+      if (range) {
+        const result = await api.getEpgRangeMany([key], range.fromMs, range.toMs);
+        if (seq !== channelSeq || !isOpen) return;
+        const entry = (Array.isArray(result) ? result : []).find(e => e && e.channelKey === key);
+        slots = entry && Array.isArray(entry.slots) ? entry.slots : [];
+      }
+      channelDayData = channelModel.groupByDay({ days: channelDays, slots, channelKey: key, channel: channelState.channel });
+      channelLoading = false;
+      showChannelState(); // Liste muss sichtbar sein, bevor gemessen/gescrollt wird
+      channelView.setData(channelDayData);
+      renderDayTabs();
+      if (position || first) positionChannel();
+      else followChannel();
+    } catch (err) {
+      if (seq !== channelSeq || !isOpen) return;
+      warn(err);
+      channelError = scheduleUi.ipcErrorMessage(err);
+      channelLoading = false;
+      showChannelState();
+    }
+  }
+
+  function enterChannel(channel, { returnTo = null } = {}) {
+    if (!isOpen || !channelModel.channelMeta(channel).key) return;
+    const snapshot = channelState.active ? null : captureOrigin(returnTo);
+    if (!channelState.enter(channel, snapshot)) return;
+    channelSeq += 1;
+    channelPin = null;
+    channelDayData = [];
+    channelError = '';
+    channelDays = channelModel.channelDays({ nowMs: now(), coverageToMs, extended: false });
+    channelState.setDay(todayKey || null);
+    setOriginInert(true);
+    channelView.reset();
+    channelView.setChannel(channelState.meta, channel);
+    channelView.el.hidden = false;
+    channelLoading = true;
+    showChannelState();
+    syncModeUi();
+    renderDayTabs();
+    channelView.backBtn.focus();
+    loadChannel({ position: true });
+  }
+
+  /** Herkunftszustand prüfen und wiederherstellen (Scrollposition, Zeitanker, Auswahl). */
+  function restoreOrigin(origin) {
+    if (!origin) return;
+    viewState.setDay(origin.dayKey);
+    viewState.setAnchor(origin.anchorMs);
+    viewState.setZoom(origin.zoom);
+    viewState.select(origin.selectedRowId);
+    if (origin.mode === 'grid') {
+      if (Math.abs(gridView.scrollLeft() - origin.gridScroll.left) > 1 || Math.abs(gridView.scrollTop() - origin.gridScroll.top) > 1) {
+        gridView.setScroll(origin.gridScroll);
+      }
+      gridView.invalidate();
+    } else {
+      if (Math.abs(scroll.scrollTop - origin.listScrollTop) > 1) scroll.scrollTop = origin.listScrollTop;
+      for (const entry of nodes.values()) entry.sig = '';
+      renderWindow();
+    }
+    follow();
+    syncDayTabs();
+  }
+
+  function exitChannel({ restoreFocus = true } = {}) {
+    if (!channelState.active) return false;
+    channelSeq += 1;
+    const origin = channelState.leave();
+    channelView.el.hidden = true;
+    channelView.reset();
+    channelDays = [];
+    channelDayData = [];
+    channelPin = null;
+    channelLoading = false;
+    channelError = '';
+    setOriginInert(false);
+    restoreOrigin(origin);
+    syncModeUi();
+    applyControls();
+    renderDayTabs();
+    if (restoreFocus) focusOpener(originFocusElement(origin && origin.returnTo));
+    return true;
+  }
+
+  function toggleExtended() {
+    if (!channelState.active) return;
+    const on = !channelState.extended;
+    channelState.setExtended(on);
+    channelDays = channelModel.channelDays({ nowMs: now(), coverageToMs, extended: on });
+    if (!channelDays.some(d => d.key === channelState.dayKey)) channelState.setDay(todayKey || null);
+    renderDayTabs();
+    moreBtn.focus();
+    loadChannel({ position: !on });
+  }
+
+  /** Segment Liste/Raster: in der Kanalansicht führt der Klick zurück (und wechselt ggf. den Modus). */
+  function onModeClick(mode) {
+    if (channelState.active) exitChannel({ restoreFocus: false });
+    setMode(mode);
   }
 
   // ── Ereignisse ──
@@ -1053,6 +1263,10 @@ function createEpgView(root, deps) {
     if (!rowEl) return;
     const row = rowsById.get(rowEl.dataset.rowId);
     if (!row) return;
+    if (event.target.closest('.epg-chan-link')) {
+      enterChannel(row.channel, { returnTo: { type: 'list-row', rowId: row.id } });
+      return;
+    }
     const toggleEl = event.target.closest('.epg-toggle');
     if (toggleEl) {
       runToggle(row, toggleEl);
@@ -1084,8 +1298,9 @@ function createEpgView(root, deps) {
     addHandler(window, 'resize', onResize);
     addHandler(root, 'keydown', onRootKeydown);
     addHandler(nowBtn, 'click', () => goToNow());
-    addHandler(modeListBtn, 'click', () => setMode('list'));
-    addHandler(modeGridBtn, 'click', () => setMode('grid'));
+    addHandler(modeListBtn, 'click', () => onModeClick('list'));
+    addHandler(modeGridBtn, 'click', () => onModeClick('grid'));
+    addHandler(moreBtn, 'click', () => toggleExtended());
     addHandler(jump2015Btn, 'click', () => jumpToClock(20, 15));
     addHandler(jump2200Btn, 'click', () => jumpToClock(22, 0));
     for (const btn of zoomBtns) addHandler(btn, 'click', () => setZoom(Number(btn.dataset.zoom)));
@@ -1105,6 +1320,12 @@ function createEpgView(root, deps) {
     });
     addHandler(dToggle, 'click', () => {
       if (modalRow) runToggle(modalRow, dToggle);
+    });
+    addHandler(dChannel, 'click', () => {
+      const row = modalRow;
+      if (!row) return;
+      closeDetail({ restoreFocus: false });
+      enterChannel(row.channel, { returnTo: { type: 'row', rowId: row.id } });
     });
     addHandler(dPlannedLink, 'click', () => {
       close();
@@ -1214,6 +1435,16 @@ function createEpgView(root, deps) {
     rowsById = new Map();
     layout = null;
     dayPin = null;
+    channelSeq += 1;
+    channelState.leave();
+    channelView.el.hidden = true;
+    channelView.reset();
+    setOriginInert(false);
+    channelDays = [];
+    channelDayData = [];
+    channelPin = null;
+    channelLoading = false;
+    channelError = '';
     gridView.reset();
     channelsWithEpg = new Set();
     coverageToMs = null;
@@ -1233,7 +1464,7 @@ function createEpgView(root, deps) {
     if (back && back.isConnected && typeof back.focus === 'function') back.focus();
   }
 
-  /** Esc-Kette: erst Rückfrage, dann Detail-Modal, dann Overlay. true = Taste verbraucht. */
+  /** Esc-Kette: erst Rückfrage, dann Detail-Modal, dann Kanalansicht (zurück zur Herkunft), dann Overlay. true = Taste verbraucht. */
   function handleEscape() {
     if (!isOpen) return false;
     if (!confirmEl.hidden) {
@@ -1242,6 +1473,10 @@ function createEpgView(root, deps) {
     }
     if (!backdrop.hidden) {
       closeDetail();
+      return true;
+    }
+    if (channelState.active) {
+      exitChannel();
       return true;
     }
     close();
@@ -1255,6 +1490,7 @@ function createEpgView(root, deps) {
     isOpen: () => isOpen,
     notify: setNotice,
     getState: () => viewState.snapshot(),
+    getChannelState: () => ({ active: channelState.active, key: channelState.key, dayKey: channelState.dayKey, extended: channelState.extended }),
   };
 }
 
