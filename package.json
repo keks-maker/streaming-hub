@@ -45,6 +45,9 @@
     "files": [
       "**/*",
       "!{.serena,.claude,.vscode,.idea,.github,e2e,test-results,playwright-report,coverage}{,/**}",
+      "!{docs,tests,scripts}{,/**}",
+      "!assets/screenshots{,/**}",
+      "!{.eslintrc.json,.prettierrc,eslint.config.js,.gitignore,CHANGELOG.md,README.md}",
       "!{CLAUDE.md,AGENTS.md,.update-state.json,.update-backup,.env,.env.*,.DS_Store}",
       "!**/*.log"
     ],
