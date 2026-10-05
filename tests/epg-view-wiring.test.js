@@ -45,14 +45,14 @@ test('Raster-Verdrahtung: Modus-Segment, Zoom, kein Hook-Button ohne Handler, go
   assert.match(view, /id: 'epgModeList'/);
   assert.match(view, /id: 'epgModeGrid'/);
   assert.match(view, /function setMode\(mode\)/);
-  assert.match(view, /async function goToNow\(\) \{\s*dayPin = null;/, 'W1: „Jetzt“ hebt die Tag-Bindung auf');
+  assert.match(view, /async function goToNow\(\) \{(?:\s*if \(channelState\.active\) \{\s*channelGoToNow\(\);\s*return;\s*\})?\s*dayPin = null;/, 'W1: „Jetzt“ hebt die Tag-Bindung auf');
   const gridView = read('epg-grid-view.js');
-  assert.match(gridView, /typeof deps\.onChannelClick === 'function'\s*\?/, 'Sendername nur klickbar, wenn ein Hook vorhanden ist');
-  for (const file of ['epg-grid-view.js', 'epg-grid-model.js', 'epg-dom.js', 'epg-genres.js']) {
+  assert.match(gridView, /const clickable = typeof deps\.onChannelClick === 'function';\s*const cell = clickable\s*\?/, 'Sendername nur klickbar, wenn ein Hook vorhanden ist');
+  for (const file of ['epg-grid-view.js', 'epg-grid-model.js', 'epg-dom.js', 'epg-genres.js', 'epg-row-dom.js', 'epg-channel-model.js', 'epg-channel-view.js']) {
     const src = read(file);
     assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML|tvEpgIndex|decodeEntities/.test(src), file);
   }
-  assert.ok(!/onChannelClick/.test(read('renderer.js')), 'Kanalansicht kommt erst in 3.4: kein Hook im Renderer verdrahtet');
+  assert.ok(!/onChannelClick/.test(read('renderer.js')), 'Kanalansicht ist ein Modus im Overlay: der Sendername-Hook wird in epg-view.js verdrahtet, nicht im Renderer');
 });
 
 test('Raster-Titel brechen nie mitten im Wort um (V1)', () => {
@@ -64,17 +64,21 @@ test('Raster-Titel brechen nie mitten im Wort um (V1)', () => {
 
 test('Senderlogos im Raster: gleiche Quelle und Prüfung wie die Sidebar (Kanalobjekt, safeResourceUrl), img nur per src-Property', () => {
   assert.match(read('renderer.js'), /sanitizeLogoUrl: url => safeResourceUrl\(url\)/);
-  const view = read('epg-grid-view.js');
-  assert.match(view, /resolveLogoUrl\(entry\.channel, deps\.sanitizeLogoUrl\)/);
-  assert.match(view, /img\.src = logoUrl/);
-  assert.match(view, /addEventListener\('error'/);
-  assert.match(view, /loading: 'lazy'/);
+  // Logo-Aufbau liegt in epg-dom.js (createChannelLogo) und wird von Raster UND Kanalansicht genutzt (kein Duplikat)
+  const dom = read('epg-dom.js');
+  assert.match(dom, /resolveLogoUrl\(channel, sanitizeLogoUrl\)/);
+  assert.match(dom, /img\.src = logoUrl/);
+  assert.match(dom, /addEventListener\('error'/);
+  assert.match(dom, /loading: 'lazy'/);
+  assert.match(read('epg-grid-view.js'), /createChannelLogo\(\{ name, channel: entry\.channel, sanitizeLogoUrl: deps\.sanitizeLogoUrl \}\)/);
+  assert.match(read('epg-channel-view.js'), /createChannelLogo\(\{ name: meta\.name, channel, sanitizeLogoUrl: deps\.sanitizeLogoUrl/);
+  assert.match(read('epg-view.js'), /sanitizeLogoUrl: typeof deps\.sanitizeLogoUrl === 'function' \? deps\.sanitizeLogoUrl : undefined/);
 });
 
 test('Raster bleibt ruhig: Block-Toggle nur bei geplanter/laufender Aufnahme, die Liste behält „Aufnehmen“ je Zeile', () => {
   const view = read('epg-grid-view.js');
   assert.match(view, /const show = wide && toggle\.kind !== 'record';/);
-  const list = read('epg-view.js');
+  const list = read('epg-row-dom.js');
   assert.match(list, /const pastOnly = info\.phase === 'past' && toggle\.kind === 'record';/);
   assert.ok(!/kind !== 'record'/.test(list), 'Liste zeigt weiter bei jeder Zeile den Toggle');
 });
@@ -86,5 +90,73 @@ test('Marker: geplant rot und statisch, laufend rot und pulsierend (reduced-moti
   assert.match(run, /var\(--epg-rec\)/);
   assert.match(run, /epgPulse/);
   assert.ok(!/animation/.test(css.match(/\.epg-marker\[data-state="scheduled"\] \{[^}]*\}/)[0]));
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.epg-marker\[data-state="recording"\] \{ animation: none; \}/);
+});
+
+// ── Etappe 3.4: Kanalansicht ──
+
+test('Kanalansicht: Modus im Overlay, kein dritter Segment-Button, Esc-Kette Rückfrage → Modal → Kanalmodus → Overlay', () => {
+  const view = read('epg-view.js');
+  assert.equal((view.match(/className: 'epg-seg-btn'/g) || []).length, 2, 'Segment bleibt Liste | Raster');
+  assert.ok(!/epgModeChannel/.test(view));
+  const start = view.indexOf('function handleEscape()');
+  const esc = view.slice(start, view.indexOf('return {', start));
+  const order = [esc.indexOf('closeConfirm()'), esc.indexOf('closeDetail()'), esc.indexOf('exitChannel()'), esc.indexOf('close();')];
+  assert.ok(order.every(i => i >= 0), 'alle vier Stufen vorhanden');
+  assert.deepEqual([...order].sort((a, b) => a - b), order, 'Reihenfolge der Stufen');
+  // Renderer reicht Esc nur durch (epgView.handleEscape): die Kette liegt komplett in epg-view
+  assert.match(read('renderer.js'), /if \(epgView\.handleEscape\(\)\) return true;/);
+});
+
+test('Kanalansicht: Einstiege nur Sendername (Liste, Raster) und Modal-Link, nicht Dashboard/Player/Sidebar', () => {
+  const view = read('epg-view.js');
+  assert.match(view, /event\.target\.closest\('\.epg-chan-link'\)[\s\S]*enterChannel\(row\.channel/);
+  assert.match(view, /onChannelClick: channel => enterChannel\(channel,/);
+  assert.match(view, /addHandler\(dChannel, 'click'[\s\S]*closeDetail\(\{ restoreFocus: false \}\)[\s\S]*enterChannel\(row\.channel/);
+  assert.match(view, /text: 'Alle Sendungen des Senders'/);
+  assert.equal((view.match(/enterChannel\(/g) || []).length, 4, 'Definition + drei Einstiege');
+  const rowDom = read('epg-row-dom.js');
+  assert.match(rowDom, /'aria-label': `Alle Sendungen von \$\{senderName\(row\)\}`/);
+  assert.match(rowDom, /className: 'epg-chan-link',\s*type: 'button'/, 'Button: Enter/Space nativ');
+  assert.match(read('epg-grid-view.js'), /setAttribute\('aria-label', `Alle Sendungen von \$\{name\}`\)/);
+  assert.ok(!/enterChannel|epgChannel|(?<![\w-])epg-channel/.test(read('renderer.js')), 'kein Einstieg aus Dashboard/Player/Renderer');
+});
+
+test('Kanalansicht: ein Toggle-Weg, Zeilen, Raster, Modal und Kanalansicht rufen runToggle (keine zweite Implementierung)', () => {
+  const view = read('epg-view.js');
+  assert.match(view, /onToggle: \(row, element\) => runToggle\(row, element\),\s*onAction/);
+  assert.equal((view.match(/async function runToggle\(/g) || []).length, 1);
+  assert.equal((view.match(/deps\.recordProgramme\(/g) || []).length, 1);
+  assert.equal((view.match(/deps\.stopRecording\(/g) || []).length, 1);
+  const channelView = read('epg-channel-view.js');
+  assert.ok(!/recordProgramme|stopRecording|removeSchedule|askConfirm/.test(channelView), 'Kanal-View enthält keine Aktionslogik');
+  // gleiche Darstellung (Beschriftung/Marker) für Liste und Kanalansicht
+  assert.match(channelView, /require\('\.\/epg-row-dom\.js'\)/);
+  assert.match(view, /require\('\.\/epg-row-dom\.js'\)/);
+  // der bestehende Planungsweg bleibt der einzige
+  assert.match(read('renderer.js'), /recordProgramme: programme => handleEpgRecordClick\(programme\)/);
+});
+
+test('Kanalansicht: keine toten Referenzen, jede Funktion/jedes Element ist verdrahtet, 30-s-Tick baut nichts neu', () => {
+  const view = read('epg-view.js');
+  for (const name of ['enterChannel', 'exitChannel', 'loadChannel', 'positionChannel', 'followChannel', 'goToChannelDay', 'channelGoToNow', 'toggleExtended', 'onModeClick', 'restoreOrigin', 'captureOrigin', 'originFocusElement', 'setOriginInert']) {
+    assert.ok((view.match(new RegExp(`\\b${name}\\(`, 'g')) || []).length >= 2, `${name} wird definiert und genutzt`);
+  }
+  for (const id of ['epgChannel', 'epgChannelBack', 'epgChannelList', 'epgChannelName', 'epgChannelNow', 'epgChannelState']) {
+    assert.ok(read('epg-channel-view.js').includes(`id: '${id}'`), id);
+  }
+  const tick = view.slice(view.indexOf('function tick()'), view.indexOf('// ── Zeilen- und Toggle-Aktionen'));
+  assert.match(tick, /channelView\.update\(\)/);
+  assert.ok(!/channelView\.setData|loadChannel/.test(tick), 'Tick: nur update()');
+  assert.match(read('epg-channel-view.js'), /nextSig === signature && nodes\.size > 0/, 'unveränderte Daten: kein Neuaufbau');
+  // Fokus-Falle schließt die inerte Herkunftsansicht aus
+  assert.match(read('epg-dom.js'), /closest\('\[hidden\], \[inert\]'\)/);
+});
+
+test('Kanalansicht: Layer liegt über der Herkunftsansicht, Fokusanzeige am Sendernamen, reduced-motion bleibt', () => {
+  const css = read('styles.css');
+  assert.match(css, /\.epg-channel \{[^}]*position: absolute;[^}]*inset: 0;/);
+  assert.match(css, /\.epg-crow\.is-next/);
+  assert.match(css, /\.epg-chan-link:focus-visible/);
   assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.epg-marker\[data-state="recording"\] \{ animation: none; \}/);
 });
