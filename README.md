@@ -91,7 +91,7 @@ Die Startseite bündelt die Bereiche Live-TV, Streaming, Mediatheken, Aufnahmen 
 
 ### Navigationsleiste
 
-In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken, Aufnahmen und Einstellungen.
+In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
 
 ![Navigationsleiste und Streaming-Dashboard](assets/screenshots/navbar.png)
 
@@ -103,7 +103,7 @@ Nach dem Klick auf einen Dienst wird die Webseite im Hauptbereich geladen. Deine
 
 #### Live-TV-Dashboard öffnen
 
-Wähle in der Navigationsleiste **LiveTV**. Das Dashboard zeigt geladene Sender als Kacheln, Favoriten sowie die aktuelle EPG-Programmübersicht. Über **Alle Sender** öffnest du die Senderverwaltung.
+Wähle in der Navigationsleiste **LiveTV**. Oben stehen zwei große Karten: **Programmübersicht** öffnet den Programmführer (die Statuszeile nennt den EPG-Stand und die Zahl der Favoriten), **Aufnahmen** öffnet den Aufnahmen-Bereich (die Statuszeile zeigt, wie viele Aufnahmen laufen, geplant oder fertig sind; fehlt ffmpeg, steht dort ein Hinweis). Darunter folgt eine Werkzeugleiste mit **Alle Sender**, **Senderverwaltung**, **Status** und **EPG aktualisieren**, danach die Favoriten als Kacheln. Über **Alle Sender** öffnest du die Senderliste.
 
 ![Live-TV-Dashboard mit Favoriten und aktueller Sendung](assets/screenshots/livetv-dashboard.png)
 
@@ -182,7 +182,7 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 **Laufende Aufnahme:** Oben im Player zeigt ein „REC“-Hinweis mit Laufzeit, Sender und Sendung, dass aufgenommen wird – auch wenn du den Sender wechselst. Ein Klick darauf (oder auf den roten Aufnahme-Button) öffnet die Verwaltung zum Beenden. Aufnahmen laufen weiter, wenn du das Fenster schließt: Die App bleibt dann im Tray (Symbol rot bei laufender Aufnahme) und lässt sich von dort öffnen oder die Aufnahme stoppen. Reißt die Verbindung kurz ab, versucht die App automatisch, die Aufnahme fortzusetzen; nach einem Absturz werden unvollständige Aufnahmen beim nächsten Start gerettet.
 
-**Aufnahmen ansehen:** Öffne auf der Startseite die Kachel **Aufnahmen** oder drücke `Strg` + `R`. Die Übersicht zeigt Titel, Sender, Datum, Dauer und Status jeder Aufnahme. Hier kannst du Aufnahmen abspielen und löschen. Während eine Aufnahme nach dem Beenden in das MP4-Format umgewandelt wird, siehst du den Fortschritt; fertige Aufnahmen liegen als normale MP4-Dateien im Speicherordner und lassen sich auch mit anderen Playern öffnen.
+**Aufnahmen ansehen:** Öffne im Live-TV-Dashboard die Karte **Aufnahmen**, auf der Startseite die Kachel **Aufnahmen** oder drücke `Strg` + `R`. Die Übersicht zeigt Titel, Sender, Datum, Dauer und Status jeder Aufnahme. Hier kannst du Aufnahmen abspielen und löschen. Während eine Aufnahme nach dem Beenden in das MP4-Format umgewandelt wird, siehst du den Fortschritt; fertige Aufnahmen liegen als normale MP4-Dateien im Speicherordner und lassen sich auch mit anderen Playern öffnen.
 
 ![Aufnahmen-Übersicht](assets/screenshots/aufnahmen-dashboard.png)
 
@@ -198,7 +198,7 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 ### EPG – Programmführer
 
-Klicke im Live-TV-Dashboard auf **EPG öffnen** (oder in der TV-Seitenleiste auf den EPG-Button), um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
+Klicke im Live-TV-Dashboard auf die Karte **Programmübersicht**, um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
 
 ![Programmführer als Liste mit Genre-Chips (Beispieldaten)](assets/screenshots/epg-liste.png)
 
