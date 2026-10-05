@@ -93,7 +93,7 @@ Die Startseite bündelt die Bereiche Live-TV, Streaming, Mediatheken und Einstel
 
 In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
 
-![Navigationsleiste und Streaming-Dashboard](assets/screenshots/navbar.png)
+![Navigationsleiste (LiveTV, Streaming, Mediatheken, Einstellungen) und Streaming-Dashboard](assets/screenshots/navbar.png)
 
 ### Streaming-Dienste nutzen
 
@@ -105,7 +105,7 @@ Nach dem Klick auf einen Dienst wird die Webseite im Hauptbereich geladen. Deine
 
 Wähle in der Navigationsleiste **LiveTV**. Oben stehen zwei große Karten: **Programmübersicht** öffnet den Programmführer (die Statuszeile nennt den EPG-Stand und die Zahl der Favoriten), **Aufnahmen** öffnet den Aufnahmen-Bereich (die Statuszeile zeigt, wie viele Aufnahmen laufen, geplant oder fertig sind; fehlt ffmpeg, steht dort ein Hinweis). Darunter folgt eine Werkzeugleiste mit **Senderverwaltung**, **Status** und **EPG aktualisieren**, danach die Favoriten als Kacheln.
 
-![Live-TV-Dashboard mit Favoriten und aktueller Sendung](assets/screenshots/livetv-dashboard.png)
+![Live-TV-Dashboard mit den Karten Programmübersicht und Aufnahmen, Werkzeugleiste und Favoriten (Beispieldaten)](assets/screenshots/livetv-dashboard.png)
 
 #### Sender verwalten
 
