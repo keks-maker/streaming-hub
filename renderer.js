@@ -800,10 +800,7 @@ function renderStartDashboard() {
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
-    // Fix-Set 4: Aufnahmen als eigene Kachel zwischen Mediatheken und
-    // Einstellungen; art = generiertes Kachel-Bild (assets/recordings-tile.png)
-    // im Stil der übrigen Section-Kachel-Familie.
-    { key: 'recording', label: 'Aufnahmen', icon: null, color: '#fb923c' },
+    // 3.6b: keine Kachel „Aufnahmen“ mehr (wie der NavBar-Eintrag, P21); der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
     { key: 'settings', label: 'Einstellungen', icon: null, color: '#64748b' },
   ];
   sections.forEach(section => {
@@ -812,7 +809,7 @@ function renderStartDashboard() {
     tile.type = 'button';
     tile.dataset.section = section.key;
     tile.style.setProperty('--tile-color', section.color);
-    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.key === 'recording' ? '<span class="rec-dot" aria-hidden="true"></span>' : section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
+    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
     tile.addEventListener('click', () => {
       overlayBar.classList.remove('nav-collapsed');
       showDashboard(section.key);
@@ -2332,8 +2329,8 @@ function renderRecordingsInto(listEl) {
 }
 
 // Fix-Set 4 (User-Ergänzung 01.10):
-// Bibliothekseinstieg läuft über Startdashboard-Kachel „Aufnahmen“ und den
-// Navbar-Eintrag; das alte recordings-Overlay ist entfernt.
+// Bibliothekseinstieg läuft über die Karte „Aufnahmen“ im LiveTV-Dashboard, Strg+R und das Tray-Menü;
+// das alte recordings-Overlay ist entfernt.
 function openRecordingsScreen() {
   showDashboard('recording');
 }

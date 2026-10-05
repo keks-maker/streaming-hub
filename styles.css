@@ -116,7 +116,7 @@ body {
 }
 
 .dashboard-view.start-page .dashboard-grid {
-  grid-template-columns: repeat(5, minmax(200px, 262px));
+  grid-template-columns: repeat(4, minmax(200px, 262px));
   justify-content: center;
   gap: 22px;
 }
@@ -289,23 +289,6 @@ body {
   border-radius: 50%;
   background: #1a222e;
   box-shadow: 46px 24px 0 -3px #67e8f9, 92px 48px 0 -3px #fda4af;
-}
-
-/* Aufnahmen (Fix-Set 4): Kachel-Art ist ein generiertes Bild im Stil der
-   Familie (amber, Kartenspiel + REC-Dot + Timeline) — als background-image
-   auf .dashboard-section-tile-art; die CSS-Form-Extras bleiben aus. */
-.dashboard-section-recording .dashboard-section-tile-art {
-  background: url('assets/icons/recordings-tile.png') center / cover no-repeat,
-              linear-gradient(145deg, #3c2a12, #241a12 62%, #16110c);
-}
-.dashboard-section-recording .dashboard-section-tile-art-shape,
-.dashboard-section-recording .dashboard-section-tile-art-detail { display: none; }
-.dashboard-section-recording .rec-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #f43f5e;
-  box-shadow: 0 0 14px rgba(244, 63, 94, .75), inset 0 1px 0 rgba(255,255,255,.25);
 }
 
 /* Fix-Set 4: Aufnahmen als reguläres Dashboard (kein Overlay) — Panel-Stil

@@ -212,6 +212,19 @@ test.describe('LiveTV-Hub (mit Favorit)', () => {
     await expect(status).not.toContainText('läuft', { timeout: 30_000 });
   });
 
+  test('Startdashboard ohne Aufnahmen-Kachel; Aufnahmen weiter über LiveTV-Karte und Strg+R erreichbar', async () => {
+    await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+    await expect(page.locator('#dashboardTitle')).toHaveText('Was möchtest du sehen?');
+    await expect(page.locator('.dashboard-section-tile')).toHaveCount(4);
+    await expect(page.locator('.dashboard-section-tile[data-section="recording"]')).toHaveCount(0);
+    await page.keyboard.press('Control+r');
+    await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
+    await expect(page.locator('#dashboardView')).toHaveClass(/recordings-dashboard/);
+    await openLiveTv(page);
+    await page.locator('#dashboardRecordingsOpen').click();
+    await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
+  });
+
   test('Breiten: ≥ 900 nebeneinander mit Beschreibung; < 900 kompakt; < 640 gestapelt, Werkzeuge nur Icons', async () => {
     await openLiveTv(page);
     const geometry = () =>
