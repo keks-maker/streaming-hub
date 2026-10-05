@@ -155,25 +155,17 @@ test('Isolation: userData im Temp-Verzeichnis, kein Updater-Lauf', async () => {
   }
 });
 
-test('LiveTV: Favoriten-UI (Senderliste, Favoriten-Tab, Reihenfolge) erreichbar', async () => {
+test('LiveTV: Werkzeugleiste (Senderverwaltung, Status, EPG aktualisieren); das alte „Alle Sender“-Overlay ist entfernt', async () => {
   await page.locator('.dashboard-section-tile[data-section="livetv"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
-  const manage = page.locator('#dashboardTvManage');
-  await expect(manage).toBeVisible();
-  await manage.click();
-
-  const overlay = page.locator('#tvChannelManagerOverlay');
-  await expect(overlay).toHaveClass(/open/);
-  await expect(page.locator('#tvChannelViewAll')).toHaveAttribute('aria-selected', 'true');
-
-  await page.locator('#tvChannelViewFavorites').click();
-  await expect(page.locator('#tvChannelViewFavorites')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#tvChannelViewAll')).toHaveAttribute('aria-selected', 'false');
-  await expect(page.locator('#tvFavoriteSortToggle')).toBeVisible();
-  await expect(page.locator('#tvChannelManagerList')).toBeAttached();
-
-  await page.locator('#tvChannelManagerClose').click();
-  await expect(overlay).not.toHaveClass(/open/);
+  await expect(page.locator('#dashboardTvActions .dashboard-hub-tool')).toHaveCount(3);
+  for (const id of ['dashboardTvSettings', 'dashboardTvStatusBtn', 'dashboardTvRefresh']) await expect(page.locator(`#${id}`)).toBeVisible();
+  await expect(page.locator('#dashboardTvManage, #tvChannelManagerOverlay')).toHaveCount(0);
+  // Senderverwaltung führt auf die Einstellungs-Seite „Sender“
+  await page.locator('#dashboardTvSettings').click();
+  await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
+  await expect(page.locator('#settingsTab-livetv-channels')).toHaveAttribute('aria-selected', 'true');
+  await page.locator('#overlayNav [data-section="livetv"]').click();
 });
 
 // LiveTV-Gruppe der Einstellungs-Seitenleiste aufklappen (falls zugeklappt).

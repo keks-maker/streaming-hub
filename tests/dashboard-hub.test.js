@@ -294,10 +294,10 @@ test('Ansicht: IPC-Fehler → „Status nicht verfügbar“ + Log; veraltete Ant
 test('Markup: LiveTV-Hub vorhanden, „Jetzt im TV“-Vorschau und linke TV-Sidebar entfernt', () => {
   const html = read('index.html');
   assert.ok(html.includes('id="dashboardHub"') && html.includes('id="dashboardHubCards"'));
-  for (const id of ['dashboardTvManage', 'dashboardTvSettings', 'dashboardTvStatusBtn', 'dashboardTvRefresh', 'dashboardTvStatus', 'dashboardCount']) {
+  for (const id of ['dashboardTvSettings', 'dashboardTvStatusBtn', 'dashboardTvRefresh', 'dashboardTvStatus', 'dashboardCount']) {
     assert.ok(html.includes(`id="${id}"`), `${id} fehlt`);
   }
-  for (const gone of ['id="dashboardEpg"', 'dashboardEpgList', 'dashboardEpgRefresh', 'id="dashboardEpgOpen"', 'tvSidebar', 'tv-sidebar', 'tvSearchInput']) {
+  for (const gone of ['dashboardTvManage', 'tvChannelManager', 'tvChannelView', 'tvFavoriteSortToggle', 'id="dashboardEpg"', 'dashboardEpgList', 'dashboardEpgRefresh', 'id="dashboardEpgOpen"', 'tvSidebar', 'tv-sidebar', 'tvSearchInput']) {
     assert.ok(!html.includes(gone), `index.html enthält noch ${gone}`);
   }
   // die Karte mit der ID dashboardEpgOpen entsteht in der Ansicht, nicht doppelt im Markup
@@ -307,10 +307,10 @@ test('Markup: LiveTV-Hub vorhanden, „Jetzt im TV“-Vorschau und linke TV-Side
 test('Quellcode: keine Reste der Sidebar/Vorschau in renderer.js, styles.css, preload-content.js', () => {
   const renderer = read('renderer.js');
   const css = read('styles.css');
-  for (const gone of ['tvSidebar', 'openTvSidebar', 'closeTvSidebar', 'toggleTvSidebar', 'renderDashboardEpg', 'dashboardEpgList', 'dashboardEpgRefresh', 'sidebar-close']) {
+  for (const gone of ['tvChannelManager', 'openTvChannelManager', 'closeTvChannelManager', 'dashboardTvManage', 'tvSidebar', 'openTvSidebar', 'closeTvSidebar', 'toggleTvSidebar', 'renderDashboardEpg', 'dashboardEpgList', 'dashboardEpgRefresh', 'sidebar-close']) {
     assert.ok(!renderer.includes(gone), `renderer.js enthält noch ${gone}`);
   }
-  for (const gone of ['.tv-sidebar', '.dashboard-epg', '.tv-search-input']) {
+  for (const gone of ['.tv-sidebar', '.dashboard-epg', '.tv-search-input', '.tv-channel-manager', '.tv-source-pill']) {
     assert.ok(!css.includes(gone), `styles.css enthält noch ${gone}`);
   }
   assert.ok(!read('preload-content.js').includes('sidebar-close'));

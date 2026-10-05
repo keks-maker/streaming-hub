@@ -103,7 +103,7 @@ Nach dem Klick auf einen Dienst wird die Webseite im Hauptbereich geladen. Deine
 
 #### Live-TV-Dashboard öffnen
 
-Wähle in der Navigationsleiste **LiveTV**. Oben stehen zwei große Karten: **Programmübersicht** öffnet den Programmführer (die Statuszeile nennt den EPG-Stand und die Zahl der Favoriten), **Aufnahmen** öffnet den Aufnahmen-Bereich (die Statuszeile zeigt, wie viele Aufnahmen laufen, geplant oder fertig sind; fehlt ffmpeg, steht dort ein Hinweis). Darunter folgt eine Werkzeugleiste mit **Alle Sender**, **Senderverwaltung**, **Status** und **EPG aktualisieren**, danach die Favoriten als Kacheln. Über **Alle Sender** öffnest du die Senderliste.
+Wähle in der Navigationsleiste **LiveTV**. Oben stehen zwei große Karten: **Programmübersicht** öffnet den Programmführer (die Statuszeile nennt den EPG-Stand und die Zahl der Favoriten), **Aufnahmen** öffnet den Aufnahmen-Bereich (die Statuszeile zeigt, wie viele Aufnahmen laufen, geplant oder fertig sind; fehlt ffmpeg, steht dort ein Hinweis). Darunter folgt eine Werkzeugleiste mit **Senderverwaltung**, **Status** und **EPG aktualisieren**, danach die Favoriten als Kacheln.
 
 ![Live-TV-Dashboard mit Favoriten und aktueller Sendung](assets/screenshots/livetv-dashboard.png)
 
@@ -125,7 +125,7 @@ Favoriten und Anpassungen bleiben beim Bearbeiten einer Quelle erhalten. Eine vo
 
 #### Sender auswählen
 
-Klicke eine Sender-Kachel im Live-TV-Dashboard oder einen Eintrag in der Senderverwaltung an, um den Stream zu starten. Die Senderverwaltung lässt sich über **Alle Sender** öffnen und bietet Suche sowie Gruppen.
+Klicke eine Sender-Kachel im Live-TV-Dashboard oder einen Eintrag in der Senderverwaltung an, um den Stream zu starten. Die Senderverwaltung lässt sich über **Senderverwaltung** im Live-TV-Dashboard öffnen und bietet Suche sowie Gruppen; im Programmführer wählst du über **Sender ▾** auch **Alle Sender**.
 
 #### Favoriten
 

@@ -116,8 +116,10 @@ test.describe('LiveTV-Hub (mit Favorit)', () => {
     // Statuszeilen
     await expect(page.locator('.hub-card-epg .hub-card-status')).toHaveText('EPG aktuell · 1 Favorit', { timeout: 20_000 });
     await expect(page.locator('.hub-card-recordings .hub-card-status')).toHaveText('Noch keine Aufnahmen');
-    // Werkzeugleiste (ruhig, Labels sichtbar)
-    for (const id of ['dashboardTvManage', 'dashboardTvSettings', 'dashboardTvStatusBtn', 'dashboardTvRefresh']) await expect(page.locator(`#${id}`)).toBeVisible();
+    // Werkzeugleiste (ruhig, Labels sichtbar): drei Werkzeuge, kein „Alle Sender“-Button mehr
+    await expect(page.locator('#dashboardTvActions .dashboard-hub-tool')).toHaveCount(3);
+    for (const id of ['dashboardTvSettings', 'dashboardTvStatusBtn', 'dashboardTvRefresh']) await expect(page.locator(`#${id}`)).toBeVisible();
+    await expect(page.locator('#dashboardTvManage, #tvChannelManagerOverlay')).toHaveCount(0);
     await expect(page.locator('#dashboardTvRefresh .dashboard-hub-tool-label')).toHaveText('EPG aktualisieren');
     // Vorschau „Jetzt im TV“ und linke Sidebar sind weg
     await expect(page.locator('#dashboardEpg, .dashboard-epg-row, #tvSidebar, #tvSidebarTrigger, .tv-sidebar')).toHaveCount(0);
@@ -228,7 +230,8 @@ test.describe('LiveTV-Hub (mit Favorit)', () => {
     await setWindowWidth(ctx, 600);
     expect(await geometry()).toEqual({ sameRow: false, stacked: true, hint: false, chevron: false, label: false });
     // Werkzeuge bleiben als Icons bedienbar (Name über title)
-    await expect(page.locator('#dashboardTvManage')).toHaveAttribute('title', 'Alle Sender');
+    await expect(page.locator('#dashboardTvSettings')).toHaveAttribute('title', 'Senderverwaltung');
+    await expect(page.locator('#dashboardTvRefresh')).toHaveAttribute('title', 'EPG aktualisieren');
     await setWindowWidth(ctx, 1200);
   });
 

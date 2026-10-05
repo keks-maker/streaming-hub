@@ -1653,204 +1653,6 @@ body {
   color: var(--text);
 }
 
-.tv-source-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.03);
-  color: var(--text-dim);
-  transition: all .15s;
-  user-select: none;
-}
-
-.tv-source-pill:hover {
-  background: rgba(255,255,255,0.08);
-}
-
-.tv-source-pill.active {
-  background: rgba(167,139,250,0.15);
-  border-color: rgba(167,139,250,0.3);
-  color: var(--text);
-}
-
-.tv-source-pill-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tv-epg-loading {
-  display:inline-block; font-size:10px; color:#a78bfa;
-  animation: tvEpgPulse 1s ease-in-out infinite;
-}
-@keyframes tvEpgPulse {
-  0%, 100% { opacity:.4; }
-  50% { opacity:1; }
-}
-
-.tv-channel-empty {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
-  padding: 40px 20px;
-  line-height: 1.6;
-}
-
-.tv-channel-group {
-  margin-bottom: 4px;
-}
-
-.tv-channel-group-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  cursor: pointer;
-  user-select: none;
-  transition: color .15s;
-}
-
-.tv-channel-group-header:hover {
-  color: var(--text-dim);
-}
-
-.tv-channel-group-arrow {
-  font-size: 8px;
-  transition: transform 0.2s ease;
-}
-
-.tv-channel-group-header.collapsed .tv-channel-group-arrow {
-  transform: rotate(-90deg);
-}
-
-.tv-channel-group-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.tv-channel-group-header.collapsed + .tv-channel-group-content {
-  display: none;
-}
-
-.tv-channel-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px 8px 20px;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
-  border-left: 3px solid transparent;
-}
-
-.tv-channel-item:hover {
-  background: rgba(255,255,255,0.04);
-  transform: scale(1.02);
-}
-
-.tv-channel-item.active {
-  background: rgba(167,139,250,0.1);
-  border-left-color: #a78bfa;
-}
-
-.tv-channel-logo {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  object-fit: contain;
-  background: rgba(255,255,255,0.05);
-  flex-shrink: 0;
-}
-
-.tv-channel-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.tv-channel-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.tv-channel-source-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tv-channel-epg {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 1px;
-}
-
-.tv-channel-fav {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  color: rgba(255,255,255,0.15);
-  opacity: 0;
-  transition: all .15s;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tv-channel-item:hover .tv-channel-fav {
-  opacity: 1;
-}
-
-.tv-channel-fav.active {
-  opacity: 1;
-  color: #fbbf24;
-}
-
-.tv-channel-drag {
-  width: 16px;
-  height: 16px;
-  cursor: grab;
-  color: var(--text-muted);
-  opacity: 0;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-}
-
-.tv-channel-item:hover .tv-channel-drag {
-  opacity: 1;
-}
-
-.tv-channel-item.dragging {
-  opacity: 0.4;
-  background: rgba(167,139,250,0.05);
-}
-
-.tv-channel-item.drag-over {
-  border-top: 2px solid #a78bfa;
-}
-
 /* ── TV Channel Editor Modal ── */
 
 @media (max-width:700px) {
@@ -2954,33 +2756,6 @@ body.epg-open .overlay-bar { z-index: 105; }
 .dashboard-player-close { position:absolute; top:18px; right:22px; z-index:2; width:38px; height:38px; color:#fff; font-size:28px; line-height:1; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.2); border-radius:50%; cursor:pointer; }
 .dashboard-player-close:hover,.dashboard-player-close:focus-visible { background:rgba(139,92,246,.7); outline:none; }
 
-.tv-channel-manager-overlay { position:fixed; inset:0; z-index:140; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(3,5,9,.76); backdrop-filter:blur(10px); }
-.tv-channel-manager-overlay.open { display:flex; }
-.tv-channel-manager { display:flex; width:min(900px,100%); max-height:min(820px,calc(100vh - 48px)); flex-direction:column; overflow:hidden; color:var(--text); background:rgba(17,21,29,.98); border:1px solid rgba(255,255,255,.12); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.55); }
-.tv-channel-manager-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 22px 14px; border-bottom:1px solid var(--border); }
-.tv-channel-manager-header h2 { margin:3px 0 0; font-size:24px; }
-.tv-channel-manager-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 22px; border-bottom:1px solid var(--border); }
-.tv-channel-manager-tabs { display:flex; gap:6px; }
-.tv-channel-manager-tab { padding:8px 12px; color:var(--text-dim); background:transparent; border:1px solid transparent; border-radius:8px; cursor:pointer; }
-.tv-channel-manager-tab:hover,.tv-channel-manager-tab:focus-visible,.tv-channel-manager-tab.active { color:var(--text); background:rgba(139,92,246,.16); border-color:rgba(139,92,246,.45); outline:none; }
-.tv-channel-manager-filters { display:flex; align-items:center; gap:12px; padding:14px 22px; border-bottom:1px solid var(--border); }
-.tv-channel-manager-filters .modal-input { flex:1; min-width:180px; }
-.tv-channel-manager-filters .tv-source-pills { display:flex; max-width:50%; gap:6px; overflow-x:auto; }
-.tv-channel-manager-list { min-height:180px; padding:8px 22px 22px; overflow:auto; }
-.tv-channel-manager-list .tv-channel-group { margin-top:12px; }
-.tv-channel-manager-list .tv-channel-item { min-height:54px; }
-.tv-channel-manager-list .tv-channel-fav { display:grid; width:34px; height:34px; place-items:center; padding:0; color:var(--text-dim); background:transparent; border:0; border-radius:8px; cursor:pointer; font-size:20px; }
-.tv-channel-manager-list .tv-channel-fav:hover,.tv-channel-manager-list .tv-channel-fav:focus-visible,.tv-channel-manager-list .tv-channel-fav.active { color:#fbbf24; background:rgba(251,191,36,.12); outline:none; }
-.tv-channel-manager-list .tv-channel-drag.visible { display:inline-flex; cursor:grab; }
-.tv-channel-manager-list .tv-channel-drag.visible:active { cursor:grabbing; }
-.tv-channel-manager-list .tv-channel-drag[draggable="false"] { display:none; }
-@media (max-width:700px) {
-  .tv-channel-manager-overlay { padding:10px; align-items:stretch; }
-  .tv-channel-manager { max-height:none; }
-  .tv-channel-manager-toolbar,.tv-channel-manager-filters { align-items:stretch; flex-direction:column; }
-  .tv-channel-manager-filters .tv-source-pills { max-width:none; }
-  .tv-channel-manager-list { padding:8px 12px 18px; }
-}
 @media (max-width:700px) { .dashboard-view { padding:76px 20px 32px; } .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .dashboard-tile { min-height:164px; padding:16px; } .dashboard-header { align-items:flex-start; flex-direction:column; } }
 
 .modal-overlay,.shortcuts-overlay,.history-overlay { background:rgba(3,5,9,.72); backdrop-filter:blur(14px); }
@@ -2989,7 +2764,6 @@ body.epg-open .overlay-bar { z-index: 105; }
 .modal-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(139,92,246,.14); }
 .modal-btn,.dashboard-section-action { transition:background .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease; }
 .modal-btn:focus-visible,.modal-close:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(139,92,246,.22); }
-.tv-source-pill.active,.tv-channel-item.active { background:rgba(139,92,246,.14); border-color:rgba(139,92,246,.42); }
 
 .overlay-bar {
   position: fixed;
@@ -3369,7 +3143,6 @@ body.epg-open .overlay-bar { z-index: 105; }
   .settings-chan-head { flex-wrap: wrap; }
   .settings-chan-actions { width: 100%; justify-content: flex-end; }
 }
-.tv-channel-manager-header-actions { display: flex; align-items: center; gap: 10px; }
 .settings-chan-detail-hint { font-size: 13px; color: #fbbf24; }
 
 /* ── Planung (Etappe 2a) ── */

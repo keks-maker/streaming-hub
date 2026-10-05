@@ -75,10 +75,6 @@
       <div class="dashboard-hub" id="dashboardHub" hidden>
         <div class="dashboard-hub-cards" id="dashboardHubCards"></div>
         <div class="dashboard-tv-actions dashboard-hub-toolbar" id="dashboardTvActions" role="toolbar" aria-label="LiveTV-Werkzeuge">
-          <button class="dashboard-hub-tool" id="dashboardTvManage" type="button" title="Alle Sender" aria-haspopup="dialog" aria-expanded="false">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
-            <span class="dashboard-hub-tool-label">Alle Sender</span>
-          </button>
           <button class="dashboard-hub-tool" id="dashboardTvSettings" type="button" title="Senderverwaltung">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="8" cy="18" r="2" fill="currentColor"/></svg>
             <span class="dashboard-hub-tool-label">Senderverwaltung</span>
@@ -102,33 +98,6 @@
     <div class="dashboard-player" id="dashboardPlayer" style="display:none">
       <button class="dashboard-player-close" id="dashboardPlayerClose" type="button" aria-label="Vollbild schließen">&times;</button>
       <div class="dashboard-player-stage" id="dashboardPlayerStage"></div>
-    </div>
-
-    <div class="tv-channel-manager-overlay" id="tvChannelManagerOverlay" aria-hidden="true">
-      <section class="tv-channel-manager" role="dialog" aria-modal="true" aria-labelledby="tvChannelManagerTitle">
-        <div class="tv-channel-manager-header">
-          <div>
-            <span class="dashboard-eyebrow">LiveTV</span>
-            <h2 id="tvChannelManagerTitle">Sender auswählen</h2>
-          </div>
-          <div class="tv-channel-manager-header-actions">
-            <button class="dashboard-section-action" id="tvChannelManagerSettings" type="button">Senderverwaltung</button>
-            <button class="modal-close" id="tvChannelManagerClose" type="button" aria-label="Senderliste schließen">&times;</button>
-          </div>
-        </div>
-        <div class="tv-channel-manager-toolbar">
-          <div class="tv-channel-manager-tabs" role="tablist" aria-label="Senderansicht">
-            <button class="tv-channel-manager-tab active" id="tvChannelViewAll" type="button" role="tab" aria-selected="true">Alle Sender</button>
-            <button class="tv-channel-manager-tab" id="tvChannelViewFavorites" type="button" role="tab" aria-selected="false">Favoriten</button>
-          </div>
-          <button class="dashboard-section-action" id="tvFavoriteSortToggle" type="button">Reihenfolge bearbeiten</button>
-        </div>
-        <div class="tv-channel-manager-filters">
-          <input class="modal-input" id="tvChannelManagerSearch" type="search" placeholder="Sender suchen…" autocomplete="off">
-          <div class="tv-source-pills" id="tvChannelManagerSources" aria-label="TV-Quellen"></div>
-        </div>
-        <div class="tv-channel-manager-list" id="tvChannelManagerList"></div>
-      </section>
     </div>
 
     <div class="welcome-screen" id="welcomeScreen">
