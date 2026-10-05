@@ -70,3 +70,11 @@ test('Senderlogos im Raster: gleiche Quelle und Prüfung wie die Sidebar (Kanalo
   assert.match(view, /addEventListener\('error'/);
   assert.match(view, /loading: 'lazy'/);
 });
+
+test('Raster bleibt ruhig: Block-Toggle nur bei geplanter/laufender Aufnahme, die Liste behält „Aufnehmen“ je Zeile', () => {
+  const view = read('epg-grid-view.js');
+  assert.match(view, /const show = wide && toggle\.kind !== 'record';/);
+  const list = read('epg-view.js');
+  assert.match(list, /const pastOnly = info\.phase === 'past' && toggle\.kind === 'record';/);
+  assert.ok(!/kind !== 'record'/.test(list), 'Liste zeigt weiter bei jeder Zeile den Toggle');
+});

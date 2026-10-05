@@ -244,11 +244,12 @@ function createGridView(deps) {
   const REC_SYMBOL = { record: '●', cancel: '✕', stop: '■' };
   const REC_WIDTH = 28;
 
-  /** Kleiner Toggle rechts im Block (wie im Mockup): nur bei ausreichend breiten Blöcken, nicht bei Vergangenem. */
+  /** Kleiner Toggle rechts im Block: nur bei geplanter/laufender Aufnahme und ausreichend breitem Block. */
   function updateRec(row, blockEntry, rowIndex, nowMs, marker) {
     const toggle = viewModel.toggleState({ row, marker, nowMs });
     const wide = !blockEntry.el.classList.contains('is-narrow') && parseFloat(blockEntry.el.style.width) >= model.MIN_REC_BLOCK_WIDTH;
-    const show = wide && !(toggle.kind === 'record' && viewModel.rowPhase(row, nowMs).phase === 'past');
+    // ruhiges Raster: Toggle nur bei geplanter (✕) oder laufender (■) Aufnahme; Aufnehmen läuft über Block → Modal
+    const show = wide && toggle.kind !== 'record';
     let rec = recs.get(row.id);
     blockEntry.el.classList.toggle('has-rec', show);
     if (!show) {

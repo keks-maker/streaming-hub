@@ -579,7 +579,18 @@ test.describe('Programmführer (kleine Fixture)', () => {
     const cut = await probe();
     expect(cut.textRight).toBeLessThanOrEqual(cut.blockRight + 0.5);
     await page.locator('#epgNowBtn').click();
-    // V2: bei jedem Block mit Aufnahme-Toggle endet der Textbereich vor dem Toggle
+    // V2: bei jedem Block mit Aufnahme-Toggle endet der Textbereich vor dem Toggle (Toggle gibt es nur mit Aufnahme)
+    const iso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const planned = await page.evaluate(r => window.electronAPI.addSchedule(r), {
+      channelId: 'E2E.de',
+      channelName: 'E2E Kanal',
+      tvgId: 'E2E.de',
+      sourceId: 'e2e',
+      title: slots.second.title,
+      epgStart: iso(slots.second.start),
+      epgStop: iso(slots.second.stop),
+    });
+    await expect(page.locator('.epg-block.has-rec')).toHaveCount(1);
     const overlaps = await page.evaluate(() => {
       let checked = 0;
       const bad = [];
@@ -592,7 +603,10 @@ test.describe('Programmführer (kleine Fixture)', () => {
       }
       return { checked, bad };
     });
+    expect(overlaps.checked).toBe(1);
     expect(overlaps.bad).toEqual([]);
+    await page.evaluate(id => window.electronAPI.removeSchedule(id), planned.entry.id);
+    await expect(page.locator('.epg-block.has-rec')).toHaveCount(0);
   });
 
   test('Raster: echte Senderlogos aus der Playlist (img, lazy), Fallback auf das Kürzel-Badge bei defekter oder fehlender URL', async () => {
@@ -690,26 +704,33 @@ test.describe('Programmführer (kleine Fixture)', () => {
     expect(await scheduledEntries()).toHaveLength(0);
   });
 
-  test('Raster: kleiner Aufnahme-Toggle im Block (Aufnehmen → Planungsdialog, Abbrechen mit Rückfrage), nicht bei Vergangenem', async () => {
-    const recFor = async title => {
-      const id = await block(title).getAttribute('data-block-key');
-      return page.locator(`.epg-block-rec[data-rec-key="${id}"]`);
-    };
-    await expect(block('Vergangenes Magazin')).toHaveCount(1);
-    await expect(page.locator('.epg-block-rec[data-rec-key*="|' + (slots.past.start) + '"]')).toHaveCount(0);
-    const upcoming = await recFor('Kommende Sendung');
-    await expect(upcoming).toHaveText('●');
-    await upcoming.click();
+  test('Raster: Toggle im Block nur bei geplanter/laufender Aufnahme; Aufnehmen über das Modal, Abbrechen mit Rückfrage', async () => {
+    // ohne Aufnahme: kein Punkt/Button in den Blöcken
+    await expect(page.locator('.epg-block-rec')).toHaveCount(0);
+    await expect(page.locator('.epg-block.has-rec')).toHaveCount(0);
+    // Aufnehmen: Block → Modal → Planungsdialog
+    await block('Kommende Sendung').click();
+    await page.locator('#epgDetailRecordBtn').click();
     await expect(page.locator('#recScheduleOverlay')).toHaveClass(/open/);
     await expect(page.locator('#recScheduleProg')).toHaveText('Kommende Sendung — E2E Kanal');
     await page.locator('#recScheduleConfirm').click();
     await expect(page.locator('#recScheduleOverlay')).not.toHaveClass(/open/);
+    await page.keyboard.press('Escape'); // Modal schließen
+    // jetzt erscheint der ✕-Toggle (nur dieser Block) neben dem Marker
     await expect(block('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    await expect(upcoming).toHaveText('✕');
-    await upcoming.click();
+    const id = await block('Kommende Sendung').getAttribute('data-block-key');
+    const rec = page.locator(`.epg-block-rec[data-rec-key="${id}"]`);
+    await expect(rec).toHaveText('✕');
+    await expect(page.locator('.epg-block-rec')).toHaveCount(1);
+    // Abbrechen mit Rückfrage entfernt den Toggle wieder
+    await rec.click();
     await expect(page.locator('#epgConfirm')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#epgConfirm')).toBeHidden();
+    await expect(rec).toHaveText('✕');
+    await rec.click();
     await page.locator('#epgConfirmYes').click();
-    await expect(upcoming).toHaveText('●');
+    await expect(page.locator('.epg-block-rec')).toHaveCount(0);
     await expect(block('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', '');
     expect(await scheduledEntries()).toHaveLength(0);
   });
@@ -932,7 +953,7 @@ test.describe('Programmführer (Großfixture 438 Kanäle × 10 Tage)', () => {
     let c = await counts();
     expect(c.chans).toBeLessThan(60);
     expect(c.blocks).toBeLessThan(1500);
-    // V2 auf der Großfixture (viele Blockbreiten): Toggle nur ab 90 px und nie über dem Text
+    // V2 auf der Großfixture (viele Blockbreiten): ohne Aufnahme kein Toggle, sonst nur ab 90 px und nie über dem Text
     const rec = await page.evaluate(() => {
       let withRec = 0;
       const bad = [];
@@ -948,7 +969,7 @@ test.describe('Programmführer (Großfixture 438 Kanäle × 10 Tage)', () => {
       }
       return { withRec, bad };
     });
-    expect(rec.withRec).toBeGreaterThan(10);
+    expect(rec.withRec).toBe(0); // ohne Aufnahmen kein Toggle in den Blöcken
     expect(rec.bad).toEqual([]);
     // horizontal scrollen: DOM bleibt begrenzt, Frames hängen nicht
     const scroll = await page.evaluate(async () => {
