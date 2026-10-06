@@ -230,16 +230,42 @@ function findAppBundle(root) {
   return null;
 }
 
+function evsPythonPath() {
+  return process.env.EVS_PYTHON || path.join(os.homedir(), 'evs-venv', 'bin', 'python3');
+}
+
+function isEvsAvailable() {
+  const evsPython = evsPythonPath();
+  if (!fs.existsSync(evsPython)) return false;
+  try { execFileSync(evsPython, ['-c', 'import castlabs_evs'], { stdio: 'ignore', timeout: 15000 }); return true; } catch (_) { return false; }
+}
+
+// Ohne EVS siegelt nur das ad-hoc-Siegel des Release-Bundles. Der bewusste
+// Resources/app-Symlink (-> Support-Verzeichnis) verändert das Bundle nach der
+// Signaturprüfung und macht das Siegel ungültig; daher wie install.sh (und
+// dem afterPack-Hook) ad-hoc neu signieren und ohne --strict verifizieren
+// (--strict lehnt den Symlink nach außen ab). Mit EVS bleibt die VMP-Signatur
+// (.sig-Dateien) unangetastet — dort wird nicht neu signiert.
+function resignBundleAdHoc(bundle, codesignPath = 'codesign') {
+  try {
+    execFileSync(codesignPath, ['--force', '--deep', '--sign', '-', bundle], { stdio: 'pipe', timeout: 120000 });
+  } catch (error) {
+    throw new Error(`ad-hoc codesign fehlgeschlagen: ${error.message}`);
+  }
+  try {
+    execFileSync(codesignPath, ['--verify', '--deep', bundle], { stdio: 'pipe', timeout: 120000 });
+  } catch (error) {
+    throw new Error(`codesign-Signatur nach Neusignierung ungültig: ${error.message}`);
+  }
+}
+
 function verifyMacBundle(bundle, stageRoot) {
   // Test-Ausschalter (Karte t_ea243): Tests arbeiten mit Dummys ohne echte
   // EVS/codesign-Signatur. Nur wenn dieses Env EXPLIZIT gesetzt ist, springt
   // der Gate; in Produktion bleibt fail-closed.
   if (process.env.STREAMING_HUB_UPDATER_SKIP_SIGNATURE === '1') return;
-  const evsPython = process.env.EVS_PYTHON || path.join(os.homedir(), 'evs-venv', 'bin', 'python3');
-  const evsAvailable = fs.existsSync(evsPython) && (() => {
-    try { execFileSync(evsPython, ['-c', 'import castlabs_evs'], { stdio: 'ignore', timeout: 15000 }); return true; } catch (_) { return false; }
-  })();
-  if (evsAvailable) {
+  const evsPython = evsPythonPath();
+  if (isEvsAvailable()) {
     const stage = path.join(stageRoot, 'evs-verify');
     fs.mkdirSync(stage, { recursive: true });
     fs.symlinkSync(bundle, path.join(stage, path.basename(bundle)));
@@ -343,6 +369,13 @@ function installMacBundle(bundle, supportDir, options = {}) {
       allowedAbsoluteTargets: [supportDir],
     });
     if (!gate.ok) throw new Error(`Integritätsprüfung des Staging-Bundles fehlgeschlagen: ${gate.errors.join('; ')}`);
+    // 3c) Siegel nach dem Symlink erneuern (nur ohne EVS, siehe resignBundleAdHoc).
+    //     Scheitert das, ist am Ziel noch nichts angefasst (Rollback greift nicht
+    //     nötig, alter Stand bleibt).
+    const needsResign = options.resign !== undefined
+      ? options.resign
+      : (process.platform === 'darwin' && process.env.STREAMING_HUB_UPDATER_SKIP_SIGNATURE !== '1' && !isEvsAvailable());
+    if (needsResign) resignBundleAdHoc(wrapperStaging, options.codesignPath);
     // 4) Swap: alter Stand → Rollback (rename, kein rm!), neuer Stand → Ziel.
     if (fs.existsSync(supportDir)) fs.renameSync(supportDir, rollback);
     fs.renameSync(staging, supportDir);
@@ -386,6 +419,7 @@ function installMacBundle(bundle, supportDir, options = {}) {
   } finally {
     fs.rmSync(staging, { recursive: true, force: true });
     fs.rmSync(wrapperStaging, { recursive: true, force: true });
+    fs.rmSync(wrapperStagingRoot, { recursive: true, force: true });
     if (legacyAsarDir) fs.rmSync(legacyAsarDir, { recursive: true, force: true });
   }
 }
@@ -443,4 +477,4 @@ process.on('message', async msg => {
 });
 }
 
-module.exports = { findAppBundle, installMacBundle, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };
+module.exports = { findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };
