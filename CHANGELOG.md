@@ -3,6 +3,7 @@
 ## 0.9.4 (2026-10-06) — install.sh: Release-Installation ohne EVS
 
 - Behoben: `install.sh` brach im Release-Modus ohne `castlabs_evs` mit "invalid Info.plist (plist or signature have been modified)" ab. Ursache: Das signierte Release-Bundle wird nach dem Kopieren verändert (Info.plist-Werte, `Resources/app`-Symlink, Icon); das Siegel war ungültig und wurde ohne EVS nur geprüft, nie neu erzeugt. Jetzt wird das Bundle ad-hoc neu signiert (`codesign --force --deep --sign -`, wie `scripts/evs-afterPack.js`) und danach verifiziert (ohne `--strict`, da `Resources/app` bewusst auf das Installationsverzeichnis außerhalb des Bundles zeigt).
+- Release-Modus: Info.plist-Werte und Icon werden nicht mehr angefasst, wenn das Build-Bundle sie bereits korrekt trägt (`plutil -replace` und `stage-mac-icon` nur bei Abweichung). Die VMP/EVS-Signatur bleibt dabei gültig (`verify-pkg` geprüft, auch nach der ad-hoc Neusignierung).
 - Neu: Ohne EVS warnt `install.sh`, dass DRM-Dienste (Netflix, Disney+, Prime Video) eingeschränkt sein können. Der EVS-Pfad bleibt unverändert.
 - Test: `tests/install-codesign.test.js`.
 

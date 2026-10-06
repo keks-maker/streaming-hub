@@ -452,12 +452,26 @@ else
   fi
   APP_STAGE_RESOURCES="$APP_BUNDLE_STAGE/Contents/Resources"
   APP_STAGE_PLIST="$APP_BUNDLE_STAGE/Contents/Info.plist"
-  plutil -replace CFBundleName -string "Streaming Hub" "$APP_STAGE_PLIST"
-  plutil -replace CFBundleDisplayName -string "Streaming Hub" "$APP_STAGE_PLIST"
-  plutil -replace CFBundleIdentifier -string "com.streaming-hub.app" "$APP_STAGE_PLIST"
-  plutil -replace CFBundleVersion -string "$APP_VERSION" "$APP_STAGE_PLIST"
-  plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_STAGE_PLIST"
-  plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_STAGE_PLIST"
+  # Release-Modus: Das Build-Bundle trägt Name/Identifier/Version/Kategorie/Icon
+  # bereits korrekt. Nur bei Abweichung wird die Info.plist angepasst (jede
+  # Änderung bricht das Siegel; der Nicht-Release-Pfad setzt immer).
+  PLIST_NEEDS_UPDATE=1
+  if [ "$RELEASE_MODE" = "1" ]; then
+    PLIST_NEEDS_UPDATE=0
+    for kv in "CFBundleName=Streaming Hub" "CFBundleDisplayName=Streaming Hub" \
+      "CFBundleIdentifier=com.streaming-hub.app" "CFBundleVersion=$APP_VERSION" \
+      "CFBundleShortVersionString=$APP_VERSION" "LSApplicationCategoryType=public.app-category.video"; do
+      [ "$(plutil -extract "${kv%%=*}" raw -o - "$APP_STAGE_PLIST" 2>/dev/null)" = "${kv#*=}" ] || PLIST_NEEDS_UPDATE=1
+    done
+  fi
+  if [ "$PLIST_NEEDS_UPDATE" = "1" ]; then
+    plutil -replace CFBundleName -string "Streaming Hub" "$APP_STAGE_PLIST"
+    plutil -replace CFBundleDisplayName -string "Streaming Hub" "$APP_STAGE_PLIST"
+    plutil -replace CFBundleIdentifier -string "com.streaming-hub.app" "$APP_STAGE_PLIST"
+    plutil -replace CFBundleVersion -string "$APP_VERSION" "$APP_STAGE_PLIST"
+    plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$APP_STAGE_PLIST"
+    plutil -replace LSApplicationCategoryType -string "public.app-category.video" "$APP_STAGE_PLIST"
+  fi
   rm -rf "$APP_STAGE_RESOURCES/app"
   ln -s "$APP_LINK_TARGET" "$APP_STAGE_RESOURCES/app"
   # Icon-Konsistenz: CFBundleIconFile darf nur auf eine existierende Datei in
@@ -466,11 +480,17 @@ else
   # scripts/stage-mac-icon.js (Regressionstest: tests/mac-icon-consistency.test.js).
   # Wichtig: RELEASE_INSTALL_STAGE als Quelle — nicht $APP_LINK_TARGET/$INSTALL_DIR,
   # das wird erst NACH dem Signieren ersetzt (Regression aus v0.5.18, e5def7a).
-  MAC_ICON_SCRIPT="$(pwd)/scripts/stage-mac-icon.js"
-  [ -f "$MAC_ICON_SCRIPT" ] || MAC_ICON_SCRIPT="$INSTALL_DIR/scripts/stage-mac-icon.js"
-  [ -f "$MAC_ICON_SCRIPT" ] || error "scripts/stage-mac-icon.js fehlt im Release-Paket (erwartet: $MAC_ICON_SCRIPT); Installation abgebrochen, bestehende Installation bleibt erhalten."
-  if ! node "$MAC_ICON_SCRIPT" "$APP_BUNDLE_STAGE" "$APP_LINK_TARGET" "$RELEASE_INSTALL_STAGE"; then
-    error "App-Icon konnte nicht konsistent ins Bundle gestagt werden; bestehende Installation bleibt erhalten."
+  ICON_FILE="$(plutil -extract CFBundleIconFile raw -o - "$APP_STAGE_PLIST" 2>/dev/null || true)"
+  ICON_FILE="${ICON_FILE%.icns}.icns"
+  if [ "$RELEASE_MODE" = "1" ] && [ "$ICON_FILE" != ".icns" ] && [ -f "$APP_STAGE_RESOURCES/$ICON_FILE" ]; then
+    info "Release-Bundle hat bereits ein konsistentes Icon ($ICON_FILE) — unverändert."
+  else
+    MAC_ICON_SCRIPT="$(pwd)/scripts/stage-mac-icon.js"
+    [ -f "$MAC_ICON_SCRIPT" ] || MAC_ICON_SCRIPT="$INSTALL_DIR/scripts/stage-mac-icon.js"
+    [ -f "$MAC_ICON_SCRIPT" ] || error "scripts/stage-mac-icon.js fehlt im Release-Paket (erwartet: $MAC_ICON_SCRIPT); Installation abgebrochen, bestehende Installation bleibt erhalten."
+    if ! node "$MAC_ICON_SCRIPT" "$APP_BUNDLE_STAGE" "$APP_LINK_TARGET" "$RELEASE_INSTALL_STAGE"; then
+      error "App-Icon konnte nicht konsistent ins Bundle gestagt werden; bestehende Installation bleibt erhalten."
+    fi
   fi
 
   # ------------------------------------------------------------------

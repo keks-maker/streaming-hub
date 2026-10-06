@@ -31,3 +31,9 @@ test('No-EVS-Pfad: Hinweis auf eingeschränkte DRM-Dienste', () => {
 test('Neu-Signierung läuft nach der Bundle-Veränderung (stage-mac-icon)', () => {
   assert.ok(sh.indexOf('stage-mac-icon.js"; then') < sh.indexOf('codesign --force --deep --sign -'));
 });
+
+test('Release-Modus: plutil-Replaces und Icon-Staging nur bei Abweichung', () => {
+  assert.match(sh, /PLIST_NEEDS_UPDATE/);
+  assert.match(sh, /if \[ "\$PLIST_NEEDS_UPDATE" = "1" \]; then\n\s+plutil -replace CFBundleName/);
+  assert.match(sh, /\[ "\$RELEASE_MODE" = "1" \] && \[ "\$ICON_FILE" != "\.icns" \] && \[ -f "\$APP_STAGE_RESOURCES\/\$ICON_FILE" \]/);
+});
