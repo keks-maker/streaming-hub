@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - Aufnahme Etappe 3.7
+## 0.9.3 (2026-10-06) — EPG-Datenweg im Main (Etappe 3.7)
 
 Renderer-Datenweg des EPG abgelöst (AUF-E6 / EPG-E5): Der Renderer lädt und parst keine EPG-Datei mehr; alle Verbraucher lesen den Main-Cache über IPC.
 
