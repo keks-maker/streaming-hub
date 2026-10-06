@@ -64,6 +64,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getEpgRangeMany: (channelKeys, fromMs, toMs) => ipcRenderer.invoke('epg:range-many', channelKeys, fromMs, toMs),
   searchEpg: (channelKeys, query, fromMs, toMs, limit, options) =>
     ipcRenderer.invoke('epg:search', channelKeys, query, fromMs, toMs, limit, options),
+  // Jetzt/Nächste je Kanal und Kanalliste für die Settings-Zuordnung (Etappe 3.7)
+  getEpgNowNext: channelKeys => ipcRenderer.invoke('epg:now-next', channelKeys),
+  getEpgChannels: () => ipcRenderer.invoke('epg:channels'),
   onEpgChanged: cb => {
     const handler = (_e, data) => cb(data);
     ipcRenderer.on('epg:changed', handler);

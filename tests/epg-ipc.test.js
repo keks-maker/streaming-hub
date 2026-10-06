@@ -92,7 +92,7 @@ test('IPC: epg:range/find/status/refresh liefern Daten ohne Fenster (reiner Main
   const { handlers, main } = await makeIpc();
   assert.deepEqual(
     [...handlers.keys()].sort(),
-    ['epg:find', 'epg:refresh', 'epg:range', 'epg:range-many', 'epg:search', 'epg:status'].sort(),
+    ['epg:channels', 'epg:find', 'epg:now-next', 'epg:refresh', 'epg:range', 'epg:range-many', 'epg:search', 'epg:status'].sort(),
   );
 
   const week = await handlers.get('epg:range')(main, 'ZDF.de@HD', NOW, NOW + 7 * 24 * HOUR);
