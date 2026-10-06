@@ -320,7 +320,7 @@ test('Neustart-Simulation: scheduled bleibt erhalten und startet nach Neustart; 
 
   // „App neu gestartet“: neue Instanzen auf demselben Verzeichnis, neuer Recorder ohne Jobs
   const clock = makeClock('2026-10-05T19:00:00+02:00');
-  const recorder = new FakeRecorder();
+  const recorder = new FakeRecorder({ now: clock.now });
   recorder.metas.set('rec_zombie1', { id: 'rec_zombie1', status: 'aborted' }); // recover() hat den Zombie auf aborted gesetzt
   recorder.metas.set('rec_fertig', { id: 'rec_fertig', status: 'completed', stopReason: 'stop-at' });
   const store = createScheduleStore({ dir: first.dir, now: clock.now });
@@ -348,7 +348,7 @@ test('Neustart-Simulation: scheduled bleibt erhalten und startet nach Neustart; 
 test('start()/stop(): Takt wird gesetzt und beendet (Timer sauber), Recorder-Listener entfernt', async () => {
   const cleared = [];
   const clock = makeClock();
-  const recorder = new FakeRecorder();
+  const recorder = new FakeRecorder({ now: clock.now });
   const handle = { unref() {} };
   const { dir } = makeScheduler();
   const scheduler = new Scheduler({
