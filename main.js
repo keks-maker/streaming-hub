@@ -183,6 +183,7 @@ const {
   tvSource: validateTvSource,
   tvSourceUpdates: validateTvSourceUpdates,
 } = require('./lib/input-validation.js');
+const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
 const { describeM3uFetchError } = require('./lib/m3u-fetch-error.js');
@@ -1511,6 +1512,19 @@ async function loadM3uChannels(urlOrPath) {
   return { channels, epgUrls: result.epgUrls, baseUrl };
 }
 
+// `url-tvg` aus dem M3U-Header einmalig als epgUrl der Quelle übernehmen (nur wenn keine gesetzt ist),
+// persistieren und den EPG-Sync anstoßen (broadcastTvSources → epgService.tick).
+function adoptM3uHeaderEpgUrl(sourceUrl, headerUrls) {
+  try {
+    const sources = loadTvSources();
+    if (!adoptHeaderEpgUrl(sources, sourceUrl, headerUrls, remoteHttpUrl)) return;
+    saveTvSources(sources);
+    broadcastTvSources();
+  } catch (err) {
+    logger.warn('EPG-URL aus M3U-Header konnte nicht übernommen werden:', err.message);
+  }
+}
+
 // Rückgabe: { channels, epgUrls, baseUrl } bei Erfolg, { error } bei Lade-/Eingabefehlern
 // (Netz, HTTP, Datei nicht erlaubt, ungültige Quelle). So meldet Electron abgelehnte
 // Handler nicht als rote Fehler im Terminal; der Renderer markiert die Quelle als
@@ -1518,7 +1532,9 @@ async function loadM3uChannels(urlOrPath) {
 ipcMain.handle('fetch-and-parse-m3u', async (event, urlOrPath) => {
   requireMainRenderer(event);
   try {
-    return await loadM3uChannels(urlOrPath);
+    const loaded = await loadM3uChannels(urlOrPath);
+    adoptM3uHeaderEpgUrl(urlOrPath, loaded.epgUrls);
+    return loaded;
   } catch (err) {
     // Keine URL/Zugangsdaten in Meldung oder Log (describeM3uFetchError gibt nur feste Texte aus).
     return { error: `Fehler beim Laden der M3U: ${describeM3uFetchError(err)}` };
