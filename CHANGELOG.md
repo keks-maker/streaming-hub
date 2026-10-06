@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased - Aufnahme Etappe 3.7
+
+Renderer-Datenweg des EPG abgelöst (AUF-E6 / EPG-E5): Der Renderer lädt und parst keine EPG-Datei mehr; alle Verbraucher lesen den Main-Cache über IPC.
+
+- Neue IPC (Paket A): `epg:now-next` (`getEpgNowNext(keys[])` -> `[{channelKey, current, next}]`, 1–600 Schlüssel) und `epg:channels` (`getEpgChannels()` -> `[{normId, channelId, sampleTitle}]`).
+- Renderer: Jetzt/Nächste liegen in einem Cache (`epgNowNextCache`, je Kanal `{current, next}` in ms), der aus `epg:now-next` gefüllt wird (Start, `epg:changed`, minütlich, beim Zappen frisch für den gewählten Sender); abgelaufene Sendungen werden zeitlich fortgeschrieben (`resolveNowNext`). `loadEpgData` und `collectEpgUrls` sind durch `syncEpgFromMain` ersetzt (Status über `epg:status`/`epg:refresh`, Kanalliste über `epg:channels`, läuft nie parallel, `epg:changed` frischt Dashboard und Senderverwaltung auf). Ohne EPG-URL: Status `unavailable`; ohne Daten/Netz bleiben Anzeigen leer (kein Fehlerzustand im Player).
+- Umgestellt: Dashboard-Kacheln (`getCurrentEpg`), Auto-Stopp „bis Sendungsende“ und Aufnahme-Titel (`epgListForChannel`), Zapping/Senderkontext (`buildEpgContextForChannel`, `selectTvChannel`), rechte Senderliste im Player (`channelList[].epg`), `epg-update` an `tv.html` (`buildEpgUpdateMessage`, ersetzt die zwei Duplikatblöcke in `sendEpgUpdate`/`pushEpgToTvView`; DVR-Fenster über `epg:range-many`, 3 h zurück/2 h voraus), Settings-Kanalzuordnung (`getEpgIndex` liefert jetzt ein Set der normalisierten IDs, `getEpgChannelList` die Liste aus `epg:channels`).
+- Adapter `lib/epg/renderer-adapter.js` (rein, Unit-Tests `tests/epg-renderer-adapter.test.js`): ms -> XMLTV-Zeitstring (`YYYYMMDDHHMMSS +0000`) für `tv.html` und `currentEpgStopMs`, `nowNextToMap`, `resolveNowNext`, `channelEpgKey`, `chunk`. EPG-Titel sind im Main bereits entity-dekodiert; der Renderer dekodiert nicht mehr nach und rendert Fremdtexte nur als Text.
+- Entfernt: `loadEpgData`, `tvEpgIndex`, `tvEpgData`, `tvEpgUrls`, IPC `fetch-epg` samt Preload `fetchEPG` und Main-Imports (`fetchEpgResponse`, `parseXMLTV`, `MAX_EPG_BYTES`), ESLint-Global `tvEpgIndex`. typed-core-Exporte (`parseXMLTV`, `buildEpgIndex`, `getEpgChannelList`, `epgWindow`) bleiben. Der E2E-Hook `STREAMING_HUB_EPG_FIXTURE` speist nur noch den Main-`EpgService`.
+- Verhaltensänderung: EPG-URLs aus dem M3U-Header (`url-tvg`) lädt der Renderer nicht mehr; stattdessen übernimmt der Main beim Laden einer Quelle ohne `epgUrl` die erste gültige http(s)-URL des Headers einmalig als `epgUrl` (persistiert, `lib/tvsources-header-epg.js`) und stößt den EPG-Sync an. Eine vorhandene `epgUrl` wird nie überschrieben; der `EpgService` nutzt ausschließlich die `epgUrl` der Quellen.
+- Tests angepasst: `tests/dashboard-hub.test.js`, `tests/epg-ipc.test.js`, `e2e/smoke.spec.js`, `e2e/schedule.spec.js`, `scripts/test-u-scrubbar.cjs`.
+
 ## 0.9.2 (2026-10-06) — Fix Release-Paket
 
 - Behoben: 0.9.1 schloss `scripts/` komplett aus dem Paket aus; `install.sh` braucht im Release-Staging aber `scripts/stage-mac-icon.js` (MODULE_NOT_FOUND, Installation brach mit „App-Icon konnte nicht konsistent ins Bundle gestagt werden“ ab). `build.files` schließt jetzt nur noch die übrigen Skripte aus und behält `scripts/stage-mac-icon.js`. `docs/` und `tests/` bleiben ausgeschlossen; weitere Laufzeitabhängigkeiten auf ausgeschlossene Dateien gibt es nicht.

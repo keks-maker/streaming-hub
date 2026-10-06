@@ -27,7 +27,9 @@ test('EPG-Limit ist begrenzt und wird in main.js verwendet (kein Infinity)', () 
   assert.ok(Number.isFinite(iv.MAX_EPG_BYTES) && iv.MAX_EPG_BYTES > 0);
   const src = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf-8');
   assert.ok(!/readResponseText\([^)]*Infinity\)/.test(src));
-  assert.match(src, /readResponseText\(response, MAX_EPG_BYTES\)/);
+  // Der EPG-Download läuft nur noch im Main-EpgService (Etappe 3.7), dort mit dem begrenzten Limit
+  const service = fs.readFileSync(path.join(ROOT, 'lib/epg/EpgService.js'), 'utf-8');
+  assert.match(service, /maxBytes = MAX_EPG_BYTES/);
 });
 
 test('M3U-Zugriff: gewählte Datei und persistierte Datei-Quelle erlaubt, fremde nicht', () => {

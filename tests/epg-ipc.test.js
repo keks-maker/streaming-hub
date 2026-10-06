@@ -92,7 +92,7 @@ test('IPC: epg:range/find/status/refresh liefern Daten ohne Fenster (reiner Main
   const { handlers, main } = await makeIpc();
   assert.deepEqual(
     [...handlers.keys()].sort(),
-    ['epg:find', 'epg:refresh', 'epg:range', 'epg:range-many', 'epg:search', 'epg:status'].sort(),
+    ['epg:channels', 'epg:find', 'epg:now-next', 'epg:refresh', 'epg:range', 'epg:range-many', 'epg:search', 'epg:status'].sort(),
   );
 
   const week = await handlers.get('epg:range')(main, 'ZDF.de@HD', NOW, NOW + 7 * 24 * HOUR);
@@ -158,11 +158,10 @@ test('main.js: EpgService wird unabhängig vom Fenster/ffmpeg-Health gestartet u
   assert.match(main, /process\.env\.STREAMING_HUB_USER_DATA && process\.env\.STREAMING_HUB_EPG_FIXTURE/);
   // Start steht VOR dem ffmpeg-Health-Zweig (kein Zusammenhang mit der Aufnahme-Engine)
   assert.ok(main.indexOf('new EpgService(') < main.indexOf('const health = checkHealth(__dirname)'));
-  // geteilte Download-Validierung statt Duplikat im fetch-epg-Handler
-  assert.match(main, /const response = await fetchEpgResponse\(url(, epgFixtureFetch \? \{ fetchImpl: epgFixtureFetch \} : undefined)?\)/);
+  // Der Renderer lädt/parst kein EPG mehr: kein fetch-epg-Handler, kein parseXMLTV im Main (Etappe 3.7)
+  assert.ok(!/fetch-epg|fetchEpgResponse|parseXMLTV/.test(main), 'fetch-epg ist entfernt');
   assert.match(main, /epgService\.stop\(\)/, 'Dienst wird beim Beenden gestoppt');
-  // Renderer-EPG bleibt unverändert: fetch-epg-Handler und parseXMLTV bestehen weiter
-  assert.match(main, /ipcMain\.handle\('fetch-epg'/);
+  assert.ok(!/fetchEPG/.test(read('preload.js')), 'fetchEPG ist aus dem Preload entfernt');
 });
 
 test('Sicherheit: EPG-Module rendern nichts per innerHTML', () => {

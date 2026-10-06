@@ -1,22 +1,19 @@
 // v0.3.9. – Fix: Zurück innerhalb eines Dienstes (did-navigate-in-page-Tracking) + TV-Zustand mit Kanal-ID
 const {
   escapeHtml,
-  decodeEntities,
   normalizeUrl,
   formatTimestamp,
   parseEpgTime,
   formatEpgTime,
-  buildEpgIndex,
-  getEpgChannelList,
   getMediathekForChannel,
   isFavorite,
   buildChannelList,
   getNextChannelId,
   applyChannelOverrides,
   applySortOrder,
-  selectEpgWindowEntries,
 } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
+const epgAdapter = require('./lib/epg/renderer-adapter.js');
 const { createSettingsView } = require('./settings-view.js');
 const { createEpgView } = require('./epg-view.js');
 const { createTvSourcesView } = require('./settings-tv-sources.js');
@@ -54,7 +51,6 @@ let currentDashboardGroup = null;
 // TV state
 let tvSources = [];
 let tvChannels = [];
-let tvEpgData = [];
 let tvActiveChannelId = null;
 let tvEpgRefreshing = false;
 let tvSourcesRefreshing = false;
@@ -63,11 +59,12 @@ let tvEpgStatus = 'idle';
 let tvEpgLoadedAt = null;
 let settingsTvSourcesView = null;
 let settingsTvChannelsView = null;
-let settingsEpgListCache = { index: null, list: [] };
 let tvSourceErrors = [];
 let tvEpgErrors = [];
-let tvEpgUrls = [];
-let tvEpgIndex = null; // Map<normId, epgEntry[]> für schnelle EPG-Lookups
+// EPG kommt ausschließlich aus dem Main (epg:now-next, epg:channels, epg:range-many); der Renderer lädt/parst nichts.
+let epgNowNextCache = new Map(); // normId -> { current, next } (Main-Slots in ms)
+let settingsEpgList = []; // [{ normId, channelId, sampleTitle }] für die Settings-Zuordnung
+let settingsEpgIds = null; // Set<normId> oder null (kein EPG)
 
 let tvMode = localStorage.getItem('tvMode') || 'free';
 
@@ -107,17 +104,13 @@ function updateNavRecordingIndicator() {
 }
 
 /**
- * Roh-EPG-Liste eines Kanals (XMLTV-Einträge mit start/stop-Zeitstrings) —
+ * Laufende + nächste Sendung eines Kanals aus dem Jetzt/Nächste-Cache (Einträge mit XMLTV-Zeitstrings) —
  * Basis für Auto-Stopp „bis zum Ende der Sendung“ (Konzept §3.1).
  */
 function epgListForChannel(ch) {
   if (!ch) return [];
-  const normId = id =>
-    (id || '')
-      .replace(/@[^.@]*/g, '')
-      .toLowerCase()
-      .trim();
-  return (tvEpgIndex && tvEpgIndex.get(normId(ch.tvgId))) || [];
+  const { current, next } = epgAdapter.resolveNowNext(epgNowNextCache.get(epgAdapter.channelEpgKey(ch)), Date.now());
+  return epgAdapter.slotsToXmltvEntries([current, next]);
 }
 
 /** Titel der laufenden Sendung (für Aufnahme-Metadaten). */
@@ -125,7 +118,7 @@ function currentEpgTitle(ch) {
   const now = new Date();
   const list = epgListForChannel(ch);
   const cur = list.find(e => parseEpgTime(e.start) <= now && parseEpgTime(e.stop) >= now);
-  return cur ? decodeEntities(cur.title) : '';
+  return cur ? cur.title : '';
 }
 
 /**
@@ -143,11 +136,11 @@ function buildEpgContextForChannel(ch, now = new Date()) {
   const currentIdx = epgList.findIndex(e => parseEpgTime(e.start) <= now && parseEpgTime(e.stop) >= now);
   if (currentIdx !== -1) {
     const cur = epgList[currentIdx];
-    epgTitle = decodeEntities(cur.title);
+    epgTitle = cur.title;
     epgStart = formatEpgTime(cur.start);
     epgEnd = formatEpgTime(cur.stop);
     if (currentIdx + 1 < epgList.length) {
-      epgNext = decodeEntities(epgList[currentIdx + 1].title);
+      epgNext = epgList[currentIdx + 1].title;
     }
   }
   return { epgTitle, epgStart, epgEnd, epgNext };
@@ -594,21 +587,9 @@ function renderDashboardTile(svc) {
   return tile;
 }
 
+/** Laufende Sendung {start, stop, title, genre} (ms) aus dem Jetzt/Nächste-Cache oder null. */
 function getCurrentEpg(ch) {
-  if (!tvEpgIndex) return null;
-  const normId = (ch.tvgId || '')
-    .replace(/@[^.@]*/g, '')
-    .toLowerCase()
-    .trim();
-  const entries = tvEpgIndex.get(normId) || [];
-  const now = Date.now();
-  return (
-    entries.find(entry => {
-      const start = parseEpgTime(entry.start);
-      const stop = parseEpgTime(entry.stop);
-      return start <= now && stop >= now;
-    }) || null
-  );
+  return epgAdapter.resolveNowNext(epgNowNextCache.get(epgAdapter.channelEpgKey(ch)), Date.now()).current;
 }
 
 let activePreview = null;
@@ -712,8 +693,8 @@ function startLivePreview(tile, ch, openAfterStart = false) {
 function renderLiveTvTile(ch) {
   const source = tvSources.find(item => item.id === ch.sourceId);
   const current = getCurrentEpg(ch);
-  const start = current ? parseEpgTime(current.start) : 0;
-  const stop = current ? parseEpgTime(current.stop) : 0;
+  const start = current ? current.start : 0;
+  const stop = current ? current.stop : 0;
   const now = Date.now();
   const progress = start && stop > start ? Math.min(100, Math.max(0, ((now - start) / (stop - start)) * 100)) : 0;
   const tile = document.createElement('button');
@@ -730,7 +711,7 @@ function renderLiveTvTile(ch) {
     </span>
     <span class="dashboard-tile-content">
       <span class="dashboard-tile-name">${escapeHtml(ch.name)}</span>
-      <span class="dashboard-tile-meta">${current ? escapeHtml(decodeEntities(current.title)) : 'Kein EPG verfügbar'}</span>
+      <span class="dashboard-tile-meta">${current ? escapeHtml(current.title) : 'Kein EPG verfügbar'}</span>
       ${current ? `<span class="dashboard-tv-progress"><span style="width:${progress.toFixed(1)}%"></span></span>` : ''}
     </span>
     <span class="dashboard-tile-action">Sender öffnen</span>
@@ -1494,10 +1475,10 @@ function ensureTvDataLoaded() {
   if (!tvSources.length) return;
   if (tvSourcesRefreshing || tvEpgRefreshing || tvSourceStatus === 'loading' || tvEpgStatus === 'loading') return;
   const needsChannels = tvChannels.length === 0;
-  const needsEpg = !tvEpgIndex || tvEpgStatus === 'unavailable';
+  const needsEpg = !settingsEpgIds || tvEpgStatus === 'unavailable';
   if (!needsChannels && !needsEpg) return;
-  loadTvChannels().then(result => {
-    if (!tvEpgIndex || tvEpgStatus === 'unavailable') return loadEpgData(collectEpgUrls(result.epgUrls));
+  loadTvChannels().then(() => {
+    if (!settingsEpgIds || tvEpgStatus === 'unavailable') return syncEpgFromMain();
     return null;
   });
 }
@@ -1515,7 +1496,7 @@ function renderTvStatus() {
         : `${tvChannels.length} Sender geladen`;
       if (tvEpgStatus === 'unavailable') statusText = sourceText + ' · Keine EPG-URL';
       else if (tvEpgErrors.length) statusText = sourceText + ` · EPG: ${tvEpgErrors.length} Fehler`;
-      else if (tvEpgIndex && tvEpgData.length) statusText = sourceText + ` · EPG: ${tvEpgIndex.size} Kanäle`;
+      else if (settingsEpgIds) statusText = sourceText + ` · EPG: ${settingsEpgIds.size} Kanäle`;
       else statusText = sourceText;
     }
   }
@@ -1524,15 +1505,11 @@ function renderTvStatus() {
   if (settingsTvSourcesView) settingsTvSourcesView.updateEpgInfo();
 }
 
-function collectEpgUrls(extraUrls = []) {
-  return [...new Set([...tvSources.map(s => s.epgUrl), ...tvEpgUrls, ...extraUrls].filter(Boolean))];
-}
-
 async function loadTvChannels(forceReload) {
   if (!forceReload && tvChannels.length > 0) {
     renderTvChannels();
     renderTvStatus();
-    return { epgUrls: tvEpgUrls, failedSources: [] };
+    return { failedSources: [] };
   }
   if (!tvSources.length) {
     tvOriginalChannelUrls = {};
@@ -1540,7 +1517,7 @@ async function loadTvChannels(forceReload) {
     tvSourceErrors = [];
     tvSourceStatus = 'success';
     renderTvStatus();
-    return { epgUrls: [], failedSources: [] };
+    return { failedSources: [] };
   }
 
   tvSourceStatus = 'loading';
@@ -1548,7 +1525,6 @@ async function loadTvChannels(forceReload) {
   renderTvStatus();
   const sourceChannelMap = {};
   const sourceChannelOriginalUrlMap = {};
-  const sourceEpgUrls = [];
   const results = await Promise.all(
     tvSources.map(async source => {
       try {
@@ -1559,7 +1535,6 @@ async function loadTvChannels(forceReload) {
         sourceChannelMap[source.id] = tagged;
         sourceChannelOriginalUrlMap[source.id] = Object.fromEntries(result.channels.map(ch => [ch.id, ch.url]));
         source.baseUrl = result.baseUrl || '';
-        sourceEpgUrls.push(...(result.epgUrls || []));
         return { source, ok: true };
       } catch (err) {
         logger.warn('Fehler beim Laden von', source.name, err.message);
@@ -1571,7 +1546,6 @@ async function loadTvChannels(forceReload) {
 
   tvSourceErrors = results.filter(result => !result.ok).map(result => result.source.name);
   tvOriginalChannelUrls = sourceChannelOriginalUrlMap;
-  tvEpgUrls = [...new Set(sourceEpgUrls.filter(Boolean))];
   tvChannels = [];
   tvSources.forEach(source => {
     let srcChannels = applyChannelOverrides(sourceChannelMap[source.id] || [], source);
@@ -1581,42 +1555,106 @@ async function loadTvChannels(forceReload) {
   tvSourceStatus = tvSourceErrors.length === tvSources.length ? 'error' : 'success';
   renderTvChannels();
   renderTvStatus();
-  return { epgUrls: tvEpgUrls, failedSources: tvSourceErrors };
+  return { failedSources: tvSourceErrors };
 }
 
-async function loadEpgData(urls = collectEpgUrls()) {
-  tvEpgUrls = [...new Set(urls.filter(Boolean))];
-  if (!tvEpgUrls.length) {
-    tvEpgData = [];
-    tvEpgIndex = null;
+// ── EPG-Datenweg: Main hält den Cache (EpgService); der Renderer fragt nur Ausschnitte ab ──
+
+/** Jetzt/Nächste für die Kanäle (Default: alle) frisch aus dem Main in den Cache laden. */
+async function reloadEpgNowNext(channels = tvChannels) {
+  const keys = [...new Set(channels.map(ch => epgAdapter.channelEpgKey(ch)).filter(Boolean))];
+  if (!keys.length) return;
+  try {
+    const parts = await Promise.all(
+      epgAdapter.chunk(keys, epgAdapter.NOW_NEXT_CHUNK).map(part => window.electronAPI.getEpgNowNext(part)),
+    );
+    const fresh = epgAdapter.nowNextToMap(parts.flat());
+    if (channels === tvChannels) epgNowNextCache = fresh;
+    else fresh.forEach((value, key) => epgNowNextCache.set(key, value));
+  } catch (err) {
+    logger.warn('Jetzt/Nächste nicht verfügbar:', err.message);
+  }
+}
+
+async function reloadSettingsEpgList() {
+  try {
+    settingsEpgList = (await window.electronAPI.getEpgChannels()) || [];
+  } catch (err) {
+    logger.warn('EPG-Kanalliste nicht verfügbar:', err.message);
+    settingsEpgList = [];
+  }
+  settingsEpgIds = settingsEpgList.length ? new Set(settingsEpgList.map(entry => entry.normId)) : null;
+}
+
+let epgSyncRunning = false;
+let epgSyncAgain = false;
+let epgSyncForceAgain = false;
+
+/**
+ * Stand des Main-EPG in den Renderer übernehmen (Status, Kanalliste, Jetzt/Nächste) und die Anzeigen auffrischen.
+ * forceRefresh: Main lädt die Quellen neu (epg:refresh), sonst nur der vorhandene Cache. Läuft nie parallel
+ * (ein Nachlauf, falls währenddessen epg:changed kam).
+ */
+async function syncEpgFromMain({ forceRefresh = false } = {}) {
+  if (epgSyncRunning) {
+    epgSyncAgain = true;
+    if (forceRefresh) epgSyncForceAgain = true;
+    return;
+  }
+  epgSyncRunning = true;
+  try {
+    do {
+      epgSyncAgain = false;
+      await syncEpgFromMainOnce(forceRefresh);
+      forceRefresh = epgSyncForceAgain;
+      epgSyncForceAgain = false;
+    } while (epgSyncAgain);
+  } finally {
+    epgSyncRunning = false;
+  }
+}
+
+async function syncEpgFromMainOnce(forceRefresh) {
+  if (!tvSources.some(source => source.epgUrl)) {
+    epgNowNextCache = new Map();
+    settingsEpgList = [];
+    settingsEpgIds = null;
     tvEpgErrors = [];
     tvEpgStatus = 'unavailable';
     renderTvStatus();
-    return { loaded: 0, failed: 0 };
+    return;
   }
   tvEpgStatus = 'loading';
   tvEpgErrors = [];
   renderTvStatus();
-  const results = await Promise.all(
-    tvEpgUrls.map(async url => {
-      try {
-        return { url, data: await window.electronAPI.fetchEPG(url), ok: true };
-      } catch (error) {
-        logger.warn('Fehler beim Laden des EPG', url, error.message);
-        return { url, data: [], ok: false, error };
-      }
-    }),
-  );
-  tvEpgErrors = results.filter(result => !result.ok).map(result => result.url);
-  tvEpgData = results.flatMap(result => result.data);
-  tvEpgIndex = buildEpgIndex(tvEpgData);
-  tvEpgStatus = tvEpgErrors.length === results.length ? 'error' : 'success';
-  if (tvEpgStatus === 'success') tvEpgLoadedAt = new Date();
+  let status = null;
+  try {
+    status = forceRefresh ? await window.electronAPI.refreshEpgCache() : await window.electronAPI.getEpgStatus();
+  } catch (err) {
+    logger.warn('EPG-Status nicht verfügbar:', err.message);
+  }
+  const sources = status && Array.isArray(status.sources) ? status.sources.filter(src => src.configured) : [];
+  tvEpgErrors = sources.filter(src => src.lastError).map(src => src.url);
+  await Promise.all([reloadSettingsEpgList(), reloadEpgNowNext()]);
+  const hasData = Boolean(settingsEpgIds);
+  if (hasData) tvEpgStatus = 'success';
+  else if (tvEpgErrors.length || !status) tvEpgStatus = 'error';
+  else tvEpgStatus = status.refreshing ? 'loading' : 'idle';
+  tvEpgLoadedAt = status && status.lastSuccessAt ? new Date(status.lastSuccessAt) : null;
   renderTvChannels();
   renderTvStatus();
   if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
-  return { loaded: results.length - tvEpgErrors.length, failed: tvEpgErrors.length };
 }
+
+// Main meldet einen neuen Cache-Stand (Refresh, Quellenänderung): Anzeigen auffrischen
+window.electronAPI.onEpgChanged(() => {
+  syncEpgFromMain();
+});
+
+// Laufende Sendungen laufen ab: Cache jede Minute nachziehen (ohne Neuaufbau der Anzeigen)
+setInterval(() => {
+  if (settingsEpgIds) reloadEpgNowNext();
+}, 60 * 1000);
 
 async function refreshTvSourcesAndEpg() {
   if (tvSourcesRefreshing) return;
@@ -1624,8 +1662,8 @@ async function refreshTvSourcesAndEpg() {
   tvEpgRefreshing = true;
   renderTvStatus();
   try {
-    const sourceResult = await loadTvChannels(true);
-    await loadEpgData(collectEpgUrls(sourceResult.epgUrls));
+    await loadTvChannels(true);
+    await syncEpgFromMain({ forceRefresh: true });
   } finally {
     tvSourcesRefreshing = false;
     tvEpgRefreshing = false;
@@ -1641,7 +1679,7 @@ async function refreshEpg() {
   if (tvEpgRefreshing || tvSourcesRefreshing) return;
   tvEpgRefreshing = true;
   try {
-    await loadEpgData(collectEpgUrls());
+    await syncEpgFromMain({ forceRefresh: true });
   } finally {
     tvEpgRefreshing = false;
     renderTvStatus();
@@ -1680,35 +1718,9 @@ async function selectTvChannel(ch, options = {}) {
   if (dashboardView) dashboardView.style.display = 'none';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
-  // Find current + next EPG entry (via Index)
-  const now = new Date();
-  const normId = id =>
-    (id || '')
-      .replace(/@[^.@]*/g, '')
-      .toLowerCase()
-      .trim();
-  const chNorm = normId(ch.tvgId);
-  let epgTitle = '',
-    epgStart = '',
-    epgEnd = '',
-    epgNext = '';
-  const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
-  const currentIdx = epgList
-    ? epgList.findIndex(e => {
-        const start = parseEpgTime(e.start);
-        const stop = parseEpgTime(e.stop);
-        return start <= now && stop >= now;
-      })
-    : -1;
-  if (currentIdx !== -1) {
-    const cur = epgList[currentIdx];
-    epgTitle = decodeEntities(cur.title);
-    epgStart = formatEpgTime(cur.start);
-    epgEnd = formatEpgTime(cur.stop);
-    if (currentIdx + 1 < epgList.length) {
-      epgNext = decodeEntities(epgList[currentIdx + 1].title);
-    }
-  }
+  // Jetzt/Nächste des Kanals frisch aus dem Main holen (Cache kann bis zu einer Minute alt sein)
+  await reloadEpgNowNext([ch]);
+  const { epgTitle, epgStart, epgEnd, epgNext } = buildEpgContextForChannel(ch);
 
   // Load tv.html with channel URL as parameter (needs file:// protocol)
   const isTvPage = tvView.getURL() && tvView.getURL().includes('tv.html');
@@ -1730,23 +1742,11 @@ async function selectTvChannel(ch, options = {}) {
         const channelList = buildChannelList(ch, tvChannels, tvSources);
         const enrichedChannels = (channelList.channels || []).map(c => {
           const fullCh = tvChannels.find(tc => tc.id === c.id);
-          // Keep channel IDs consistent with the EPG index.
-          const normId = (fullCh?.tvgId || c.name || '')
-            .replace(/@[^.@]*/g, '')
-            .toLowerCase()
-            .trim();
-          const epgs = tvEpgIndex ? tvEpgIndex.get(normId) : undefined;
-          let epgTitle = '';
-          if (epgs) {
-            const now = new Date();
-            const current = epgs.find(e => {
-              const start = parseEpgTime(e.start);
-              const stop = parseEpgTime(e.stop);
-              return start <= now && stop >= now;
-            });
-            if (current) epgTitle = decodeEntities(current.title);
-          }
-          return { ...c, epg: epgTitle };
+          const { current } = epgAdapter.resolveNowNext(
+            epgNowNextCache.get(epgAdapter.channelEpgKey(fullCh || c)),
+            Date.now(),
+          );
+          return { ...c, epg: current ? current.title : '' };
         });
         msg.channelList = enrichedChannels;
         msg.channelIndex = channelList.currentIndex;
@@ -2645,54 +2645,48 @@ window.electronAPI.onShutdownWarning?.(data => {
   showTvToast((data && data.message) || 'Der Computer wird heruntergefahren — laufende Aufnahmen werden beendet.');
 });
 
-function sendEpgUpdate() {
+// Fenster der Roh-EPG-Einträge für die DVR-Marker in tv.html: 3 h zurück, 2 h voraus
+const DVR_EPG_PAST_MS = 3 * 3600 * 1000;
+const DVR_EPG_AHEAD_MS = 2 * 3600 * 1000;
+
+/**
+ * epg-update-Nachricht für tv.html: Jetzt/Nächste frisch aus dem Main plus Sendungen rund ums DVR-Fenster.
+ * tv.html erwartet XMLTV-Zeitstrings — der Adapter (lib/epg/renderer-adapter.js) wandelt die ms des Main um.
+ * Ohne EPG: leere Felder und epgEntries [] (kein Fehlerzustand im Player).
+ */
+async function buildEpgUpdateMessage(ch) {
+  const now = Date.now();
+  let entries = [];
+  try {
+    const key = epgAdapter.channelEpgKey(ch);
+    if (key) {
+      const rows = await window.electronAPI.getEpgRangeMany([key], now - DVR_EPG_PAST_MS, now + DVR_EPG_AHEAD_MS);
+      entries = epgAdapter.slotsToXmltvEntries(rows && rows[0] && rows[0].slots);
+    }
+  } catch (err) {
+    logger.warn('EPG-Fenster für den Player nicht verfügbar:', err.message);
+  }
+  await reloadEpgNowNext([ch]);
+  const ctx = buildEpgContextForChannel(ch);
+  return {
+    type: 'epg-update',
+    epg: ctx.epgTitle,
+    epgStart: ctx.epgStart,
+    epgEnd: ctx.epgEnd,
+    epgNext: ctx.epgNext,
+    dvr: dvrBarMode(),
+    epgEntries: entries,
+  };
+}
+
+async function sendEpgUpdate() {
   if (!tvActiveChannelId) return;
   const ch = tvChannels.find(c => c.id === tvActiveChannelId);
   if (!ch) return;
-  const now = new Date();
-  const normId = id =>
-    (id || '')
-      .replace(/@[^.@]*/g, '')
-      .toLowerCase()
-      .trim();
-  const chNorm = normId(ch.tvgId);
-  let epgTitle = '',
-    epgStart = '',
-    epgEnd = '',
-    epgNext = '';
-  const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
-  const currentIdx = epgList
-    ? epgList.findIndex(e => {
-        const s = parseEpgTime(e.start);
-        const t = parseEpgTime(e.stop);
-        return s <= now && t >= now;
-      })
-    : -1;
-  if (currentIdx !== -1) {
-    const cur = epgList[currentIdx];
-    epgTitle = decodeEntities(cur.title);
-    epgStart = formatEpgTime(cur.start);
-    epgEnd = formatEpgTime(cur.stop);
-    if (currentIdx + 1 < epgList.length) {
-      epgNext = decodeEntities(epgList[currentIdx + 1].title);
-    }
-  }
-  const data = {
-    type: 'epg-update',
-    epg: epgTitle,
-    epgStart: epgStart,
-    epgEnd: epgEnd,
-    epgNext: epgNext,
-    dvr: dvrBarMode(),
-    // Raw EPG für DVR-Marker (Sendungen rund um das DVR-Fenster streamen zu) —
-    // U2: Selection via typed-core (selectEpgWindowEntries, unit-getestet)
-    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(e => ({
-      title: decodeEntities(e.title),
-      start: e.start,
-      stop: e.stop,
-    })),
-  };
   try {
+    const data = await buildEpgUpdateMessage(ch);
+    // Kanal während der Abfrage gewechselt: veraltete Antwort verwerfen
+    if (tvActiveChannelId !== ch.id) return;
     tvView.send('tv-player-command', data);
   } catch (err) {
     logger.warn('sendEpgUpdate failed:', err);
@@ -2716,55 +2710,7 @@ function dvrBarMode() {
 // den 30s-Poll des Players zu warten). Der Player rendert die DVR-Marker,
 // sobald EPG + DVR-Fenster vorliegen; nicht an weitere Events gekoppelt.
 function pushEpgToTvView() {
-  if (!tvActiveChannelId) return;
-  const ch = tvChannels.find(c => c.id === tvActiveChannelId);
-  if (!ch) return;
-  const normId = id =>
-    (id || '')
-      .replace(/@[^.@]*/g, '')
-      .toLowerCase()
-      .trim();
-  const chNorm = normId(ch.tvgId);
-  const epgList = tvEpgIndex && tvEpgIndex.get(chNorm);
-  const now = new Date();
-  let epgTitle = '',
-    epgStart = '',
-    epgEnd = '',
-    epgNext = '';
-  const currentIdx = epgList
-    ? epgList.findIndex(e => {
-        const s = parseEpgTime(e.start);
-        const t = parseEpgTime(e.stop);
-        return s <= now && t >= now;
-      })
-    : -1;
-  if (currentIdx !== -1) {
-    const cur = epgList[currentIdx];
-    epgTitle = decodeEntities(cur.title);
-    epgStart = formatEpgTime(cur.start);
-    epgEnd = formatEpgTime(cur.stop);
-    if (currentIdx + 1 < epgList.length) {
-      epgNext = decodeEntities(epgList[currentIdx + 1].title);
-    }
-  }
-  const data = {
-    type: 'epg-update',
-    epg: epgTitle,
-    epgStart: epgStart,
-    epgEnd: epgEnd,
-    epgNext: epgNext,
-    dvr: dvrBarMode(),
-    epgEntries: selectEpgWindowEntries(epgList || [], now.getTime(), 3 * 3600 * 1000, 2 * 3600 * 1000).map(e => ({
-      title: decodeEntities(e.title),
-      start: e.start,
-      stop: e.stop,
-    })),
-  };
-  try {
-    tvView.send('tv-player-command', data);
-  } catch (err) {
-    logger.warn('pushEpgToTvView failed:', err);
-  }
+  return sendEpgUpdate();
 }
 
 // Webview events
@@ -3402,15 +3348,8 @@ settingsTvChannelsView = createTvChannelsView({
   getSources: () => tvSources,
   getChannels: () => tvChannels,
   getOriginalUrls: () => tvOriginalChannelUrls,
-  getEpgIndex: () => tvEpgIndex,
-  getEpgChannelList: () => {
-    // Sortierte EPG-Kanalliste je Index nur einmal berechnen (Combobox ruft sie bei jeder Eingabe ab).
-    if (!tvEpgIndex) return [];
-    if (settingsEpgListCache.index !== tvEpgIndex) {
-      settingsEpgListCache = { index: tvEpgIndex, list: getEpgChannelList(tvEpgIndex) };
-    }
-    return settingsEpgListCache.list;
-  },
+  getEpgIndex: () => settingsEpgIds,
+  getEpgChannelList: () => settingsEpgList,
   safeResourceUrl,
   safeColor,
   reload: () => loadTvChannels(true),
@@ -3515,8 +3454,8 @@ renderStartDashboard();
 // TV Sources laden
 window.electronAPI.getTvSources().then(async sources => {
   tvSources = sources;
-  const result = await loadTvChannels(true);
-  await loadEpgData(collectEpgUrls(result.epgUrls));
+  await loadTvChannels(true);
+  await syncEpgFromMain();
   if (currentDashboardGroup === 'livetv' && !currentProvider) renderDashboard('livetv');
 });
 

@@ -23,8 +23,17 @@ const { runRemux } = require('../lib/recorder/RemuxJob.js');
 
 function resolveFfmpeg() {
   if (process.env.STREAMING_HUB_FFMPEG) return process.env.STREAMING_HUB_FFMPEG;
+  // PATH zuerst, dann die vom Repo gebündelten Binaries (bin/, per ensure-ffmpeg)
+  for (const cand of ['ffmpeg', path.join(__dirname, '..', 'bin', 'ffmpeg')]) {
+    const found = probeFfmpeg(cand);
+    if (found) return found;
+  }
+  return null;
+}
+
+function probeFfmpeg(bin) {
   try {
-    const out = execFileSync('ffmpeg', ['-version'], {
+    const out = execFileSync(bin, ['-version'], {
       encoding: 'utf-8',
       timeout: 10000,
       stdio: ['ignore', 'pipe', 'ignore'],
@@ -32,13 +41,17 @@ function resolveFfmpeg() {
     // Tolerant gegen n-Präfix (git-describe-Builds wie "n9.0.1") — die App
     // selbst nutzt das gebündelte 7.0.2-static ohne Präfix.
     const m = /version\s+n?(\d+)\.(\d+)/.exec(out);
-    if (m && (Number(m[1]) > 7 || (Number(m[1]) === 7 && Number(m[2]) >= 0))) return 'ffmpeg';
+    if (m && (Number(m[1]) > 7 || (Number(m[1]) === 7 && Number(m[2]) >= 0))) return bin;
   } catch (_) {}
   return null;
 }
 
 const ffmpeg = resolveFfmpeg();
-const ffprobe = ffmpeg ? 'ffprobe' : null;
+const ffprobe = !ffmpeg
+  ? null
+  : path.isAbsolute(ffmpeg)
+    ? path.join(path.dirname(ffmpeg), 'ffprobe')
+    : 'ffprobe';
 
 function startStaticServer(rootDir) {
   const server = http.createServer((req, res) => {

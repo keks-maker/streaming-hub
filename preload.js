@@ -49,7 +49,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateTvSource: (id, updates) => ipcRenderer.invoke('update-tv-source', id, updates),
   pickM3uFile: () => ipcRenderer.invoke('pick-m3u-file'),
   fetchAndParseM3U: urlOrPath => ipcRenderer.invoke('fetch-and-parse-m3u', urlOrPath),
-  fetchEPG: url => ipcRenderer.invoke('fetch-epg', url),
   onTvSourcesChanged: cb => {
     const handler = (_e, sources) => cb(sources);
     ipcRenderer.on('tv-sources-changed', handler);
@@ -64,6 +63,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getEpgRangeMany: (channelKeys, fromMs, toMs) => ipcRenderer.invoke('epg:range-many', channelKeys, fromMs, toMs),
   searchEpg: (channelKeys, query, fromMs, toMs, limit, options) =>
     ipcRenderer.invoke('epg:search', channelKeys, query, fromMs, toMs, limit, options),
+  // Jetzt/Nächste je Kanal und Kanalliste für die Settings-Zuordnung (Etappe 3.7)
+  getEpgNowNext: channelKeys => ipcRenderer.invoke('epg:now-next', channelKeys),
+  getEpgChannels: () => ipcRenderer.invoke('epg:channels'),
   onEpgChanged: cb => {
     const handler = (_e, data) => cb(data);
     ipcRenderer.on('epg:changed', handler);
