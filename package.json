@@ -4,7 +4,7 @@
   "workspaces": [
     "packages/typed-core"
   ],
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {
@@ -16,6 +16,7 @@
     "build:dir": "electron-builder --linux dir",
     "build:linux": "electron-builder --linux AppImage",
     "build:mac": "electron-builder --mac zip",
+    "build:mac:x64": "node scripts/build-mac-x64.js",
     "build:win": "electron-builder --win portable",
     "build:dist": "electron-builder --linux AppImage --mac zip --win portable",
     "postinstall": "node node_modules/electron/install.js && node scripts/evs-dev-sign.js",
@@ -46,6 +47,7 @@
       "**/*",
       "!{.serena,.claude,.vscode,.idea,.github,e2e,test-results,playwright-report,coverage}{,/**}",
       "!{docs,tests}{,/**}",
+      "!{release,release-x64}{,/**}",
       "!scripts/**/*",
       "scripts/stage-mac-icon.js",
       "!assets/screenshots{,/**}",
