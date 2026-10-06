@@ -19,3 +19,4 @@ Weiterentwicklung/
 # Playwright E2E
 test-results/
 playwright-report/
+release-x64/

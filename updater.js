@@ -31,7 +31,10 @@ const {
   recoverStaleUpdateDirs,
 } = require('./lib/bundle-install.js');
 const os = require('os');
-const { fetchReleaseCandidates, compareVersions: cmpVersions } = require('./lib/github-releases.js');
+const { fetchReleaseCandidates, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
+
+// Release-Kategorie (Plattform+Architektur) dieses Builds; Env-Override nur fuer Tests.
+const releaseTarget = () => process.env.STREAMING_HUB_RELEASE_TARGET || targetKey();
 
 const updaterLogPath = process.env.STREAMING_HUB_UPDATER_LOG;
 function updaterLog(level, message, details) {
@@ -428,7 +431,7 @@ if (require.main === module) {
 process.on('message', async msg => {
   if (msg.type === 'check') {
     try {
-      const candidates = await fetchReleaseCandidates();
+      const candidates = await fetchReleaseCandidates(fetch, RELEASES_API_URL, releaseTarget());
       const latest = candidates[candidates.length - 1] || null;
       const currentVersion = String(msg.currentVersion || '');
       process.send({ type: 'result', latest: latest?.version || null, hasUpdate: !!latest && cmpVersions(latest.version, currentVersion) > 0 });
@@ -444,7 +447,7 @@ process.on('message', async msg => {
       updateDataDir = fs.existsSync(installDir) ? installDir : legacyAppDir;
       backupDir = `${updateDataDir}.update-backup-${process.pid}`;
       const legacyBackupDir = backupDir;
-      const candidates = await fetchReleaseCandidates();
+      const candidates = await fetchReleaseCandidates(fetch, RELEASES_API_URL, releaseTarget());
       const release = candidates.find(candidate => candidate.version === msg.version);
       if (!release) throw new Error(`Kein gültiger GitHub-Release für v${msg.version} gefunden`);
       backupUserFiles();

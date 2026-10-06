@@ -58,6 +58,57 @@ header "Streaming Hub Installer"
 # ------------------------------------------------------------------
 # OS / Arch
 # ------------------------------------------------------------------
+# >>> arch-helpers (von tests/install-arch.test.js extrahiert und ausgefuehrt)
+# Normalisiert Architektur-Namen auf arm64 | x64; leer bei unbekanntem Wert.
+normalize_arch() {
+  case "$1" in
+    arm64|aarch64) echo "arm64" ;;
+    x64|x86_64|amd64) echo "x64" ;;
+    *) echo "" ;;
+  esac
+}
+
+# Architektur des Macs (Hardware, nicht der Shell). In einer Rosetta-Shell meldet uname -m
+# x86_64 auf Apple-Silicon-Hardware; hw.optional.arm64 ist dort trotzdem 1 und korrigiert das.
+# Override fuer Tests: STREAMING_HUB_ARCH=arm64|x64.
+detect_mac_arch() {
+  local raw arch
+  if [ -n "${STREAMING_HUB_ARCH:-}" ]; then
+    arch="$(normalize_arch "$STREAMING_HUB_ARCH")"
+    [ -n "$arch" ] || return 1
+    echo "$arch"
+    return 0
+  fi
+  raw="$(uname -m)"
+  arch="$(normalize_arch "$raw")"
+  [ -n "$arch" ] || return 1
+  if [ "$arch" = "x64" ] && [ "$(sysctl -n hw.optional.arm64 2>/dev/null || true)" = "1" ]; then
+    arch="arm64"
+  fi
+  echo "$arch"
+}
+
+# Prueft, ob die Mach-O-Datei $1 (thin oder universal) Code fuer die Architektur $2 (arm64|x64) enthaelt.
+macho_matches_arch() {
+  local info token
+  case "$2" in
+    arm64) token="arm64" ;;
+    x64) token="x86_64" ;;
+    *) return 1 ;;
+  esac
+  [ -f "$1" ] || return 1
+  info="$(file -b "$1" 2>/dev/null || true)"
+  case "$info" in
+    *Mach-O*) ;;
+    *) return 1 ;;
+  esac
+  case "$info" in
+    *"$token"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+# <<< arch-helpers
+
 OS="$(uname -s)"
 MACHINE_ARCH="$(uname -m)"
 PKG_MANAGER=""
@@ -73,11 +124,7 @@ case "$OS" in
     ELECTRON_PLATFORM="linux"
     ;;
   Darwin)
-    case "$MACHINE_ARCH" in
-      x86_64|amd64) ELECTRON_ARCH="x64" ;;
-      arm64|aarch64) ELECTRON_ARCH="arm64" ;;
-      *) error "Nicht unterstützte macOS-Architektur: $MACHINE_ARCH." ;;
-    esac
+    ELECTRON_ARCH="$(detect_mac_arch)" || error "Nicht unterstützte macOS-Architektur: ${STREAMING_HUB_ARCH:-$MACHINE_ARCH} (erlaubt: arm64, x64)."
     ELECTRON_PLATFORM="darwin"
     ;;
   *)
@@ -281,9 +328,14 @@ else
   curl -fsSL "$RAW_BASE/lib/github-releases.js" -o "$RELEASE_LIB" || error "Release-Kriterien konnten nicht geladen werden."
   cat > "$RELEASE_HELPER" <<'NODE'
 'use strict';
-const { fetchReleaseCandidates } = require(process.argv[2]);
+const { fetchReleaseCandidates, resolveTarget } = require(process.argv[2]);
 const apiUrl = process.argv[3];
-fetchReleaseCandidates(fetch, apiUrl).then(candidates => {
+const target = process.argv[4];
+if (typeof resolveTarget !== 'function') {
+  console.error('Release-Kriterien sind veraltet (keine Plattform-Kategorien).');
+  process.exit(3);
+}
+fetchReleaseCandidates(fetch, apiUrl, target).then(candidates => {
   const candidate = candidates.at(-1);
   if (!candidate) process.exitCode = 2;
   else process.stdout.write(JSON.stringify(candidate));
@@ -292,17 +344,31 @@ fetchReleaseCandidates(fetch, apiUrl).then(candidates => {
   process.exitCode = 1;
 });
 NODE
-  RELEASE_JSON="$(node "$RELEASE_HELPER" "$RELEASE_LIB" "$RELEASES_API_URL")" || error "Kein gültiges GitHub-Release gefunden (draft/prerelease, Semver-Tag oder Asset fehlen). Es gibt keinen Fallback auf Git-Tags."
+  RELEASE_TARGET="darwin-$ELECTRON_ARCH"
+  RELEASE_STATUS=0
+  RELEASE_JSON="$(node "$RELEASE_HELPER" "$RELEASE_LIB" "$RELEASES_API_URL" "$RELEASE_TARGET")" || RELEASE_STATUS=$?
+  if [ "$RELEASE_STATUS" != "0" ]; then
+    if [ "$RELEASE_STATUS" = "3" ]; then
+      error "Die geladenen Release-Kriterien sind veraltet (keine Plattform-Kategorien). Es wurde nichts installiert."
+    fi
+    if [ "$RELEASE_STATUS" = "2" ] && [ "$ELECTRON_ARCH" = "x64" ]; then
+      error "Für Intel-Macs (x64) gibt es noch kein Release. Es wird bewusst kein arm64-Release installiert."
+    fi
+    error "Kein gültiges GitHub-Release für macOS $ELECTRON_ARCH gefunden (draft/prerelease, Tag oder Asset fehlen). Es gibt keinen Fallback auf Git-Tags oder andere Architekturen."
+  fi
   RELEASE_VERSION="$(node -p 'JSON.parse(process.argv[1]).version' "$RELEASE_JSON")"
   RELEASE_URL="$(node -p 'JSON.parse(process.argv[1]).asset.browserDownloadUrl' "$RELEASE_JSON")"
-  RELEASE_ZIP="$RELEASE_TMP/Streaming.Hub-${RELEASE_VERSION}-mac.zip"
+  RELEASE_ZIP="$RELEASE_TMP/$(node -p 'JSON.parse(process.argv[1]).asset.name' "$RELEASE_JSON")"
   RELEASE_STAGE="$RELEASE_TMP/extracted"
-  info "Installiere GitHub-Release v$RELEASE_VERSION …"
+  info "Installiere GitHub-Release v$RELEASE_VERSION (macOS $ELECTRON_ARCH) …"
   curl -fL --retry 3 --proto '=https' --tlsv1.2 "$RELEASE_URL" -o "$RELEASE_ZIP" || error "Release-Asset konnte nicht geladen werden."
   mkdir -p "$RELEASE_STAGE"
   unzip -q "$RELEASE_ZIP" -d "$RELEASE_STAGE" || error "Release-Asset ist kein gültiges ZIP-Archiv."
   RELEASE_APP="$(find "$RELEASE_STAGE" -type d -name '*.app' -print -quit)"
   [ -n "$RELEASE_APP" ] || error "Release-Asset enthält kein macOS-App-Bundle."
+  RELEASE_EXEC_NAME="$(plutil -extract CFBundleExecutable raw -o - "$RELEASE_APP/Contents/Info.plist" 2>/dev/null || true)"
+  RELEASE_EXEC="$RELEASE_APP/Contents/MacOS/${RELEASE_EXEC_NAME:-Streaming Hub}"
+  macho_matches_arch "$RELEASE_EXEC" "$ELECTRON_ARCH" || error "Das Release-Asset enthält kein Programm für diese Architektur ($ELECTRON_ARCH): $(file -b "$RELEASE_EXEC" 2>/dev/null || echo 'Hauptprogramm nicht lesbar'). Es wurde nichts installiert."
 
   EVS_PY="${EVS_PYTHON:-$HOME/evs-venv/bin/python3}"
   if [ ! -x "$EVS_PY" ]; then EVS_PY="$(command -v python3 || true)"; fi

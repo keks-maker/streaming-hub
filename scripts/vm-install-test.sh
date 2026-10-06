@@ -1,7 +1,7 @@
 #!/bin/bash
 # vm-install-test.sh — Install- und Update-Test von Streaming Hub in einer frischen macOS-VM (tart).
 #
-# Aufruf: scripts/vm-install-test.sh [--base nonode|node24|both] [--scenario install|update|updatenew|both|all]
+# Aufruf: scripts/vm-install-test.sh [--base nonode|node24|both] [--scenario install|update|updatenew|archcheck|both|all]
 #                                    [--from-version X.Y.Z]      (Default: both / both / 0.9.0)
 # Voraussetzung: ~/.local/bin/sh-vm (tart-Helfer), Basis-VMs base-nonode, base-node24, Netz in der VM.
 # Es läuft NUR in einem Klon (immer per trap gelöscht); die lokale Installation wird nie berührt.
@@ -24,6 +24,9 @@
 #   der App (Renderer-Dialog, process.send), EVS-Signatur (kein castlabs_evs), Neustart nach Update,
 #   GUI/Gatekeeper-Dialoge, Widevine-Wiedergabe. Base nonode: SKIP (ohne Node kein Update-Pfad).
 #
+# Archcheck (nur mit --scenario archcheck|all): siehe scenario_archcheck (Intel-Fehlermeldung des Installers).
+#   install.sh laeuft in der VM mit der lib/github-releases.js des Repo-Stands (STREAMING_HUB_RAW_BASE=file://).
+#
 # Updatenew (nur mit --scenario updatenew|all): wie Update, aber der Updater-Code des REPO-STANDS (updater.js,
 #   logger.js, lib/) wird per tar nach /tmp/newupd hochgeladen und anstelle des installierten updater.js
 #   benutzt (belegt die Fixes in 0.9.4: otool-Fallback ohne CLT, ad-hoc Re-Sign nach Resources/app-Symlink).
@@ -45,7 +48,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$BASE" in nonode|node24|both) ;; *) echo "--base: nonode|node24|both" >&2; exit 2;; esac
-case "$SCEN" in install|update|updatenew|both|all) ;; *) echo "--scenario: install|update|updatenew|both|all" >&2; exit 2;; esac
+case "$SCEN" in install|update|updatenew|archcheck|both|all) ;; *) echo "--scenario: install|update|updatenew|archcheck|both|all" >&2; exit 2;; esac
 [[ "$FROM" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "--from-version muss X.Y.Z sein" >&2; exit 2; }
 [ -x "$SHVM" ] || { echo "sh-vm fehlt: $SHVM" >&2; exit 2; }
 command -v node >/dev/null || { echo "node (Host) fehlt" >&2; exit 2; }
@@ -110,8 +113,12 @@ EOF
 
 run_install_sh() { # $1 = Log, $2 = Vorspann (Env/Server) in der VM
   "$SHVM" scp "$VM" install.sh /tmp/install.sh >/dev/null 2>&1 || { echo 99; return; }
+  # install.sh laedt lib/github-releases.js sonst von main; der Repo-Stand muss mit der passenden lib laufen.
+  "$SHVM" scp "$VM" lib/github-releases.js /tmp/github-releases.js >/dev/null 2>&1 || { echo 99; return; }
   R <<EOF >"$1"
 $PRE
+mkdir -p /tmp/rawbase/lib && cp /tmp/github-releases.js /tmp/rawbase/lib/github-releases.js
+export STREAMING_HUB_RAW_BASE=file:///tmp/rawbase
 $2
 bash /tmp/install.sh </dev/null; echo "INSTALL_EXIT=\$?"
 EOF
@@ -161,6 +168,30 @@ echo "UPDATE_EXIT=\$?"; tail -n 5 /tmp/updater.log 2>/dev/null
 EOF
 }
 
+# nc liefert die auf die Startversion gefilterte Release-Liste (Schleife, da install.sh/Node je 1 Request sendet)
+SERVE_FROM='( while true; do { printf "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %s\r\nConnection: close\r\n\r\n" "$(wc -c </tmp/from.json | tr -d " ")"; cat /tmp/from.json; } | nc -l 127.0.0.1 8123 >/dev/null 2>&1; done ) >/dev/null 2>&1 &
+sleep 1
+export STREAMING_HUB_RELEASES_API_URL=http://127.0.0.1:8123/releases'
+
+# Archcheck: arm64-Installer mit gefaelschter x64-Arch (STREAMING_HUB_ARCH) und einer Liste OHNE x64-Release
+# (nur das arm64-Release v$FROM) muss klar abbrechen, ohne das arm64-Asset zu installieren.
+scenario_archcheck() { # $1 = base
+  local b=$1 log="$WORK/arch-$1.log" ec
+  if [ "$b" = nonode ]; then record archcheck SKIP "ohne Node kein Release-Pfad" "$b"; return; fi
+  make_from "$FROM" || { record archcheck FAIL "Release v$FROM nicht gefunden" "$b"; return; }
+  "$SHVM" scp "$VM" "$WORK/from.json" /tmp/from.json >/dev/null 2>&1
+  echo "[archcheck/$b] install.sh mit STREAMING_HUB_ARCH=x64, Liste ohne x64-Release …"
+  ec="$(run_install_sh "$log" "$SERVE_FROM
+export STREAMING_HUB_ARCH=x64")"
+  R <<<'pkill -f "nc -l 127.0.0.1 8123"; true' >/dev/null
+  if [ "$ec" != 0 ] && grep -q 'Für Intel-Macs (x64) gibt es noch kein Release' "$log" && ! grep -q 'Installiere GitHub-Release' "$log" \
+     && ! R <<<'test -e "$HOME/Applications/Streaming Hub.app"' >/dev/null 2>&1; then
+    record archcheck PASS "klare Intel-Meldung (Exit $ec), kein arm64-Fallback, nichts installiert" "$b"
+  else
+    record archcheck FAIL "Exit ${ec:-?}, erwartet Intel-Abbruch ohne Installation: $(tail_log "$log")" "$b"
+  fi
+}
+
 scenario_updatenew() { MODE=new scenario_update "$1"; }
 scenario_update() { # $1 = base; MODE=new -> Updater des Repo-Stands statt des installierten
   local b=$1 log="$WORK/upd-$1.log" ec err out sc=update upre="" FROM=$FROM
@@ -172,11 +203,7 @@ scenario_update() { # $1 = base; MODE=new -> Updater des Repo-Stands statt des i
   if [ "$b" = nonode ]; then record $sc SKIP "ohne Node kein Install/Update-Pfad" "$b"; return; fi
   echo "[update/$b] v$FROM installieren (API-Override) …"
   "$SHVM" scp "$VM" "$WORK/from.json" /tmp/from.json >/dev/null 2>&1
-  ec="$(run_install_sh "$log" '
-# nc liefert die auf die Startversion gefilterte Release-Liste (Schleife, da install.sh/Node je 1 Request sendet)
-( while true; do { printf "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %s\r\nConnection: close\r\n\r\n" "$(wc -c </tmp/from.json | tr -d " ")"; cat /tmp/from.json; } | nc -l 127.0.0.1 8123 >/dev/null 2>&1; done ) >/dev/null 2>&1 &
-sleep 1
-export STREAMING_HUB_RELEASES_API_URL=http://127.0.0.1:8123/releases')"
+  ec="$(run_install_sh "$log" "$SERVE_FROM")"
   R <<<'pkill -f "nc -l 127.0.0.1 8123"; true' >/dev/null
   [ -n "${VMT_KEEP_LOG:-}" ] && cp "$log" "$VMT_KEEP_LOG"
   [ "$ec" = 0 ] || { record $sc FAIL "Start-Install v$FROM: Exit ${ec:-?}: $(tail_log "$log")" "$b"; return; }
@@ -217,8 +244,8 @@ export LOCAL_ZIP=/tmp/local.zip"
 
 BASES=(); case "$BASE" in both) BASES=(nonode node24);; *) BASES=("$BASE");; esac
 for b in "${BASES[@]}"; do
-  for s in install update updatenew; do
-    case "$SCEN" in all) ;; both) [ "$s" != updatenew ] || continue;; *) [ "$SCEN" = "$s" ] || continue;; esac
+  for s in install update updatenew archcheck; do
+    case "$SCEN" in all) ;; both) [ "$s" != updatenew ] && [ "$s" != archcheck ] || continue;; *) [ "$SCEN" = "$s" ] || continue;; esac
     echo "== $s / $b: VM starten =="
     start_vm "$b" || { record "$s" FAIL "VM-Start fehlgeschlagen" "$b"; continue; }
     "scenario_$s" "$b"
