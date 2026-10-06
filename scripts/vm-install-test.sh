@@ -69,6 +69,12 @@ const fs=require("fs");const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8"
 fs.writeFileSync(process.argv[3],JSON.stringify(r));' "$WORK/releases.json" "$1" "$WORK/from.json"
 [ "$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1])).length' "$WORK/from.json")" = 1 ] || { echo "Release v$1 nicht gefunden" >&2; return 2; }
 }
+# Optional (nur Update/Updatenew): lokales, noch unveröffentlichtes Release-ZIP als Ziel (VMT_LOCAL_ZIP=Pfad,
+# VMT_LOCAL_VERSION=X.Y.Z). Der Updater lädt es per file://; install.sh erzwingt https und nutzt es nicht.
+if [ -n "${VMT_LOCAL_ZIP:-}" ]; then
+  [ -f "$VMT_LOCAL_ZIP" ] && [[ "${VMT_LOCAL_VERSION:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "VMT_LOCAL_ZIP/VMT_LOCAL_VERSION ungültig" >&2; exit 2; }
+  LATEST="$VMT_LOCAL_VERSION"
+fi
 make_from "$FROM" || exit 2
 echo "Neuestes Release: v$LATEST, Update-Start: v$FROM"
 
@@ -140,7 +146,7 @@ const fs=require("fs"),os=require("os"),path=require("path"),cp=require("child_p
 const u=require(path.join(process.cwd(),"updater.js"));
 const {fetchReleaseCandidates}=require(path.join(process.cwd(),"lib/github-releases.js"));
 (async()=>{
-  const rel=(await fetchReleaseCandidates()).find(c=>c.version===process.argv[1]);
+  const rel=process.env.LOCAL_ZIP?{version:process.argv[1],asset:{name:"local.zip",browserDownloadUrl:"file://"+process.env.LOCAL_ZIP}}:(await fetchReleaseCandidates()).find(c=>c.version===process.argv[1]);
   if(!rel) throw new Error("Release nicht gefunden");
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),"sh-upd-")),zip=path.join(tmp,rel.asset.name),ex=path.join(tmp,"extract");
   fs.mkdirSync(ex);
@@ -184,6 +190,11 @@ export STREAMING_HUB_RELEASES_API_URL=http://127.0.0.1:8123/releases')"
     echo "[update/$b] Updater des Repo-Stands (neu): v$FROM -> v$LATEST …"
   else
     echo "[update/$b] echter Update-Pfad (updater.js aus v$FROM): v$FROM -> v$LATEST …"
+  fi
+  if [ -n "${VMT_LOCAL_ZIP:-}" ]; then
+    "$SHVM" scp "$VM" "$VMT_LOCAL_ZIP" /tmp/local.zip >/dev/null 2>&1 || { record $sc FAIL "lokales ZIP nicht in die VM kopierbar" "$b"; return; }
+    upre="$upre
+export LOCAL_ZIP=/tmp/local.zip"
   fi
   local note=""
   out="$(run_update "$upre")"
