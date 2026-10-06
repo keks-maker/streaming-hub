@@ -468,6 +468,7 @@ else
   # das wird erst NACH dem Signieren ersetzt (Regression aus v0.5.18, e5def7a).
   MAC_ICON_SCRIPT="$(pwd)/scripts/stage-mac-icon.js"
   [ -f "$MAC_ICON_SCRIPT" ] || MAC_ICON_SCRIPT="$INSTALL_DIR/scripts/stage-mac-icon.js"
+  [ -f "$MAC_ICON_SCRIPT" ] || error "scripts/stage-mac-icon.js fehlt im Release-Paket (erwartet: $MAC_ICON_SCRIPT); Installation abgebrochen, bestehende Installation bleibt erhalten."
   if ! node "$MAC_ICON_SCRIPT" "$APP_BUNDLE_STAGE" "$APP_LINK_TARGET" "$RELEASE_INSTALL_STAGE"; then
     error "App-Icon konnte nicht konsistent ins Bundle gestagt werden; bestehende Installation bleibt erhalten."
   fi

@@ -12,6 +12,12 @@ Renderer-Datenweg des EPG abgelöst (AUF-E6 / EPG-E5): Der Renderer lädt und pa
 - Verhaltensänderung: EPG-URLs aus dem M3U-Header (`url-tvg`) ohne eingetragene Quellen-`epgUrl` werden nicht mehr geladen; der Main-`EpgService` nutzt ausschließlich die `epgUrl` der Quellen.
 - Tests angepasst: `tests/dashboard-hub.test.js`, `tests/epg-ipc.test.js`, `e2e/smoke.spec.js`, `e2e/schedule.spec.js`, `scripts/test-u-scrubbar.cjs`.
 
+## 0.9.2 (2026-10-06) — Fix Release-Paket
+
+- Behoben: 0.9.1 schloss `scripts/` komplett aus dem Paket aus; `install.sh` braucht im Release-Staging aber `scripts/stage-mac-icon.js` (MODULE_NOT_FOUND, Installation brach mit „App-Icon konnte nicht konsistent ins Bundle gestagt werden“ ab). `build.files` schließt jetzt nur noch die übrigen Skripte aus und behält `scripts/stage-mac-icon.js`. `docs/` und `tests/` bleiben ausgeschlossen; weitere Laufzeitabhängigkeiten auf ausgeschlossene Dateien gibt es nicht.
+- `install.sh` prüft das Skript vor dem Aufruf und bricht mit klarer Meldung ab, statt mit einem Node-Stacktrace.
+- Neu `tests/package-files.test.js`: jede in `install.sh`/`updater.js`/`main.js` referenzierte `scripts/*.js` darf durch `build.files` nicht ausgeschlossen sein (eigener Matcher für die Glob-Reihenfolge von electron-builder).
+
 ## 0.9.1 (2026-10-05) — LiveTV-Hub
 
 LiveTV-Hub (Variante A, `docs/mockups/etappe3/hub-a.html`): Programmübersicht und Aufnahmen werden zwei gleich große Einstiegskarten im LiveTV-Dashboard; die Dashboard-Vorschau „Jetzt im TV“ und die linke TV-Sidebar (Altlast vor der UI-Umstellung, seit der Umstellung nur noch per `hidden` ausgeblendet) entfallen; der NavBar-Eintrag „Aufnahmen“ wird durch einen Indikator-Punkt am LiveTV-Eintrag ersetzt (P21–P24, Ä9). Keine neue IPC, keine neue Abhängigkeit. Die rechte Senderliste im Player (`tv.html`) und der Zapping-Weg sind unverändert.
