@@ -29,8 +29,9 @@ function makeClock(startIso = '2026-10-05T19:00:00+02:00') {
 }
 
 class FakeRecorder extends EventEmitter {
-  constructor({ maxParallel = 3 } = {}) {
+  constructor({ maxParallel = 3, now = () => Date.now() } = {}) {
     super();
+    this.now = now; // injizierte Test-Uhr; startedAt darf nie von der echten Uhr abhängen
     this.maxParallel = maxParallel;
     this.reserveBytes = 1024 * 1024 * 1024;
     this.free = null; // null = nicht ermittelbar
@@ -58,7 +59,7 @@ class FakeRecorder extends EventEmitter {
       channelId: request.channelId,
       channelName: request.channelName,
       epgTitle: request.epgTitle,
-      startedAt: new Date().toISOString(),
+      startedAt: new Date(this.now()).toISOString(),
     };
     this.metas.set(recId, meta);
     this.jobs.set(recId, { meta, stopAt: request.stopAt || null, recId });
@@ -112,7 +113,7 @@ function okResolver(calls = []) {
 function makeScheduler(overrides = {}) {
   const dir = overrides.dir || fs.mkdtempSync(path.join(os.tmpdir(), 'sched-'));
   const clock = overrides.clock || makeClock();
-  const recorder = overrides.recorder || new FakeRecorder(overrides.recorderOptions);
+  const recorder = overrides.recorder || new FakeRecorder({ now: clock.now, ...overrides.recorderOptions });
   const settings = { bufferBeforeMin: 2, bufferAfterMin: 5, lateStart: true, ...(overrides.settings || {}) };
   const store = overrides.store || createScheduleStore({ dir, now: clock.now });
   const resolveCalls = [];

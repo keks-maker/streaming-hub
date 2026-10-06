@@ -188,7 +188,7 @@ test('Slip ist idempotent: einmal pro Eintrag/Fenster, auch nach Neustart (lastS
   const calls = [];
   const scheduler2 = new Scheduler({
     store: store2,
-    recorder: new FakeRecorder(),
+    recorder: new FakeRecorder({ now: ctx.clock.now }),
     resolveStream: async () => ({ ok: true, url: 'https://x/y.m3u8' }),
     getSettings: () => ctx.settings,
     now: ctx.clock.now,
