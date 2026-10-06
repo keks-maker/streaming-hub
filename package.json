@@ -4,7 +4,7 @@
   "workspaces": [
     "packages/typed-core"
   ],
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Streaming app with Castlabs Electron for full Widevine DRM support",
   "main": "main.js",
   "scripts": {
@@ -30,7 +30,7 @@
     "build:all": "npm run build:typed-core && npm run build:renderer",
     "watch": "node scripts/watch-renderer.js",
     "test": "node scripts/with-tmp.js npm run test:suite",
-    "test:updater": "node scripts/with-tmp.js node --test tests/tvsources-merge.test.js tests/post-update-reconcile.test.js tests/node-path.test.js tests/app-version.test.js tests/github-releases.test.js tests/updater-bundle.test.js tests/updater-install-safety.test.js tests/updater-asar.test.js tests/update-mode.test.js",
+    "test:updater": "node scripts/with-tmp.js node --test tests/tvsources-merge.test.js tests/post-update-reconcile.test.js tests/node-path.test.js tests/app-version.test.js tests/github-releases.test.js tests/updater-bundle.test.js tests/updater-install-safety.test.js tests/updater-asar.test.js tests/updater-otool-resign.test.js tests/update-mode.test.js",
     "test:e2e": "node scripts/with-tmp.js playwright test -c e2e/playwright.config.js",
     "test:suite": "npm test --workspace packages/typed-core && node --test \"tests/*.test.js\"",
     "test:smoke-updater": "node scripts/with-tmp.js node scripts/smoke-updater-gui-path.js",
