@@ -336,10 +336,12 @@ test('Fester Ladeweg: ensureTvDataLoaded beim Öffnen des LiveTV-Dashboards, nie
   const renderer = read('renderer.js');
   const fn = /function ensureTvDataLoaded\(\) \{([\s\S]*?)\n\}/.exec(renderer)?.[1] || '';
   assert.ok(fn.includes("tvEpgStatus === 'loading'") && fn.includes('tvSourcesRefreshing'), 'Schutz gegen parallele Ladevorgänge fehlt');
-  assert.ok(fn.includes('loadEpgData(collectEpgUrls('), 'EPG-Index-Nachladen fehlt');
+  assert.ok(fn.includes('syncEpgFromMain()'), 'EPG-Nachladen aus dem Main fehlt');
   assert.match(renderer, /if \(groupKey === 'livetv'\) \{\s*ensureTvDataLoaded\(\);/);
   // Start- und Refresh-Ladewege bleiben
-  assert.match(renderer, /const result = await loadTvChannels\(true\);\s*await loadEpgData\(collectEpgUrls\(result\.epgUrls\)\);/);
+  assert.match(renderer, /await loadTvChannels\(true\);\s*await syncEpgFromMain\(\);/);
+  // Kein Renderer-Download/Parse der EPG-Datei mehr (Etappe 3.7)
+  assert.ok(!/loadEpgData|tvEpgIndex|fetchEPG|buildEpgIndex/.test(renderer), 'Renderer-EPG-Datenweg ist entfernt');
 });
 
 test('NavBar (P21): kein Aufnahmen-Eintrag; Indikator-Punkt am LiveTV-Eintrag mit Screenreader-Text, ohne Zahl', () => {

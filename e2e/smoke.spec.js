@@ -30,8 +30,6 @@ const KNOWN_HARMLESS = [
   'net::ERR_',
   // Einstellungen-Test weist bewusst eine lokale URL ab; main.js loggt die Validierungsabweisung.
   "Error occurred in handler for 'update-tv-source': Error: M3U-URL darf kein lokales oder privates Ziel verwenden",
-  // Einstellungen-Test legt eine Quelle auf *.invalid an; deren EPG-Abruf scheitert erwartungsgemäß.
-  "Error occurred in handler for 'fetch-epg': Error: Fehler beim Laden des EPG (https://e2e-quelle.invalid/",
   "Error occurred in handler for 'update-tv-source': TypeError: Invalid URL",
   // Component-Updater (Widevine) braucht Netz/EVS-Sandbox; die App loggt dazu selbst eine Warnung.
   'Component updater failed',

@@ -200,7 +200,7 @@ async function evalJson(cdp, expression) {
   return JSON.parse(r.result.value);
 }
 
-// EPG-Update pushen (wie renderer.js pushEpgToTvView es via executeJavaScript tut)
+// EPG-Update pushen (wie renderer.js sendEpgUpdate es sendet; Zeitstrings im XMLTV-Format des Adapters lib/epg/renderer-adapter.js)
 async function pushEpg(cdp, entries, label) {
   await cdp.send('Runtime.evaluate', {
     expression:

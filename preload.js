@@ -49,7 +49,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateTvSource: (id, updates) => ipcRenderer.invoke('update-tv-source', id, updates),
   pickM3uFile: () => ipcRenderer.invoke('pick-m3u-file'),
   fetchAndParseM3U: urlOrPath => ipcRenderer.invoke('fetch-and-parse-m3u', urlOrPath),
-  fetchEPG: url => ipcRenderer.invoke('fetch-epg', url),
   onTvSourcesChanged: cb => {
     const handler = (_e, sources) => cb(sources);
     ipcRenderer.on('tv-sources-changed', handler);

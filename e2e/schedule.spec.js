@@ -3,8 +3,8 @@
 // E2E: Planung geplanter Aufnahmen (Etappe 2a; Konzept §3.7/§5).
 // Kein Netz: Quelle ist eine lokale M3U-Datei, das EPG kommt aus einer zur Laufzeit
 // erzeugten XMLTV-Datei (Test-Hook STREAMING_HUB_EPG_FIXTURE, gilt nur zusammen mit
-// STREAMING_HUB_USER_DATA) — sowohl für das Renderer-EPG (fetch-epg) als auch für den
-// Main-EPG-Cache (EpgService). Die Netzsperre der Plattform-Argumente bleibt aktiv.
+// STREAMING_HUB_USER_DATA) — sie speist den Main-EPG-Cache (EpgService); der Renderer
+// liest EPG nur noch über die Main-APIs (epg:now-next, epg:channels, epg:range-many). Die Netzsperre der Plattform-Argumente bleibt aktiv.
 // Seit Etappe 3.3 ist der Programmführer (epg-view.js) eine LISTE mit Detail-MODAL; die Zeilen tragen
 // weiterhin die Klasse .epg-program, das Modal die IDs #epgDetailBackdrop/#epgDetailRecordBtn/#epgDetailNotice.
 const { test, expect, _electron: electron } = require('@playwright/test');
@@ -131,7 +131,7 @@ async function openDetail(title) {
   await expect(page.locator('#epgDetailTitle')).toHaveText(title);
 }
 
-test('Main-EPG-Cache und Renderer-EPG werden aus der lokalen Fixture gefüllt (kein Netz)', async () => {
+test('Main-EPG-Cache und Programmführer werden aus der lokalen Fixture gefüllt (kein Netz)', async () => {
   await expect
     .poll(async () => (await page.evaluate(() => window.electronAPI.getEpgStatus())).sources.reduce((n, s) => n + s.channelCount, 0), {
       timeout: 20_000,

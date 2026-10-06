@@ -143,7 +143,6 @@ export default [
         tvSources: 'writable',
         tvChannels: 'writable',
         tvEpgData: 'writable',
-        tvEpgIndex: 'writable',
         Hls: 'readable',
         logger: 'readable',
         // esbuild resolves these at build time

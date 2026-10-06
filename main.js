@@ -1,5 +1,5 @@
 // v0.3.6.
-const { compareVersions, cleanChannelName, parseXMLTV, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
+const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
 const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker } = require('electron');
 const fs = require('fs');
@@ -31,7 +31,6 @@ const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
 const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
-const { fetchEpgResponse } = require('./lib/epg/download.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 
 /**
@@ -68,7 +67,7 @@ let scheduler = null;
 let standbyGuard = null;
 
 // Test-Hook (E2E): STREAMING_HUB_EPG_FIXTURE=<XMLTV-Datei> ersetzt den EPG-Download
-// durch die lokale Datei — für Main-EpgService UND fetch-epg. Gilt nur in isolierten
+// durch die lokale Datei (Main-EpgService; der Renderer lädt kein EPG mehr). Gilt nur in isolierten
 // Läufen (STREAMING_HUB_USER_DATA), nie im Normalbetrieb; es gibt keinen Netzzugriff.
 const epgFixtureFile =
   process.env.STREAMING_HUB_USER_DATA && process.env.STREAMING_HUB_EPG_FIXTURE
@@ -179,7 +178,6 @@ const {
   httpUrl,
   remoteHttpUrl,
   readResponseText,
-  MAX_EPG_BYTES,
   service: validateService,
   text: validateText,
   tvSource: validateTvSource,
@@ -1583,21 +1581,5 @@ ipcMain.handle('restore-settings', async event => {
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
-  }
-});
-
-ipcMain.handle('fetch-epg', async (event, url) => {
-  requireMainRenderer(event);
-  try {
-    // Download-Validierung (remoteHttpUrl, Redirect-Handling) ist mit dem
-    // Main-EpgService geteilt: lib/epg/download.js
-    const response = await fetchEpgResponse(url, epgFixtureFetch ? { fetchImpl: epgFixtureFetch } : undefined);
-    const xml = await readResponseText(response, MAX_EPG_BYTES);
-    const entries = parseXMLTV(xml);
-    if (!entries.length) throw new Error('Die XMLTV-Datei enthält keine gültigen Sendungen');
-    return entries;
-  } catch (err) {
-    logger.warn('EPG-Abruf fehlgeschlagen:', url, err.message);
-    throw new Error(`Fehler beim Laden des EPG (${url}): ${err.message}`);
   }
 });
