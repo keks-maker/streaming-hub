@@ -1,7 +1,7 @@
 #!/bin/bash
 # vm-install-test.sh — Install- und Update-Test von Streaming Hub in einer frischen macOS-VM (tart).
 #
-# Aufruf: scripts/vm-install-test.sh [--base nonode|node24|both] [--scenario install|update|both]
+# Aufruf: scripts/vm-install-test.sh [--base nonode|node24|both] [--scenario install|update|updatenew|both|all]
 #                                    [--from-version X.Y.Z]      (Default: both / both / 0.9.0)
 # Voraussetzung: ~/.local/bin/sh-vm (tart-Helfer), Basis-VMs base-nonode, base-node24, Netz in der VM.
 # Es läuft NUR in einem Klon (immer per trap gelöscht); die lokale Installation wird nie berührt.
@@ -23,20 +23,29 @@
 #   (3) gleiche Prüfungen wie Install + Version == neuestes Release. Nicht abgedeckt: Fork-/IPC-Schicht
 #   der App (Renderer-Dialog, process.send), EVS-Signatur (kein castlabs_evs), Neustart nach Update,
 #   GUI/Gatekeeper-Dialoge, Widevine-Wiedergabe. Base nonode: SKIP (ohne Node kein Update-Pfad).
+#
+# Updatenew (nur mit --scenario updatenew|all): wie Update, aber der Updater-Code des REPO-STANDS (updater.js,
+#   logger.js, lib/) wird per tar nach /tmp/newupd hochgeladen und anstelle des installierten updater.js
+#   benutzt (belegt die Fixes in 0.9.4: otool-Fallback ohne CLT, ad-hoc Re-Sign nach Resources/app-Symlink).
+#   Start-Version per --from-version (Default in diesem Szenario: 0.9.3). GRENZE: Ziel ist das neueste ECHTE
+#   Release; ist das gleich der Startversion (z. B. 0.9.3 -> 0.9.3), ist es eine Neuinstallation derselben
+#   Version, kein Versionssprung. Eine 0.9.4-Variante lässt sich nicht lokal erzeugen (Release-ZIP ist
+#   signiert; Umversionieren bräche das Siegel). Die Fixes werden am Installationsvorgang (installMacBundle +
+#   codesign/Start-Smoke) belegt, nicht an einem echten Versionssprung. Weitere Grenzen wie bei Update.
 set -u
 cd "$(dirname "$0")/.." || exit 2
 SHVM="$HOME/.local/bin/sh-vm"
-BASE=both; SCEN=both; FROM=0.9.0
+BASE=both; SCEN=both; FROM=0.9.0; FROM_SET=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --base) BASE="${2:-}"; shift 2;;
     --scenario) SCEN="${2:-}"; shift 2;;
-    --from-version) FROM="${2:-}"; shift 2;;
+    --from-version) FROM="${2:-}"; FROM_SET=1; shift 2;;
     *) echo "Unbekannte Option: $1" >&2; exit 2;;
   esac
 done
 case "$BASE" in nonode|node24|both) ;; *) echo "--base: nonode|node24|both" >&2; exit 2;; esac
-case "$SCEN" in install|update|both) ;; *) echo "--scenario: install|update|both" >&2; exit 2;; esac
+case "$SCEN" in install|update|updatenew|both|all) ;; *) echo "--scenario: install|update|updatenew|both|all" >&2; exit 2;; esac
 [[ "$FROM" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "--from-version muss X.Y.Z sein" >&2; exit 2; }
 [ -x "$SHVM" ] || { echo "sh-vm fehlt: $SHVM" >&2; exit 2; }
 command -v node >/dev/null || { echo "node (Host) fehlt" >&2; exit 2; }
@@ -54,10 +63,13 @@ const {findReleaseCandidates}=require("./lib/github-releases.js");
 const c=findReleaseCandidates(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")));
 process.stdout.write(c.at(-1)?.version||"")' "$WORK/releases.json")"
 [ -n "$LATEST" ] || { echo "Kein gültiges Release gefunden" >&2; exit 2; }
+make_from() { # $1 = Version -> $WORK/from.json (auf diese Version gefilterte API-Antwort)
 node -e '
 const fs=require("fs");const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8")).filter(x=>x.tag_name==="v"+process.argv[2]);
-fs.writeFileSync(process.argv[3],JSON.stringify(r));' "$WORK/releases.json" "$FROM" "$WORK/from.json"
-[ "$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1])).length' "$WORK/from.json")" = 1 ] || { echo "Release v$FROM nicht gefunden" >&2; exit 2; }
+fs.writeFileSync(process.argv[3],JSON.stringify(r));' "$WORK/releases.json" "$1" "$WORK/from.json"
+[ "$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1])).length' "$WORK/from.json")" = 1 ] || { echo "Release v$1 nicht gefunden" >&2; return 2; }
+}
+make_from "$FROM" || exit 2
 echo "Neuestes Release: v$LATEST, Update-Start: v$FROM"
 
 RESULTS=(); FAILS=0
@@ -123,7 +135,7 @@ run_update() { # $1 = Vorspann (z. B. otool-Stub)
 $PRE
 $1
 DIR="\$HOME/Library/Application Support/Streaming Hub"
-cd "\$DIR" && STREAMING_HUB_UPDATER_LOG=/tmp/updater.log node -e '
+cd "\${UPD_DIR:-\$DIR}" && STREAMING_HUB_UPDATER_LOG=/tmp/updater.log node -e '
 const fs=require("fs"),os=require("os"),path=require("path"),cp=require("child_process");
 const u=require(path.join(process.cwd(),"updater.js"));
 const {fetchReleaseCandidates}=require(path.join(process.cwd(),"lib/github-releases.js"));
@@ -143,9 +155,15 @@ echo "UPDATE_EXIT=\$?"; tail -n 5 /tmp/updater.log 2>/dev/null
 EOF
 }
 
-scenario_update() { # $1 = base
-  local b=$1 log="$WORK/upd-$1.log" ec err out
-  if [ "$b" = nonode ]; then record update SKIP "ohne Node kein Install/Update-Pfad" "$b"; return; fi
+scenario_updatenew() { MODE=new scenario_update "$1"; }
+scenario_update() { # $1 = base; MODE=new -> Updater des Repo-Stands statt des installierten
+  local b=$1 log="$WORK/upd-$1.log" ec err out sc=update upre="" FROM=$FROM
+  if [ "${MODE:-old}" = new ]; then
+    sc=updatenew
+    [ "$FROM_SET" = 1 ] || FROM=0.9.3
+    make_from "$FROM" || { record $sc FAIL "Release v$FROM nicht gefunden" "$b"; return; }
+  fi
+  if [ "$b" = nonode ]; then record $sc SKIP "ohne Node kein Install/Update-Pfad" "$b"; return; fi
   echo "[update/$b] v$FROM installieren (API-Override) …"
   "$SHVM" scp "$VM" "$WORK/from.json" /tmp/from.json >/dev/null 2>&1
   ec="$(run_install_sh "$log" '
@@ -154,33 +172,42 @@ scenario_update() { # $1 = base
 sleep 1
 export STREAMING_HUB_RELEASES_API_URL=http://127.0.0.1:8123/releases')"
   R <<<'pkill -f "nc -l 127.0.0.1 8123"; true' >/dev/null
-  [ "$ec" = 0 ] || { record update FAIL "Start-Install v$FROM: Exit ${ec:-?}: $(tail_log "$log")" "$b"; return; }
+  [ -n "${VMT_KEEP_LOG:-}" ] && cp "$log" "$VMT_KEEP_LOG"
+  [ "$ec" = 0 ] || { record $sc FAIL "Start-Install v$FROM: Exit ${ec:-?}: $(tail_log "$log")" "$b"; return; }
   err="$(verify_install "$FROM")"
-  if [ -n "${err// /}" ]; then record update FAIL "Vorbedingung v$FROM kaputt: $err" "$b"; return; fi
-  echo "[update/$b] echter Update-Pfad (updater.js aus v$FROM): v$FROM -> v$LATEST …"
+  if [ -n "${err// /}" ]; then record $sc FAIL "Vorbedingung v$FROM kaputt: $err" "$b"; return; fi
+  if [ "$sc" = updatenew ]; then
+    tar -cf "$WORK/newupd.tar" updater.js logger.js lib || { record $sc FAIL "tar des Repo-Updaters fehlgeschlagen" "$b"; return; }
+    "$SHVM" scp "$VM" "$WORK/newupd.tar" /tmp/newupd.tar >/dev/null 2>&1
+    R <<<'rm -rf /tmp/newupd && mkdir /tmp/newupd && tar -xf /tmp/newupd.tar -C /tmp/newupd' >/dev/null
+    upre='UPD_DIR=/tmp/newupd'
+    echo "[update/$b] Updater des Repo-Stands (neu): v$FROM -> v$LATEST …"
+  else
+    echo "[update/$b] echter Update-Pfad (updater.js aus v$FROM): v$FROM -> v$LATEST …"
+  fi
   local note=""
-  out="$(run_update "")"
+  out="$(run_update "$upre")"
   if ! { echo "$out" | grep -q 'UPDATE_OK' && echo "$out" | grep -q 'UPDATE_EXIT=0'; }; then
     local why; why="$(echo "$out" | grep -E 'UPDATE_FEHLER|rror' | head -2 | tr '\n' ' ' | cut -c1-110)"
-    if echo "$out" | grep -q 'otool' && ! R <<<'xcode-select -p' >/dev/null 2>&1; then
+    if [ "$sc" = update ] && echo "$out" | grep -q 'otool' && ! R <<<'xcode-select -p' >/dev/null 2>&1; then
       # Befund: updater.js prüft mit otool -L; ohne Command Line Tools ist otool nur ein Shim, das scheitert.
-      out="$(run_update 'mkdir -p /tmp/stub && printf "#!/bin/sh\nexit 0\n" >/tmp/stub/otool && chmod +x /tmp/stub/otool; export PATH=/tmp/stub:$PATH;')"
+      out="$(run_update "$upre"'mkdir -p /tmp/stub && printf "#!/bin/sh\nexit 0\n" >/tmp/stub/otool && chmod +x /tmp/stub/otool; export PATH=/tmp/stub:$PATH;')"
       if echo "$out" | grep -q 'UPDATE_OK' && echo "$out" | grep -q 'UPDATE_EXIT=0'; then
         note=" [BEFUND: Updater scheitert ohne Xcode-CLT an otool; mit otool-Stub läuft der Rest]"
       fi
     fi
-    if [ -z "$note" ]; then record update FAIL "Update-Pfad: $why" "$b"; return; fi
+    if [ -z "$note" ]; then record $sc FAIL "Update-Pfad: $why" "$b"; return; fi
     err="$(verify_install "$LATEST")"
-    record update FAIL "otool ohne CLT: $why$note; Folgeprüfung: ${err:-ok}" "$b"; return
+    record $sc FAIL "otool ohne CLT: $why$note; Folgeprüfung: ${err:-ok}" "$b"; return
   fi
   err="$(verify_install "$LATEST")"
-  if [ -z "${err// /}" ]; then record update PASS "v$FROM -> v$LATEST (installMacBundle), codesign/Symlink/Version/Start-Smoke ok" "$b"; else record update FAIL "nach Update: $err" "$b"; fi
+  if [ -z "${err// /}" ]; then record $sc PASS "v$FROM -> v$LATEST (installMacBundle), codesign/Symlink/Version/Start-Smoke ok" "$b"; else record $sc FAIL "nach Update: $err" "$b"; fi
 }
 
 BASES=(); case "$BASE" in both) BASES=(nonode node24);; *) BASES=("$BASE");; esac
 for b in "${BASES[@]}"; do
-  for s in install update; do
-    [ "$SCEN" = both ] || [ "$SCEN" = "$s" ] || continue
+  for s in install update updatenew; do
+    case "$SCEN" in all) ;; both) [ "$s" != updatenew ] || continue;; *) [ "$SCEN" = "$s" ] || continue;; esac
     echo "== $s / $b: VM starten =="
     start_vm "$b" || { record "$s" FAIL "VM-Start fehlgeschlagen" "$b"; continue; }
     "scenario_$s" "$b"
