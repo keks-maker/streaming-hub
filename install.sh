@@ -499,11 +499,20 @@ else
     rm -rf "$EVS_STAGE"
     info "EVS-Signatur gültig (verify-pkg: streaming)."
   else
-    info "EVS nicht verfügbar — prüfe finale codesign-Signatur des App-Bundles …"
+    warn "EVS (castlabs_evs) nicht verfügbar — DRM-Dienste (Netflix, Disney+, Prime Video) können eingeschränkt sein (Widevine benötigt EVS-Signatur)."
     if ! command -v codesign >/dev/null 2>&1; then
       error "Installation abgebrochen: weder castlabs-evs noch codesign verfügbar; bestehende Installation bleibt erhalten."
     fi
-    if ! codesign --verify --deep --strict "$APP_BUNDLE_STAGE"; then
+    # Die obigen Änderungen (Info.plist, Resources/app-Symlink, Icon) brechen das
+    # Siegel des Release-Bundles. Wie die Release-Pipeline (afterPack-Hook)
+    # daher ad-hoc neu signieren und erst danach verifizieren. Ohne --strict, da
+    # Resources/app bewusst auf das Installationsverzeichnis außerhalb des Bundles
+    # zeigt (--strict lehnt solche Symlinks ab; EVS verify-pkg tut das nicht).
+    info "Signiere App-Bundle ad-hoc neu (codesign) …"
+    if ! codesign --force --deep --sign - "$APP_BUNDLE_STAGE"; then
+      error "Installation abgebrochen: ad-hoc codesign fehlgeschlagen; bestehende Installation bleibt erhalten."
+    fi
+    if ! codesign --verify --deep "$APP_BUNDLE_STAGE"; then
       error "Installation abgebrochen: finale codesign-Signatur ungültig; bestehende Installation bleibt erhalten."
     fi
     info "codesign-Signatur gültig."

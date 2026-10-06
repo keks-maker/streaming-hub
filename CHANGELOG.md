@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.4 (2026-10-06) — install.sh: Release-Installation ohne EVS
+
+- Behoben: `install.sh` brach im Release-Modus ohne `castlabs_evs` mit "invalid Info.plist (plist or signature have been modified)" ab. Ursache: Das signierte Release-Bundle wird nach dem Kopieren verändert (Info.plist-Werte, `Resources/app`-Symlink, Icon); das Siegel war ungültig und wurde ohne EVS nur geprüft, nie neu erzeugt. Jetzt wird das Bundle ad-hoc neu signiert (`codesign --force --deep --sign -`, wie `scripts/evs-afterPack.js`) und danach verifiziert (ohne `--strict`, da `Resources/app` bewusst auf das Installationsverzeichnis außerhalb des Bundles zeigt).
+- Neu: Ohne EVS warnt `install.sh`, dass DRM-Dienste (Netflix, Disney+, Prime Video) eingeschränkt sein können. Der EVS-Pfad bleibt unverändert.
+- Test: `tests/install-codesign.test.js`.
+
 ## 0.9.3 (2026-10-06) — EPG-Datenweg im Main (Etappe 3.7)
 
 Renderer-Datenweg des EPG abgelöst (AUF-E6 / EPG-E5): Der Renderer lädt und parst keine EPG-Datei mehr; alle Verbraucher lesen den Main-Cache über IPC.
