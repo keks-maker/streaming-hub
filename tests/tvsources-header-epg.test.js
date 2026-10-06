@@ -67,3 +67,23 @@ test('epg:now-next dekodiert Titel genau einmal (&amp;lt;b&amp;gt; -> &lt;b&gt;)
   const res = await handlers.get('epg:now-next')({ sender: mainSender }, ['c1']);
   assert.equal(res[0].current.title, '&lt;b&gt;');
 });
+
+test('kommagetrennt: ungültiger erster Teil, zweiter gewinnt', () => {
+  const sources = [{ id: 'a', url: SRC }];
+  adoptHeaderEpgUrl(sources, SRC, ['kein url, https://epg.example.org/g.xml'], remoteHttpUrl);
+  assert.equal(sources[0].epgUrl, 'https://epg.example.org/g.xml');
+});
+
+test('kommagetrennt: zwei gültige, erster gewinnt; leere Teile verworfen', () => {
+  const sources = [{ id: 'a', url: SRC }];
+  adoptHeaderEpgUrl(sources, SRC, [' ,https://one.example.org/a.xml,, https://two.example.org/b.xml '], remoteHttpUrl);
+  assert.equal(sources[0].epgUrl, 'https://one.example.org/a.xml');
+});
+
+test('echter parseM3UFull-Header mit Komma-Liste -> epgUrl gesetzt', () => {
+  const { parseM3UFull } = require('@streaming-hub/typed-core');
+  const res = parseM3UFull('#EXTM3U url-tvg="http://a/x.xml, https://epg.example.org/g.xml"\n#EXTINF:-1,A\nhttp://s/1.ts\n', 'tv');
+  const sources = [{ id: 'a', url: SRC }];
+  adoptHeaderEpgUrl(sources, SRC, res.epgUrls, remoteHttpUrl);
+  assert.equal(sources[0].epgUrl, 'https://epg.example.org/g.xml');
+});
