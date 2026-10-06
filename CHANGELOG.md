@@ -6,6 +6,9 @@
 - Release-Modus: Info.plist-Werte und Icon werden nicht mehr angefasst, wenn das Build-Bundle sie bereits korrekt trägt (`plutil -replace` und `stage-mac-icon` nur bei Abweichung). Die VMP/EVS-Signatur bleibt dabei gültig (`verify-pkg` geprüft, auch nach der ad-hoc Neusignierung).
 - Neu: Ohne EVS warnt `install.sh`, dass DRM-Dienste (Netflix, Disney+, Prime Video) eingeschränkt sein können. Der EVS-Pfad bleibt unverändert.
 - Test: `tests/install-codesign.test.js`.
+- Behoben (In-App-Updater): Auf Macs ohne Xcode Command Line Tools scheiterte das Update in `verifyBundleIntegrity` an `otool -L` (nur xcode-select-Shim, "No developer tools"). Fehlt otool (erkannt per `xcode-select -p` bzw. Shim-Meldung), prüft der Updater stattdessen den Mach-O-Header des Haupt-Binaries; die Abhängigkeiten sichern Framework-/Symlink-Prüfung und das vorgeschaltete Signatur-Gate (EVS verify-pkg / codesign). Meldet ein vorhandenes otool einen Fehler, bleibt es beim Abbruch.
+- Behoben (In-App-Updater): Ohne EVS war das Bundle nach `installMacBundle` für `codesign --verify --deep` ungültig (Symlink `Resources/app` bricht das Siegel). Der Updater signiert das Staging-Bundle nach dem Setzen des Symlinks ad-hoc neu und verifiziert es (ohne `--strict`); scheitert das, bleibt der alte Stand (Abbruch vor dem Swap). Mit EVS wird nicht neu signiert, die VMP-Signatur bleibt gültig. Zusätzlich räumt der Updater das Wrapper-Staging-Verzeichnis bei Abbruch vollständig.
+- Test: `tests/updater-otool-resign.test.js`.
 
 ## 0.9.3 (2026-10-06) — EPG-Datenweg im Main (Etappe 3.7)
 
