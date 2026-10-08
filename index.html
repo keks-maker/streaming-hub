@@ -458,6 +458,20 @@
     </div>
   </div>
 
+  <!-- Update-Dialog: Änderungen anzeigen, erst "Installieren" startet das Update -->
+  <div class="modal-overlay" id="updateNotesOverlay" role="dialog" aria-modal="true" aria-labelledby="updateNotesTitle">
+    <div class="modal update-notes-modal">
+      <div class="modal-header">
+        <span class="modal-title" id="updateNotesTitle">Update verfügbar</span>
+      </div>
+      <div class="modal-body update-notes-body" id="updateNotesBody"></div>
+      <div class="modal-footer">
+        <button class="modal-btn" id="updateNotesCancel" type="button">Abbrechen</button>
+        <button class="modal-btn modal-btn-save" id="updateNotesInstall" type="button">Installieren</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Soft-Limit-Dialog (Parallel-Limit) -->
   <div class="modal-overlay" id="recLimitOverlay" role="dialog" aria-modal="true" aria-labelledby="recLimitTitle">
     <div class="modal">

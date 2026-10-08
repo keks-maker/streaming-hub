@@ -8,6 +8,7 @@ const os = require('os');
 const { fork } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
+const { releaseNotesFromReleases } = require('./lib/github-releases.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
@@ -187,6 +188,7 @@ const {
 const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
+const { resolveUpdateApiBase, DEFAULT_UPDATE_API_BASE } = require('./lib/update-base.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
 const { describeM3uFetchError } = require('./lib/m3u-fetch-error.js');
 
@@ -396,7 +398,10 @@ function saveHistory(history) {
 
 // ── Updater ──
 
-const UPDATE_API_BASE = process.env.STREAMING_HUB_UPDATE_URL || 'https://api.github.com';
+const UPDATE_API_BASE = resolveUpdateApiBase(process.env, app.isPackaged);
+// Updater-Prozess (fork) erbt dieselbe, bereits geprüfte Basis-URL.
+if (UPDATE_API_BASE === DEFAULT_UPDATE_API_BASE) delete process.env.STREAMING_HUB_UPDATE_URL;
+else process.env.STREAMING_HUB_UPDATE_URL = UPDATE_API_BASE;
 const UPDATE_OWNER = 'keks-maker';
 const UPDATE_REPO = 'streaming-hub';
 const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
@@ -422,11 +427,16 @@ function startUpdater() {
           const release = await updateApi('releases/latest');
           const tag = release.tag_name?.replace(/^v/i, '');
           if (!tag) return { hasUpdate: false, error: 'no tag' };
-          return {
-            hasUpdate: compareVersions(tag, app.getVersion()) > 0,
-            latestVersion: tag,
-            releaseId: release.id,
-          };
+          const hasUpdate = compareVersions(tag, app.getVersion()) > 0;
+          let notes = [];
+          if (hasUpdate) {
+            try {
+              notes = releaseNotesFromReleases(await updateApi('releases?per_page=100'), app.getVersion());
+            } catch (e) {
+              notes = [];
+            }
+          }
+          return { hasUpdate, latestVersion: tag, releaseId: release.id, notes };
         } catch (e) {
           return { hasUpdate: false, error: e.message };
         }
@@ -538,7 +548,7 @@ ipcMain.handle('check-for-update', async event => {
       if (msg.type !== 'result') return;
       clearTimeout(timer);
       updaterProcess.removeListener('message', onMsg);
-      resolve({ hasUpdate: msg.hasUpdate, latestVersion: msg.latest, error: msg.error });
+      resolve({ hasUpdate: msg.hasUpdate, latestVersion: msg.latest, notes: Array.isArray(msg.notes) ? msg.notes : [], error: msg.error });
     };
     updaterProcess.on('message', onMsg);
     updaterProcess.send({ type: 'check', currentVersion: app.getVersion() });

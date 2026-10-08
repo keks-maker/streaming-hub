@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Neu: Update-Dialog mit Änderungen. Klick aufs Update-Icon öffnet statt `confirm()` einen Dialog (`#updateNotesOverlay`, Klassen `modal`/`update-notes-*`) mit den Release-Texten (GitHub-Release-`body`) aller Versionen seit der installierten, neueste zuerst; erst "Installieren" startet `apply-update`, "Abbrechen"/Esc/Klick daneben schließt.
+- Check-Ergebnis um `notes: [{ version, name, body }]` erweitert (`updater.js` über `selectReleaseNotes`, AppImage-Pfad in `main.js` über `releaseNotesFromReleases` mit paginierter Releases-Liste, IPC `check-for-update`). Draft/Prerelease/fremde Tags wie bisher ausgeschlossen; leerer/fehlender `body` ergibt "Keine Details". `parseReleaseCandidate` liefert zusätzlich `name` und `body`.
+- Neu: `update-notes-model.js` — Minimal-Markdown (Überschriften #–###, Listen, **fett**, `code`, Absätze, Links als Text), Rendering nur per `createElement`/`textContent` (kein `innerHTML`).
+- Neu: Test-Hook `STREAMING_HUB_UPDATE_URL` (Basis-URL der Release-API, Default `https://api.github.com`) gilt jetzt einheitlich für Check, Notes und Updater-Prozess (`lib/update-base.js`); wirksam nur bei ungepackter App oder lokalem http (localhost/127.0.0.1), sonst ignoriert. E2E `e2e/update-dialog.spec.js` (Mock-Server) prüft den Update-Dialog.
+- Tests: `tests/update-base.test.js` (neu), `tests/update-notes-model.test.js` (neu), Ergänzungen in `tests/github-releases.test.js`.
+
 ## 0.9.7 (2026-10-08) — Neues App-Icon
 
 - Neu: Neues App-Icon (Glas/3D) — `assets/icon.svg`, `icon.png`, `icon.icns`.

@@ -301,6 +301,8 @@ Der Update-Button in der Navigationsleiste zeigt den Status:
 
 Klicke auf den Button, um das Update zu starten. Die App lädt die neue Version herunter und startet automatisch neu. Laufende Aufnahmen solltest du vorher beenden.
 
+Für Tests (Entwickler): Mit `STREAMING_HUB_UPDATE_URL=http://127.0.0.1:PORT` fragt die App Releases bei einem lokalen Mock-Server statt bei GitHub ab. Der Override gilt nur bei ungepackter App oder lokalem http-Ziel, in der ausgelieferten App sonst nicht.
+
 ## Lizenz
 
 MIT
