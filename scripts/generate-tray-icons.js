@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Erzeugt die Tray-Icons aus dem App-Brand (Phase 1c, Karte t_bafa7928):
-//   assets/tray/tray-idle.png — violetter Brand-Gradient + weißes Play-Dreieck
-//   assets/tray/tray-rec.png  — roter Gradient + weißer REC-Punkt
+// Erzeugt die Tray-Icons im A3-Stil (Glas/3D), Vorlagen:
+//   docs/icon-vorschlaege/a-varianten/tray-idle-farbig.svg   -> assets/tray/tray-idle.png
+//   docs/icon-vorschlaege/a-varianten/tray-rec-punkt-rot.svg -> assets/tray/tray-rec.png
 //
-// Reines Node (zlib, kein natives Dep): rendert 32×32 RGBA pro Pixel und
-// schreibt ein minimales PNG (IHDR/IDAT/IEND, Filter 0). Nachbau von
-// assets/icon.svg (#6c5ce7 → #a78bfa, weißes Dreieck) — nativeImage kann
-// SVG nicht dekodieren, deshalb kompilierte PNGs zur Build-Zeit.
+// Reines Node (zlib, kein natives Dep): ein kleiner Scanline-Rasterizer mit
+// 8x8-Supersampling rendert die SVG-Motive (Bezier-Pfad, Verlauf, Kontur,
+// Kreise) auf 32x32 RGBA mit transparentem Hintergrund und schreibt ein
+// minimales PNG. nativeImage kann SVG nicht dekodieren, deshalb
+// kompilierte PNGs zur Build-Zeit. Farbig, kein Template-Icon.
 //
 // Aufruf: node scripts/generate-tray-icons.js  (Teil von npm run build:all)
 
@@ -17,76 +18,153 @@ const path = require('path');
 const zlib = require('zlib');
 
 const SIZE = 32;
+const SS = 8; // Supersampling pro Achse
+// Motiv-Transformation (SVG-Raum -> Pixel): verkleinert und setzt das Motiv mit
+// transparentem Rand (>= 3 px, unten >= 4 px) in den 32x32-Canvas. Gleicher
+// Massstab fuer idle und rec; Position je Modus (Motiv-Bounding-Box im SVG-Raum:
+// idle x 9..26.3, y 5.8..28.5; rec x 9..32.5, y 5.8..32.5).
+const SCALE = 0.92;
+const PLACEMENT = {
+  idle: { left: 8.5, top: 5 },
+  rec: { left: 5.2, top: 3.2 },
+};
 
-function lerp(a, b, t) {
-  return a + (b - a) * t;
+// Play-Form aus den SVG-Vorlagen: M12.5,7 Q9,5 9,9 L9,23 Q9,27 12.5,25 L24.5,18 Q28,16 24.5,14 Z
+const PLAY = [
+  ['M', 12.5, 7],
+  ['Q', 9, 5, 9, 9],
+  ['L', 9, 23],
+  ['Q', 9, 27, 12.5, 25],
+  ['L', 24.5, 18],
+  ['Q', 28, 16, 24.5, 14],
+];
+
+function hex(c) {
+  return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 }
 
-function gradientColor(t, from, to) {
-  return [
-    Math.round(lerp(from[0], to[0], t)),
-    Math.round(lerp(from[1], to[1], t)),
-    Math.round(lerp(from[2], to[2], t)),
-  ];
+/** Flacht den Pfad zu einem Polygon (geschlossen) ab, optional um dy verschoben. */
+function flatten(cmds, dy) {
+  const pts = [];
+  let cur = null;
+  for (const c of cmds) {
+    if (c[0] === 'M' || c[0] === 'L') {
+      cur = [c[1], c[2] + dy];
+      pts.push(cur);
+    } else {
+      const [x0, y0] = cur;
+      const x1 = c[1], y1 = c[2] + dy, x2 = c[3], y2 = c[4] + dy;
+      for (let i = 1; i <= 16; i++) {
+        const t = i / 16, u = 1 - t;
+        pts.push([u * u * x0 + 2 * u * t * x1 + t * t * x2, u * u * y0 + 2 * u * t * y1 + t * t * y2]);
+      }
+      cur = [x2, y2];
+    }
+  }
+  return pts;
 }
 
-/**
- * Rendert das Tray-Icon:
- * - rounded-rect Brand-Fläche (Gradient oben-links → unten-rechts wie icon.svg)
- * - mode 'idle': weißes Play-Dreieck (28,8 → 28,68 → 68,28 skaliert auf 32)
- * - mode 'rec':  weißer REC-Punkt (Kreis, Mitte, r≈5px)
- */
+function insidePoly(poly, x, y) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function distToSegment(px, py, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - a[0]) * dx + (py - a[1]) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (a[0] + t * dx), py - (a[1] + t * dy));
+}
+
+/** Form-Konstruktoren: liefern coverage(x, y) -> bool im SVG-Koordinatenraum. */
+function polyShape(poly) {
+  return (x, y) => insidePoly(poly, x, y);
+}
+function strokeShape(poly, width) {
+  const h = width / 2;
+  return (x, y) => {
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      if (distToSegment(x, y, poly[j], poly[i]) <= h) return true;
+    }
+    return false;
+  };
+}
+function circleShape(cx, cy, r) {
+  return (x, y) => (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r;
+}
+
+/** Ebene: { shape, color: [r,g,b] | fn(x,y)->[r,g,b], alpha } */
+function motif(mode) {
+  const rec = mode === 'rec';
+  const layers = [];
+  const dark = hex(rec ? '#8a0f1f' : '#ff5fb0');
+  const mid = hex(rec ? '#e5334a' : '#7b5cff');
+  const top = rec ? [hex('#ff8a8a'), hex('#e5334a')] : [hex('#b9acff'), hex('#6a4df0')];
+  // Tiefe: Extrusion von unten nach oben (translate 3.5 ... 0.7), wie in der Vorlage
+  [[3.5, dark], [2.8, dark], [2.1, dark], [1.4, mid], [0.7, mid]].forEach(([dy, color]) =>
+    layers.push({ shape: polyShape(flatten(PLAY, dy)), color, alpha: 1 })
+  );
+  const face = flatten(PLAY, 0);
+  layers.push({
+    shape: polyShape(face),
+    // vertikaler Verlauf ueber die Bounding-Box (objectBoundingBox: y 5.6..26.4 grob 7..25.. exakt min/max der Flaeche)
+    color: (x, y) => {
+      const t = Math.max(0, Math.min(1, (y - 6.0) / (25.9 - 6.0)));
+      return top[0].map((v, i) => Math.round(v + (top[1][i] - v) * t));
+    },
+    alpha: 1,
+  });
+  layers.push({ shape: strokeShape(face, 0.8), color: [255, 255, 255], alpha: 0.7 });
+  if (rec) {
+    layers.push({ shape: circleShape(25, 25, 7.5), color: [255, 255, 255], alpha: 0.95 });
+    layers.push({ shape: circleShape(25, 25, 5.5), color: hex('#ff2d3f'), alpha: 1 });
+    layers.push({ shape: circleShape(23.3, 23.2, 1.6), color: [255, 255, 255], alpha: 0.7 });
+  }
+  return layers;
+}
+
+/** Rendert 32x32 RGBA (nicht-prämultipliziert) mit Supersampling. */
 function renderIcon(mode) {
-  const brand = {
-    from: [0x6c, 0x5c, 0xe7],
-    to: [0xa7, 0x8b, 0xfa],
-  };
-  const rec = {
-    from: [0xdc, 0x26, 0x26],
-    to: [0xef, 0x44, 0x44],
-  };
-  const colors = mode === 'rec' ? rec : brand;
+  const offX = PLACEMENT[mode].left - 9 * SCALE;
+  const offY = PLACEMENT[mode].top - 5.8 * SCALE;
+  const layers = motif(mode);
   const px = new Uint8Array(SIZE * SIZE * 4);
-  const radius = 7; // ~24/96 wie icon.svg
+  const n = SS * SS;
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      const idx = (y * SIZE + x) * 4;
-      // Rounded-rect-Mask mit 0.5px-Falloff (weiche Kante)
-      const dx = Math.max(radius - x, x - (SIZE - 1 - radius), 0);
-      const dy = Math.max(radius - y, y - (SIZE - 1 - radius), 0);
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      let inside = dist <= radius - 0.5 ? 1 : dist >= radius + 0.5 ? 0 : radius + 0.5 - dist;
-      if (inside <= 0) continue; // transparent
-      const t = (x + y) / (2 * (SIZE - 1));
-      const [r, g, b] = gradientColor(t, colors.from, colors.to);
-      // Vordergrund-Form
-      let fg = false;
-      if (mode === 'idle') {
-        // Play-Dreieck: (9,7) (25,16) (9,25) — Punkt-in-Dreieck via Flanken
-        fg = pointInTriangle(x + 0.5, y + 0.5, 9, 7, 25, 16, 9, 25);
-      } else {
-        // REC-Punkt: Kreis Mitte r=5.5
-        const cx = x + 0.5 - SIZE / 2;
-        const cy = y + 0.5 - SIZE / 2;
-        fg = cx * cx + cy * cy <= 5.5 * 5.5;
+      let ar = 0, ag = 0, ab = 0, aa = 0; // prämultipliziert, aufsummiert
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          const fx = (x + (sx + 0.5) / SS - offX) / SCALE, fy = (y + (sy + 0.5) / SS - offY) / SCALE;
+          let r = 0, g = 0, b = 0, a = 0;
+          for (const l of layers) {
+            if (!l.shape(fx, fy)) continue;
+            const c = typeof l.color === 'function' ? l.color(fx, fy) : l.color;
+            const la = l.alpha;
+            const oa = la + a * (1 - la);
+            r = (c[0] * la + r * a * (1 - la)) / oa;
+            g = (c[1] * la + g * a * (1 - la)) / oa;
+            b = (c[2] * la + b * a * (1 - la)) / oa;
+            a = oa;
+          }
+          ar += r * a; ag += g * a; ab += b * a; aa += a;
+        }
       }
-      const [fr, fgc, fb] = fg ? [255, 255, 255] : [r, g, b];
-      px[idx] = fr;
-      px[idx + 1] = fgc;
-      px[idx + 2] = fb;
-      px[idx + 3] = Math.round(inside * 255);
+      const idx = (y * SIZE + x) * 4;
+      if (aa > 0) {
+        px[idx] = Math.round(ar / aa);
+        px[idx + 1] = Math.round(ag / aa);
+        px[idx + 2] = Math.round(ab / aa);
+      }
+      px[idx + 3] = Math.round((aa / n) * 255);
     }
   }
   return px;
-}
-
-function pointInTriangle(px, py, x1, y1, x2, y2, x3, y3) {
-  const d1 = (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2);
-  const d2 = (px - x3) * (y2 - y3) - (x2 - x3) * (py - y3);
-  const d3 = (px - x1) * (y3 - y1) - (x3 - x1) * (py - y1);
-  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
-  const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
-  return !(hasNeg && hasPos);
 }
 
 // ── Minimaler PNG-Encoder (RGBA8, Filter 0, keine Interlace) ──
