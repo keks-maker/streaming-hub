@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.8 (2026-10-08) — Änderungen im Update-Dialog
 
 - Neu: Update-Dialog mit Änderungen. Klick aufs Update-Icon öffnet statt `confirm()` einen Dialog (`#updateNotesOverlay`, Klassen `modal`/`update-notes-*`) mit den Release-Texten (GitHub-Release-`body`) aller Versionen seit der installierten, neueste zuerst; erst "Installieren" startet `apply-update`, "Abbrechen"/Esc/Klick daneben schließt.
 - Check-Ergebnis um `notes: [{ version, name, body }]` erweitert (`updater.js` über `selectReleaseNotes`, AppImage-Pfad in `main.js` über `releaseNotesFromReleases` mit paginierter Releases-Liste, IPC `check-for-update`). Draft/Prerelease/fremde Tags wie bisher ausgeschlossen; leerer/fehlender `body` ergibt "Keine Details". `parseReleaseCandidate` liefert zusätzlich `name` und `body`.
