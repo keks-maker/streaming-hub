@@ -177,3 +177,24 @@ test('channelLabel: Name, sonst tvg-id, sonst ID, sonst Platzhalter', () => {
   assert.equal(channelLabel(undefined), 'Sender');
   assert.ok(!channelLabel({ id: undefined, name: undefined }).includes('undefined'));
 });
+
+// Regression: Favoriten aus mehreren Quellen (Dashboard-Reihenfolge = Einstellungen-Reihenfolge)
+const { orderFavoriteChannels } = require('../lib/settings-channel-logic.js');
+
+test('orderFavoriteChannels: Quellen nicht nach Index vermischt, Verschieben wirkt', () => {
+  const channels = [
+    { sourceId: 'A', id: 'a1' }, { sourceId: 'A', id: 'a2' }, { sourceId: 'A', id: 'a3' },
+    { sourceId: 'B', id: 'b1' }, { sourceId: 'B', id: 'b2' }, { sourceId: 'B', id: 'x' },
+  ];
+  let sources = [{ id: 'A', favorites: ['a1', 'a2'] }, { id: 'B', favorites: ['b1', 'b2'] }];
+  const ids = () => orderFavoriteChannels(channels, sources).map(c => c.id);
+  assert.deepEqual(ids(), ['a1', 'a2', 'b1', 'b2']);
+  sources = [{ id: 'A', favorites: ['a2', 'a1'] }, { id: 'B', favorites: ['b2', 'b1'] }];
+  assert.deepEqual(ids(), ['a2', 'a1', 'b2', 'b1']);
+  // gleiche Sender-ID in zwei Quellen bleibt eindeutig
+  const dup = [{ sourceId: 'A', id: '1' }, { sourceId: 'B', id: '1' }];
+  assert.deepEqual(
+    orderFavoriteChannels(dup, [{ id: 'A', favorites: [] }, { id: 'B', favorites: ['1'] }]).map(c => c.sourceId),
+    ['B'],
+  );
+});
