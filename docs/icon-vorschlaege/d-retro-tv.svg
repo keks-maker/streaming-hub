@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9a8cff"/><stop offset="1" stop-color="#3b24b8"/></linearGradient>
+<linearGradient id="rimb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f8"/><stop offset=".45" stop-color="#b9bac6"/><stop offset=".55" stop-color="#9fa0ae"/><stop offset="1" stop-color="#d9dae4"/></linearGradient>
+<linearGradient id="scr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7ab8"/><stop offset=".5" stop-color="#8a5cff"/><stop offset="1" stop-color="#2b1a9a"/></linearGradient>
+<linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#e2dcff"/></linearGradient>
+<radialGradient id="knob" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#c3c4d0"/><stop offset="1" stop-color="#6d6e80"/></radialGradient>
+<clipPath id="c"><rect x="64" y="64" width="896" height="896" rx="210"/></clipPath>
+<clipPath id="s"><rect x="236" y="296" width="552" height="380" rx="44"/></clipPath>
+<filter id="b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="20"/></filter>
+</defs>
+<rect x="64" y="64" width="896" height="896" rx="210" fill="url(#bg)"/>
+<rect x="68" y="68" width="888" height="888" rx="206" fill="none" stroke="url(#rimb)" stroke-width="8"/>
+<ellipse cx="512" cy="800" rx="300" ry="38" fill="#1a0f5c" opacity=".6" filter="url(#b)"/>
+<path d="M392 730 H632 L660 790 Q660 806 640 806 H384 Q364 806 364 790Z" fill="url(#metal)"/>
+<rect x="190" y="250" width="644" height="480" rx="84" fill="#2a1a80" opacity=".5" transform="translate(0,16)"/>
+<rect x="190" y="250" width="644" height="480" rx="84" fill="url(#metal)"/>
+<rect x="194" y="254" width="636" height="472" rx="80" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="5"/>
+<rect x="226" y="286" width="572" height="400" rx="54" fill="#0b0626"/>
+<rect x="236" y="296" width="552" height="380" rx="44" fill="url(#scr)"/>
+<g clip-path="url(#s)">
+<polygon points="236,296 560,296 380,676 236,676" fill="#fff" opacity=".16"/>
+<ellipse cx="512" cy="560" rx="200" ry="30" fill="#1a0f5c" opacity=".3" filter="url(#b)"/>
+</g>
+<g stroke-linejoin="round" stroke-width="44">
+<polygon points="450,420 450,552 566,486" fill="#2a1590" stroke="#2a1590" transform="translate(0,16)"/>
+<polygon points="450,420 450,552 566,486" fill="url(#face)" stroke="url(#face)"/>
+</g>
+<circle cx="770" cy="708" r="9" fill="#5cf08a"/><circle cx="770" cy="708" r="22" fill="#5cf08a" opacity=".35" filter="url(#b)"/>
+<circle cx="236" cy="708" r="12" fill="url(#knob)"/><circle cx="276" cy="708" r="12" fill="url(#knob)"/>
+</svg>
