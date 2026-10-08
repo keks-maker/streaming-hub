@@ -19,6 +19,15 @@ const zlib = require('zlib');
 
 const SIZE = 32;
 const SS = 8; // Supersampling pro Achse
+// Motiv-Transformation (SVG-Raum -> Pixel): verkleinert und setzt das Motiv mit
+// transparentem Rand (>= 3 px, unten >= 4 px) in den 32x32-Canvas. Gleicher
+// Massstab fuer idle und rec; Position je Modus (Motiv-Bounding-Box im SVG-Raum:
+// idle x 9..26.3, y 5.8..28.5; rec x 9..32.5, y 5.8..32.5).
+const SCALE = 0.92;
+const PLACEMENT = {
+  idle: { left: 8.5, top: 5 },
+  rec: { left: 5.2, top: 3.2 },
+};
 
 // Play-Form aus den SVG-Vorlagen: M12.5,7 Q9,5 9,9 L9,23 Q9,27 12.5,25 L24.5,18 Q28,16 24.5,14 Z
 const PLAY = [
@@ -121,6 +130,8 @@ function motif(mode) {
 
 /** Rendert 32x32 RGBA (nicht-prämultipliziert) mit Supersampling. */
 function renderIcon(mode) {
+  const offX = PLACEMENT[mode].left - 9 * SCALE;
+  const offY = PLACEMENT[mode].top - 5.8 * SCALE;
   const layers = motif(mode);
   const px = new Uint8Array(SIZE * SIZE * 4);
   const n = SS * SS;
@@ -129,7 +140,7 @@ function renderIcon(mode) {
       let ar = 0, ag = 0, ab = 0, aa = 0; // prämultipliziert, aufsummiert
       for (let sy = 0; sy < SS; sy++) {
         for (let sx = 0; sx < SS; sx++) {
-          const fx = x + (sx + 0.5) / SS, fy = y + (sy + 0.5) / SS;
+          const fx = (x + (sx + 0.5) / SS - offX) / SCALE, fy = (y + (sy + 0.5) / SS - offY) / SCALE;
           let r = 0, g = 0, b = 0, a = 0;
           for (const l of layers) {
             if (!l.shape(fx, fy)) continue;
