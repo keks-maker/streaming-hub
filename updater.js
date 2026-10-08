@@ -31,7 +31,7 @@ const {
   recoverStaleUpdateDirs,
 } = require('./lib/bundle-install.js');
 const os = require('os');
-const { fetchReleaseCandidates, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
+const { fetchReleaseCandidates, selectReleaseNotes, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
 // Release-Kategorie (Plattform+Architektur) dieses Builds; Env-Override nur fuer Tests.
 const releaseTarget = () => process.env.STREAMING_HUB_RELEASE_TARGET || targetKey();
@@ -434,7 +434,7 @@ process.on('message', async msg => {
       const candidates = await fetchReleaseCandidates(fetch, RELEASES_API_URL, releaseTarget());
       const latest = candidates[candidates.length - 1] || null;
       const currentVersion = String(msg.currentVersion || '');
-      process.send({ type: 'result', latest: latest?.version || null, hasUpdate: !!latest && cmpVersions(latest.version, currentVersion) > 0 });
+      process.send({ type: 'result', latest: latest?.version || null, hasUpdate: !!latest && cmpVersions(latest.version, currentVersion) > 0, notes: selectReleaseNotes(candidates, currentVersion) });
     } catch (e) {
       process.send({ type: 'result', error: e.message });
     }

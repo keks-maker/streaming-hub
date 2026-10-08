@@ -8,6 +8,7 @@ const os = require('os');
 const { fork } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
+const { releaseNotesFromReleases } = require('./lib/github-releases.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
@@ -422,11 +423,16 @@ function startUpdater() {
           const release = await updateApi('releases/latest');
           const tag = release.tag_name?.replace(/^v/i, '');
           if (!tag) return { hasUpdate: false, error: 'no tag' };
-          return {
-            hasUpdate: compareVersions(tag, app.getVersion()) > 0,
-            latestVersion: tag,
-            releaseId: release.id,
-          };
+          const hasUpdate = compareVersions(tag, app.getVersion()) > 0;
+          let notes = [];
+          if (hasUpdate) {
+            try {
+              notes = releaseNotesFromReleases(await updateApi('releases?per_page=100'), app.getVersion());
+            } catch (e) {
+              notes = [];
+            }
+          }
+          return { hasUpdate, latestVersion: tag, releaseId: release.id, notes };
         } catch (e) {
           return { hasUpdate: false, error: e.message };
         }
@@ -538,7 +544,7 @@ ipcMain.handle('check-for-update', async event => {
       if (msg.type !== 'result') return;
       clearTimeout(timer);
       updaterProcess.removeListener('message', onMsg);
-      resolve({ hasUpdate: msg.hasUpdate, latestVersion: msg.latest, error: msg.error });
+      resolve({ hasUpdate: msg.hasUpdate, latestVersion: msg.latest, notes: Array.isArray(msg.notes) ? msg.notes : [], error: msg.error });
     };
     updaterProcess.on('message', onMsg);
     updaterProcess.send({ type: 'check', currentVersion: app.getVersion() });

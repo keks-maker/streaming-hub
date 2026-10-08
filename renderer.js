@@ -26,6 +26,7 @@ const {
 } = require('./lib/recorder/ui-model.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const { createDashboardHub } = require('./dashboard-hub-view.js');
+const { renderUpdateNotes } = require('./update-notes-model.js');
 
 function safeResourceUrl(value, { allowRelative = true } = {}) {
   if (typeof value !== 'string' || !value.trim()) return '';
@@ -3148,6 +3149,7 @@ let updateAvailableVersion = null;
 let updateChecking = false;
 let updateLastCheckedAt = 0;
 let updateCheckError = null;
+let updateNotes = [];
 
 function setUpdateState(state) {
   updateBtn.classList.remove('update-available', 'uptodate');
@@ -3162,7 +3164,7 @@ function setUpdateState(state) {
     updateBtn.title = `Update-Prüfung fehlgeschlagen: ${updateCheckError || 'Unbekannter Fehler'} – erneut versuchen`;
     updateBtn.disabled = false;
   } else if (state === 'available') {
-    updateBtn.title = `Update v${updateAvailableVersion} verfügbar – Klicken zum Installieren`;
+    updateBtn.title = `Update v${updateAvailableVersion} verfügbar – Klicken für Änderungen und Installation`;
     updateBtn.disabled = false;
     updateBtn.classList.add('update-available');
   } else if (state === 'progress') {
@@ -3183,6 +3185,7 @@ async function checkForUpdates({ quiet = false } = {}) {
     updateCheckError = result.error || null;
     if (result.hasUpdate && result.latestVersion) {
       updateAvailableVersion = result.latestVersion;
+      updateNotes = Array.isArray(result.notes) ? result.notes : [];
       setUpdateState('available');
     } else {
       updateAvailableVersion = null;
@@ -3232,7 +3235,7 @@ function showUpdateStatusNotice() {
   if (updateCheckError) {
     showUpdateNotice(`Update-Prüfung fehlgeschlagen: ${updateCheckError}`, true);
   } else if (updateAvailableVersion) {
-    showUpdateNotice(`Update v${updateAvailableVersion} verfügbar. Klicken zum Installieren.`);
+    showUpdateNotice(`Update v${updateAvailableVersion} verfügbar. Klicken für Änderungen und Installation.`);
   } else {
     showUpdateNotice('Kein Update verfügbar. Du verwendest die aktuelle Version.');
   }
@@ -3292,7 +3295,7 @@ async function handleUpdateButtonClick() {
   updateNotice.hidden = true;
   if (updateNoticeTimer) clearTimeout(updateNoticeTimer);
   updateNoticeTimer = null;
-  if (confirm(`Update v${updateAvailableVersion} installieren?\nDie App wird nach der Installation neugestartet.`)) {
+  if (await confirmUpdateWithNotes()) {
     updateBtn.disabled = true;
     updateBtn.title = 'Installiere…';
     showUpdateOverlay(`Update v${updateAvailableVersion} wird installiert…`);
@@ -3310,6 +3313,47 @@ async function handleUpdateButtonClick() {
       setUpdateState('available');
     }
   }
+}
+
+// Zeigt die Release-Notes seit der installierten Version; resolved true bei "Installieren", false bei Abbrechen/Esc.
+function confirmUpdateWithNotes() {
+  const overlay = document.getElementById('updateNotesOverlay');
+  const body = document.getElementById('updateNotesBody');
+  const title = document.getElementById('updateNotesTitle');
+  const installBtn = document.getElementById('updateNotesInstall');
+  const cancelBtn = document.getElementById('updateNotesCancel');
+  title.textContent = `Update v${updateAvailableVersion} verfügbar`;
+  body.replaceChildren();
+  renderUpdateNotes(document, body, updateNotes);
+  body.scrollTop = 0;
+  overlay.classList.add('open');
+  installBtn.focus();
+  return new Promise(resolve => {
+    const finish = result => {
+      overlay.classList.remove('open');
+      installBtn.removeEventListener('click', onInstall);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey, true);
+      resolve(result);
+    };
+    const onInstall = () => finish(true);
+    const onCancel = () => finish(false);
+    const onBackdrop = ev => {
+      if (ev.target === overlay) finish(false);
+    };
+    const onKey = ev => {
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        finish(false);
+      }
+    };
+    installBtn.addEventListener('click', onInstall);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey, true);
+  });
 }
 
 updateBtn.addEventListener('mouseenter', () => {

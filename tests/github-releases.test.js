@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { fetchReleaseCandidates, findReleaseCandidates, parseReleaseCandidate } = require('../lib/github-releases.js');
+const { fetchReleaseCandidates, findReleaseCandidates, parseReleaseCandidate, selectReleaseNotes, releaseNotesFromReleases } = require('../lib/github-releases.js');
 
 const asset = version => ({ name: `Streaming.Hub-${version}-mac.zip`, browser_download_url: `https://github.com/keks-maker/streaming-hub/releases/download/v${version}/Streaming.Hub-${version}-mac.zip` });
 
@@ -113,4 +113,28 @@ test('fetchReleaseCandidates filtert nach Kategorie', async () => {
   const fetchImpl = async () => ({ ok: true, json: async () => [arm('0.9.4'), x64('0.9.5')] });
   assert.equal((await fetchReleaseCandidates(fetchImpl, 'https://mock.example/r', 'darwin-x64')).at(-1).tagName, 'v0.9.5-x64');
   assert.equal((await fetchReleaseCandidates(fetchImpl, 'https://mock.example/r')).at(-1).tagName, 'v0.9.4');
+});
+
+test('Release-Notes: alle Versionen neuer als die installierte, neueste zuerst, body fehlt -> Keine Details', () => {
+  const rel = (v, body, name) => ({ tag_name: `v${v}`, name, body, draft: false, prerelease: false, assets: [asset(v)] });
+  const candidates = findReleaseCandidates([rel('0.9.6', 'alt'), rel('0.9.7', 'Text 7', 'v0.9.7'), rel('0.9.8', '', 'Acht'), rel('0.9.9', undefined)]);
+  assert.equal(candidates[0].body, 'alt');
+  const notes = selectReleaseNotes(candidates, '0.9.6');
+  assert.deepEqual(notes, [
+    { version: '0.9.9', name: '', body: 'Keine Details' },
+    { version: '0.9.8', name: 'Acht', body: 'Keine Details' },
+    { version: '0.9.7', name: 'v0.9.7', body: 'Text 7' },
+  ]);
+  assert.deepEqual(selectReleaseNotes(candidates, '0.9.9'), []);
+});
+
+test('Release-Notes aus rohen Releases (AppImage): Draft, Prerelease und fremde Tags ausgeschlossen', () => {
+  const notes = releaseNotesFromReleases([
+    { tag_name: 'v0.9.8', body: 'B', draft: false, prerelease: false },
+    { tag_name: 'v0.9.9', body: 'X', draft: true, prerelease: false },
+    { tag_name: 'v1.0.0', body: 'X', draft: false, prerelease: true },
+    { tag_name: 'v0.9.8-x64', body: 'X', draft: false, prerelease: false },
+    { tag_name: 'v0.9.7', body: 'A', draft: false, prerelease: false },
+  ], '0.9.6');
+  assert.deepEqual(notes.map(n => n.version), ['0.9.8', '0.9.7']);
 });
