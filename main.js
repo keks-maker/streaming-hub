@@ -182,7 +182,9 @@ const {
   text: validateText,
   tvSource: validateTvSource,
   tvSourceUpdates: validateTvSourceUpdates,
+  favoriteOrder: validateFavoriteOrder,
 } = require('./lib/input-validation.js');
+const { applyFavoriteOrder } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
@@ -1432,6 +1434,17 @@ ipcMain.handle('remove-tv-source', (event, id) => {
   sources = sources.filter(s => s.id !== sourceId);
   saveTvSources(sources);
   broadcastTvSources();
+});
+
+// Globale Favoriten-Reihenfolge (quellenübergreifend): schreibt favorites + favoriteRank aller Quellen
+// in einem Schritt und sendet genau ein tv-sources-changed.
+ipcMain.handle('set-favorite-order', (event, order) => {
+  requireMainRenderer(event);
+  const list = validateFavoriteOrder(order);
+  const sources = applyFavoriteOrder(loadTvSources(), list);
+  saveTvSources(sources);
+  broadcastTvSources();
+  return sources;
 });
 
 ipcMain.handle('update-tv-source', (event, id, updates) => {
