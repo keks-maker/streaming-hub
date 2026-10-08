@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.6 (2026-10-08) — Favoriten quellenübergreifend sortierbar
+
+- Behoben: Bei mehreren TV-Quellen wich die Favoriten-Reihenfolge im Dashboard von der in den Einstellungen ab. Ursache: Dashboard (`renderer.js`) und Einstellungen (`settings-tv-channels.js`) leiteten die Reihenfolge je Quelle getrennt aus `favorites` ab und fügten die Quellen unterschiedlich zusammen.
+- Neu: Globale, quellenübergreifende Favoriten-Reihenfolge. Pro Quelle trägt `favoriteRank` die Position in der globalen Liste; `globalFavoriteList` (`lib/settings-channel-logic.js`) bildet daraus die eine Reihenfolge, die Dashboard und Einstellungen gemeinsam nutzen. Neue IPC `set-favorite-order` (Preload, `main.js`) nimmt eine Liste `{ sourceId, id }` entgegen und schreibt `favoriteRank`/`favorites` je Quelle; Validierung über `favoriteOrder` in `lib/input-validation.js` (max. 20000 Einträge, Längengrenzen).
+- Altpfad: `setSourceFavorites` hält `favoriteRank` bei Umsortierung über `update-tv-source` konsistent.
+- Behoben (`lib/tvsources-merge.js`, `mergeSource`): `favoriteRank` wird zusammen mit `favorites` aus der Nutzerkopie übernommen, sobald eines von beiden verändert wurde; `channelOverrides` der Nutzerkopie werden bei fehlendem Wert als leeres Objekt gemergt statt `null`.
+- Tests: `tests/favorites-global-order.test.js` (neu), Ergänzungen in `tests/settings-channel-logic.test.js`.
+
 ## 0.9.5 (2026-10-06) — Eigenes GitHub-Release je Plattform/Architektur (Intel-Mac)
 
 - Neu: Release-Kategorien in `lib/github-releases.js` (`RELEASE_TARGETS`, Schlüssel `plattform-arch`): `darwin-arm64` unverändert (Tag `vX.Y.Z`, Asset `Streaming.Hub-X.Y.Z-mac.zip`), `darwin-x64` mit eigenem Tag `vX.Y.Z-x64` und Asset `Streaming.Hub-X.Y.Z-mac-x64.zip`. Linux ist später nur ein weiterer Tabelleneintrag. Ein Client berücksichtigt nur Releases seiner Kategorie; Versionsvergleich nur innerhalb der Kategorie. Der alte Parser (`^vX.Y.Z$`, 0.9.x) sieht x64-Tags nie als Kandidat (Test mit eingefrorener Kopie `tests/fixtures/github-releases-0.9.4.js`).
