@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Neu: Neues App-Icon (Glas/3D) — `assets/icon.svg`, `icon.png`, `icon.icns`.
+- Neu: Neue Menüzeilen-Icons (Aufnahme mit rotem Punkt) — `scripts/generate-tray-icons.js` rendert `tray-idle.png`/`tray-rec.png` im A3-Stil (32px, transparent).
 
 ## 0.9.6 (2026-10-08) — Favoriten quellenübergreifend sortierbar
 
