@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Neu: Neues App-Icon (Glas/3D) — `assets/icon.svg`, `icon.png`, `icon.icns`.
+
 ## 0.9.6 (2026-10-08) — Favoriten quellenübergreifend sortierbar
 
 - Behoben: Bei mehreren TV-Quellen wich die Favoriten-Reihenfolge im Dashboard von der in den Einstellungen ab. Ursache: Dashboard (`renderer.js`) und Einstellungen (`settings-tv-channels.js`) leiteten die Reihenfolge je Quelle getrennt aus `favorites` ab und fügten die Quellen unterschiedlich zusammen.
