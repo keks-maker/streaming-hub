@@ -2,7 +2,7 @@
 // Senderverwaltung inline: Quellenfilter, Suche, Ansicht Alle/Favoriten, Favoriten setzen und
 // umsortieren (Drag&Drop + Buttons), Detailbereich mit Name, EPG-Zuweisung (tvg-id),
 // Logo-URL und Stream-URL-Überschreibung. Persistenz ausschließlich über updateTvSource
-// (favorites / channelOverrides) – Datenformat von tvsources.json unverändert.
+// (favorites + favoriteRank / channelOverrides); Favoriten-Reihenfolge global über alle Quellen.
 // Große Listen: seitenweise Darstellung (PAGE_SIZE), Logos lazy.
 
 const {
@@ -11,10 +11,12 @@ const {
   channelLabel,
   isFav,
   filterManagedChannels,
-  toggleFavoriteList,
-  moveFavoriteAmongVisible,
-  visibleFavoritePosition,
-  moveFavoriteTo,
+  globalFavoriteList,
+  applyFavoriteOrder,
+  toggleGlobalFavorite,
+  moveGlobalFavorite,
+  globalFavoritePosition,
+  moveGlobalFavoriteTo,
   mergeOverride,
   buildOverrideChanges,
   validateOverrideChanges,
@@ -106,10 +108,16 @@ function createTvChannelsView({
 
   // ── Persistenz ──
 
-  async function saveFavorites(source, favorites) {
-    source.favorites = favorites; // optimistisch; tv-sources-changed liefert den Stand zurück
+  // Globale Favoriten-Reihenfolge (quellenübergreifend) speichern; main schreibt favorites +
+  // favoriteRank aller Quellen in einem Schritt.
+  async function saveFavoriteOrder(list) {
+    const sources = getSources();
+    applyFavoriteOrder(sources, list).forEach((next, i) => {
+      sources[i].favorites = next.favorites; // optimistisch; tv-sources-changed liefert den Stand zurück
+      sources[i].favoriteRank = next.favoriteRank;
+    });
     try {
-      await api.updateTvSource(source.id, { favorites });
+      await api.setFavoriteOrder(list);
       setStatus('');
     } catch (e) {
       setStatus(formatIpcError(e), true);
@@ -117,30 +125,29 @@ function createTvChannelsView({
     render();
   }
 
+  const entryOf = ch => ({ sourceId: ch.sourceId, id: ch.id });
+
   function toggleFavorite(ch) {
-    const source = sourcesById().get(ch.sourceId);
-    if (!source) return;
-    saveFavorites(source, toggleFavoriteList(source.favorites, ch.id));
+    if (!sourcesById().has(ch.sourceId)) return;
+    saveFavoriteOrder(toggleGlobalFavorite(globalFavoriteList(getSources()), entryOf(ch)));
   }
 
-  // Sender einer Quelle, die in der geladenen Playlist existieren (Gegenstück zu "Geister"-Favoriten).
-  function visibleIdsOf(sourceId) {
-    return new Set(getChannels().filter(c => c.sourceId === sourceId).map(c => c.id));
+  // Sender, die in der geladenen Playlist existieren (Gegenstück zu "Geister"-Favoriten).
+  function visibleFavEntry() {
+    const keys = new Set(getChannels().map(c => channelKey(c.sourceId, c.id)));
+    return e => keys.has(channelKey(e.sourceId, e.id));
   }
 
   function moveFav(ch, delta, focusAction) {
-    const source = sourcesById().get(ch.sourceId);
-    if (!source) return;
+    if (!sourcesById().has(ch.sourceId)) return;
     state.restoreFocus = { key: channelKey(ch.sourceId, ch.id), action: focusAction };
-    saveFavorites(source, moveFavoriteAmongVisible(source.favorites, ch.id, delta, visibleIdsOf(ch.sourceId)));
+    saveFavoriteOrder(moveGlobalFavorite(globalFavoriteList(getSources()), entryOf(ch), delta, visibleFavEntry()));
   }
 
   function dropFav(draggedKey, target) {
     const [sid, chId] = draggedKey.split('\u0000');
-    if (sid !== target.sourceId || chId === target.id) return;
-    const source = sourcesById().get(sid);
-    if (!source) return;
-    saveFavorites(source, moveFavoriteTo(source.favorites, chId, target.id));
+    if (!sourcesById().has(sid) || (sid === target.sourceId && chId === target.id)) return;
+    saveFavoriteOrder(moveGlobalFavoriteTo(globalFavoriteList(getSources()), { sourceId: sid, id: chId }, entryOf(target)));
   }
 
   // ── Detailbereich ──
@@ -544,7 +551,7 @@ function createTvChannelsView({
     actions.appendChild(star);
 
     if (state.view === 'favorites') {
-      const pos = visibleFavoritePosition((source && source.favorites) || [], ch.id, visibleIdsOf(ch.sourceId));
+      const pos = globalFavoritePosition(globalFavoriteList(getSources()), entryOf(ch), visibleFavEntry());
       const mk = (action, symbol, actionLabel, delta, disabled) => {
         const b = el('button', 'settings-chan-move', symbol);
         b.type = 'button';

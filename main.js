@@ -182,7 +182,9 @@ const {
   text: validateText,
   tvSource: validateTvSource,
   tvSourceUpdates: validateTvSourceUpdates,
+  favoriteOrder: validateFavoriteOrder,
 } = require('./lib/input-validation.js');
+const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
@@ -1434,6 +1436,17 @@ ipcMain.handle('remove-tv-source', (event, id) => {
   broadcastTvSources();
 });
 
+// Globale Favoriten-Reihenfolge (quellenübergreifend): schreibt favorites + favoriteRank aller Quellen
+// in einem Schritt und sendet genau ein tv-sources-changed.
+ipcMain.handle('set-favorite-order', (event, order) => {
+  requireMainRenderer(event);
+  const list = validateFavoriteOrder(order);
+  const sources = applyFavoriteOrder(loadTvSources(), list);
+  saveTvSources(sources);
+  broadcastTvSources();
+  return sources;
+});
+
 ipcMain.handle('update-tv-source', (event, id, updates) => {
   requireMainRenderer(event);
   const sourceId = validateText(id, 'Quellen-ID', 200);
@@ -1452,6 +1465,8 @@ ipcMain.handle('update-tv-source', (event, id, updates) => {
     throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
   }
   if (idx !== -1) {
+    // favorites per Altpfad: globale Rangfolge (favoriteRank) mitführen, sonst überstimmt der alte Rang
+    if (source.favorites !== undefined) sources.splice(0, sources.length, ...setSourceFavorites(sources, sourceId, source.favorites));
     sources[idx] = { ...sources[idx], ...source };
     saveTvSources(sources);
     broadcastTvSources();

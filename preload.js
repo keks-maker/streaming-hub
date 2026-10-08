@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   addTvSource: source => ipcRenderer.invoke('add-tv-source', source),
   removeTvSource: id => ipcRenderer.invoke('remove-tv-source', id),
   updateTvSource: (id, updates) => ipcRenderer.invoke('update-tv-source', id, updates),
+  setFavoriteOrder: order => ipcRenderer.invoke('set-favorite-order', order),
   pickM3uFile: () => ipcRenderer.invoke('pick-m3u-file'),
   fetchAndParseM3U: urlOrPath => ipcRenderer.invoke('fetch-and-parse-m3u', urlOrPath),
   onTvSourcesChanged: cb => {

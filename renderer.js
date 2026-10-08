@@ -18,6 +18,7 @@ const { createSettingsView } = require('./settings-view.js');
 const { createEpgView } = require('./epg-view.js');
 const { createTvSourcesView } = require('./settings-tv-sources.js');
 const { createTvChannelsView } = require('./settings-tv-channels.js');
+const { orderFavoriteChannels } = require('./lib/settings-channel-logic.js');
 const {
   formatDuration,
   currentEpgStopMs,
@@ -733,16 +734,7 @@ function renderLiveTvTile(ch) {
 }
 
 function getOrderedFavoriteChannels(channels = tvChannels) {
-  return channels
-    .filter(ch => isFavorite(ch, tvSources))
-    .slice()
-    .sort((a, b) => {
-      const sourceA = tvSources.find(s => s.id === a.sourceId);
-      const sourceB = tvSources.find(s => s.id === b.sourceId);
-      const orderA = sourceA?.favorites?.indexOf(a.id) ?? -1;
-      const orderB = sourceB?.favorites?.indexOf(b.id) ?? -1;
-      return (orderA < 0 ? Number.MAX_SAFE_INTEGER : orderA) - (orderB < 0 ? Number.MAX_SAFE_INTEGER : orderB);
-    });
+  return orderFavoriteChannels(channels, tvSources);
 }
 
 function renderLiveTvDashboard() {
