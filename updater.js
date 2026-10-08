@@ -33,6 +33,11 @@ const {
 const os = require('os');
 const { fetchReleaseCandidates, selectReleaseNotes, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
+// Basis-URL setzt main.js nur nach Prüfung (lib/update-base.js) in die Env des Updater-Prozesses; Default GitHub.
+const RELEASES_URL = process.env.STREAMING_HUB_UPDATE_URL
+  ? `${process.env.STREAMING_HUB_UPDATE_URL}/repos/keks-maker/streaming-hub/releases`
+  : RELEASES_API_URL;
+
 // Release-Kategorie (Plattform+Architektur) dieses Builds; Env-Override nur fuer Tests.
 const releaseTarget = () => process.env.STREAMING_HUB_RELEASE_TARGET || targetKey();
 
@@ -431,7 +436,7 @@ if (require.main === module) {
 process.on('message', async msg => {
   if (msg.type === 'check') {
     try {
-      const candidates = await fetchReleaseCandidates(fetch, RELEASES_API_URL, releaseTarget());
+      const candidates = await fetchReleaseCandidates(fetch, RELEASES_URL, releaseTarget());
       const latest = candidates[candidates.length - 1] || null;
       const currentVersion = String(msg.currentVersion || '');
       process.send({ type: 'result', latest: latest?.version || null, hasUpdate: !!latest && cmpVersions(latest.version, currentVersion) > 0, notes: selectReleaseNotes(candidates, currentVersion) });
@@ -447,7 +452,7 @@ process.on('message', async msg => {
       updateDataDir = fs.existsSync(installDir) ? installDir : legacyAppDir;
       backupDir = `${updateDataDir}.update-backup-${process.pid}`;
       const legacyBackupDir = backupDir;
-      const candidates = await fetchReleaseCandidates(fetch, RELEASES_API_URL, releaseTarget());
+      const candidates = await fetchReleaseCandidates(fetch, RELEASES_URL, releaseTarget());
       const release = candidates.find(candidate => candidate.version === msg.version);
       if (!release) throw new Error(`Kein gültiger GitHub-Release für v${msg.version} gefunden`);
       backupUserFiles();

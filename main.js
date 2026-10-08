@@ -188,6 +188,7 @@ const {
 const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
+const { resolveUpdateApiBase, DEFAULT_UPDATE_API_BASE } = require('./lib/update-base.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
 const { describeM3uFetchError } = require('./lib/m3u-fetch-error.js');
 
@@ -397,7 +398,10 @@ function saveHistory(history) {
 
 // ── Updater ──
 
-const UPDATE_API_BASE = process.env.STREAMING_HUB_UPDATE_URL || 'https://api.github.com';
+const UPDATE_API_BASE = resolveUpdateApiBase(process.env, app.isPackaged);
+// Updater-Prozess (fork) erbt dieselbe, bereits geprüfte Basis-URL.
+if (UPDATE_API_BASE === DEFAULT_UPDATE_API_BASE) delete process.env.STREAMING_HUB_UPDATE_URL;
+else process.env.STREAMING_HUB_UPDATE_URL = UPDATE_API_BASE;
 const UPDATE_OWNER = 'keks-maker';
 const UPDATE_REPO = 'streaming-hub';
 const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
