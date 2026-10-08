@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   globalFavoriteList,
   applyFavoriteOrder,
+  setSourceFavorites,
   toggleGlobalFavorite,
   moveGlobalFavorite,
   globalFavoritePosition,
@@ -102,4 +103,26 @@ test('Quellen-Refresh (mergeTvsources) erhält die globale Reihenfolge des Users
   assert.equal(merged.value[0].url, 'u2');
   const untouched = mergeTvsources(base, base, [{ ...neu[0], favoriteRank: { a1: 0 } }]);
   assert.deepEqual(untouched.value[0].favoriteRank, { a1: 0 });
+});
+
+test('setSourceFavorites: Umsortierung nur über favorites wirkt trotz vorhandenem favoriteRank', () => {
+  const src = [
+    { id: 'A', favorites: ['a1', 'a2'], favoriteRank: { a1: 0, a2: 1 } },
+    { id: 'B', favorites: ['b1'], favoriteRank: { b1: 2 } },
+  ];
+  const res = setSourceFavorites(src, 'A', ['a2', 'a1']);
+  assert.deepEqual(ids(globalFavoriteList(res)), ['A:a2', 'A:a1', 'B:b1']);
+  assert.deepEqual(res[0].favorites, ['a2', 'a1']);
+});
+
+test('setSourceFavorites: Plätze zwischen Quellen bleiben, Überhang und Entfernen', () => {
+  const src = [
+    { id: 'A', favorites: ['a1', 'a2'], favoriteRank: { a1: 0, a2: 2 } },
+    { id: 'B', favorites: ['b1'], favoriteRank: { b1: 1 } },
+  ];
+  assert.deepEqual(ids(globalFavoriteList(setSourceFavorites(src, 'A', ['a2', 'a1']))), ['A:a2', 'B:b1', 'A:a1']);
+  assert.deepEqual(ids(globalFavoriteList(setSourceFavorites(src, 'A', ['a1', 'a2', 'a3']))), ['A:a1', 'B:b1', 'A:a2', 'A:a3']);
+  assert.deepEqual(ids(globalFavoriteList(setSourceFavorites(src, 'A', ['a2']))), ['A:a2', 'B:b1']);
+  assert.deepEqual(ids(globalFavoriteList(setSourceFavorites(src, 'A', []))), ['B:b1']);
+  assert.deepEqual(src[0].favorites, ['a1', 'a2']);
 });

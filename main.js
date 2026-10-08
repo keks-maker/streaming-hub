@@ -184,7 +184,7 @@ const {
   tvSourceUpdates: validateTvSourceUpdates,
   favoriteOrder: validateFavoriteOrder,
 } = require('./lib/input-validation.js');
-const { applyFavoriteOrder } = require('./lib/settings-channel-logic.js');
+const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
@@ -1465,6 +1465,8 @@ ipcMain.handle('update-tv-source', (event, id, updates) => {
     throw new Error('Datei muss zuerst über den Dateiauswahldialog gewählt werden');
   }
   if (idx !== -1) {
+    // favorites per Altpfad: globale Rangfolge (favoriteRank) mitführen, sonst überstimmt der alte Rang
+    if (source.favorites !== undefined) sources.splice(0, sources.length, ...setSourceFavorites(sources, sourceId, source.favorites));
     sources[idx] = { ...sources[idx], ...source };
     saveTvSources(sources);
     broadcastTvSources();
