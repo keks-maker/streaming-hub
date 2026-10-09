@@ -182,3 +182,75 @@ test('Resume nach Standby mitten im Fenster: Blocker + Spätstart', async () => 
   assert.equal(recorder.startCalls.length, 1, 'Spätstart');
   assert.equal(blocker.live, 1);
 });
+
+function fakeSpawner({ fail = false } = {}) {
+  const calls = [];
+  const children = [];
+  const spawn = (cmd, args, opts) => {
+    if (fail) throw new Error('spawn kaputt');
+    const c = new EventEmitter();
+    c.killed = false;
+    c.kill = () => { c.killed = true; };
+    calls.push({ cmd, args, opts });
+    children.push(c);
+    return c;
+  };
+  return { spawn, calls, children };
+}
+
+function makeCaff({ platform = 'darwin', fail = false } = {}) {
+  const sp = fakeSpawner({ fail });
+  const blocker = new FakeBlocker();
+  const s = { active: 1 };
+  const guard = new StandbyGuard({
+    powerSaveBlocker: blocker, getActiveCount: () => s.active, getWindows: () => [], now: () => 0,
+    spawn: sp.spawn, platform, pid: 4242,
+  });
+  return { guard, sp, s, blocker };
+}
+
+test('caffeinate: unter darwin genau ein Prozess mit -s -i -w <pid>', () => {
+  const { guard, sp } = makeCaff();
+  guard.sync();
+  guard.sync();
+  assert.equal(sp.calls.length, 1);
+  assert.equal(sp.calls[0].cmd, '/usr/bin/caffeinate');
+  assert.deepEqual(sp.calls[0].args, ['-s', '-i', '-w', '4242']);
+  assert.equal(sp.calls[0].opts.detached, false);
+  assert.equal(sp.calls[0].opts.stdio, 'ignore');
+});
+
+test('caffeinate: andere Plattformen und ohne spawn: no-op', () => {
+  const { guard, sp, blocker } = makeCaff({ platform: 'linux' });
+  guard.sync();
+  assert.equal(sp.calls.length, 0);
+  assert.equal(blocker.live, 1);
+});
+
+test('caffeinate: Stopp beim Deaktivieren und bei release()', () => {
+  const { guard, sp, s } = makeCaff();
+  guard.sync();
+  s.active = 0;
+  guard.sync();
+  assert.equal(sp.children[0].killed, true);
+  s.active = 1;
+  guard.sync();
+  assert.equal(sp.calls.length, 2);
+  guard.release();
+  assert.equal(sp.children[1].killed, true);
+});
+
+test('caffeinate: Neustart nach unerwartetem Exit beim nächsten sync()', () => {
+  const { guard, sp } = makeCaff();
+  guard.sync();
+  sp.children[0].emit('exit', 1);
+  assert.equal(sp.calls.length, 1, 'nicht sofort');
+  guard.sync();
+  assert.equal(sp.calls.length, 2);
+});
+
+test('caffeinate: spawn-Fehler blockiert den Blocker nicht', () => {
+  const { guard, blocker } = makeCaff({ fail: true });
+  assert.equal(guard.sync(), true);
+  assert.equal(blocker.live, 1);
+});

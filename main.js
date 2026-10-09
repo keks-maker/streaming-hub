@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog,
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { fork } = require('child_process');
+const { fork, spawn: spawnChild } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
 const { releaseNotesFromReleases } = require('./lib/github-releases.js');
@@ -1173,6 +1173,7 @@ app.whenReady().then(() => {
           powerSaveBlocker,
           getActiveCount: () => recorder.activeJobs().length,
           getWindows: () => scheduler.upcomingWindows(),
+          spawn: spawnChild,
           logger,
         });
         standbyGuard.attach({ scheduler, recorder });
