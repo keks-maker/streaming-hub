@@ -1365,6 +1365,7 @@ recLateStartInput.addEventListener('change', saveRecordingLimits);
 // ── Aufwecken für geplante Aufnahmen (macOS, Konzept §4.3) ──
 // Status kommt aus dem Main (supported/active/nextWakeMs); nur textContent.
 let wakeStatus = null;
+let scheduleHasUpcoming = false; // Hinweis in „Geplant“ nur bei vorhandenen Planungen
 const recWakeCard = document.getElementById('recWakeCard');
 const recWakeStatus = document.getElementById('recWakeStatus');
 const recWakeError = document.getElementById('recWakeError');
@@ -1433,17 +1434,17 @@ window.electronAPI.onWakeChanged?.(status => applyWakeStatus(status));
 
 // Hinweis oben in „Geplant“ (nur macOS): Zustand + Link in die Einstellungen
 function buildWakeHint() {
-  if (!wakeStatus?.supported) return null;
+  if (!wakeStatus?.supported || !scheduleHasUpcoming) return null;
   const box = document.createElement('div');
   box.className = 'schedule-wake-hint' + (wakeStatus.active ? ' ok' : '');
   box.id = 'scheduleWakeHint';
   if (wakeStatus.active) {
-    box.textContent = 'Wecken aktiv: Der Mac wird vor geplanten Aufnahmen geweckt, solange Streaming Hub läuft.';
+    box.textContent = 'Wecken aktiv: Der Mac wird vor geplanten Aufnahmen aus dem Ruhezustand geweckt, solange Streaming Hub läuft. Ein gesperrter Bildschirm ist unkritisch, die Aufnahme läuft weiter. Bei heruntergefahrenem oder neu gestartetem Mac startet sie nicht.';
     return box;
   }
   box.appendChild(
     document.createTextNode(
-      'Ruhezustand: Eine geplante Aufnahme startet nur, wenn in den Einstellungen das Aufwecken erlaubt wurde. ',
+      'Ruhezustand: Eine geplante Aufnahme startet nur, wenn in den Einstellungen das Aufwecken erlaubt wurde. Ein gesperrter Bildschirm ist unkritisch, die Aufnahme läuft weiter. Bei heruntergefahrenem oder neu gestartetem Mac startet sie nicht. ',
     ),
   );
   const link = document.createElement('button');
@@ -2636,6 +2637,8 @@ function renderScheduleInto(listEl) {
     .then(entries => {
       listEl.textContent = '';
       const { upcoming, history } = scheduleUi.splitScheduleEntries(entries || []);
+      scheduleHasUpcoming = upcoming.length > 0;
+      refreshWakeHint();
       if (!upcoming.length && !history.length) {
         const empty = document.createElement('div');
         empty.className = 'recordings-empty';
