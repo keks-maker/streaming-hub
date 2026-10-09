@@ -385,6 +385,16 @@
                 <span>Spätstart: Wurde der Start verpasst (App aus, Standby) und läuft die Sendung noch, sofort ab jetzt aufnehmen</span>
               </label>
             </div>
+            <div class="settings-card" id="recWakeCard" hidden>
+              <h4 class="settings-card-title">Aufwecken für geplante Aufnahmen</h4>
+              <p class="settings-card-desc">Schläft der Mac zur geplanten Startzeit, startet die Aufnahme nicht. Mit „Aufwecken erlauben“ weckt Streaming Hub den Mac 5 Minuten vor jeder geplanten Aufnahme. Dafür wird einmal pro App-Start das Administrator-Passwort abgefragt. Die Erlaubnis gilt nur, solange Streaming Hub läuft (das Fenster darf geschlossen sein, die App muss im Tray bleiben); es wird nichts dauerhaft im System geändert. Der Mac muss am Netzteil hängen — im Akkubetrieb mit zugeklapptem Deckel ist das Aufwecken unzuverlässig.</p>
+              <div class="settings-rec-ffmpeg" id="recWakeStatus">Status wird geprüft …</div>
+              <div class="settings-rec-warn" id="recWakeError" style="display:none"></div>
+              <div class="settings-tv-actions">
+                <button class="settings-action-btn" id="recWakeEnableBtn" type="button">Aufwecken erlauben</button>
+                <button class="settings-action-btn" id="recWakeDisableBtn" type="button" hidden>Aufwecken beenden</button>
+              </div>
+            </div>
             <div class="settings-card">
               <h4 class="settings-card-title">ffmpeg</h4>
               <p class="settings-card-desc">Voraussetzung für Aufnahmen.</p>

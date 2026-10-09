@@ -3232,3 +3232,9 @@ body.epg-open .overlay-bar { z-index: 105; }
 .update-md-empty { color: var(--text-dim); }
 .update-md-list { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
 .update-notes-body code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 4px; }
+
+/* Aufwecken (§4.3): Hinweis in „Geplant“ und Karten-Elemente mit hidden */
+.settings-card[hidden], .settings-action-btn[hidden] { display: none; }
+.schedule-wake-hint { font-size: 12px; color: #f59e0b; margin-bottom: 10px; }
+.schedule-wake-hint.ok { color: var(--text-muted); }
+.schedule-wake-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }

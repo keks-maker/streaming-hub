@@ -182,6 +182,8 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 **Laufende Aufnahme:** Oben im Player zeigt ein „REC“-Hinweis mit Laufzeit, Sender und Sendung, dass aufgenommen wird – auch wenn du den Sender wechselst. Ein Klick darauf (oder auf den roten Aufnahme-Button) öffnet die Verwaltung zum Beenden. Aufnahmen laufen weiter, wenn du das Fenster schließt: Die App bleibt dann im Tray (Symbol rot bei laufender Aufnahme) und lässt sich von dort öffnen oder die Aufnahme stoppen. Reißt die Verbindung kurz ab, versucht die App automatisch, die Aufnahme fortzusetzen; nach einem Absturz werden unvollständige Aufnahmen beim nächsten Start gerettet.
 
+**Mac aufwecken (nur macOS):** Schläft der Mac zur geplanten Startzeit, startet die Aufnahme nicht. Unter **Einstellungen → LiveTV → Aufnahmen → Aufwecken für geplante Aufnahmen** erlaubst du das Aufwecken per Klick auf **Aufwecken erlauben**; dabei fragt macOS einmal pro App-Start nach dem Administrator-Passwort. Die Erlaubnis gilt nur, solange Streaming Hub läuft (im Tray genügt), und hinterlässt nichts im System. Der Mac muss am Netzteil hängen. Im Bereich **Geplant** zeigt ein Hinweis, ob das Wecken aktiv ist.
+
 **Aufnahmen ansehen:** Öffne im Live-TV-Dashboard die Karte **Aufnahmen** oder drücke `Strg` + `R`. Die Übersicht zeigt Titel, Sender, Datum, Dauer und Status jeder Aufnahme. Hier kannst du Aufnahmen abspielen und löschen. Während eine Aufnahme nach dem Beenden in das MP4-Format umgewandelt wird, siehst du den Fortschritt; fertige Aufnahmen liegen als normale MP4-Dateien im Speicherordner und lassen sich auch mit anderen Playern öffnen.
 
 ![Aufnahmen-Übersicht](assets/screenshots/aufnahmen-dashboard.png)
