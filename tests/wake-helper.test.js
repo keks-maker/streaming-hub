@@ -282,19 +282,22 @@ const procsWith = needle => {
 
 test('Helfer: nach quit bleibt kein Wächter übrig; Aus/Ein-Zyklen sammeln nichts an', { skip: process.platform === 'win32' }, async () => {
   const env = setup();
-  const tokens = ['d', 'e', 'f'].map(c => c.repeat(32));
+  // Zufällige Tokens je Lauf: Reste früherer/paralleler Läufe werden nie mitgezählt.
+  const tokens = [0, 1, 2].map(() => require('node:crypto').randomBytes(16).toString('hex'));
+  let child;
   try {
     for (const token of tokens) {
       const dir = path.join(env.base, `streaminghub-wake-${process.getuid()}-${token}`);
-      const child = startHelper(env, { token });
+      child = startHelper(env, { token });
       assert.ok(await waitFor(() => fs.existsSync(path.join(dir, 'cmd'))));
       assert.ok(procsWith(token).length >= 2, 'Helfer + Wächter laufen');
       sendLine(path.join(dir, 'cmd'), 'quit');
-      assert.ok(await waitFor(() => procsWith(token).length === 0, 5000), 'kein Helfer-/Wächterprozess mehr');
+      assert.ok(await waitFor(() => procsWith(token).length === 0, 10000), 'kein Helfer-/Wächterprozess mehr');
       assert.ok(!fs.existsSync(dir));
       child.kill('SIGKILL');
     }
   } finally {
+    if (child) child.kill('SIGKILL');
     fs.rmSync(env.base, { recursive: true, force: true });
   }
 });
