@@ -83,6 +83,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateSchedule: (id, patch) => ipcRenderer.invoke('schedule:update', id, patch),
   removeSchedule: id => ipcRenderer.invoke('schedule:remove', id),
   listSchedules: () => ipcRenderer.invoke('schedule:list'),
+  // Aufwecken für geplante Aufnahmen (macOS, Konzept §4.3)
+  getWakeStatus: () => ipcRenderer.invoke('wake:get-status'),
+  enableWake: () => ipcRenderer.invoke('wake:enable'),
+  disableWake: () => ipcRenderer.invoke('wake:disable'),
+  onWakeChanged: callback => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('wake:changed', handler);
+    return () => ipcRenderer.removeListener('wake:changed', handler);
+  },
   checkScheduleConflicts: input => ipcRenderer.invoke('schedule:check-conflicts', input),
   onScheduleChanged: cb => {
     const handler = (_e, data) => cb(data);

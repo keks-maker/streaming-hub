@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog,
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { fork } = require('child_process');
+const { fork, spawn: spawnChild } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
 const { releaseNotesFromReleases } = require('./lib/github-releases.js');
@@ -25,6 +25,9 @@ const { registerScheduleIpc } = require('./lib/recorder/ipc-schedule.js');
 const { TrayController } = require('./lib/recorder/TrayController.js');
 const { QuitCoordinator } = require('./lib/recorder/QuitCoordinator.js');
 const { StandbyGuard } = require('./lib/recorder/StandbyGuard.js');
+const { WakeHelperClient } = require('./lib/recorder/WakeHelperClient.js');
+const { WakeScheduler } = require('./lib/recorder/WakeScheduler.js');
+const { registerWakeIpc } = require('./lib/recorder/ipc-wake.js');
 const { createStreamResolver } = require('./lib/recorder/stream-resolver.js');
 const { sweepOrphans } = require('./lib/orphan-sweep.js');
 const paths = require('./lib/recorder/paths.js');
@@ -66,6 +69,8 @@ let trayController = null;
 let scheduler = null;
 // Standby-Schutz (Etappe 2b): powerSaveBlocker bei Aufnahme/anstehendem Start
 let standbyGuard = null;
+let wakeHelper = null;
+let wakeScheduler = null;
 
 // Test-Hook (E2E): STREAMING_HUB_EPG_FIXTURE=<XMLTV-Datei> ersetzt den EPG-Download
 // durch die lokale Datei (Main-EpgService; der Renderer lädt kein EPG mehr). Gilt nur in isolierten
@@ -1168,6 +1173,7 @@ app.whenReady().then(() => {
           powerSaveBlocker,
           getActiveCount: () => recorder.activeJobs().length,
           getWindows: () => scheduler.upcomingWindows(),
+          spawn: spawnChild,
           logger,
         });
         standbyGuard.attach({ scheduler, recorder });
@@ -1176,6 +1182,44 @@ app.whenReady().then(() => {
           scheduler.onResume().catch(e => logger.warn('Planung nach Standby fehlgeschlagen:', e.message));
           standbyGuard.sync();
         });
+        // Aufwecken (Konzept §4.3): nur macOS, nur mit vom Nutzer erlaubtem Helfer
+        // (läuft nur solange die App läuft). Ohne Helfer ist alles hier ein No-op.
+        try {
+          wakeHelper = new WakeHelperClient({ logger });
+          wakeHelper.sweepOrphans();
+          wakeScheduler = new WakeScheduler({
+            helper: wakeHelper,
+            getWindows: () => scheduler.upcomingWindows(),
+            storage: {
+              read: () => userStorage.readJson('wakeSchedule', { times: [] }),
+              write: value => userStorage.writeJson('wakeSchedule', value),
+            },
+            logger,
+            onChange: status => {
+              try {
+                mainWindow?.webContents.send('wake:changed', status);
+              } catch (_) {
+                // Fenster zwischendurch geschlossen
+              }
+            },
+          });
+          wakeScheduler.attach(scheduler);
+          registerWakeIpc({
+            ipcMain,
+            requireMainRenderer,
+            helper: wakeHelper,
+            wake: wakeScheduler,
+            broadcast: (channel, payload) => {
+              try {
+                mainWindow?.webContents.send(channel, payload);
+              } catch (_) {
+                // Fenster zwischendurch geschlossen
+              }
+            },
+          });
+        } catch (e) {
+          logger.error('Aufwecken konnte nicht eingerichtet werden:', e.message);
+        }
         scheduler.start().catch(e => logger.error('Planung konnte nicht gestartet werden:', e.message));
       } catch (e) {
         logger.error('Planung konnte nicht eingerichtet werden:', e.message);
@@ -1218,6 +1262,9 @@ app.on('before-quit', event => {
   // der Cleanup unten läuft erst, wenn der Quit wirklich durchgeht.
   if (quitCoordinator.handleBeforeQuit(event)) return;
   if (standbyGuard) standbyGuard.release();
+  // Wecktermine sind ohne laufende App sinnlos: löschen und Helfer beenden
+  if (wakeScheduler) wakeScheduler.cancelAll();
+  if (wakeHelper) wakeHelper.quit();
   if (epgService) epgService.stop();
   if (scheduler) scheduler.stop();
   if (!recorder) return;

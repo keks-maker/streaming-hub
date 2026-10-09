@@ -1188,6 +1188,7 @@ function describeStorageRoot(info) {
 
 async function loadRecordingSettingsUi() {
   loadRecordingLimitsUi();
+  loadWakeUi();
   loadEpgCacheStatusUi();
   try {
     const info = await window.electronAPI.getRecordingStorageRoot();
@@ -1360,6 +1361,110 @@ recReserveInput.addEventListener('change', saveRecordingLimits);
 recBufferBeforeInput.addEventListener('change', saveRecordingLimits);
 recBufferAfterInput.addEventListener('change', saveRecordingLimits);
 recLateStartInput.addEventListener('change', saveRecordingLimits);
+
+// ── Aufwecken für geplante Aufnahmen (macOS, Konzept §4.3) ──
+// Status kommt aus dem Main (supported/active/nextWakeMs); nur textContent.
+let wakeStatus = null;
+let scheduleHasUpcoming = false; // Hinweis in „Geplant“ nur bei vorhandenen Planungen
+const recWakeCard = document.getElementById('recWakeCard');
+const recWakeStatus = document.getElementById('recWakeStatus');
+const recWakeError = document.getElementById('recWakeError');
+const recWakeEnableBtn = document.getElementById('recWakeEnableBtn');
+const recWakeDisableBtn = document.getElementById('recWakeDisableBtn');
+
+function describeWakeStatus(status) {
+  if (!status?.active) return 'Nicht aktiv — der Mac wird für geplante Aufnahmen nicht geweckt.';
+  if (status.nextWakeMs) {
+    return `Aktiv — nächster Wecktermin: ${new Date(status.nextWakeMs).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`;
+  }
+  return 'Aktiv — es sind keine Wecktermine nötig (nichts geplant).';
+}
+
+function applyWakeStatus(status) {
+  wakeStatus = status && typeof status === 'object' ? status : null;
+  const supported = !!wakeStatus?.supported;
+  recWakeCard.hidden = !supported;
+  recWakeStatus.classList.remove('ok', 'error');
+  recWakeStatus.classList.add(wakeStatus?.active ? 'ok' : 'error');
+  recWakeStatus.textContent = describeWakeStatus(wakeStatus);
+  recWakeEnableBtn.hidden = !!wakeStatus?.active;
+  recWakeDisableBtn.hidden = !wakeStatus?.active;
+  if (currentDashboardGroup === 'recording' && recordingDashboardTab === 'planned' && !scheduleEditingId) {
+    refreshWakeHint();
+  }
+}
+
+async function loadWakeUi() {
+  try {
+    applyWakeStatus(await window.electronAPI.getWakeStatus());
+  } catch (_) {
+    applyWakeStatus(null);
+  }
+}
+
+recWakeEnableBtn.addEventListener('click', async () => {
+  recWakeEnableBtn.disabled = true;
+  recWakeError.style.display = 'none';
+  try {
+    const result = await window.electronAPI.enableWake();
+    applyWakeStatus(result.status);
+    if (!result.ok && !result.cancelled) {
+      recWakeError.textContent = '⚠ ' + (result.error || 'Aufwecken konnte nicht aktiviert werden');
+      recWakeError.style.display = '';
+    }
+  } catch (e) {
+    recWakeError.textContent = '⚠ ' + (e?.message || e);
+    recWakeError.style.display = '';
+  } finally {
+    recWakeEnableBtn.disabled = false;
+  }
+});
+recWakeDisableBtn.addEventListener('click', async () => {
+  recWakeDisableBtn.disabled = true;
+  try {
+    applyWakeStatus((await window.electronAPI.disableWake()).status);
+  } catch (e) {
+    recWakeError.textContent = '⚠ ' + (e?.message || e);
+    recWakeError.style.display = '';
+  } finally {
+    recWakeDisableBtn.disabled = false;
+  }
+});
+window.electronAPI.onWakeChanged?.(status => applyWakeStatus(status));
+
+// Hinweis oben in „Geplant“ (nur macOS): Zustand + Link in die Einstellungen
+function buildWakeHint() {
+  if (!wakeStatus?.supported || !scheduleHasUpcoming) return null;
+  const box = document.createElement('div');
+  box.className = 'schedule-wake-hint' + (wakeStatus.active ? ' ok' : '');
+  box.id = 'scheduleWakeHint';
+  if (wakeStatus.active) {
+    box.textContent = 'Wecken aktiv: Der Mac wird vor geplanten Aufnahmen aus dem Ruhezustand geweckt, solange Streaming Hub läuft. Ein gesperrter Bildschirm ist unkritisch, die Aufnahme läuft weiter. Bei heruntergefahrenem oder neu gestartetem Mac startet sie nicht.';
+    return box;
+  }
+  box.appendChild(
+    document.createTextNode(
+      'Ruhezustand: Eine geplante Aufnahme startet nur, wenn in den Einstellungen das Aufwecken erlaubt wurde. Ein gesperrter Bildschirm ist unkritisch, die Aufnahme läuft weiter. Bei heruntergefahrenem oder neu gestartetem Mac startet sie nicht. ',
+    ),
+  );
+  const link = document.createElement('button');
+  link.type = 'button';
+  link.className = 'schedule-wake-link';
+  link.id = 'scheduleWakeLink';
+  link.textContent = 'Einstellungen öffnen';
+  link.addEventListener('click', () => openSettingsPage('livetv-recordings'));
+  box.appendChild(link);
+  return box;
+}
+
+function refreshWakeHint() {
+  const list = document.getElementById('scheduleList');
+  if (!list) return;
+  const old = document.getElementById('scheduleWakeHint');
+  if (old) old.remove();
+  const hint = buildWakeHint();
+  if (hint) list.parentNode.insertBefore(hint, list);
+}
 
 async function saveRecordingStorageRoot(newRoot) {
   recPathSaveBtn.disabled = true;
@@ -2378,8 +2483,12 @@ function renderRecordingDashboard() {
   list.className = 'recordings-list recordings-dashboard-list';
   list.id = recordingDashboardTab === 'planned' ? 'scheduleList' : 'recordingsLibraryList';
   panel.appendChild(list);
-  if (recordingDashboardTab === 'planned') renderScheduleInto(list);
-  else renderRecordingsInto(list);
+  if (recordingDashboardTab === 'planned') {
+    renderScheduleInto(list);
+    // Hinweis aus dem letzten Stand sofort, danach frisch aus dem Main (auch nach App-Neustart)
+    refreshWakeHint();
+    window.electronAPI.getWakeStatus?.().then(applyWakeStatus).catch(() => {});
+  } else renderRecordingsInto(list);
   dashboardGrid.innerHTML = '';
   dashboardGrid.appendChild(panel);
 }
@@ -2528,6 +2637,8 @@ function renderScheduleInto(listEl) {
     .then(entries => {
       listEl.textContent = '';
       const { upcoming, history } = scheduleUi.splitScheduleEntries(entries || []);
+      scheduleHasUpcoming = upcoming.length > 0;
+      refreshWakeHint();
       if (!upcoming.length && !history.length) {
         const empty = document.createElement('div');
         empty.className = 'recordings-empty';

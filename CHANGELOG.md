@@ -1,5 +1,14 @@
 # Changelog
 
+## Unveröffentlicht
+
+- Fix: Standby-Schutz hält auf macOS zusätzlich `caffeinate -s -i -w <pid>` (echte PreventSystemSleep-Assertion), solange eine Aufnahme läuft oder in Kürze startet; der powerSaveBlocker allein schützt im DarkWake nicht vor „Maintenance Sleep“ (Aufnahme brach nach 2 s ab). `-s` wirkt nur am Netzteil; Neustart bei unerwartetem Exit beim nächsten Abgleich. Docs: Hinweis zum Mindestvorlauf (~7 min) für Wecken.
+- Neu: Geplante Aufnahmen können den Mac aus dem Ruhezustand wecken (nur macOS, optional). Settings → LiveTV: Aufnahmen: „Aufwecken erlauben“ startet nach Admin-Passwort-Abfrage (`osascript … with administrator privileges`) einen Root-Helfer (`lib/recorder/wake-helper.sh`, `/bin/sh`, inline per `sh -c` übergeben, nie aus einer Datei), der nur solange die App läuft existiert und per FIFO (root-eigenes Verzeichnis `/var/run/streaminghub-wake-<uid>-<token>`, FIFO nur für die UID) ausschließlich `wake`/`cancel <MM/dd/yy HH:mm:ss>` und `quit` annimmt (strikte Musterprüfung, Owner-Tag `StreamingHub`, kein Shell-Interpolieren). Keine dauerhafte Systemänderung.
+- Neu: `lib/recorder/WakeScheduler.js` (Wecktermin = effektiver Start − 5 min; Abgleich bei `schedule:changed`, Helfer-Start; Persistenz `wake-schedule.json`; ohne Helfer No-op), `WakeHelperClient.js` (Start, Senden mit `O_NONBLOCK`, Orphan-Sweep beim App-Start), `ipc-wake.js` (`wake:get-status|enable|disable`, `wake:changed`, `requireMainRenderer`, `validateNoPayload`).
+- Neu: Hinweis in „Geplant“ („Wecken aktiv“ bzw. „Ruhezustand: …“ mit Link in die Settings).
+- Neu: Warnhinweis (Settings-Karte, README, „Geplant“): Wecken nur aus dem Ruhezustand, nicht bei Shutdown/Neustart; gesperrter Bildschirm unkritisch. Hinweis in „Geplant“ erscheint nur bei vorhandenen Planungen.
+- Docs: Aufnahme-Konzept §4.3 („Wake“) angepasst. Tests: `tests/wake-scheduler.test.js`, `tests/wake-helper.test.js` (Helfer-Skript mit Mock-pmset).
+
 ## 0.9.8 (2026-10-08) — Änderungen im Update-Dialog
 
 - Neu: Update-Dialog mit Änderungen. Klick aufs Update-Icon öffnet statt `confirm()` einen Dialog (`#updateNotesOverlay`, Klassen `modal`/`update-notes-*`) mit den Release-Texten (GitHub-Release-`body`) aller Versionen seit der installierten, neueste zuerst; erst "Installieren" startet `apply-update`, "Abbrechen"/Esc/Klick daneben schließt.
