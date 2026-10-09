@@ -240,8 +240,13 @@ test('Client mit echtem Helfer (Mock-pmset): start-Pfad, send, quit, sweepOrphan
   const child = startHelper(env);
   try {
     assert.ok(await waitFor(() => fs.existsSync(env.fifo)));
-    const client = new WakeHelperClient({ platform: 'darwin', baseDir: env.base });
-    // verwaister Helfer des früheren Laufs wird erkannt und beendet
+    let alive = true;
+    const client = new WakeHelperClient({ platform: 'darwin', baseDir: env.base, pid: 4242424, isPidAlive: () => alive });
+    // App des Helfers lebt noch: nicht anfassen
+    assert.equal(client.sweepOrphans(), 0);
+    assert.ok(fs.existsSync(env.fifo));
+    // App tot: verwaister Helfer wird erkannt und beendet
+    alive = false;
     assert.equal(client.sweepOrphans(), 1);
     assert.ok(await waitFor(() => !fs.existsSync(env.dir)));
     // aktiver Helfer: send funktioniert
@@ -261,6 +266,65 @@ test('Client mit echtem Helfer (Mock-pmset): start-Pfad, send, quit, sweepOrphan
       child2.kill('SIGKILL');
     }
   } finally {
+    child.kill('SIGKILL');
+    fs.rmSync(env.base, { recursive: true, force: true });
+  }
+});
+
+const { execFileSync } = require('node:child_process');
+const procsWith = needle => {
+  try {
+    return execFileSync('/usr/bin/pgrep', ['-f', needle]).toString().trim().split('\n').filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+};
+
+test('Helfer: nach quit bleibt kein Wächter übrig; Aus/Ein-Zyklen sammeln nichts an', { skip: process.platform === 'win32' }, async () => {
+  const env = setup();
+  const tokens = ['d', 'e', 'f'].map(c => c.repeat(32));
+  try {
+    for (const token of tokens) {
+      const dir = path.join(env.base, `streaminghub-wake-${process.getuid()}-${token}`);
+      const child = startHelper(env, { token });
+      assert.ok(await waitFor(() => fs.existsSync(path.join(dir, 'cmd'))));
+      assert.ok(procsWith(token).length >= 2, 'Helfer + Wächter laufen');
+      sendLine(path.join(dir, 'cmd'), 'quit');
+      assert.ok(await waitFor(() => procsWith(token).length === 0, 5000), 'kein Helfer-/Wächterprozess mehr');
+      assert.ok(!fs.existsSync(dir));
+      child.kill('SIGKILL');
+    }
+  } finally {
+    fs.rmSync(env.base, { recursive: true, force: true });
+  }
+});
+
+test('Helfer: Wächter beendet sich bei TERM des Helfers mit', { skip: process.platform === 'win32' }, async () => {
+  const env = setup();
+  const child = startHelper(env);
+  try {
+    assert.ok(await waitFor(() => fs.existsSync(env.fifo)));
+    child.kill('SIGTERM');
+    assert.ok(await waitFor(() => procsWith(TOKEN).length === 0, 5000));
+  } finally {
+    child.kill('SIGKILL');
+    fs.rmSync(env.base, { recursive: true, force: true });
+  }
+});
+
+test('Helfer: Wächter beendet nur unseren Helfer (Pid-Datei weg -> kein kill)', { skip: process.platform === 'win32' }, async () => {
+  const env = setup();
+  const app = spawn('/bin/sleep', ['30'], { stdio: 'ignore' });
+  const child = startHelper(env, { appPid: app.pid });
+  try {
+    assert.ok(await waitFor(() => fs.existsSync(env.fifo)));
+    fs.rmSync(path.join(env.dir, 'pid'), { force: true });
+    app.kill('SIGKILL');
+    await sleep(2800);
+    assert.equal(child.exitCode, null, 'Helfer wurde nicht blind gekillt');
+    assert.ok(await waitFor(() => procsWith(TOKEN).length <= 1, 4000), 'Wächter hat sich beendet');
+  } finally {
+    app.kill('SIGKILL');
     child.kill('SIGKILL');
     fs.rmSync(env.base, { recursive: true, force: true });
   }

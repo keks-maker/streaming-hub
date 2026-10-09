@@ -19,7 +19,7 @@ for old in "$PREFIX"*; do
   opid=$(cat "$old/pid" 2>/dev/null)
   case "$opid" in ''|*[!0-9]*) opid=;; esac
   if [ -z "$opid" ] || ! kill -0 "$opid" 2>/dev/null; then
-    rm -f "$old/cmd" "$old/pid"
+    rm -f "$old/cmd" "$old/pid" "$old/app"
     rmdir "$old" 2>/dev/null
   fi
 done
@@ -27,21 +27,34 @@ set -f
 mkdir -m 0711 "$DIR" || exit 3
 [ -d "$DIR" ] && [ ! -L "$DIR" ] || exit 3
 echo $$ > "$DIR/pid"
-mkfifo "$DIR/cmd" || { rm -f "$DIR/pid"; rmdir "$DIR"; exit 3; }
-chown "$UID_" "$DIR/cmd" && chmod 0600 "$DIR/cmd" || { rm -f "$DIR/cmd" "$DIR/pid"; rmdir "$DIR"; exit 3; }
+echo "$APP_PID" > "$DIR/app"
+chmod 0644 "$DIR/pid" "$DIR/app"
+mkfifo "$DIR/cmd" || { rm -f "$DIR/pid" "$DIR/app"; rmdir "$DIR"; exit 3; }
+chown "$UID_" "$DIR/cmd" && chmod 0600 "$DIR/cmd" || { rm -f "$DIR/cmd" "$DIR/pid" "$DIR/app"; rmdir "$DIR"; exit 3; }
 MAIN=$$
+WATCH=
 cleanup() {
-  rm -f "$DIR/cmd" "$DIR/pid"
+  [ -n "$WATCH" ] && kill "$WATCH" 2>/dev/null
+  WATCH=
+  rm -f "$DIR/cmd" "$DIR/pid" "$DIR/app"
   rmdir "$DIR" 2>/dev/null
 }
 trap 'cleanup; exit 0' TERM INT HUP
 exec 3<>"$DIR/cmd"
-# Wächter: App weg -> aufräumen und Helfer beenden
+# Wächter: App weg -> Helfer beenden. Er endet selbst, sobald der Kanal weg ist,
+# und beendet nur dann per kill -9, wenn die Pid-Datei noch unseren Helfer nennt
+# (kein Kill einer wiederverwendeten PID).
 (
-  while kill -0 "$APP_PID" 2>/dev/null; do sleep 2; done
-  cleanup
+  while kill -0 "$APP_PID" 2>/dev/null; do
+    [ -f "$DIR/pid" ] && [ "$(cat "$DIR/pid" 2>/dev/null)" = "$MAIN" ] || exit 0
+    sleep 2
+  done
+  [ -f "$DIR/pid" ] && [ "$(cat "$DIR/pid" 2>/dev/null)" = "$MAIN" ] || exit 0
   kill -9 "$MAIN" 2>/dev/null
+  rm -f "$DIR/cmd" "$DIR/pid" "$DIR/app"
+  rmdir "$DIR" 2>/dev/null
 ) </dev/null >/dev/null 2>&1 &
+WATCH=$!
 valid_date() {
   case "$1" in
     [01][0-9]/[0-3][0-9]/[0-9][0-9]\ [0-2][0-9]:[0-5][0-9]:[0-5][0-9]) ;;
