@@ -199,13 +199,18 @@ fi
 # ------------------------------------------------------------------
 # unzip installieren (wird für Electron-Binary-Extraktion benötigt)
 # ------------------------------------------------------------------
-if [ "$OS" = "Linux" ] && ! command -v unzip &>/dev/null; then
+if [ "$OS" = "Linux" ] && [ "$INSTALL_SOURCE" = "git" ] && ! command -v unzip &>/dev/null; then
   info "Installiere unzip …"
   $UPDATE_CMD
   $INSTALL_CMD unzip
 fi
 if [ "$OS" = "Darwin" ] && ! command -v tar &>/dev/null; then
   error "tar fehlt; es wird für die Electron-Binary-Extraktion benötigt."
+fi
+if [ "$OS" = "Linux" ] && [ "$INSTALL_SOURCE" = "release" ] && ! command -v tar &>/dev/null; then
+  info "Installiere tar …"
+  $UPDATE_CMD
+  $INSTALL_CMD tar
 fi
 
 # ------------------------------------------------------------------
@@ -262,8 +267,8 @@ else
   install_nodejs
 fi
 
-# npm prüfen
-if ! command -v npm &>/dev/null; then
+# npm prüfen (Linux-Release-Installation braucht nur node für die Release-Auswahl)
+if { [ "$OS" != "Linux" ] || [ "$INSTALL_SOURCE" = "git" ]; } && ! command -v npm &>/dev/null; then
   warn "npm nicht gefunden – installiere nach …"
   case $PKG_MANAGER in
     apt|dnf|pacman) $INSTALL_CMD npm ;;
@@ -290,8 +295,11 @@ RELEASE_APP=""
 RELEASE_TMP=""
 RELEASE_INSTALL_STAGE=""
 APP_BUNDLE_STAGE=""
+LINUX_RELEASE=0
+LINUX_STAGE=""
 cleanup_staging() {
   if [ -n "${RELEASE_TMP:-}" ]; then rm -rf "$RELEASE_TMP"; fi
+  if [ -n "${LINUX_STAGE:-}" ]; then rm -rf "$LINUX_STAGE"; fi
   if [ -n "${APP_BUNDLE_STAGE:-}" ]; then rm -rf "$APP_BUNDLE_STAGE"; fi
 }
 trap cleanup_staging EXIT
@@ -319,8 +327,8 @@ if [ "$INSTALL_SOURCE" = "git" ]; then
     cd "$INSTALL_DIR"
   fi
 else
-  if [ "$OS" != "Darwin" ]; then
-    error "GitHub-Release-Assets sind macOS-Apps. Unter Linux explizit --source=git verwenden."
+  if [ "$OS" = "Linux" ] && [ -d "$INSTALL_DIR/.git" ]; then
+    error "In $INSTALL_DIR liegt eine Git-Installation. Aktualisieren mit: install.sh --source=git (oder Verzeichnis entfernen, um das Release-Paket zu installieren)."
   fi
   RELEASE_TMP="$(mktemp -d "${TMPDIR:-/tmp}/streaming-hub-release.XXXXXX")"
   RELEASE_LIB="$RELEASE_TMP/github-releases.js"
@@ -344,7 +352,7 @@ fetchReleaseCandidates(fetch, apiUrl, target).then(candidates => {
   process.exitCode = 1;
 });
 NODE
-  RELEASE_TARGET="darwin-$ELECTRON_ARCH"
+  RELEASE_TARGET="$ELECTRON_PLATFORM-$ELECTRON_ARCH"
   RELEASE_STATUS=0
   RELEASE_JSON="$(node "$RELEASE_HELPER" "$RELEASE_LIB" "$RELEASES_API_URL" "$RELEASE_TARGET")" || RELEASE_STATUS=$?
   if [ "$RELEASE_STATUS" != "0" ]; then
@@ -354,15 +362,58 @@ NODE
     if [ "$RELEASE_STATUS" = "2" ] && [ "$ELECTRON_ARCH" = "x64" ]; then
       error "Für Intel-Macs (x64) gibt es noch kein Release. Es wird bewusst kein arm64-Release installiert."
     fi
-    error "Kein gültiges GitHub-Release für macOS $ELECTRON_ARCH gefunden (draft/prerelease, Tag oder Asset fehlen). Es gibt keinen Fallback auf Git-Tags oder andere Architekturen."
+    RELEASE_OS_LABEL="macOS"
+    [ "$OS" = "Linux" ] && RELEASE_OS_LABEL="Linux"
+    error "Kein gültiges GitHub-Release für $RELEASE_OS_LABEL $ELECTRON_ARCH gefunden (draft/prerelease, Tag oder Asset fehlen). Es gibt keinen Fallback auf Git-Tags oder andere Architekturen."
   fi
   RELEASE_VERSION="$(node -p 'JSON.parse(process.argv[1]).version' "$RELEASE_JSON")"
   RELEASE_URL="$(node -p 'JSON.parse(process.argv[1]).asset.browserDownloadUrl' "$RELEASE_JSON")"
   RELEASE_ZIP="$RELEASE_TMP/$(node -p 'JSON.parse(process.argv[1]).asset.name' "$RELEASE_JSON")"
   RELEASE_STAGE="$RELEASE_TMP/extracted"
-  info "Installiere GitHub-Release v$RELEASE_VERSION (macOS $ELECTRON_ARCH) …"
+  info "Installiere GitHub-Release v$RELEASE_VERSION ($([ "$OS" = "Linux" ] && echo Linux || echo macOS) $ELECTRON_ARCH) …"
   curl -fL --retry 3 --proto '=https' --tlsv1.2 "$RELEASE_URL" -o "$RELEASE_ZIP" || error "Release-Asset konnte nicht geladen werden."
   mkdir -p "$RELEASE_STAGE"
+  if [ "$OS" = "Linux" ]; then
+    # >>> linux-release-install
+    # Entpacktes App-Verzeichnis aus dem tar.gz: Staging neben dem Ziel (rename), Prüfung, dann Austausch
+    # mit Rollback. Die bestehende Installation bleibt bei jedem Fehler unberührt.
+    mkdir -p "$(dirname "$INSTALL_DIR")"
+    LINUX_STAGE="$(mktemp -d "$(dirname "$INSTALL_DIR")/.streaming-hub-stage.XXXXXX")"
+    if tar -tzf "$RELEASE_ZIP" 2>/dev/null | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+      error "Release-Asset enthält unsichere Pfade. Es wurde nichts installiert."
+    fi
+    tar -xzf "$RELEASE_ZIP" -C "$LINUX_STAGE" --no-same-owner || error "Release-Asset ist kein gültiges tar.gz-Archiv."
+    LINUX_APP_ROOT=""
+    for candidate in "$LINUX_STAGE" "$LINUX_STAGE"/*/; do
+      if [ -f "${candidate%/}/streaming-hub" ] && [ -d "${candidate%/}/resources/app" ]; then LINUX_APP_ROOT="${candidate%/}"; break; fi
+    done
+    [ -n "$LINUX_APP_ROOT" ] || error "Release-Asset enthält kein Linux-App-Verzeichnis (streaming-hub, resources/app)."
+    chmod 755 "$LINUX_APP_ROOT/streaming-hub"
+    [ -f "$LINUX_APP_ROOT/chrome_crashpad_handler" ] && chmod 755 "$LINUX_APP_ROOT/chrome_crashpad_handler"
+    # x86-64-ELF (Magic + e_machine 0x3E), keine Symlinks, Version passt zum Release
+    [ "$(head -c 4 "$LINUX_APP_ROOT/streaming-hub" | od -An -c | tr -d ' \n')" = "177ELF" ] || error "Das Release-Asset enthält kein ELF-Programm. Es wurde nichts installiert."
+    [ "$(od -An -tx1 -j18 -N2 "$LINUX_APP_ROOT/streaming-hub" | tr -d ' \n')" = "3e00" ] || error "Das Release-Asset enthält kein Programm für x86_64. Es wurde nichts installiert."
+    [ -z "$(find "$LINUX_APP_ROOT" -type l -print -quit)" ] || error "Release-Asset enthält unerwartete Symlinks. Es wurde nichts installiert."
+    PKG_VERSION="$(node -p 'require(process.argv[1]).version' "$LINUX_APP_ROOT/resources/app/package.json" 2>/dev/null || true)"
+    [ "$PKG_VERSION" = "$RELEASE_VERSION" ] || error "Version im Paket ($PKG_VERSION) passt nicht zum Release ($RELEASE_VERSION). Es wurde nichts installiert."
+    # ffmpeg-Binaries der bisherigen Installation übernehmen (sonst lädt die App sie beim Start neu)
+    for ff in ffmpeg ffprobe .ffmpeg-release .ffmpeg-sha256.json; do
+      if [ -f "$INSTALL_DIR/resources/app/bin/$ff" ] && [ ! -e "$LINUX_APP_ROOT/resources/app/bin/$ff" ]; then
+        mkdir -p "$LINUX_APP_ROOT/resources/app/bin"
+        cp -p "$INSTALL_DIR/resources/app/bin/$ff" "$LINUX_APP_ROOT/resources/app/bin/$ff"
+      fi
+    done
+    LINUX_ROLLBACK="$INSTALL_DIR.install-rollback.$$"
+    if [ -e "$INSTALL_DIR" ]; then mv "$INSTALL_DIR" "$LINUX_ROLLBACK" || error "Bestehende Installation konnte nicht gesichert werden."; fi
+    if ! mv "$LINUX_APP_ROOT" "$INSTALL_DIR"; then
+      [ -e "$LINUX_ROLLBACK" ] && mv "$LINUX_ROLLBACK" "$INSTALL_DIR"
+      error "Installation fehlgeschlagen; die bisherige Installation wurde wiederhergestellt."
+    fi
+    rm -rf "${LINUX_ROLLBACK:-}"
+    LINUX_RELEASE=1
+    RELEASE_MODE=1
+    # <<< linux-release-install
+  else
   unzip -q "$RELEASE_ZIP" -d "$RELEASE_STAGE" || error "Release-Asset ist kein gültiges ZIP-Archiv."
   RELEASE_APP="$(find "$RELEASE_STAGE" -type d -name '*.app' -print -quit)"
   [ -n "$RELEASE_APP" ] || error "Release-Asset enthält kein macOS-App-Bundle."
@@ -407,6 +458,7 @@ NODE
   done
   RELEASE_MODE=1
   cd "$RELEASE_INSTALL_STAGE"
+  fi
 fi
 
 # ------------------------------------------------------------------
@@ -478,6 +530,12 @@ fi
 # ------------------------------------------------------------------
 # Desktop-Eintrag
 # ------------------------------------------------------------------
+LAUNCHER="$INSTALL_DIR/start.sh"
+DESKTOP_ICON="$INSTALL_DIR/assets/icon.svg"
+if [ "$LINUX_RELEASE" = "1" ]; then
+  LAUNCHER="$INSTALL_DIR/streaming-hub"
+  DESKTOP_ICON="$INSTALL_DIR/resources/app/assets/icon.svg"
+fi
 if [ "$OS" = "Linux" ]; then
   DESKTOP_FILE="$HOME/.local/share/applications/streaming-hub.desktop"
   mkdir -p "$(dirname "$DESKTOP_FILE")"
@@ -486,8 +544,8 @@ if [ "$OS" = "Linux" ]; then
 [Desktop Entry]
 Name=Streaming Hub
 Comment=Zentrale Streaming-Anwendung mit Widevine-DRM
-Exec=$INSTALL_DIR/start.sh
-Icon=$INSTALL_DIR/assets/icon.svg
+Exec=$LAUNCHER
+Icon=$DESKTOP_ICON
 Terminal=false
 Type=Application
 Categories=AudioVideo;Network;
@@ -622,10 +680,10 @@ fi
 # ------------------------------------------------------------------
 mkdir -p "$HOME/.local/bin"
 SYMLINK="$HOME/.local/bin/streaming-hub"
-if [ -L "$SYMLINK" ] && [ "$(readlink "$SYMLINK")" != "$INSTALL_DIR/start.sh" ]; then
+if [ -L "$SYMLINK" ] && [ "$(readlink "$SYMLINK")" != "$LAUNCHER" ]; then
   rm "$SYMLINK"
 fi
-ln -sf "$INSTALL_DIR/start.sh" "$SYMLINK"
+ln -sf "$LAUNCHER" "$SYMLINK"
 
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
   warn "$HOME/.local/bin ist nicht im PATH."
@@ -643,6 +701,17 @@ fi
 echo ""
 header "Installation abgeschlossen!"
 echo ""
+if [ "$LINUX_RELEASE" = "1" ]; then
+  # Chromium-Sandbox: ohne SUID-chrome-sandbox braucht Electron unprivilegierte User-Namespaces.
+  USERNS_OFF=0
+  [ "$(cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo 1)" = "0" ] && USERNS_OFF=1
+  [ "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo 0)" = "1" ] && USERNS_OFF=1
+  if [ "$USERNS_OFF" = "1" ] && [ ! -u "$INSTALL_DIR/chrome-sandbox" ]; then
+    warn "Dieses System schränkt User-Namespaces ein; die Chromium-Sandbox braucht dann ein SUID-Helferprogramm:"
+    warn "  sudo chown root:root \"$INSTALL_DIR/chrome-sandbox\" && sudo chmod 4755 \"$INSTALL_DIR/chrome-sandbox\""
+    warn "  (nach jedem In-App-Update erneut nötig, da das Verzeichnis ersetzt wird)"
+  fi
+fi
 info "Streaming Hub ist installiert in:  $INSTALL_DIR"
 info "Starten mit:                      streaming-hub"
 if [ "$OS" = "Darwin" ]; then

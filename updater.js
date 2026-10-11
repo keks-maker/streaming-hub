@@ -30,6 +30,7 @@ const {
   verifyBundleIntegrity,
   recoverStaleUpdateDirs,
 } = require('./lib/bundle-install.js');
+const { findLinuxAppRoot, installLinuxRelease } = require('./lib/linux-install.js');
 const os = require('os');
 const { fetchReleaseCandidates, selectReleaseNotes, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
@@ -432,6 +433,59 @@ function installMacBundle(bundle, supportDir, options = {}) {
   }
 }
 
+// Linux: Installationsverzeichnis = entpacktes App-Verzeichnis (<root>/resources/app/updater.js liegt darin).
+// Env-Override nur fuer Tests.
+const linuxInstallRoot = () => process.env.STREAMING_HUB_LINUX_INSTALL_DIR || path.resolve(legacyAppDir, '..', '..');
+
+// Archiv-Eintraege vor dem Entpacken pruefen: keine absoluten Pfade, kein "..".
+function assertSafeArchiveEntries(listing) {
+  for (const entry of String(listing).split('\n').filter(Boolean)) {
+    if (entry.startsWith('/') || entry.split('/').includes('..')) throw new Error(`Unsicherer Pfad im Release-Archiv: ${entry}`);
+  }
+}
+
+// Entpackt das tar.gz in ein Geschwisterverzeichnis des Installationsordners (gleiches Dateisystem,
+// damit der Austausch ein rename bleibt). Rueckgabe: { extractDir, appRoot }.
+function extractLinuxArchive(archive, installRoot) {
+  const extractDir = `${installRoot}.update-extract-${process.pid}`;
+  // Reste abgebrochener Laeufe (anderer pid) raeumen; der Installer-Selbstheilung (update-staging/-rollback) bleiben sie fremd.
+  const parent = path.dirname(installRoot);
+  const prefix = `${path.basename(installRoot)}.update-extract-`;
+  try {
+    for (const name of fs.readdirSync(parent)) if (name.startsWith(prefix)) fs.rmSync(path.join(parent, name), { recursive: true, force: true });
+  } catch (_) { /* Elternverzeichnis fehlt noch — mkdir unten legt es an */ }
+  fs.mkdirSync(extractDir, { recursive: true });
+  try {
+    assertSafeArchiveEntries(execFileSync('tar', ['-tzf', archive], { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024, timeout: 180000 }));
+    execFileSync('tar', ['-xzf', archive, '-C', extractDir, '--no-same-owner'], { stdio: ['ignore', 'ignore', 'pipe'], timeout: 300000 });
+    const appRoot = findLinuxAppRoot(extractDir);
+    if (!appRoot) throw new Error('Release-Asset enthaelt kein Linux-App-Verzeichnis (streaming-hub, resources/app)');
+    return { extractDir, appRoot };
+  } catch (error) {
+    fs.rmSync(extractDir, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function applyLinuxRelease(release, send) {
+  const installRoot = linuxInstallRoot();
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-update-'));
+  let extractDir = null;
+  try {
+    const archive = path.join(tempRoot, release.asset.name);
+    send({ type: 'progress', step: 'Release-Asset wird heruntergeladen…', percent: 15 });
+    await downloadAsset(release.asset.browserDownloadUrl, archive);
+    send({ type: 'progress', step: 'Release-App wird installiert…', percent: 70 });
+    const extracted = extractLinuxArchive(archive, installRoot);
+    extractDir = extracted.extractDir;
+    installLinuxRelease(extracted.appRoot, installRoot, { version: release.version, log: message => updaterLog('INFO', message) });
+    updaterLog('INFO', `Linux-Release installiert: ${installRoot}`);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+    if (extractDir) fs.rmSync(extractDir, { recursive: true, force: true });
+  }
+}
+
 if (require.main === module) {
 process.on('message', async msg => {
   if (msg.type === 'check') {
@@ -455,6 +509,13 @@ process.on('message', async msg => {
       const candidates = await fetchReleaseCandidates(fetch, RELEASES_URL, releaseTarget());
       const release = candidates.find(candidate => candidate.version === msg.version);
       if (!release) throw new Error(`Kein gültiger GitHub-Release für v${msg.version} gefunden`);
+      if (releaseTarget().startsWith('linux-')) {
+        // Nutzerdaten liegen in app.getPath('userData'), nicht im Installationsordner — nichts zu sichern.
+        await applyLinuxRelease(release, message => process.send(message));
+        process.send({ type: 'progress', step: 'Fertig – Neustart…', percent: 100 });
+        process.send({ type: 'applied' });
+        return;
+      }
       backupUserFiles();
       process.send({ type: 'progress', step: 'Release-Asset wird heruntergeladen…', percent: 15 });
       const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-update-'));
@@ -485,4 +546,4 @@ process.on('message', async msg => {
 });
 }
 
-module.exports = { findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };
+module.exports = { applyLinuxRelease, extractLinuxArchive, assertSafeArchiveEntries, findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };

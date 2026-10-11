@@ -1,7 +1,20 @@
 const path = require('path');
 
+// Die macOS-ffmpeg-Binaries aus bin/ (git-ignoriert, lokal fuer den Mac-Build geladen) gehoeren nicht ins
+// Linux-Paket: falsche Architektur. Linux nutzt ein System-ffmpeg oder laedt die gepinnte Binary beim Start
+// (lib/ffmpeg.js ensureBinaries); der Updater uebernimmt vorhandene Binaries der alten Installation.
+function stripMacFfmpeg(context) {
+  const fs = require('fs');
+  const binDir = path.join(context.appOutDir, 'resources', 'app', 'bin');
+  for (const name of ['ffmpeg', 'ffprobe', '.ffmpeg-release', '.ffmpeg-sha256.json']) {
+    fs.rmSync(path.join(binDir, name), { force: true });
+  }
+}
+
 exports.default = function (context) {
-  if (process.platform !== 'darwin') return;
+  if (context.electronPlatformName === 'linux') stripMacFfmpeg(context);
+  // Zielplattform des Pakets (nicht der Build-Host): Linux-/Windows-Cross-Builds vom Mac werden nicht VMP-signiert.
+  if (context.electronPlatformName !== 'darwin') return;
   const { execFileSync } = require('child_process');
   const py = process.env.EVS_PYTHON || 'python3';
   console.log('[EVS] VMP signing (macOS, before code-sign):', context.appOutDir);

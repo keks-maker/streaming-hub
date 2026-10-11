@@ -76,3 +76,14 @@ test('jede referenzierte scripts/*.js liegt im Paket und ist nicht ausgeschlosse
     assert.ok(isIncluded(rel), `${rel} wird von build.files ausgeschlossen (Release-Installation bricht)`);
   }
 });
+
+test('Linux-Build: tar.gz statt AppImage, Skripte und Target konsistent', () => {
+  assert.deepStrictEqual(pkg.build.linux.target, ['tar.gz']);
+  assert.strictEqual(pkg.build.linux.executableName, 'streaming-hub');
+  for (const [name, cmd] of Object.entries(pkg.scripts)) {
+    assert.ok(!/AppImage/i.test(cmd), `Skript ${name} verweist noch auf AppImage`);
+  }
+  assert.strictEqual(pkg.scripts['build:linux'], 'node scripts/build-linux-x64.js');
+  assert.strictEqual(pkg.scripts['release:check'], 'node scripts/check-release-set.js');
+  assert.ok(pkg.build.files.includes('!{release,release-x64,release-linux}{,/**}'), 'release-linux darf nicht ins App-Paket');
+});

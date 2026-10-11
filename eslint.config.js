@@ -25,6 +25,8 @@ export default [
       'node_modules/',
       'dist/',
       'release/',
+      'release-x64/',
+      'release-linux/',
       'test-results/',
       'playwright-report/',
       '.cache/',
