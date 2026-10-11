@@ -8,13 +8,10 @@ const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
-const { releaseNotesFromReleases } = require('./lib/github-releases.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
   normalizeWebviewKeydown,
-  validateDownloadSize,
-  validateReleaseMetadata,
   validateVersion,
 } = require('./lib/ipc-validation.js');
 const { RecorderService } = require('./lib/recorder/RecorderService.js');
@@ -251,7 +248,6 @@ const selectedM3uFiles = new Set();
 
 // Updater
 let updaterProcess = null;
-let autoUpdater = null;
 
 function findChromeWidevine() {
   const platform = process.platform;
@@ -407,121 +403,10 @@ const UPDATE_API_BASE = resolveUpdateApiBase(process.env, app.isPackaged);
 // Updater-Prozess (fork) erbt dieselbe, bereits geprüfte Basis-URL.
 if (UPDATE_API_BASE === DEFAULT_UPDATE_API_BASE) delete process.env.STREAMING_HUB_UPDATE_URL;
 else process.env.STREAMING_HUB_UPDATE_URL = UPDATE_API_BASE;
-const UPDATE_OWNER = 'keks-maker';
-const UPDATE_REPO = 'streaming-hub';
-const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
 const UPDATE_APPLY_TIMEOUT_MS = 15 * 60 * 1000;
-const UPDATE_RELEASE_PATH = `/keks-maker/streaming-hub/releases/download/`;
-
-async function updateApi(path) {
-  const url = `${UPDATE_API_BASE}/repos/${UPDATE_OWNER}/${UPDATE_REPO}/${path}`;
-  const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Streaming-Hub' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`Update API ${res.status}`);
-  return res.json();
-}
 
 function startUpdater() {
-  if (process.env.APPIMAGE) {
-    // AppImage: use Gitea API for updates
-    autoUpdater = {
-      check: async () => {
-        try {
-          const release = await updateApi('releases/latest');
-          const tag = release.tag_name?.replace(/^v/i, '');
-          if (!tag) return { hasUpdate: false, error: 'no tag' };
-          const hasUpdate = compareVersions(tag, app.getVersion()) > 0;
-          let notes = [];
-          if (hasUpdate) {
-            try {
-              notes = releaseNotesFromReleases(await updateApi('releases?per_page=100'), app.getVersion());
-            } catch (e) {
-              notes = [];
-            }
-          }
-          return { hasUpdate, latestVersion: tag, releaseId: release.id, notes };
-        } catch (e) {
-          return { hasUpdate: false, error: e.message };
-        }
-      },
-      download: async version => {
-        try {
-          const release = await updateApi('releases/latest');
-          const metadata = validateReleaseMetadata(
-            release,
-            version,
-            new URL(UPDATE_API_BASE).origin,
-            `${UPDATE_RELEASE_PATH}${version}/`,
-          );
-          const asset = metadata.asset;
-
-          const currentAppImage = process.env.APPIMAGE;
-          const appDir = path.dirname(currentAppImage);
-          const tmpDest = path.join(appDir, `.update-${Date.now()}-${process.pid}.AppImage`);
-          const finalDest = path.join(appDir, `Streaming Hub-${version}.AppImage`);
-          mainWindow?.webContents.send('update-status', { type: 'progress', percent: 0 });
-          const res = await fetch(asset.browser_download_url, {
-            signal: AbortSignal.timeout(300000),
-            redirect: 'error',
-          });
-          if (!res.ok) throw new Error(`Download ${res.status}`);
-          const total = validateDownloadSize(res.headers.get('content-length'), MAX_UPDATE_BYTES);
-          if (!res.body) throw new Error('Update-Download ohne Datenstrom');
-          const reader = res.body.getReader();
-          const ws = fs.createWriteStream(tmpDest, { flags: 'wx', mode: 0o600 });
-          let received = 0;
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              received += value.byteLength;
-              if (received > MAX_UPDATE_BYTES) throw new Error('Update-Datei ist zu groß');
-              if (!ws.write(value))
-                await new Promise((resolve, reject) => {
-                  ws.once('drain', resolve);
-                  ws.once('error', reject);
-                });
-              if (total) {
-                mainWindow?.webContents.send('update-status', {
-                  type: 'progress',
-                  percent: Math.min(100, (received / total) * 100),
-                });
-              }
-            }
-            await new Promise((resolve, reject) => {
-              ws.once('finish', resolve);
-              ws.once('error', reject);
-              ws.end();
-            });
-            if (total && received !== total) throw new Error('Unvollständiger Update-Download');
-            fs.chmodSync(tmpDest, 0o755);
-            if (currentAppImage !== finalDest) {
-              try {
-                fs.unlinkSync(finalDest);
-              } catch (e) {
-                if (e.code !== 'ENOENT') throw e;
-              }
-            }
-            fs.renameSync(tmpDest, finalDest);
-            return finalDest;
-          } catch (error) {
-            ws.destroy();
-            throw error;
-          } finally {
-            try {
-              fs.unlinkSync(tmpDest);
-            } catch (e) {
-              if (e.code !== 'ENOENT') logger.warn('Temporäre Update-Datei konnte nicht entfernt werden:', e.message);
-            }
-          }
-        } catch (e) {
-          throw e;
-        }
-      },
-    };
-  } else if (updateMode() === 'mac-release') {
+  if (['mac-release', 'linux-release'].includes(updateMode(process.platform, __dirname))) {
     const updaterPath = path.join(__dirname, 'updater.js');
     if (fs.existsSync(updaterPath)) {
       updaterProcess = fork(updaterPath, [__dirname], {
@@ -536,11 +421,7 @@ function startUpdater() {
 
 ipcMain.handle('check-for-update', async event => {
   requireMainRenderer(event);
-  if (process.env.APPIMAGE) {
-    if (!autoUpdater) return { hasUpdate: false, error: 'kein updater' };
-    return autoUpdater.check();
-  }
-  if (updateMode() === 'unsupported') {
+  if (updateMode(process.platform, __dirname) === 'unsupported') {
     return { hasUpdate: false, error: 'Updates sind auf dieser Plattform nicht verfügbar' };
   }
   if (!updaterProcess) return { hasUpdate: false, error: 'kein update-prozess' };
@@ -563,29 +444,7 @@ ipcMain.handle('check-for-update', async event => {
 ipcMain.handle('apply-update', async (event, version) => {
   requireMainRenderer(event);
   const updateVersion = validateVersion(version);
-  if (process.env.APPIMAGE) {
-    if (!autoUpdater) return { success: false, error: 'kein updater' };
-    try {
-      const newAppImage = await autoUpdater.download(updateVersion);
-      // Remove old AppImage if replaced by a differently-named version
-      const oldAppImage = process.env.APPIMAGE;
-      if (oldAppImage && oldAppImage !== newAppImage) {
-        try {
-          fs.unlinkSync(oldAppImage);
-        } catch (e) {}
-      }
-      mainWindow?.webContents.send('update-status', { type: 'downloaded' });
-      setTimeout(() => {
-        app.relaunch({ execPath: newAppImage });
-        quitCoordinator.allowQuit('updater');
-        app.quit();
-      }, 2000);
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  }
-  if (updateMode() === 'unsupported') {
+  if (updateMode(process.platform, __dirname) === 'unsupported') {
     return { success: false, error: 'Updates sind auf dieser Plattform nicht verfügbar' };
   }
   const updaterLogDir = app.getPath('logs');
@@ -628,7 +487,13 @@ ipcMain.handle('apply-update', async (event, version) => {
         resolve({ success: !msg.error, error: msg.error });
         if (!msg.error) {
           setTimeout(() => {
-            app.relaunch();
+            // Linux: Der Installationsordner wurde ausgetauscht; der beim Start ermittelte Programmpfad kann
+            // auf das entfernte Rollback-Verzeichnis zeigen. Daher explizit das neue Programm starten.
+            if (updateMode(process.platform, __dirname) === 'linux-release') {
+              app.relaunch({ execPath: path.resolve(__dirname, '..', '..', 'streaming-hub'), args: process.argv.slice(1) });
+            } else {
+              app.relaunch();
+            }
             quitCoordinator.allowQuit('updater');
             app.quit();
           }, 500);

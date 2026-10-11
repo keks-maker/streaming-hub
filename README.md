@@ -55,7 +55,7 @@ Unter Linux und macOS erkennt der Installer Betriebssystem und Architektur autom
 curl -fsSL https://raw.githubusercontent.com/keks-maker/streaming-hub/main/install.sh | bash
 ```
 
-Unter Linux wird die App standardmäßig nach `~/.local/share/streaming-hub` installiert und im Anwendungsmenü eingetragen. Unter macOS liegen die App-Dateien standardmäßig in `~/Library/Application Support/Streaming Hub`; das native App-Bundle für Finder und Dock wird unter `~/Applications/Streaming Hub.app` installiert. Ein abweichender Installationspfad kann über `INSTALL_DIR` gesetzt werden.
+Unter Linux (x86_64) installiert der Installer standardmäßig das Release-Paket (`Streaming.Hub-X.Y.Z-linux-x64.tar.gz`, entpacktes App-Verzeichnis ohne AppImage) nach `~/.local/share/streaming-hub` und trägt es im Anwendungsmenü ein; Node.js wird dafür nur für die Release-Auswahl benötigt. Für eine Entwicklungs-Installation aus dem Quellcode gibt es `--source=git`. Auf Systemen, die User-Namespaces einschränken (z. B. Ubuntu 24.04), braucht die Chromium-Sandbox ein SUID-Helferprogramm; der Installer nennt in dem Fall den passenden `chown`/`chmod`-Befehl für `chrome-sandbox`. Unter macOS liegen die App-Dateien standardmäßig in `~/Library/Application Support/Streaming Hub`; das native App-Bundle für Finder und Dock wird unter `~/Applications/Streaming Hub.app` installiert. Ein abweichender Installationspfad kann über `INSTALL_DIR` gesetzt werden.
 
 Der Installer kann Node.js unter Linux über den jeweiligen Paketmanager installieren. Auf macOS nutzt er Homebrew, falls Node.js fehlt oder zu alt ist und Homebrew bereits installiert ist.
 
@@ -302,6 +302,8 @@ Der Update-Button in der Navigationsleiste zeigt den Status:
 - **Roter Pfeil (pulsierend)** – Update verfügbar
 
 Klicke auf den Button, um das Update zu starten. Die App lädt die neue Version herunter und startet automatisch neu. Laufende Aufnahmen solltest du vorher beenden.
+
+Der Updater gilt für macOS (arm64 und x64) und für Linux-Installationen aus dem Release-Paket (x86_64). Je Version gibt es drei Releases: `vX.Y.Z` (macOS arm64), `vX.Y.Z-x64` (macOS Intel) und `vX.Y.Z-linux` (Linux x86_64); `npm run release:check` prüft, dass alle drei samt Asset vorhanden sind. Unter Linux wird das Installationsverzeichnis als Ganzes ausgetauscht (mit Rollback bei Fehlern); Einstellungen und Nutzerdaten liegen außerhalb und bleiben erhalten. Ein manuell gesetztes SUID-Bit an `chrome-sandbox` muss nach einem Update erneut gesetzt werden. Linux-Installationen aus dem Quellcode (`--source=git`) aktualisieren sich über `install.sh --source=git`, nicht in der App.
 
 Für Tests (Entwickler): Mit `STREAMING_HUB_UPDATE_URL=http://127.0.0.1:PORT` fragt die App Releases bei einem lokalen Mock-Server statt bei GitHub ab. Der Override gilt nur bei ungepackter App oder lokalem http-Ziel, in der ausgelieferten App sonst nicht.
 

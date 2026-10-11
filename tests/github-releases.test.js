@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { fetchReleaseCandidates, findReleaseCandidates, parseReleaseCandidate, selectReleaseNotes, releaseNotesFromReleases } = require('../lib/github-releases.js');
+const { fetchReleaseCandidates, findReleaseCandidates, parseReleaseCandidate, selectReleaseNotes } = require('../lib/github-releases.js');
 
 const asset = version => ({ name: `Streaming.Hub-${version}-mac.zip`, browser_download_url: `https://github.com/keks-maker/streaming-hub/releases/download/v${version}/Streaming.Hub-${version}-mac.zip` });
 
@@ -99,14 +99,26 @@ test('Der ALTE Parser aus 0.9.4 (main) sieht x64-Releases nie als Kandidat', () 
   for (const r of releases.filter(r => r.tag_name.endsWith('-x64'))) assert.equal(oldParser.parseReleaseCandidate(r), null);
 });
 
-test('Linux (Platzhalter) ist nur ein weiterer Tabelleneintrag; unbekannte Kategorie wirft', () => {
-  const linux = { tag: /^v(\d+\.\d+\.\d+)-linux-x64$/, asset: v => `Streaming.Hub-${v}-linux-x64.AppImage` };
-  const releases = [arm('0.9.4'), x64('0.9.5'), rel('v0.9.6-linux-x64', 'Streaming.Hub-0.9.6-linux-x64.AppImage')];
-  assert.deepEqual(findReleaseCandidates(releases, linux).map(c => c.tagName), ['v0.9.6-linux-x64']);
+test('Linux-x64: Tag vX.Y.Z-linux, genau ein tar.gz; arm64/x64-Mac-Schema bleibt, alter Parser ignoriert Linux', () => {
+  const linuxAsset = 'Streaming.Hub-0.9.6-linux-x64.tar.gz';
+  const releases = [arm('0.9.4'), x64('0.9.5'), rel('v0.9.6-linux', linuxAsset)];
+  assert.deepEqual(findReleaseCandidates(releases, 'linux-x64').map(c => c.tagName), ['v0.9.6-linux']);
+  assert.deepEqual(findReleaseCandidates(releases, 'linux-x64')[0].asset.name, linuxAsset);
   assert.deepEqual(findReleaseCandidates(releases, 'darwin-x64').map(c => c.tagName), ['v0.9.5-x64']);
+  assert.deepEqual(findReleaseCandidates(releases, 'darwin-arm64').map(c => c.tagName), ['v0.9.4']);
   assert.deepEqual(oldParser.findReleaseCandidates(releases).map(c => c.tagName), ['v0.9.4']);
-  assert.deepEqual(Object.keys(RELEASE_TARGETS), ['darwin-arm64', 'darwin-x64']);
-  assert.throws(() => findReleaseCandidates(releases, 'linux-x64'), /Keine Release-Kategorie/);
+  assert.deepEqual(Object.keys(RELEASE_TARGETS), ['darwin-arm64', 'darwin-x64', 'linux-x64']);
+  assert.equal(ASSET_NAME('0.9.6', 'linux-x64'), linuxAsset);
+  assert.equal(targetKey('linux', 'x64'), 'linux-x64');
+  // Falsche Assets/Tags: AppImage, Mac-Zip, zwei Assets, Tag mit Arch-Suffix, Draft/Prerelease
+  assert.equal(parseReleaseCandidate(rel('v0.9.6-linux', 'Streaming.Hub-0.9.6-linux-x64.AppImage'), 'linux-x64'), null);
+  assert.equal(parseReleaseCandidate(rel('v0.9.6-linux', 'Streaming.Hub-0.9.6-mac.zip'), 'linux-x64'), null);
+  assert.equal(parseReleaseCandidate(rel('v0.9.6-linux', 'Streaming.Hub-0.9.5-linux-x64.tar.gz'), 'linux-x64'), null);
+  assert.equal(parseReleaseCandidate(rel('v0.9.6-linux-x64', linuxAsset), 'linux-x64'), null);
+  assert.equal(parseReleaseCandidate({ ...rel('v0.9.6-linux', linuxAsset), draft: true }, 'linux-x64'), null);
+  assert.equal(parseReleaseCandidate({ ...rel('v0.9.6-linux', linuxAsset), prerelease: true }, 'linux-x64'), null);
+  assert.equal(parseReleaseCandidate({ ...rel('v0.9.6-linux', linuxAsset), assets: [...rel('v0.9.6-linux', linuxAsset).assets, { name: 'x.txt' }] }, 'linux-x64'), null);
+  assert.throws(() => findReleaseCandidates(releases, 'linux-arm64'), /Keine Release-Kategorie/);
 });
 
 test('fetchReleaseCandidates filtert nach Kategorie', async () => {
@@ -126,15 +138,4 @@ test('Release-Notes: alle Versionen neuer als die installierte, neueste zuerst, 
     { version: '0.9.7', name: 'v0.9.7', body: 'Text 7' },
   ]);
   assert.deepEqual(selectReleaseNotes(candidates, '0.9.9'), []);
-});
-
-test('Release-Notes aus rohen Releases (AppImage): Draft, Prerelease und fremde Tags ausgeschlossen', () => {
-  const notes = releaseNotesFromReleases([
-    { tag_name: 'v0.9.8', body: 'B', draft: false, prerelease: false },
-    { tag_name: 'v0.9.9', body: 'X', draft: true, prerelease: false },
-    { tag_name: 'v1.0.0', body: 'X', draft: false, prerelease: true },
-    { tag_name: 'v0.9.8-x64', body: 'X', draft: false, prerelease: false },
-    { tag_name: 'v0.9.7', body: 'A', draft: false, prerelease: false },
-  ], '0.9.6');
-  assert.deepEqual(notes.map(n => n.version), ['0.9.8', '0.9.7']);
 });

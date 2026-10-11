@@ -255,7 +255,7 @@ test('Tray-Beenden mit Aufnahme: confirmQuit() fragt einmal, danach keine Doppel
 
 test('Quellcode-Invarianten: Updater-Relaunch gibt den Quit frei, before-quit fragt zuerst, Cleanup danach', () => {
   const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-  assert.equal((main.match(/quitCoordinator\.allowQuit\('updater'\)/g) || []).length, 2);
+  assert.equal((main.match(/quitCoordinator\.allowQuit\('updater'\)/g) || []).length, 1);
   const bq = main.slice(main.indexOf("app.on('before-quit'"));
   assert.ok(bq.indexOf('handleBeforeQuit') < bq.indexOf('quitSweep'), 'Dialog vor Quit-Cleanup');
   assert.match(main, /createdWindow\.on\('close'/);
