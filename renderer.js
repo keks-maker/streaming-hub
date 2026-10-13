@@ -1146,9 +1146,11 @@ function renderSettingsServices() {
       row.innerHTML = `
         <img class="service-row-icon" alt="" style="background:${color}33;border-color:${color}66">
         <span class="service-row-name">${escapeHtml(svc.name)}</span>
+        <button class="service-row-edit" data-id="${escapeHtml(svc.id)}" title="Bearbeiten" aria-label="Bearbeiten">&#9998;</button>
         <button class="service-row-remove" data-id="${escapeHtml(svc.id)}" title="Entfernen">&times;</button>
       `;
       if (iconSrc) row.querySelector('.service-row-icon').src = iconSrc;
+      row.querySelector('.service-row-edit').addEventListener('click', () => startEditSettingsService(svc));
       row.querySelector('.service-row-remove').addEventListener('click', () => {
         window.electronAPI.removeService(svc.id);
       });
@@ -1518,10 +1520,40 @@ const settingsInputColor = document.getElementById('settingsInputColor');
 const settingsInputGroup = document.getElementById('settingsInputGroup');
 const settingsAddSave = document.getElementById('settingsAddSave');
 
+let editingServiceId = null;
+
+function resetSettingsAddForm() {
+  editingServiceId = null;
+  settingsAddSave.textContent = 'Hinzufügen';
+  settingsInputName.value = '';
+  settingsInputUrl.value = '';
+  settingsInputIcon.value = '';
+  settingsInputColor.value = '#6c5ce7';
+  settingsInputGroup.value = 'streaming';
+}
+
+function startEditSettingsService(svc) {
+  resetSettingsAddForm();
+  editingServiceId = svc.id;
+  settingsAddSave.textContent = 'Speichern';
+  settingsInputName.value = svc.name || '';
+  settingsInputUrl.value = svc.url || '';
+  settingsInputIcon.value = svc.icon || '';
+  settingsInputColor.value = safeColor(svc.color, '#6c5ce7');
+  settingsInputGroup.value = svc.group === 'mediathek' ? 'mediathek' : 'streaming';
+  settingsAddForm.style.display = 'block';
+  settingsInputName.focus();
+}
+
 function toggleSettingsAddForm() {
   const isOpen = settingsAddForm.style.display !== 'none';
   settingsAddForm.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) {
+  if (isOpen) {
+    editingServiceId = null;
+    settingsAddSave.textContent = 'Hinzufügen';
+  } else {
+    editingServiceId = null;
+    settingsAddSave.textContent = 'Hinzufügen';
     settingsInputName.value = '';
     settingsInputUrl.value = '';
     settingsInputIcon.value = '';
@@ -1554,11 +1586,11 @@ function saveSettingsService() {
   const svc = { name, url, color, group };
   if (icon) svc.icon = icon;
 
-  window.electronAPI.addService(svc).then(() => {
-    settingsInputName.value = '';
-    settingsInputUrl.value = '';
-    settingsInputIcon.value = '';
-    settingsInputColor.value = '#6c5ce7';
+  const request = editingServiceId
+    ? window.electronAPI.updateService(editingServiceId, svc)
+    : window.electronAPI.addService(svc);
+  request.then(() => {
+    resetSettingsAddForm();
     settingsAddForm.style.display = 'none';
   });
 }

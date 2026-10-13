@@ -17,7 +17,7 @@ const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { resolveLaunchTarget, launchArgs, realUpdaterLogPath } = require('./platform');
+const { backgroundEnv, resolveLaunchTarget, launchArgs, realUpdaterLogPath } = require('./platform');
 
 const PKG_VERSION = require('../package.json').version;
 
@@ -81,7 +81,7 @@ test.beforeAll(async () => {
     env: {
       ...process.env,
       HOME: home,
-      STREAMING_HUB_USER_DATA: userData,
+      STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(),
       STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9',
     },
     timeout: 45_000,
@@ -134,6 +134,12 @@ test('Hauptfenster rendert Titel und Kern-DOM', async () => {
   await expect(page.locator('.dashboard-section-tile')).toHaveCount(4);
   await expect(page.locator('.dashboard-section-tile[data-section="recording"]')).toHaveCount(0);
   await expect(page.locator('#versionTag')).toHaveText(`v${PKG_VERSION}`);
+});
+
+test('Keine nativen Fehlerdialoge: ffmpeg/ffprobe vorbereitet, nichts unterdrückt', async () => {
+  const suppressed = await electronApp.evaluate(() => (globalThis.__streamingHubTest?.suppressedDialogs || []).map(d => d.title));
+  console.log(`E2E-Dialoge unterdrückt: ${suppressed.length}`);
+  expect(suppressed).toEqual([]);
 });
 
 test('Isolation: userData im Temp-Verzeichnis, kein Updater-Lauf', async () => {

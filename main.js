@@ -8,6 +8,7 @@ const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
+const { revealWindow, isBackgroundE2E } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
@@ -187,6 +188,7 @@ const {
   tvSourceUpdates: validateTvSourceUpdates,
   favoriteOrder: validateFavoriteOrder,
 } = require('./lib/input-validation.js');
+const { updateServiceInList } = require('./lib/service-update.js');
 const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
@@ -207,10 +209,19 @@ if (process.platform === 'darwin') {
   app.setName('Streaming Hub');
   app.setPath('userData', path.join(app.getPath('appData'), 'streaming-hub'));
 }
+// Test-Hook (E2E, e2e/): STREAMING_HUB_E2E_BACKGROUND=1 zeigt Fenster per showInactive()
+// ohne focus() (kein Fokusklau bei parallelem Arbeiten); gilt nur zusammen mit
+// STREAMING_HUB_USER_DATA, Logik in lib/e2e-background.js. Opt-out in e2e/: E2E_FOREGROUND=1.
 // Test-Hook (E2E, e2e/): isoliertes userData-Verzeichnis. Gilt auf allen
 // Plattformen und läuft NACH dem macOS-Default, damit er diesen übersteuert.
 if (process.env.STREAMING_HUB_USER_DATA) {
   app.setPath('userData', path.resolve(process.env.STREAMING_HUB_USER_DATA));
+}
+
+// macOS: Ein regulärer Prozess aktiviert sich beim Start selbst (Fokusklau); als
+// „accessory“ (kein Dock-Icon) bleibt die vordere App unverändert.
+if (process.platform === 'darwin' && isBackgroundE2E(process.env)) {
+  app.setActivationPolicy('accessory');
 }
 
 let mainWindow;
@@ -222,6 +233,11 @@ let mainWindow;
 // durch eine Attrappe, die die Dialog-Optionen in globalThis.__streamingHubTest
 // aufzeichnet und die dort gesetzte Antwort liefert. Gilt nur in isolierten Läufen
 // (STREAMING_HUB_USER_DATA), nie im Normalbetrieb.
+const { isIsolatedTestRun, showErrorBoxGuarded } = require('./lib/e2e-dialog-guard.js');
+const guardCtx = () => {
+  if (isIsolatedTestRun(process.env) && !globalThis.__streamingHubTest) globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
+  return { dialog, env: process.env, logger, store: globalThis.__streamingHubTest };
+};
 const quitDialogMock = process.env.STREAMING_HUB_USER_DATA && process.env.STREAMING_HUB_TEST_QUIT_DIALOG === 'mock';
 if (quitDialogMock) {
   globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
@@ -544,8 +560,7 @@ function createWindow() {
 
   const createdWindow = mainWindow;
   createdWindow.once('ready-to-show', () => {
-    createdWindow.show();
-    createdWindow.focus();
+    revealWindow(createdWindow, process.env);
   });
   // Fenster-X: Beenden-Dialog bei Planung < 24 h (sonst schließt das Fenster wie bisher)
   createdWindow.on('close', event => {
@@ -599,8 +614,7 @@ function showMainWindow() {
     return;
   }
   if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
+  revealWindow(mainWindow, process.env);
 }
 
 /** Aufnahmen-Dashboard im Renderer öffnen (Tab 'library' | 'planned'), auch bei frisch erzeugtem Fenster. */
@@ -651,7 +665,7 @@ app.whenReady().then(() => {
       });
       if (!gate.ok) {
         logger.error('Bundle-Integrität beim Start beschädigt:', gate.errors.join('; '));
-        dialog.showErrorBox(
+        showErrorBoxGuarded(guardCtx(),
           'Streaming Hub — Installation beschädigt',
           'Die App-Installation ist beschädigt (defekte interne Verweise).\n\n' +
             'Bitte die App über install.sh neu installieren:\n\n' +
@@ -712,14 +726,15 @@ app.whenReady().then(() => {
   if (!health.ok) {
     const detail = `ffmpeg/ffprobe fehlen oder sind defekt: ${health.missing.join(', ')}`;
     logger.error(detail, '— Aufnahme-Funktionen sind deaktiviert.');
-    dialog.showErrorBox(
+    showErrorBoxGuarded(guardCtx(),
       'Streaming Hub — Aufnahme nicht verfügbar',
       `${detail}\n\nDie Aufnahme-Funktion benötigt die mitgelieferten ffmpeg/ffprobe-Binaries.\n\n` +
         'Die App versucht jetzt, sie automatisch nachzuladen. Falls das fehlschlägt ' +
         '(z. B. ohne Internetverbindung): App erneut starten oder Installation reparieren.\n\n' +
         'Alle anderen Funktionen laufen weiter.',
     );
-    ensureBinaries(__dirname)
+    // Testläufe laden nie aus dem Netz nach (Vorbereitung: pretest:e2e).
+    (isIsolatedTestRun(process.env) ? Promise.resolve({ ok: false, error: 'Testlauf: kein Netz-Download' }) : ensureBinaries(__dirname))
       .then(result => {
         if (result.ok) logger.info('ffmpeg/ffprobe nachgeladen, Aufnahme-Funktionen wieder verfügbar.');
         else logger.error('ffmpeg/ffprobe Nachladen fehlgeschlagen:', result.error);
@@ -1268,6 +1283,15 @@ ipcMain.handle('add-service', (event, input) => {
   saveServices(services);
   broadcastServices();
   return service;
+});
+
+ipcMain.handle('update-service', (event, id, input) => {
+  requireMainRenderer(event);
+  const serviceId = validateText(id, 'Dienst-ID', 200);
+  const result = updateServiceInList(loadServices(), serviceId, validateService(input));
+  saveServices(result.services);
+  broadcastServices();
+  return result.service;
 });
 
 ipcMain.handle('remove-service', (event, id) => {

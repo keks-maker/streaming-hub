@@ -10,7 +10,7 @@ const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { resolveLaunchTarget, launchArgs } = require('./platform');
+const { backgroundEnv, resolveLaunchTarget, launchArgs } = require('./platform');
 
 const MIN = 60 * 1000;
 const MESSAGE = /^Es ist eine Aufnahme geplant: E2E Kanal — Kommende Sendung, (heute|morgen) \d{2}:\d{2}\. Streaming Hub muss dafür laufen\.$/;
@@ -53,7 +53,7 @@ async function launch(name) {
     env: {
       ...process.env,
       HOME: home,
-      STREAMING_HUB_USER_DATA: userData,
+      STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(),
       STREAMING_HUB_EPG_FIXTURE: fixture,
       STREAMING_HUB_TEST_QUIT_DIALOG: 'mock',
       STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9',
