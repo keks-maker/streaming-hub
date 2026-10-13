@@ -72,6 +72,12 @@ function resolveLaunchTarget() {
   return { executablePath: exe, args: [], packaged: true };
 }
 
+// Env-Anteil für alle Launches: App im Hintergrund zeigen (kein Fokusklau, siehe
+// lib/e2e-background.js). Opt-out: E2E_FOREGROUND=1.
+function backgroundEnv() {
+  return process.env.E2E_FOREGROUND === '1' ? {} : { STREAMING_HUB_E2E_BACKGROUND: '1' };
+}
+
 // Plattformspezifische Chromium-Schalter.
 function platformArgs() {
   if (process.platform === 'darwin') {
@@ -108,4 +114,4 @@ function realUpdaterLogPath() {
   return path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), APP_NAME, 'logs', 'updater.log');
 }
 
-module.exports = { ROOT, resolveLaunchTarget, platformArgs, launchArgs, realUpdaterLogPath };
+module.exports = { ROOT, backgroundEnv, resolveLaunchTarget, platformArgs, launchArgs, realUpdaterLogPath };

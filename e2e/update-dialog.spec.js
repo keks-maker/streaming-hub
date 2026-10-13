@@ -8,7 +8,7 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { resolveLaunchTarget, launchArgs } = require('./platform');
+const { backgroundEnv, resolveLaunchTarget, launchArgs } = require('./platform');
 const { RELEASE_TARGETS, targetKey } = require('../lib/github-releases.js');
 
 const SCREENSHOT = process.env.E2E_UPDATE_SCREENSHOT;
@@ -52,7 +52,7 @@ test('Update-Dialog zeigt Notes, schliesst per Abbrechen/Esc und installiert nic
   const app = await electron.launch({
     executablePath: target.executablePath,
     args: launchArgs(target),
-    env: { ...process.env, HOME: tmp, STREAMING_HUB_USER_DATA: userData, STREAMING_HUB_UPDATE_URL: `http://127.0.0.1:${server.address().port}` },
+    env: { ...process.env, HOME: tmp, STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(), STREAMING_HUB_UPDATE_URL: `http://127.0.0.1:${server.address().port}` },
     timeout: 45_000,
   });
   try {

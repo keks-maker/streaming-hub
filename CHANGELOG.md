@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Test: Hook `STREAMING_HUB_E2E_BACKGROUND=1` (nur mit `STREAMING_HUB_USER_DATA`) zeigt Fenster per `showInactive()` ohne `focus()`; E2E-Specs setzen ihn standardmäßig (Opt-out `E2E_FOREGROUND=1`), `lib/e2e-background.js`, Test `tests/e2e-background.test.js`. Produktion unverändert.
 - Behoben: Dienste in den Einstellungen waren nicht bearbeitbar (es gab nur „Entfernen“, keinen Bearbeiten-Pfad). Neu: Stift-Button je Dienstzeile öffnet das Formular vorbefüllt (Name, URL, Icon, Farbe, Gruppe), Speichern über neue IPC `update-service` (`lib/service-update.js`, ID bleibt erhalten). Test: `tests/service-update.test.js`.
 
 ## 0.9.9 (2026-10-09) — Aufnahme weckt den Mac

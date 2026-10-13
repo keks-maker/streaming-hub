@@ -8,6 +8,7 @@ const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
 const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
+const { revealWindow, isBackgroundE2E } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
@@ -208,10 +209,19 @@ if (process.platform === 'darwin') {
   app.setName('Streaming Hub');
   app.setPath('userData', path.join(app.getPath('appData'), 'streaming-hub'));
 }
+// Test-Hook (E2E, e2e/): STREAMING_HUB_E2E_BACKGROUND=1 zeigt Fenster per showInactive()
+// ohne focus() (kein Fokusklau bei parallelem Arbeiten); gilt nur zusammen mit
+// STREAMING_HUB_USER_DATA, Logik in lib/e2e-background.js. Opt-out in e2e/: E2E_FOREGROUND=1.
 // Test-Hook (E2E, e2e/): isoliertes userData-Verzeichnis. Gilt auf allen
 // Plattformen und läuft NACH dem macOS-Default, damit er diesen übersteuert.
 if (process.env.STREAMING_HUB_USER_DATA) {
   app.setPath('userData', path.resolve(process.env.STREAMING_HUB_USER_DATA));
+}
+
+// macOS: Ein regulärer Prozess aktiviert sich beim Start selbst (Fokusklau); als
+// „accessory“ (kein Dock-Icon) bleibt die vordere App unverändert.
+if (process.platform === 'darwin' && isBackgroundE2E(process.env)) {
+  app.setActivationPolicy('accessory');
 }
 
 let mainWindow;
@@ -545,8 +555,7 @@ function createWindow() {
 
   const createdWindow = mainWindow;
   createdWindow.once('ready-to-show', () => {
-    createdWindow.show();
-    createdWindow.focus();
+    revealWindow(createdWindow, process.env);
   });
   // Fenster-X: Beenden-Dialog bei Planung < 24 h (sonst schließt das Fenster wie bisher)
   createdWindow.on('close', event => {
@@ -600,8 +609,7 @@ function showMainWindow() {
     return;
   }
   if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
+  revealWindow(mainWindow, process.env);
 }
 
 /** Aufnahmen-Dashboard im Renderer öffnen (Tab 'library' | 'planned'), auch bei frisch erzeugtem Fenster. */

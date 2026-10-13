@@ -7,7 +7,7 @@ const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { resolveLaunchTarget, launchArgs } = require('./platform');
+const { backgroundEnv, resolveLaunchTarget, launchArgs } = require('./platform');
 
 const KNOWN_HARMLESS = [
   'ERR_NAME_NOT_RESOLVED',
@@ -89,7 +89,7 @@ test.beforeAll(async () => {
   electronApp = await electron.launch({
     executablePath: target.executablePath,
     args: launchArgs(target),
-    env: { ...process.env, HOME: home, STREAMING_HUB_USER_DATA: userData, STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9' },
+    env: { ...process.env, HOME: home, STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(), STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9' },
     timeout: 45_000,
   });
   electronApp.on('console', msg => {

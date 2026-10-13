@@ -17,7 +17,7 @@ const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { resolveLaunchTarget, launchArgs, realUpdaterLogPath } = require('./platform');
+const { backgroundEnv, resolveLaunchTarget, launchArgs, realUpdaterLogPath } = require('./platform');
 
 const PKG_VERSION = require('../package.json').version;
 
@@ -81,7 +81,7 @@ test.beforeAll(async () => {
     env: {
       ...process.env,
       HOME: home,
-      STREAMING_HUB_USER_DATA: userData,
+      STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(),
       STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9',
     },
     timeout: 45_000,
