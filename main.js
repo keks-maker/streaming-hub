@@ -187,6 +187,7 @@ const {
   tvSourceUpdates: validateTvSourceUpdates,
   favoriteOrder: validateFavoriteOrder,
 } = require('./lib/input-validation.js');
+const { updateServiceInList } = require('./lib/service-update.js');
 const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
@@ -1268,6 +1269,15 @@ ipcMain.handle('add-service', (event, input) => {
   saveServices(services);
   broadcastServices();
   return service;
+});
+
+ipcMain.handle('update-service', (event, id, input) => {
+  requireMainRenderer(event);
+  const serviceId = validateText(id, 'Dienst-ID', 200);
+  const result = updateServiceInList(loadServices(), serviceId, validateService(input));
+  saveServices(result.services);
+  broadcastServices();
+  return result.service;
 });
 
 ipcMain.handle('remove-service', (event, id) => {

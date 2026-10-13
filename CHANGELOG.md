@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Behoben: Dienste in den Einstellungen waren nicht bearbeitbar (es gab nur „Entfernen“, keinen Bearbeiten-Pfad). Neu: Stift-Button je Dienstzeile öffnet das Formular vorbefüllt (Name, URL, Icon, Farbe, Gruppe), Speichern über neue IPC `update-service` (`lib/service-update.js`, ID bleibt erhalten). Test: `tests/service-update.test.js`.
+
 ## 0.9.9 (2026-10-09) — Aufnahme weckt den Mac
 
 - Fix: Standby-Schutz hält auf macOS zusätzlich `caffeinate -s -i -w <pid>` (echte PreventSystemSleep-Assertion), solange eine Aufnahme läuft oder in Kürze startet; der powerSaveBlocker allein schützt im DarkWake nicht vor „Maintenance Sleep“ (Aufnahme brach nach 2 s ab). `-s` wirkt nur am Netzteil; Neustart bei unerwartetem Exit beim nächsten Abgleich. Docs: Hinweis zum Mindestvorlauf (~7 min) für Wecken.

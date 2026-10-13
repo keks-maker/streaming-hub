@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getServices: () => ipcRenderer.invoke('get-services'),
   addService: svc => ipcRenderer.invoke('add-service', svc),
+  updateService: (id, svc) => ipcRenderer.invoke('update-service', id, svc),
   removeService: id => ipcRenderer.invoke('remove-service', id),
   onServicesChanged: cb => {
     const handler = (_e, services) => cb(services);
