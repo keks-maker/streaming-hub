@@ -307,7 +307,7 @@ Der Updater gilt für macOS (arm64 und x64) und für Linux-Installationen aus de
 
 Für Tests (Entwickler): Mit `STREAMING_HUB_UPDATE_URL=http://127.0.0.1:PORT` fragt die App Releases bei einem lokalen Mock-Server statt bei GitHub ab. Der Override gilt nur bei ungepackter App oder lokalem http-Ziel, in der ausgelieferten App sonst nicht.
 
-E2E-Läufe (`npm run test:e2e`) setzen `STREAMING_HUB_E2E_BACKGROUND=1`: Fenster erscheinen per `showInactive()` ohne Fokus, damit paralleles Arbeiten nicht gestört wird. Der Hook wirkt nur zusammen mit `STREAMING_HUB_USER_DATA`; Opt-out mit `E2E_FOREGROUND=1`.
+E2E-Läufe (`npm run test:e2e`) setzen `STREAMING_HUB_E2E_BACKGROUND=1`: Fenster erscheinen per `showInactive()` ohne Fokus, damit paralleles Arbeiten nicht gestört wird. Der Hook wirkt nur zusammen mit `STREAMING_HUB_USER_DATA`; Opt-out mit `E2E_FOREGROUND=1`. `pretest:e2e` stellt ffmpeg/ffprobe bereit (`scripts/prepare-e2e.js`) und baut `dist/`; native Fehlerdialoge werden im Testlauf unterdrückt und gezählt (`__streamingHubTest.suppressedDialogs`).
 
 ## Lizenz
 

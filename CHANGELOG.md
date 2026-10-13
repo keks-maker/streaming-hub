@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Test: E2E-Läufe zeigen nie native Fehlerdialoge (z. B. „Aufnahme nicht verfügbar“): in Läufen mit `STREAMING_HUB_USER_DATA` werden `showErrorBox`-Dialoge unterdrückt, geloggt und in `globalThis.__streamingHubTest.suppressedDialogs` gezählt, ohne Netz-Nachladen (`lib/e2e-dialog-guard.js`, Test `tests/e2e-dialog-guard.test.js`). Ursache: das gitignorierte `bin/` ist in Worktrees leer. Neu `pretest:e2e` (`scripts/prepare-e2e.js`: ffmpeg/ffprobe aus Projekt/Haupt-Checkout, sonst einmaliger Download; danach `build:all`, damit `dist/` nicht veraltet). Produktion unverändert.
 - Test: Hook `STREAMING_HUB_E2E_BACKGROUND=1` (nur mit `STREAMING_HUB_USER_DATA`) zeigt Fenster per `showInactive()` ohne `focus()`; E2E-Specs setzen ihn standardmäßig (Opt-out `E2E_FOREGROUND=1`), `lib/e2e-background.js`, Test `tests/e2e-background.test.js`. Produktion unverändert.
 - Behoben: Dienste in den Einstellungen waren nicht bearbeitbar (es gab nur „Entfernen“, keinen Bearbeiten-Pfad). Neu: Stift-Button je Dienstzeile öffnet das Formular vorbefüllt (Name, URL, Icon, Farbe, Gruppe), Speichern über neue IPC `update-service` (`lib/service-update.js`, ID bleibt erhalten). Test: `tests/service-update.test.js`.
 

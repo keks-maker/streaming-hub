@@ -136,6 +136,12 @@ test('Hauptfenster rendert Titel und Kern-DOM', async () => {
   await expect(page.locator('#versionTag')).toHaveText(`v${PKG_VERSION}`);
 });
 
+test('Keine nativen Fehlerdialoge: ffmpeg/ffprobe vorbereitet, nichts unterdrückt', async () => {
+  const suppressed = await electronApp.evaluate(() => (globalThis.__streamingHubTest?.suppressedDialogs || []).map(d => d.title));
+  console.log(`E2E-Dialoge unterdrückt: ${suppressed.length}`);
+  expect(suppressed).toEqual([]);
+});
+
 test('Isolation: userData im Temp-Verzeichnis, kein Updater-Lauf', async () => {
   const userData = await electronApp.evaluate(({ app }) => app.getPath('userData'));
   expect(fs.realpathSync(userData).startsWith(tmpRoot)).toBe(true);

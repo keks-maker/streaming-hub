@@ -233,6 +233,11 @@ let mainWindow;
 // durch eine Attrappe, die die Dialog-Optionen in globalThis.__streamingHubTest
 // aufzeichnet und die dort gesetzte Antwort liefert. Gilt nur in isolierten Läufen
 // (STREAMING_HUB_USER_DATA), nie im Normalbetrieb.
+const { isIsolatedTestRun, showErrorBoxGuarded } = require('./lib/e2e-dialog-guard.js');
+const guardCtx = () => {
+  if (isIsolatedTestRun(process.env) && !globalThis.__streamingHubTest) globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
+  return { dialog, env: process.env, logger, store: globalThis.__streamingHubTest };
+};
 const quitDialogMock = process.env.STREAMING_HUB_USER_DATA && process.env.STREAMING_HUB_TEST_QUIT_DIALOG === 'mock';
 if (quitDialogMock) {
   globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
@@ -660,7 +665,7 @@ app.whenReady().then(() => {
       });
       if (!gate.ok) {
         logger.error('Bundle-Integrität beim Start beschädigt:', gate.errors.join('; '));
-        dialog.showErrorBox(
+        showErrorBoxGuarded(guardCtx(),
           'Streaming Hub — Installation beschädigt',
           'Die App-Installation ist beschädigt (defekte interne Verweise).\n\n' +
             'Bitte die App über install.sh neu installieren:\n\n' +
@@ -721,14 +726,15 @@ app.whenReady().then(() => {
   if (!health.ok) {
     const detail = `ffmpeg/ffprobe fehlen oder sind defekt: ${health.missing.join(', ')}`;
     logger.error(detail, '— Aufnahme-Funktionen sind deaktiviert.');
-    dialog.showErrorBox(
+    showErrorBoxGuarded(guardCtx(),
       'Streaming Hub — Aufnahme nicht verfügbar',
       `${detail}\n\nDie Aufnahme-Funktion benötigt die mitgelieferten ffmpeg/ffprobe-Binaries.\n\n` +
         'Die App versucht jetzt, sie automatisch nachzuladen. Falls das fehlschlägt ' +
         '(z. B. ohne Internetverbindung): App erneut starten oder Installation reparieren.\n\n' +
         'Alle anderen Funktionen laufen weiter.',
     );
-    ensureBinaries(__dirname)
+    // Testläufe laden nie aus dem Netz nach (Vorbereitung: pretest:e2e).
+    (isIsolatedTestRun(process.env) ? Promise.resolve({ ok: false, error: 'Testlauf: kein Netz-Download' }) : ensureBinaries(__dirname))
       .then(result => {
         if (result.ok) logger.info('ffmpeg/ffprobe nachgeladen, Aufnahme-Funktionen wieder verfügbar.');
         else logger.error('ffmpeg/ffprobe Nachladen fehlgeschlagen:', result.error);
