@@ -91,6 +91,19 @@ test('Validierung set-settings: trayDisplay nur aus der Auswahl (off, station, s
   for (const bad of ['', 'title', 'OFF', true, null, 1, undefined]) assert.throws(() => validateRadioSettingsPatch({ trayDisplay: bad }), /trayDisplay/);
 });
 
+test('Validierung set-settings: trayScrollMode nur „smooth“/„steps“ (Standard smooth), ungültige Dateiwerte fallen zurück', () => {
+  const { DEFAULT_RADIO_SETTINGS, normalizeRadioSettings, applyRadioSettingsPatch } = require('../lib/radio/radio-settings.js');
+  assert.deepEqual(validateRadioSettingsPatch({ trayScrollMode: 'steps' }), { trayScrollMode: 'steps' });
+  assert.deepEqual(validateRadioSettingsPatch({ trayScrollMode: 'smooth', trayScroll: false }), { trayScrollMode: 'smooth', trayScroll: false });
+  for (const bad of ['', 'Smooth', 'fast', true, null, 1, undefined]) assert.throws(() => validateRadioSettingsPatch({ trayScrollMode: bad }), /trayScrollMode/);
+  assert.equal(DEFAULT_RADIO_SETTINGS.trayScrollMode, 'smooth');
+  assert.equal(normalizeRadioSettings({}).trayScrollMode, 'smooth');
+  assert.equal(normalizeRadioSettings({ trayScrollMode: 'steps' }).trayScrollMode, 'steps');
+  assert.equal(normalizeRadioSettings({ trayScrollMode: 'x' }).trayScrollMode, 'smooth');
+  assert.equal(applyRadioSettingsPatch(normalizeRadioSettings({}), { trayScrollMode: 'steps' }).trayScrollMode, 'steps');
+  assert.throws(() => applyRadioSettingsPatch(normalizeRadioSettings({}), { trayScrollMode: 'x' }), /Lauftext-Art/);
+});
+
 test('Validierung set-settings: trayScroll ist ein Boolean (Standard an), auch zusammen mit trayDisplay', () => {
   const { DEFAULT_RADIO_SETTINGS, normalizeRadioSettings, applyRadioSettingsPatch } = require('../lib/radio/radio-settings.js');
   assert.deepEqual(validateRadioSettingsPatch({ trayScroll: false }), { trayScroll: false });

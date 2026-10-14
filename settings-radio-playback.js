@@ -25,6 +25,12 @@ const OPTIONS = [
 ];
 
 // Anzeige neben dem Tray-Symbol (nur macOS-Menüleiste); Standard „Sender und Titel“
+const TRAY_SCROLL_MODE_OPTIONS = [
+  { value: 'smooth', label: 'Flüssig' },
+  { value: 'steps', label: 'Schrittweise' },
+];
+const DEFAULT_TRAY_SCROLL_MODE = 'smooth';
+
 const TRAY_DISPLAY_OPTIONS = [
   { value: 'station', label: 'Nur Sender' },
   { value: 'station-title', label: 'Sender und Titel' },
@@ -105,7 +111,22 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   scrollHint.id = 'settingsRadio-trayScroll-hint';
   scrollInput.setAttribute('aria-describedby', scrollHint.id);
   scrollInput.addEventListener('change', () => saveFlag('trayScroll', scrollInput));
-  displayGroup.append(scrollLabel, scrollHint);
+  // Art des Durchlaufs: „Flüssig“ (pixelweise, als Bild) oder „Schrittweise“ (zeichenweise, wie ein Text; ruckelt systembedingt)
+  const modeRow = el(doc, 'label', 'tv-mode-label');
+  const modeSelect = el(doc, 'select');
+  modeSelect.id = 'settingsRadio-trayScrollMode';
+  modeSelect.dataset.field = 'trayScrollMode';
+  for (const option of TRAY_SCROLL_MODE_OPTIONS) {
+    const item = el(doc, 'option', '', option.label);
+    item.value = option.value;
+    modeSelect.appendChild(item);
+  }
+  modeRow.append(el(doc, 'span', '', 'Durchlauf: '), modeSelect);
+  const modeHint = el(doc, 'p', 'settings-field-hint', '„Flüssig“ verschiebt den Text pixelweise. „Schrittweise“ springt zeichenweise und wirkt unruhiger, braucht aber kein Textbild.');
+  modeHint.id = 'settingsRadio-trayScrollMode-hint';
+  modeSelect.setAttribute('aria-describedby', modeHint.id);
+  modeSelect.addEventListener('change', () => saveTrayScrollMode(modeSelect.value));
+  displayGroup.append(scrollLabel, scrollHint, modeRow, modeHint);
   displayGroup.appendChild(displayHint);
   const statusEl = statusLine(doc, 'settingsRadioPlaybackStatus');
   root.textContent = '';
@@ -122,6 +143,17 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
     const current = displayRadios.has(value) ? value : DEFAULT_TRAY_DISPLAY;
     for (const [optionValue, input] of displayRadios) input.checked = optionValue === current;
     scrollInput.disabled = current === 'off';
+    modeSelect.disabled = current === 'off' || !scrollInput.checked;
+  }
+
+  async function saveTrayScrollMode(wanted) {
+    try {
+      show(await radio.setSettings({ trayScrollMode: wanted }));
+      setStatus(statusEl, '✓ Gespeichert');
+    } catch (error) {
+      modeSelect.value = state.settings && state.settings.trayScrollMode ? state.settings.trayScrollMode : DEFAULT_TRAY_SCROLL_MODE;
+      setStatus(statusEl, formatIpcError(error), true);
+    }
   }
 
   async function saveTrayDisplay(wanted) {
@@ -138,6 +170,7 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
     state.settings = settings;
     for (const [key, input] of checks) input.checked = Boolean(settings[key]);
     scrollInput.checked = settings.trayScroll !== false;
+    modeSelect.value = TRAY_SCROLL_MODE_OPTIONS.some(option => option.value === settings.trayScrollMode) ? settings.trayScrollMode : DEFAULT_TRAY_SCROLL_MODE;
     showTrayDisplay(settings.trayDisplay);
     if (state.volume === null) showVolume(settings.volume);
   }

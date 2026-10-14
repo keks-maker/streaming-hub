@@ -40,7 +40,7 @@ function makeRadio({ probe, sources = initialSources(), settings } = {}) {
     calls,
     sources,
     state: { status: 'idle', station: null, volume: 0.6 },
-    settings: { volume: 0.6, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title', trayScroll: true, lastStation: null, ...settings },
+    settings: { volume: 0.6, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title', trayScroll: true, trayScrollMode: 'smooth', lastStation: null, ...settings },
     getSources: async () => radio.sources,
     getState: async () => radio.state,
     getSettings: async () => radio.settings,
@@ -457,7 +457,7 @@ test('Wiedergabe: Radiobuttons „Anzeige neben dem Symbol“ laden, speichern u
 });
 
 test('Wiedergabe: Checkbox „Lange Texte durchlaufen lassen“ lädt, speichert, ist bei „Aus“ deaktiviert und setzt bei Fehler zurück', async () => {
-  const { root, view, radio } = mount(createRadioPlaybackView, { radio: makeRadio({ settings: { trayScroll: true } }) });
+  const { root, view, radio } = mount(createRadioPlaybackView, { radio: makeRadio({ settings: { trayScroll: true, trayScrollMode: 'smooth' } }) });
   await view.refresh();
   const box = byId(root, 'settingsRadio-trayScroll');
   assert.equal(box.type, 'checkbox');
@@ -487,6 +487,41 @@ test('Wiedergabe: Checkbox „Lange Texte durchlaufen lassen“ lädt, speichert
   station.dispatch('change');
   await tick();
   assert.equal(box.disabled, false);
+});
+
+test('Wiedergabe: Auswahl „Flüssig“/„Schrittweise“ lädt (Standard Flüssig), speichert, ist ohne Lauftext deaktiviert und setzt bei Fehler zurück', async () => {
+  const { root, view, radio } = mount(createRadioPlaybackView, { radio: makeRadio({ settings: { trayScroll: true, trayScrollMode: undefined } }) });
+  await view.refresh();
+  const select = byId(root, 'settingsRadio-trayScrollMode');
+  assert.equal(select.value, 'smooth');
+  assert.deepEqual(select.children.map(o => [o.value, o.textContent]), [['smooth', 'Flüssig'], ['steps', 'Schrittweise']]);
+  assert.equal(select.disabled, false);
+  assert.equal(select.getAttribute('aria-describedby'), 'settingsRadio-trayScrollMode-hint');
+  select.value = 'steps';
+  select.dispatch('change');
+  await tick();
+  assert.deepEqual(radio.calls.at(-1), ['setSettings', { trayScrollMode: 'steps' }]);
+  assert.equal(select.value, 'steps');
+  radio.failSettings = true;
+  select.value = 'smooth';
+  select.dispatch('change');
+  await tick();
+  assert.equal(select.value, 'steps', 'Fehler: vorheriger Wert bleibt');
+  radio.failSettings = false;
+  const box = byId(root, 'settingsRadio-trayScroll');
+  box.checked = false;
+  box.dispatch('change');
+  await tick();
+  assert.equal(select.disabled, true, 'Lauftext aus: Auswahl ohne Wirkung, deaktiviert');
+  box.checked = true;
+  box.dispatch('change');
+  await tick();
+  assert.equal(select.disabled, false);
+  const off = byId(root, 'settingsRadio-trayDisplay-off');
+  off.checked = true;
+  off.dispatch('change');
+  await tick();
+  assert.equal(select.disabled, true, 'Anzeige „Aus“: deaktiviert');
 });
 
 test('Wiedergabe: ohne gespeicherten Wert ist „Sender und Titel“ gewählt', async () => {
