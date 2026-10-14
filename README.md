@@ -25,6 +25,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 
 - **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken und Einstellungen
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
+- **Radio** – Online-Radio mit mitgelieferter Senderliste (rund 250 deutsche Sender), eigenen Sendern per Stream-URL, Favoriten, Mini-Player und Steuerung aus dem Menüzeilensymbol; spielt auch bei geschlossenem Fenster weiter
 - **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste, Raster oder „Jetzt & Gleich“, Suche, Senderauswahl, Genre-Filter, Kanalansicht mit 7 Tagen je Sender, Details mit Poster, Besetzung und weiteren Terminen, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
 - **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, aus dem EPG im Voraus planen und später in der App abspielen
 - **Zeitversetztes Fernsehen (Timeshift)** – Bei unterstützten Live-Streams zurückspulen und Sendungen per EPG-Marker anspringen
@@ -33,7 +34,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 - **Verlauf** – Zuletzt gesehene Inhalte mit Direktsprung
 - **Streaming-DRM** – Netflix, Disney+ und Prime Video funktionieren mit Widevine
 - **Gespeicherte Logins** – Du meldest dich bei jedem Dienst nur einmal an
-- **Einstellungen** – Dienste, TV-Quellen, Sender, EPG, Wiedergabe und Aufnahmen an einem Ort
+- **Einstellungen** – Dienste, TV-Quellen, Sender, EPG, Wiedergabe, Aufnahmen und Radio an einem Ort
 - **Backup/Restore** – Einstellungen, Dienste, TV-Quellen und Verlauf sichern und wiederherstellen
 - **Auto-Update** – Neue Versionen direkt aus der App installieren
 - **Tastaturkürzel** – für Navigation, Verlauf, Aufnahmen, Bild-in-Bild und Vollbild
@@ -85,13 +86,13 @@ Installationen über den In-App-Updater oder den Installer sind nicht betroffen
 
 ### Startseite
 
-Die Startseite bündelt die Bereiche Live-TV, Streaming, Mediatheken und Einstellungen; die Aufnahmen erreichst du über die Karte **Aufnahmen** im Live-TV-Dashboard. Wähle eine Kachel, um den Bereich zu öffnen.
+Die Startseite bündelt die Bereiche Live-TV, Radio, Streaming, Mediatheken und Einstellungen; die Aufnahmen erreichst du über die Karte **Aufnahmen** im Live-TV-Dashboard. Wähle eine Kachel, um den Bereich zu öffnen.
 
 ![Start-Dashboard mit den Bereichen Live-TV, Streaming, Mediatheken und Einstellungen](assets/screenshots/startseite.png)
 
 ### Navigationsleiste
 
-In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
+In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Radio, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
 
 ![Navigationsleiste (LiveTV, Streaming, Mediatheken, Einstellungen) und Streaming-Dashboard](assets/screenshots/navbar.png)
 
@@ -198,6 +199,48 @@ Nicht verfügbare Optionen sind ausgegraut; ein Hinweis nennt den Grund. Es lauf
 
 > **Hinweis:** Aufnahmen funktionieren für Live-TV-Sender aus deinen M3U-Quellen, nicht für DRM-geschützte Streaming-Dienste.
 
+### Radio
+
+#### Radio-Dashboard
+
+Wähle in der Navigationsleiste oder auf der Startseite **Radio** (direkt nach Live-TV). Das Dashboard zeigt deine Favoriten als Kacheln in der gespeicherten Reihenfolge, oben stehen **Senderverwaltung**, **Liste aktualisieren** und die Zahl der Favoriten. Ein Klick auf eine Kachel startet den Sender, ein weiterer Klick pausiert ihn; die laufende Kachel zeigt einen Equalizer, bei einem Fehler steht ein Hinweis auf der Kachel. Ohne Favoriten bietet das Dashboard **Beliebte Sender hinzufügen** an (setzt einige deutsche Standardsender als Favoriten, nur auf Klick).
+
+**Liste aktualisieren** gleicht die Stream-Adressen der mitgelieferten Sender mit dem offenen Senderverzeichnis radio-browser.info ab. Geänderte, erreichbare Adressen werden getrennt von deinen eigenen Anpassungen gemerkt; eine von dir gesetzte Stream-URL hat immer Vorrang.
+
+![Radio-Dashboard mit Favoriten und Mini-Player (Beispieldaten)](assets/screenshots/radio-dashboard.png)
+
+#### Mini-Player
+
+Solange Radio läuft oder pausiert ist, zeigt eine Leiste am unteren Rand auf allen Seiten Sender und aktuellen Titel (sofern der Sender ihn liefert), **Vorheriger / Play-Pause / Nächster Favorit**, Lautstärke und **Stopp**. Im Vollbild ist sie ausgeblendet. Startest du einen LiveTV-Kanal, einen Streamingdienst oder eine Aufnahme, wird das Radio pausiert (abschaltbar) und nicht automatisch fortgesetzt.
+
+#### Senderverwaltung
+
+Unter **Einstellungen → Radio → Sender** (auch über **Senderverwaltung** im Dashboard) findest du die mitgelieferte Liste mit Suche (Name, Genre, Region), den Ansichten **Alle Sender** und **Favoriten**, Filtern nach Quelle, Genre und Region, Stern zum Favorisieren und Vorhören. **Reihenfolge bearbeiten** im Favoriten-Tab sortiert per Drag & Drop oder ▲▼; die Reihenfolge gilt auch im Dashboard und im Menüzeilensymbol. Mit **Bearbeiten** passt du Name, Logo-URL und Stream-URL eines mitgelieferten Senders an und setzt sie mit „Auf Original zurücksetzen“ zurück. Ein Favorit, der bei einem Update aus der mitgelieferten Liste verschwindet, bleibt erhalten und wird als „nicht mehr in der Liste“ markiert.
+
+![Senderverwaltung unter Einstellungen → Radio → Sender (Beispieldaten)](assets/screenshots/radio-senderverwaltung.png)
+
+#### Eigene Sender
+
+Unter **Einstellungen → Radio → Eigene Sender** legst du Sender per Stream-URL an (Name und URL sind Pflicht, optional Logo-URL und Genre). Erlaubt sind http- und https-Adressen, auch im lokalen Netz; Playlists (`.pls`, `.m3u`, `.asx`) und HLS (`.m3u8`) werden aufgelöst. **Stream prüfen** testet die Adresse vor dem Speichern und zeigt, ob sie erreichbar ist, welches Format sie liefert und welche Bitrate gemeldet wird; bei einem Fehler steht der Grund dabei.
+
+#### Steuerung aus dem Menüzeilensymbol
+
+Das Menüzeilensymbol (Tray) enthält einen Abschnitt **Radio** mit Statuszeile (Sender und Titel), Pause/Fortsetzen, **Radio stoppen**, **Nächster / Vorheriger Favorit**, dem Untermenü **Favoriten** (aktiver Sender mit Häkchen), dem Untermenü **Lautstärke** (Stumm, 25/50/75/100 %) und **Radio-Dashboard öffnen**. Während Radio spielt, zeigt das Symbol ein eigenes Radio-Zeichen (eine laufende Aufnahme hat Vorrang). Unter Linux hängt der Funktionsumfang des Tray-Menüs vom Desktop ab.
+
+#### Weiterspielen bei geschlossenem Fenster
+
+Schließt du das Hauptfenster, während Radio läuft oder pausiert ist, bleibt die App im Menüzeilensymbol aktiv und spielt weiter. Mit **Radio stoppen** (ohne offenes Fenster) oder **Beenden** endet die App. Das Verhalten lässt sich in den Einstellungen abschalten.
+
+#### Radio-Einstellungen
+
+Unter **Einstellungen → Radio → Wiedergabe**:
+- **Lautstärke** – bleibt für den nächsten Start gespeichert
+- **Beim Start letzten Sender fortsetzen** – spielt beim App-Start den zuletzt gehörten Sender (Standard: aus)
+- **Radio pausieren, wenn LiveTV, ein Streamingdienst oder eine Aufnahme startet** (Standard: an)
+- **Beim Schließen des Fensters weiterspielen** (Standard: an; benötigt das Menüzeilensymbol)
+
+Favoriten, Reihenfolge, Anpassungen und eigene Sender bleiben bei Updates erhalten und sind Teil von Backup & Restore.
+
 ### EPG – Programmführer
 
 Klicke im Live-TV-Dashboard auf die Karte **Programmübersicht**, um den Programmführer als Vollbild-Overlay aufzurufen. Er zeigt die Sender deiner Favoriten, die EPG-Daten haben; ohne Favoriten erscheint ein Hinweis mit **Alle Sender zeigen**. Die Daten kommen aus dem Programm-Cache der App, der im Hintergrund aktualisiert wird (**Aktualisieren** zeigt den Stand).
@@ -251,12 +294,13 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 - **Allgemein** – Backup & Restore
 - **LiveTV** – Quellen, Sender, EPG, Wiedergabe (TV-Modus) und Aufnahmen
 - **Streaming** – Streaming-Dienste hinzufügen und entfernen
+- **Radio** – Sender, Eigene Sender und Wiedergabe
 - **Mediatheken** – Mediatheken hinzufügen und entfernen
 
 ![Einstellungen mit Seitenleiste und Senderverwaltung](assets/screenshots/settings.png)
 
 #### Backup & Restore
-- **Backup erstellen** – Speichert Dienste, TV-Quellen und Verlauf als Datei
+- **Backup erstellen** – Speichert Dienste, TV-Quellen, Radio und Verlauf als Datei
 - **Backup einspielen** – Stellt ein vorheriges Backup wieder her
 
 #### Dienste verwalten

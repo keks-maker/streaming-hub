@@ -1,6 +1,6 @@
-# Streaming Hub — Konzept Online-Radio (v0.2, Entwurf)
+# Streaming Hub — Konzept Online-Radio (v0.2)
 
-Stand: 14.10.2026. Status: Konzept; Entscheidungen §9 nach Empfehlung getroffen, R0 abgeschlossen (Messreport `docs/radio-r0-messreport.md` auf Branch `spike/radio-r0`). Umsetzung ab R1.
+Stand: 14.10.2026. Status: **umgesetzt R1–R5** (Branch `feature/radio`, noch nicht veröffentlicht); Entscheidungen §9 nach Empfehlung getroffen, R0 abgeschlossen (Messreport `docs/radio-r0-messreport.md` auf Branch `spike/radio-r0`). Abweichungen der Umsetzung vom Entwurf: §13.
 Vorbild ist LiveTV (Dashboard, Senderverwaltung, Favoriten mit globaler Reihenfolge, Quellen mit Merge beim Update) und der Tray aus dem Aufnahme-Konzept.
 
 ## 1. Ziele und Abgrenzung
@@ -52,9 +52,9 @@ LiveTV spielt in einer `<webview>` (`tvView`), die beim Seitenwechsel ausgeblend
 ```
 
 - Inhalt: öffentlich-rechtliche Landeswellen (SWR, WDR, NDR, BR, HR, MDR, rbb, SR, RB), Deutschlandfunk-Familie, große Privatsender, Genre-/Webradios. Zielgröße ca. 150–300 Sender.
-- Pflege per Skript `scripts/build-radio-list.js` aus dem offenen Verzeichnis **radio-browser.info** (Filter Land DE, nur erreichbare HTTPS-/HTTP-Streams, Dubletten über `stationuuid`, Mindest-Votes), danach manuell kuratiert eingecheckt. Offline-fähig, keine Laufzeitabhängigkeit.
-- Streams ändern sich. Daher optional Feld `rbUuid`; „Liste aktualisieren“ (Dashboard und Einstellungen) fragt radio-browser nach der aktuellen URL zu dieser UUID und merkt sie als Override (nicht in der Bundle-Datei). Zusätzlich liefern App-Updates eine neue Bundle-Liste.
-- Rechtliches: nur öffentlich verbreitete Stream-URLs und Logos per URL verlinken, keine Logos einbetten (Lizenz); Platzhalter-Icon bei Ladefehler. Vor Release gegen Nutzungsbedingungen von radio-browser prüfen (Spike).
+- Pflege per Skript `scripts/build-radio-list.js` aus dem offenen Verzeichnis **radio-browser.info** (Filter Land DE, nur erreichbare HTTPS-/HTTP-Streams, Dubletten über `stationuuid`, Mindest-Votes), danach manuell kuratiert eingecheckt. Offline-fähig, keine Laufzeitabhängigkeit. **Umgesetzt (R5)**: 250 Sender, darunter alle Pflicht-Landeswellen aus `scripts/radio-list-curated.js`; bestehende IDs und URLs bleiben (das Skript liest die vorhandene `radiosources.json`); Streams mit Zugangsdaten/Token werden verworfen, Logos nur als https.
+- Streams ändern sich. Daher optional Feld `rbUuid`; „Liste aktualisieren“ (Dashboard und Einstellungen) fragt radio-browser nach der aktuellen URL zu dieser UUID und merkt sie als Override (nicht in der Bundle-Datei). Zusätzlich liefern App-Updates eine neue Bundle-Liste. **Umgesetzt (R5)**: Schaltfläche „Liste aktualisieren“ im Radio-Dashboard (nicht in den Einstellungen), IPC `radio:refresh-stream-urls`; abweichende, erreichbare Adressen liegen in `radio-stream-refresh.json` (Priorität: Nutzer-Override > aktualisierte Adresse > Bundle).
+- Rechtliches: nur öffentlich verbreitete Stream-URLs und Logos per URL verlinken, keine Logos einbetten (Lizenz); Platzhalter-Icon bei Ladefehler. Zentraler Schalter `showLogos` (Standard an) in `radio-dashboard-model.js` stellt alle Logo-Anzeigen auf den Platzhalter um. Vor einer öffentlichen Verbreitung gegen Nutzungsbedingungen von radio-browser prüfen (§12).
 
 ### 3.2 Eigene Sender
 Quelle `eigene-radiosender` (`type:"user"`, immer vorhanden, nicht löschbar). Felder je Sender: Name (Pflicht), Stream-URL (Pflicht), Logo-URL, Genre (frei, mit Vorschlägen). Validierung in `lib/input-validation.js` ergänzen (`radioStreamUrlError`, nur `http:`/`https:`, Länge; LAN-/localhost-Adressen sind erlaubt, da bewusst nutzereigene Quelle). Button **„Stream prüfen“** ruft `radio:probe` (Auflösung + kurzer Verbindungstest + Content-Type) und zeigt Ergebnis, bevor gespeichert wird.
@@ -151,4 +151,19 @@ Radio-Datenformat (`radiosources.json`: Quellen, Stationen, `favorites`, `favori
 - Playlist-Auflösung: globaler `fetch` mit `AbortController` genügt (50/50 gegen Top-50); `node:http` nur optional. Nicht belegt, daher nicht übernommen: Ablehnung von „ICY 200 OK“, Hängen von `net.fetch`.
 - `hls.js` funktioniert; gemeldeter `internalException` ist in R1 zu untersuchen.
 - radio-browser.info: 50/50 Top-Sender erreichbar. Etikette: sprechender User-Agent, Serverliste per DNS `all.api.radio-browser.info` mit Zufallswahl und Failover, Klickzähler `/json/url/<uuid>`. **Offen:** Datenlizenz nicht genannt, Rechte an Logos/Streams ungeklärt → Logos nur per URL verlinken, vor Release klären.
+- Entscheidung 14.10.2026 (User): Logo-Links und Verzeichnisdaten sind für das private Projekt in Ordnung (Logos werden nur per URL verlinkt, nicht eingebettet; LiveTV nutzt Logos ebenso). Ein zentraler Schalter zum Abschalten der Logos bleibt als Absicherung. Vor einer öffentlichen Verbreitung neu bewerten.
 - `mediaSession`: API vorhanden; macOS „Läuft gerade“ und Medientasten **ungeprüft**, manuelle Prüfung in R4.
+
+## 13. Umsetzungsstand R1–R5 und Abweichungen
+
+Alle Etappen R1–R5 sind auf `feature/radio` umgesetzt und QA-geprüft; offen bleibt die Freigabe von Push/Tag/Release durch den User sowie die manuelle Prüfung von macOS „Läuft gerade“ und Medientasten (§12). Abweichungen vom Entwurf:
+
+- **Pause schließt das Player-Fenster**: Pause und Stopp geben das unsichtbare Fenster frei, Fortsetzen verbindet neu. Das Fenster entsteht erst beim ersten Abspielen.
+- **Module unter `lib/radio/`**: `RadioController`, `radio-resolve`, `icy-parser`, `radio-state`, `radio-http`, `radio-settings`, `radio-sources-logic`, `RadioLibrary`, `ipc`, `keep-alive`, `radio-browser`, `radio-refresh` (statt `lib/radio-resolve.js` usw.). Merge: `lib/radiosources-merge.js` mit Basis `radiosources-base.json`.
+- **HTTP**: Playlist-Auflösung, ICY und radio-browser-Zugriff nutzen den globalen `fetch` mit `AbortController` (kein `node:http`).
+- **IPC** zusätzlich zum Entwurf: `radio:open` (Main → Renderer, Tray „Radio-Dashboard öffnen“), `radio:set-override` / `radio:clear-override` (Anpassungen gelieferter Sender), `radio:set-settings` (nur `resumeOnStart`, `pauseOnTv`, `keepPlayingWhenClosed`), `radio:get-settings`, `radio:refresh-stream-urls`.
+- **Beim Start fortsetzen** (`resumeOnStart`, Standard aus): spielt den zuletzt gehörten Sender, ohne Rückgriff auf Favoriten.
+- **Tray-Icon** `tray-radio` mit bernsteinfarbenem Badge aus vier Klangbalken (A3-Stil), Vorrang Aufnahme (rot) > Radio > Leerlauf; Menü-Etiketten maskieren `&` als `&&` (Windows/Linux-Mnemonic).
+- **Logos**: nur https (CSP `img-src https:`); http-Logos werden nicht geladen und zeigen den Platzhalter. Schalter `showLogos` (siehe §3.1).
+- **„Liste aktualisieren“** nur im Dashboard (nicht in den Einstellungen); Ergebnis als Toast.
+- **Nicht umgesetzt (v1.1)**: Sleep-Timer, Online-Suche im Verzeichnis, Radio-Aufnahme, Plattform-Abgleich mit tvOS/iPad.
