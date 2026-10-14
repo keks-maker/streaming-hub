@@ -112,7 +112,9 @@ Auslöser: Favoriten steckten im Untermenü, neben dem Symbol stand kein Sender,
 - KEXP Menubar (github.com/isaacd9/kexp-menubar) nutzt ein SwiftUI-`MenuBarExtra` im Popover-Stil mit Titel, Cover und Steuerung.
 - Electron: `tray.setTitle(text, {fontType})` zeigt Text neben dem Symbol (nur macOS, keine Positionssteuerung), `tray.getBounds()` positioniert ein Popover (nur macOS/Windows), Menüeinträge können ein `icon` (NativeImage) tragen.
 
-Umgesetzt (Schritt 1): Text neben dem Symbol (`trayTitleText`, Einstellung `trayDisplay`: Nur Sender / Sender und Titel / Aus, hart auf 28 Zeichen gekürzt, Aufnahme hat Vorrang), flache Favoritenliste (bis 12, Rest unter „Weitere Favoriten“, Reihenfolge wie Dashboard) mit 16-px-Senderlogos (`lib/radio/radio-logo-cache.js`, macOS/Windows), Pause/Fortsetzen/Abspielen und Stopp oben, vereinfachte Lautstärke (Stumm, Lauter, Leiser). Der Popover-Player ist ein späterer, getrennter Schritt.
+Umgesetzt (Schritt 1): Text neben dem Symbol (`trayTitleText`, Einstellung `trayDisplay`: Nur Sender / Sender und Titel / Aus, hart auf 28 Zeichen gekürzt, seit dem Nachtrag unten als Lauftext, Aufnahme hat Vorrang), flache Favoritenliste (bis 12, Rest unter „Weitere Favoriten“, Reihenfolge wie Dashboard) mit 16-px-Senderlogos (`lib/radio/radio-logo-cache.js`, macOS/Windows), Pause/Fortsetzen/Abspielen und Stopp oben, vereinfachte Lautstärke (Stumm, Lauter, Leiser). Der Popover-Player ist ein späterer, getrennter Schritt.
+
+Nachtrag Lauftext: Text über 28 Grapheme läuft durch (`lib/radio/tray-marquee.js`: 2 s Pause, 1 Zeichen/400 ms, 1,5 s Pause, Neustart; kein Endlosband, damit der Sender als Anker am Anfang steht; Schnitt nach Graphemen). Einstellung `trayScroll` (Standard an); bei „Bewegung reduzieren“, ausgeschalteter Option, Pause, Leerlauf, Fehler und Aufnahme gilt die statische Kürzung mit „…“. Während des Laufens `fontType: 'monospaced'`, weil die Breite des Eintrags sonst je Fenster um bis zu 28 px schwankt (Messung `tray.getBounds()`: 219–247 px proportional, konstant 280 px monospaced); Umstellen über `MARQUEE_FONT_TYPE` in `tray-marquee.js`.
 
 ## 7. Modulübersicht (neu/geändert)
 
