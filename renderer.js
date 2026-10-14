@@ -556,6 +556,7 @@ function updateRadioFavoriteCount(sources) {
 }
 window.radio.getSources().then(updateRadioFavoriteCount).catch(() => {});
 window.radio.onSourcesChanged(updateRadioFavoriteCount);
+window.radio.onOpen?.(() => showDashboard('radio'));
 window.radio.getState().then(initial => (radioLatestState = radioLatestState || initial)).catch(() => {});
 window.radio.onState(next => {
   radioLatestState = next;

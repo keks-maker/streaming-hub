@@ -208,4 +208,6 @@ contextBridge.exposeInMainWorld('radio', {
   setSettings: patch => ipcRenderer.invoke('radio:set-settings', patch),
   onState: radioListener('radio:state'),
   onSourcesChanged: radioListener('radio:sources-changed'),
+  // Tray „Radio-Dashboard öffnen“: Renderer zeigt das Radio-Dashboard
+  onOpen: radioListener('radio:open'),
 });

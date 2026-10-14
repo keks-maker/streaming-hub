@@ -37,7 +37,7 @@ const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
-const { radioKeepsAppAlive } = require('./lib/radio/keep-alive.js');
+const { radioKeepsAppAlive, decideWindowAllClosed } = require('./lib/radio/keep-alive.js');
 
 /**
  * Freier Speicherplatz am Root (bytes) oder null, wenn nicht ermittelbar
@@ -626,20 +626,30 @@ function showMainWindow() {
   revealWindow(mainWindow, process.env);
 }
 
-/** Aufnahmen-Dashboard im Renderer öffnen (Tab 'library' | 'planned'), auch bei frisch erzeugtem Fenster. */
-function openRecordingsTab(tab) {
+/** Fenster zeigen und eine Nachricht an den Renderer schicken, auch bei frisch erzeugtem Fenster. */
+function showWindowAndSend(channel, payload) {
   showMainWindow();
   const win = mainWindow;
   if (!win) return;
   const send = () => {
     try {
-      win.webContents.send('recordings:open', { tab });
+      win.webContents.send(channel, payload);
     } catch (_) {
       // Fenster zwischendurch weg
     }
   };
   if (win.webContents.isLoading()) win.webContents.once('did-finish-load', send);
   else send();
+}
+
+/** Aufnahmen-Dashboard im Renderer öffnen (Tab 'library' | 'planned'). */
+function openRecordingsTab(tab) {
+  showWindowAndSend('recordings:open', { tab });
+}
+
+/** Radio-Dashboard im Renderer öffnen (Tray: „Radio-Dashboard öffnen“). */
+function openRadioDashboard() {
+  showWindowAndSend('radio:open', null);
 }
 
 app.whenReady().then(() => {
@@ -753,6 +763,8 @@ app.whenReady().then(() => {
         } catch (_) {
           // Fenster zwischendurch geschlossen
         }
+        // Favoriten geändert: Tray-Menü (Untermenü „Favoriten“) auch bei geschlossenem Fenster auffrischen
+        if (channel === 'radio:sources-changed' && trayController) trayController.refreshRadioMenu();
       },
       logger,
     });
@@ -1064,6 +1076,16 @@ app.whenReady().then(() => {
         openPlanning: () => openRecordingsTab('planned'),
         getPlanned: () => (scheduler ? scheduler.list() : []),
         confirmQuit: () => quitCoordinator.confirmQuit(),
+        // Radio (R4): Steuerung, Favoriten (Dashboard-Reihenfolge) und Sprung ins Radio-Dashboard
+        radio: radioController,
+        getRadioFavorites: () =>
+          radioLibrary
+            ? radioLibrary.getFavoriteKeys().map(key => {
+                const station = radioLibrary.getStation({ sourceId: key.sourceId, stationId: key.id });
+                return { sourceId: key.sourceId, id: key.id, name: station ? station.name : '' };
+              })
+            : [],
+        openRadio: openRadioDashboard,
         appRoot: __dirname,
       });
       trayController.create();
@@ -1181,18 +1203,10 @@ function quitUnlessKeptAlive() {
   // Konzept §3.2: Fenster schließen ≠ App beenden, solange ≥ 1 Aufnahme
   // läuft — die App geht in den Tray (TrayController übernimmt). Ohne
   // aktive Aufnahmen gilt das normale Quit-Verhalten.
-  if (recorder && recorder.activeJobs().length > 0) {
-    logger.info('Fenster geschlossen — App bleibt wegen laufender Aufnahme(n) im Tray aktiv');
-    return;
-  }
-  // Etappe 2a (§3.5): auch anstehende Planungen (state scheduled, Ende in der
-  // Zukunft) halten die App im Tray — der Scheduler läuft im Main.
-  if (scheduler && scheduler.hasPendingSchedules()) {
-    logger.info('Fenster geschlossen — App bleibt wegen geplanter Aufnahme(n) im Tray aktiv');
-    return;
-  }
-  if (radioKeepsAppAlive(radioKeepAliveContext())) {
-    logger.info('Fenster geschlossen — App bleibt wegen Radio im Tray aktiv');
+  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext() });
+  if (!decision.quit) {
+    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio' }[decision.reason];
+    logger.info(`Fenster geschlossen — App bleibt wegen ${why} im Tray aktiv`);
     return;
   }
   app.quit();

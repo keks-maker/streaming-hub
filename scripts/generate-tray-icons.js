@@ -2,6 +2,7 @@
 // Erzeugt die Tray-Icons im A3-Stil (Glas/3D), Vorlagen:
 //   docs/icon-vorschlaege/a-varianten/tray-idle-farbig.svg   -> assets/tray/tray-idle.png
 //   docs/icon-vorschlaege/a-varianten/tray-rec-punkt-rot.svg -> assets/tray/tray-rec.png
+//   (R4) Radio spielt: idle-Motiv + bernsteinfarbenes Badge mit vier Klangbalken -> assets/tray/tray-radio.png
 //
 // Reines Node (zlib, kein natives Dep): ein kleiner Scanline-Rasterizer mit
 // 8x8-Supersampling rendert die SVG-Motive (Bezier-Pfad, Verlauf, Kontur,
@@ -27,6 +28,7 @@ const SCALE = 0.92;
 const PLACEMENT = {
   idle: { left: 8.5, top: 5 },
   rec: { left: 5.2, top: 3.2 },
+  radio: { left: 5.2, top: 3.2 }, // gleiches Badge wie rec
 };
 
 // Play-Form aus den SVG-Vorlagen: M12.5,7 Q9,5 9,9 L9,23 Q9,27 12.5,25 L24.5,18 Q28,16 24.5,14 Z
@@ -94,6 +96,9 @@ function strokeShape(poly, width) {
     return false;
   };
 }
+function rectShape(x0, y0, x1, y1) {
+  return (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+}
 function circleShape(cx, cy, r) {
   return (x, y) => (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r;
 }
@@ -101,6 +106,7 @@ function circleShape(cx, cy, r) {
 /** Ebene: { shape, color: [r,g,b] | fn(x,y)->[r,g,b], alpha } */
 function motif(mode) {
   const rec = mode === 'rec';
+  const radio = mode === 'radio';
   const layers = [];
   const dark = hex(rec ? '#8a0f1f' : '#ff5fb0');
   const mid = hex(rec ? '#e5334a' : '#7b5cff');
@@ -124,6 +130,14 @@ function motif(mode) {
     layers.push({ shape: circleShape(25, 25, 7.5), color: [255, 255, 255], alpha: 0.95 });
     layers.push({ shape: circleShape(25, 25, 5.5), color: hex('#ff2d3f'), alpha: 1 });
     layers.push({ shape: circleShape(23.3, 23.2, 1.6), color: [255, 255, 255], alpha: 0.7 });
+  }
+  if (radio) {
+    layers.push({ shape: circleShape(25, 25, 7.5), color: [255, 255, 255], alpha: 0.95 });
+    layers.push({ shape: circleShape(25, 25, 5.5), color: hex('#f59e0b'), alpha: 1 });
+    // Klangbalken (Equalizer) als Wellen-Symbol, weiss
+    [[21.6, 2.4], [23.7, 6.6], [25.8, 8.6], [27.9, 4.2]].forEach(([cx, h]) =>
+      layers.push({ shape: rectShape(cx - 0.55, 25 - h / 2, cx + 0.55, 25 + h / 2), color: [255, 255, 255], alpha: 1 })
+    );
   }
   return layers;
 }
@@ -219,10 +233,10 @@ function encodePng(rgba, width, height) {
 
 const outDir = path.join(__dirname, '..', 'assets', 'tray');
 fs.mkdirSync(outDir, { recursive: true });
-for (const mode of ['idle', 'rec']) {
+for (const mode of ['idle', 'rec', 'radio']) {
   const rgba = renderIcon(mode);
   const png = encodePng(rgba, SIZE, SIZE);
-  const file = path.join(outDir, mode === 'rec' ? 'tray-rec.png' : 'tray-idle.png');
+  const file = path.join(outDir, `tray-${mode}.png`);
   fs.writeFileSync(file, png);
   console.log(`✓ ${file} (${png.length} bytes)`);
 }
