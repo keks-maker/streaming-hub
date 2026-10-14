@@ -5,7 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { marqueeWindow, needsMarquee, clipGraphemes, graphemes, TRAY_WINDOW_WIDTH, MARQUEE_STEP_MS } = require('../lib/radio/tray-marquee.js');
+const { marqueeWindow, needsMarquee, clipGraphemes, graphemes, TRAY_WINDOW_WIDTH, MARQUEE_STEP_MS, pixelMarqueeOffset, PIXEL_WINDOW_WIDTH, PIXEL_SPEED } = require('../lib/radio/tray-marquee.js');
 
 const LONG = 'Radio Eins · Interpret – ein sehr langer Titel'; // 46 Zeichen
 const frames = (text, count, options) => Array.from({ length: count }, (_, step) => marqueeWindow(text, step, options).text);
@@ -89,4 +89,47 @@ test('einstellbare Breite und Pausen; Länge 0 und 1; ungültige Eingaben', () =
   assert.equal(marqueeWindow(null, 3).text, '');
   assert.equal(marqueeWindow(LONG, NaN).text, marqueeWindow(LONG, 0).text);
   assert.equal(marqueeWindow(LONG, 2.9).text, marqueeWindow(LONG, 2).text);
+});
+
+// ── Pixelweiser Lauf (Modus „smooth“) ──
+
+test('Pixel: Text im Fenster bleibt statisch (Versatz 0, kein Scrollen)', () => {
+  for (const width of [0, 10, PIXEL_WINDOW_WIDTH]) {
+    assert.deepEqual(pixelMarqueeOffset(5000, width), { scrolling: false, offset: 0, maxOffset: 0, cycleMs: 0 });
+  }
+  assert.equal(pixelMarqueeOffset(0, PIXEL_WINDOW_WIDTH + 1).scrolling, true);
+  assert.equal(pixelMarqueeOffset(0, undefined).scrolling, false, 'ungültige Breite: statisch');
+});
+
+test('Pixel: 2 s Pause, dann ganze Pixel mit PIXEL_SPEED, 1,5 s Pause am Ende, Neustart', () => {
+  const textWidth = PIXEL_WINDOW_WIDTH + 64; // 64 pt Weg
+  const travelMs = (64 / PIXEL_SPEED) * 1000;
+  const at = ms => pixelMarqueeOffset(ms, textWidth);
+  assert.equal(at(0).offset, 0);
+  assert.equal(at(1999).offset, 0, 'Anfangspause');
+  assert.equal(at(2000).offset, 0);
+  assert.equal(at(2000 + 1000 / PIXEL_SPEED + 1).offset, 1, 'erster Pixel nach 1/Speed Sekunden');
+  assert.equal(at(2000 + 1000).offset, PIXEL_SPEED);
+  assert.equal(at(2000 + travelMs).offset, 64, 'Ende des Weges');
+  assert.equal(at(2000 + travelMs + 1400).offset, 64, 'Endpause');
+  const cycle = at(0).cycleMs;
+  assert.equal(cycle, 2000 + travelMs + 1500);
+  assert.equal(at(cycle).offset, 0, 'Neustart am Anfang');
+  assert.equal(at(cycle + 2000 + 1000).offset, PIXEL_SPEED, 'zweiter Durchlauf identisch');
+  assert.equal(at(-1).offset, at(cycle - 1).offset, 'negative Zeit rechnet zyklisch');
+  // monoton, ganzzahlig, nie außerhalb
+  let previous = 0;
+  for (let ms = 0; ms < cycle; ms += 16) {
+    const { offset } = at(ms);
+    assert.ok(Number.isInteger(offset) && offset >= 0 && offset <= 64);
+    assert.ok(offset >= previous, 'kein Rückwärtslauf im Zyklus');
+    previous = offset;
+  }
+});
+
+test('Pixel: Breite wird aufgerundet, Optionen ersetzen Fenster, Tempo und Pausen', () => {
+  assert.equal(pixelMarqueeOffset(0, 100.2, { windowWidth: 100 }).maxOffset, 1);
+  const quick = pixelMarqueeOffset(0, 200, { windowWidth: 100, speed: 100, startPauseMs: 0, endPauseMs: 0 });
+  assert.equal(quick.cycleMs, 1000);
+  assert.equal(pixelMarqueeOffset(500, 200, { windowWidth: 100, speed: 100, startPauseMs: 0, endPauseMs: 0 }).offset, 50);
 });
