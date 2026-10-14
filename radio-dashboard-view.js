@@ -127,7 +127,8 @@ function createRadioDashboard(root, options = {}) {
   function render() {
     const model = currentModel();
     status.textContent = loaded ? model.countText : '';
-    const keys = model.tiles.map(tileId).join('\n');
+    // Name und Logo gehören zum Schlüssel: Anpassungen aus der Senderverwaltung (R3) bauen die Kachel neu auf
+    const keys = model.tiles.map(tile => [tileId(tile), tile.name, tile.logo || ''].join('\u0001')).join('\n');
     empty.hidden = !(loaded && model.empty);
     grid.hidden = model.empty;
     emptyMessage.textContent = model.emptyMessage;

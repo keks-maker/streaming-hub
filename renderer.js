@@ -18,6 +18,9 @@ const { createSettingsView } = require('./settings-view.js');
 const { createEpgView } = require('./epg-view.js');
 const { createTvSourcesView } = require('./settings-tv-sources.js');
 const { createTvChannelsView } = require('./settings-tv-channels.js');
+const { createRadioStationsView } = require('./settings-radio-stations.js');
+const { createRadioCustomView } = require('./settings-radio-custom.js');
+const { createRadioPlaybackView } = require('./settings-radio-playback.js');
 const { orderFavoriteChannels } = require('./lib/settings-channel-logic.js');
 const {
   formatDuration,
@@ -30,7 +33,6 @@ const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
 const { favoriteCountOf } = require('./radio-dashboard-model.js');
 const { radioActionForVideoStart } = require('./radio-tv-conflict-model.js');
-const { isValidPage: isValidSettingsPage } = require('./settings-view.js');
 const { renderUpdateNotes } = require('./update-notes-model.js');
 
 function safeResourceUrl(value, { allowRelative = true } = {}) {
@@ -525,19 +527,13 @@ function scheduleDashboardHubRefresh() {
   }, 250);
 }
 // ── Radio (R2): Dashboard, Mini-Player und Ton-Konflikt mit Bildwiedergabe ──
-// Die Senderverwaltung (Einstellungsseite) kommt mit R3; solange es die Seite nicht gibt, öffnen die Einstellungen allgemein.
 const RADIO_MANAGEMENT_PAGE = 'radio-stations';
 let radioFavoriteCount = 0;
 let radioLatestState = null;
 let htmlFullscreenActive = false;
 
 function openRadioManagement() {
-  if (isValidSettingsPage(RADIO_MANAGEMENT_PAGE)) {
-    openSettingsPage(RADIO_MANAGEMENT_PAGE);
-    return;
-  }
-  openSettingsPage('general');
-  showTvToast('Die Radio-Senderverwaltung folgt in einer späteren Version.');
+  openSettingsPage(RADIO_MANAGEMENT_PAGE);
 }
 
 const radioDashboardView = createRadioDashboard(radioDashboardRoot, {
@@ -3610,8 +3606,21 @@ const settingsPanelHost = document.getElementById('settingsPanelHost');
 const settingsView = createSettingsView(settingsPanel, {
   onShow: page => {
     if (page === 'livetv-channels' && settingsTvChannelsView) settingsTvChannelsView.render();
+    if (page === 'radio-stations') settingsRadioStationsView.refresh();
+    if (page === 'radio-custom') settingsRadioCustomView.refresh();
+    if (page === 'radio-playback') settingsRadioPlaybackView.refresh();
   },
 });
+const settingsRadioStationsView = createRadioStationsView(document.getElementById('settingsRadioStationsRoot'), {
+  radio: window.radio,
+  logger,
+  onEditCustom: id => {
+    settingsView.showPage('radio-custom');
+    settingsRadioCustomView.edit(id);
+  },
+});
+const settingsRadioCustomView = createRadioCustomView(document.getElementById('settingsRadioCustomRoot'), { radio: window.radio, logger });
+const settingsRadioPlaybackView = createRadioPlaybackView(document.getElementById('settingsRadioPlaybackRoot'), { radio: window.radio, logger });
 settingsTvChannelsView = createTvChannelsView({
   root: settingsPanel,
   api: window.electronAPI,
