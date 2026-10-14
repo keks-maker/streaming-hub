@@ -103,6 +103,17 @@ Der Tray existiert bereits dauerhaft (`TrayController`, Menümodell rein in `lib
 - Das Menümodell bekommt `radio`-Parameter und bleibt rein, daher per `node --test` prüfbar. Der Radio-Controller wird dem `TrayController` per Konstruktor injiziert (wie `recorder`).
 - Linux: Tray-Menüs verhalten sich je Desktop unterschiedlich; Funktionsumfang gilt als „best effort“, Hauptsteuerung bleibt der Mini-Player.
 
+**Nachtrag (Überarbeitung Menüzeilen-Integration, Richtung „Hybrid“, Schritt 1)**
+
+Auslöser: Favoriten steckten im Untermenü, neben dem Symbol stand kein Sender, das Menü wirkte technisch. Vergleich anderer Menüleisten-Radios:
+- Radium zeigt Interpret und Titel neben dem Symbol und im Menü die Favoriten als Liste mit Suchfeld (mac.softpedia.com/get/Internet-Utilities/Radium.shtml).
+- myTuner zeigt den Sendernamen in der Statusleiste, Start/Stopp per Klick, dazu eine Favoritenliste.
+- AudiBar nutzt einen scrollenden Titel (alternativeto.net/software/audibar/about).
+- KEXP Menubar (github.com/isaacd9/kexp-menubar) nutzt ein SwiftUI-`MenuBarExtra` im Popover-Stil mit Titel, Cover und Steuerung.
+- Electron: `tray.setTitle(text, {fontType})` zeigt Text neben dem Symbol (nur macOS, keine Positionssteuerung), `tray.getBounds()` positioniert ein Popover (nur macOS/Windows), Menüeinträge können ein `icon` (NativeImage) tragen.
+
+Umgesetzt (Schritt 1): Text neben dem Symbol (`trayTitleText`, Einstellung `trayDisplay`: Nur Sender / Sender und Titel / Aus, hart auf 28 Zeichen gekürzt, Aufnahme hat Vorrang), flache Favoritenliste (bis 12, Rest unter „Weitere Favoriten“, Reihenfolge wie Dashboard) mit 16-px-Senderlogos (`lib/radio/radio-logo-cache.js`, macOS/Windows), Pause/Fortsetzen/Abspielen und Stopp oben, vereinfachte Lautstärke (Stumm, Lauter, Leiser). Der Popover-Player ist ein späterer, getrennter Schritt.
+
 ## 7. Modulübersicht (neu/geändert)
 
 Neu: `lib/radio/RadioController.js`, `lib/radio/radio-resolve.js`, `lib/radio/icy-parser.js`, `lib/radio/radio-state.js`, `lib/radiosources-merge.js`, `radio-player.html` + `preload-radio.js`, `radiosources.json`, `scripts/build-radio-list.js`, `radio-dashboard-model.js`/`-view.js` (Muster `dashboard-hub-*`), `radio-miniplayer-view.js`, `settings-radio-*.js`.

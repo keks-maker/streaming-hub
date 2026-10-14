@@ -225,7 +225,7 @@ Unter **Einstellungen → Radio → Eigene Sender** legst du Sender per Stream-U
 
 #### Steuerung aus dem Menüzeilensymbol
 
-Das Menüzeilensymbol (Tray) enthält einen Abschnitt **Radio** mit Statuszeile (Sender und Titel), Pause/Fortsetzen, **Radio stoppen**, **Nächster / Vorheriger Favorit**, dem Untermenü **Favoriten** (aktiver Sender mit Häkchen), dem Untermenü **Lautstärke** (Stumm, 25/50/75/100 %) und **Radio-Dashboard öffnen**. Während Radio spielt, zeigt das Symbol ein eigenes Radio-Zeichen (eine laufende Aufnahme hat Vorrang). Unter Linux hängt der Funktionsumfang des Tray-Menüs vom Desktop ab.
+Das Menüzeilensymbol (Tray) enthält einen Abschnitt **Radio**: oben die Statuszeile (Sender und Titel) mit **Pause / Fortsetzen / Abspielen** und **Stopp**, darunter deine Favoriten direkt als Liste (aktiver Sender mit Häkchen, mit dem Senderlogo, in derselben Reihenfolge wie im Radio-Dashboard; ab dem 13. unter **Weitere Favoriten**), bei mehreren Favoriten **Nächster / Vorheriger Favorit**, das Untermenü **Lautstärke** (Stumm, Lauter, Leiser) und **Radio-Dashboard öffnen**. Während Radio spielt, zeigt das Symbol ein eigenes Radio-Zeichen (eine laufende Aufnahme hat Vorrang). Unter macOS steht der Sender (auf Wunsch mit Titel) neben dem Symbol; unter **Einstellungen → Radio → Wiedergabe → Anzeige neben dem Symbol** wählst du **Nur Sender**, **Sender und Titel** (Standard) oder **Aus**. Bei laufender Aufnahme erscheint kein Radiotext. Unter Linux hängt der Funktionsumfang des Tray-Menüs vom Desktop ab; Logos im Menü gibt es dort nicht.
 
 #### Weiterspielen bei geschlossenem Fenster
 
