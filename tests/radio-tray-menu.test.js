@@ -13,7 +13,7 @@ const path = require('node:path');
 const { EventEmitter } = require('node:events');
 
 const menuTemplates = [];
-const trayCalls = { images: [], tooltips: [] };
+const trayCalls = { images: [], tooltips: [], titles: [] };
 const shows = [];
 let quitCalls = 0;
 
@@ -25,6 +25,7 @@ require.cache[require.resolve('electron')] = {
     nativeImage: { createFromPath: p => ({ isEmpty: () => false, p }), createEmpty: () => ({}) },
     Tray: class {
       setToolTip(t) { trayCalls.tooltips.push(t); }
+      setTitle(t) { trayCalls.titles.push(t); }
       setImage(img) { trayCalls.images.push(img); }
       setContextMenu() {}
       on() {}
@@ -43,9 +44,12 @@ require.cache[require.resolve('electron')] = {
   },
 };
 
-const { buildTrayMenuModel, trayIconKind, trayTooltip, VOLUME_PRESETS } = require('../lib/recorder/tray-menu-model.js');
+const { buildTrayMenuModel, trayIconKind, trayTooltip, trayTitleText, MAX_VISIBLE_FAVORITES } = require('../lib/recorder/tray-menu-model.js');
 const { TrayController } = require('../lib/recorder/TrayController.js');
 const { decideWindowAllClosed } = require('../lib/radio/keep-alive.js');
+const sourcesLogic = require('../lib/radio/radio-sources-logic.js');
+const radioState = require('../lib/radio/radio-state.js');
+const { radioDashboardModel } = require('../radio-dashboard-model.js');
 
 const NOW = Date.parse('2026-10-05T12:00:00+02:00');
 const FAVS = [
@@ -60,8 +64,6 @@ const radio = (over = {}) => ({
   error: null,
   volume: 0.5,
   favorites: FAVS,
-  hasPrev: true,
-  hasNext: true,
   ...over,
 });
 const labels = items => items.map(i => i.label).filter(Boolean);
@@ -75,21 +77,25 @@ test('ohne radio-Parameter bleibt das Menü exakt wie zuvor', () => {
   assert.deepEqual(labels(buildTrayMenuModel(base)), ['Planung öffnen', 'Aufnahmen-Ordner öffnen', 'App öffnen', 'Aufnahmen-Bibliothek', 'Beenden']);
 });
 
-test('Zustand playing: Statuszeile, Pause, Stopp, Nächster/Vorheriger, Favoriten, Lautstärke, Dashboard', () => {
+test('Zustand playing: Statuszeile, Pause, Stopp, flache Favoriten, Nächster/Vorheriger, Lautstärke, Dashboard', () => {
   const items = buildTrayMenuModel({ nowMs: NOW, radio: radio() });
-  assert.deepEqual(labels(items).slice(0, 7), [
-    '▶ Zwei — Interpret – Titel',
+  assert.deepEqual(labels(items).slice(0, 10), [
+    'Zwei — Interpret – Titel',
     'Pause',
-    'Radio stoppen',
+    'Stopp',
+    'Eins',
+    'Zwei',
+    'Drei',
     'Nächster Favorit',
     'Vorheriger Favorit',
-    'Favoriten',
     'Lautstärke',
+    'Radio-Dashboard öffnen',
   ]);
   assert.equal(items[0].enabled, false, 'Statuszeile deaktiviert');
-  assert.ok(labels(items).includes('Radio-Dashboard öffnen'));
-  assert.equal(items[labels(items).length > 0 ? ids(items).indexOf('radio-open') + 1 : 0].type, 'separator');
+  assert.deepEqual(ids(items).slice(0, 5), ['radio-status', 'radio-pause', 'radio-stop', 'separator', 'radio-favorite']);
+  assert.equal(items[ids(items).indexOf('radio-open') + 1].type, 'separator');
   assert.equal(labels(items).at(-1), 'Beenden');
+  assert.ok(!ids(items).includes('radio-favorites'), 'kein Favoriten-Untermenü mehr');
 });
 
 test('Zustand paused: ⏸-Statuszeile und „Fortsetzen“ statt „Pause“', () => {
@@ -97,27 +103,31 @@ test('Zustand paused: ⏸-Statuszeile und „Fortsetzen“ statt „Pause“', (
   assert.equal(items[0].label, '⏸ Zwei');
   assert.ok(labels(items).includes('Fortsetzen'));
   assert.ok(!labels(items).includes('Pause'));
-  assert.ok(labels(items).includes('Radio stoppen'));
+  assert.ok(labels(items).includes('Stopp'));
 });
 
-test('Zustand idle: „Radio aus“, kein Pause/Stopp, Favoriten und Lautstärke bleiben', () => {
-  const items = buildTrayMenuModel({ nowMs: NOW, radio: radio({ state: 'idle', station: null, nowPlaying: null }) });
+test('Zustand idle: „Radio aus“; „Abspielen“ nur mit bekanntem letztem Sender, kein Pause/Stopp', () => {
+  const idle = over => buildTrayMenuModel({ nowMs: NOW, radio: radio({ state: 'idle', station: null, nowPlaying: null, ...over }) });
+  const items = idle({ canPlayLast: true });
   assert.equal(items[0].label, 'Radio aus');
   const l = labels(items);
-  assert.ok(!l.includes('Pause') && !l.includes('Fortsetzen') && !l.includes('Radio stoppen'));
-  assert.ok(l.includes('Favoriten') && l.includes('Lautstärke') && l.includes('Radio-Dashboard öffnen'));
+  assert.ok(l.includes('Abspielen'));
+  assert.equal(items.find(i => i.label === 'Abspielen').id, 'radio-play-last');
+  assert.ok(!l.includes('Pause') && !l.includes('Fortsetzen') && !l.includes('Stopp'));
+  assert.ok(l.includes('Lautstärke') && l.includes('Radio-Dashboard öffnen') && l.includes('Eins'));
+  assert.ok(!labels(idle({ canPlayLast: false })).includes('Abspielen'));
 });
 
 test('Zustand error: Fehlertext in der Statuszeile, kein Stopp', () => {
   const items = buildTrayMenuModel({ nowMs: NOW, radio: radio({ state: 'error', nowPlaying: null, error: 'Stream nicht erreichbar' }) });
   assert.equal(items[0].label, '⚠ Zwei — Stream nicht erreichbar');
-  assert.ok(!labels(items).includes('Radio stoppen'));
+  assert.ok(!labels(items).includes('Stopp'));
 });
 
 test('Zustand loading: Verbindungszeile mit Pause und Stopp', () => {
   const items = buildTrayMenuModel({ nowMs: NOW, radio: radio({ state: 'loading', nowPlaying: null }) });
-  assert.equal(items[0].label, '▶ Zwei — verbinde …');
-  assert.ok(labels(items).includes('Pause') && labels(items).includes('Radio stoppen'));
+  assert.equal(items[0].label, 'Zwei — verbinde …');
+  assert.ok(labels(items).includes('Pause') && labels(items).includes('Stopp'));
 });
 
 test('Aufnahme und Radio gleichzeitig: Radio-Abschnitt unterhalb der Aufnahme-Einträge', () => {
@@ -127,13 +137,43 @@ test('Aufnahme und Radio gleichzeitig: Radio-Abschnitt unterhalb der Aufnahme-Ei
   assert.equal(labels(items).at(-1), 'Beenden …');
 });
 
-test('Favoriten-Untermenü: Reihenfolge wie geliefert, aktiver Sender mit Häkchen, Schlüssel am Eintrag', () => {
+test('Favoriten flach: Reihenfolge wie geliefert, aktiver Sender mit Häkchen, Schlüssel am Eintrag', () => {
   const items = buildTrayMenuModel({ nowMs: NOW, radio: radio() });
-  const sub = items.find(i => i.id === 'radio-favorites').submenu;
-  assert.deepEqual(sub.map(i => i.label), ['Eins', 'Zwei', 'Drei']);
-  assert.deepEqual(sub.map(i => i.checked), [false, true, false]);
-  assert.ok(sub.every(i => i.type === 'checkbox'));
-  assert.deepEqual([sub[0].sourceId, sub[0].stationId], ['s', 'a']);
+  const favs = items.filter(i => i.id === 'radio-favorite');
+  assert.deepEqual(favs.map(i => i.label), ['Eins', 'Zwei', 'Drei']);
+  assert.deepEqual(favs.map(i => i.checked), [false, true, false]);
+  assert.ok(favs.every(i => i.type === 'checkbox'));
+  assert.deepEqual([favs[0].sourceId, favs[0].stationId], ['s', 'a']);
+  assert.ok(!ids(items).includes('radio-favorites-more'));
+});
+
+test('mehr als 12 Favoriten: 12 flach, der Rest unter „Weitere Favoriten“', () => {
+  const many = Array.from({ length: 15 }, (_, i) => ({ sourceId: 's', id: `f${i}`, name: `Sender ${i + 1}`, active: i === 13 }));
+  const items = buildTrayMenuModel({ nowMs: NOW, radio: radio({ favorites: many }) });
+  assert.equal(items.filter(i => i.id === 'radio-favorite').length, MAX_VISIBLE_FAVORITES);
+  assert.equal(MAX_VISIBLE_FAVORITES, 12);
+  const more = items.find(i => i.id === 'radio-favorites-more');
+  assert.equal(more.label, 'Weitere Favoriten');
+  assert.deepEqual(more.submenu.map(i => i.label), ['Sender 13', 'Sender 14', 'Sender 15']);
+  assert.equal(more.submenu[1].checked, true, 'Häkchen auch im Untermenü');
+  const exactly = buildTrayMenuModel({ nowMs: NOW, radio: radio({ favorites: many.slice(0, 12) }) });
+  assert.ok(!ids(exactly).includes('radio-favorites-more'));
+});
+
+test('genau ein Favorit: kein Nächster/Vorheriger', () => {
+  const items = buildTrayMenuModel({ nowMs: NOW, radio: radio({ favorites: FAVS.slice(0, 1) }) });
+  assert.ok(!labels(items).includes('Nächster Favorit') && !labels(items).includes('Vorheriger Favorit'));
+  assert.equal(items.filter(i => i.id === 'radio-favorite').length, 1);
+});
+
+test('Favoriten-Logo: nur als logo-Feld am Eintrag, wenn geliefert', () => {
+  const items = buildTrayMenuModel({
+    nowMs: NOW,
+    radio: radio({ favorites: [{ sourceId: 's', id: 'a', name: 'Eins', active: false, logo: 'https://x.test/a.png' }, { sourceId: 's', id: 'b', name: 'Zwei', active: false }] }),
+  });
+  const favs = items.filter(i => i.id === 'radio-favorite');
+  assert.equal(favs[0].logo, 'https://x.test/a.png');
+  assert.ok(!('logo' in favs[1]));
 });
 
 test('ohne Favoriten: „Keine Favoriten“ (deaktiviert), kein Nächster/Vorheriger', () => {
@@ -143,14 +183,13 @@ test('ohne Favoriten: „Keine Favoriten“ (deaktiviert), kein Nächster/Vorher
   assert.ok(!labels(items).includes('Nächster Favorit'));
 });
 
-test('Lautstärke-Untermenü: Stumm, 25/50/75/100 %, aktuelle Stufe gewählt', () => {
+test('Lautstärke-Untermenü: Stumm (Häkchen bei 0) und Lauter/Leiser', () => {
   const sub = volume => buildTrayMenuModel({ nowMs: NOW, radio: radio({ volume }) }).find(i => i.id === 'radio-volume-menu').submenu;
-  assert.deepEqual(sub(0.5).map(i => i.label), ['Stumm', '25 %', '50 %', '75 %', '100 %']);
-  assert.deepEqual(sub(0.5).map(i => i.checked), [false, false, true, false, false]);
+  assert.deepEqual(sub(0.5).map(i => i.label), ['Stumm', 'Lauter', 'Leiser']);
+  assert.deepEqual(sub(0.5).map(i => i.id), ['radio-mute', 'radio-volume-up', 'radio-volume-down']);
+  assert.equal(sub(0.5)[0].checked, false);
   assert.equal(sub(0)[0].checked, true);
-  assert.equal(sub(1)[4].checked, true);
-  assert.ok(sub(0.8).every(i => !i.checked), 'Zwischenwerte markieren keine Stufe');
-  assert.deepEqual(VOLUME_PRESETS.map(p => p.value), [0, 0.25, 0.5, 0.75, 1]);
+  assert.ok(sub(0).slice(1).every(i => i.enabled !== false), 'Lauter/Leiser bleiben bedienbar');
 });
 
 test('Texte werden gekürzt und von Steuerzeichen befreit; Labels sind reiner Text', () => {
@@ -161,10 +200,48 @@ test('Texte werden gekürzt und von Steuerzeichen befreit; Labels sind reiner Te
   });
   assert.ok(items[0].label.length <= 100, `Statuszeile ${items[0].label.length}`);
   assert.ok(![...items[0].label].some(ch => ch.charCodeAt(0) < 32));
-  const fav = items.find(i => i.id === 'radio-favorites').submenu[0];
+  const fav = items.find(i => i.id === 'radio-favorite');
   assert.ok(fav.label.length <= 40);
   const text = buildTrayMenuModel({ nowMs: NOW, radio: radio({ nowPlaying: { artist: '', title: '%s ${x} <b>' } }) })[0].label;
-  assert.equal(text, '▶ Zwei — %s ${x} <b>', 'unverändert als Text (kein Format-Injection)');
+  assert.equal(text, 'Zwei — %s ${x} <b>', 'unverändert als Text (kein Format-Injection)');
+});
+
+// ── Text neben dem Symbol ──
+
+test('trayTitleText: Sender und Titel, nur Sender, aus', () => {
+  assert.equal(trayTitleText(0, radio()), 'Zwei · Interpret – Titel');
+  assert.equal(trayTitleText(0, radio(), { display: 'station-title', max: 60 }), 'Zwei · Interpret – Titel');
+  assert.equal(trayTitleText(0, radio(), { display: 'station' }), 'Zwei');
+  assert.equal(trayTitleText(0, radio(), { display: 'off' }), '');
+  assert.equal(trayTitleText(0, radio({ nowPlaying: null })), 'Zwei', 'ohne Titel nur der Sender');
+  assert.equal(trayTitleText(0, radio({ state: 'loading', nowPlaying: null })), 'Zwei');
+});
+
+test('trayTitleText: Pause mit ⏸, Leerfälle (idle, Fehler, kein Radio, ohne Sendername)', () => {
+  assert.equal(trayTitleText(0, radio({ state: 'paused' })), '⏸ Zwei');
+  assert.equal(trayTitleText(0, radio({ state: 'idle', station: null })), '');
+  assert.equal(trayTitleText(0, radio({ state: 'error', error: 'x' })), '');
+  assert.equal(trayTitleText(0, null), '');
+  assert.equal(trayTitleText(0, undefined), '');
+  assert.equal(trayTitleText(0, radio({ station: null })), '');
+  assert.equal(trayTitleText(0, radio({ station: { name: '   ' } })), '');
+});
+
+test('trayTitleText: Aufnahme hat Vorrang (kein Radiotext)', () => {
+  assert.equal(trayTitleText(1, radio()), '');
+  assert.equal(trayTitleText(2, radio({ state: 'paused' }), { display: 'station' }), '');
+});
+
+test('trayTitleText: hart auf 28 Zeichen gekürzt (mit „…“), Max einstellbar, Steuerzeichen raus', () => {
+  const long = trayTitleText(0, radio({ nowPlaying: { artist: 'A'.repeat(50), title: 'B' } }));
+  assert.equal(Array.from(long).length, 28);
+  assert.ok(long.endsWith('…'));
+  assert.equal(trayTitleText(0, radio({ nowPlaying: { artist: 'A'.repeat(50), title: 'B' } }), { max: 10 }).length, 10);
+  const exact = 'Zwei · ' + 'x'.repeat(21); // genau 28
+  assert.equal(trayTitleText(0, radio({ nowPlaying: { artist: '', title: 'x'.repeat(21) } })), exact);
+  assert.equal(trayTitleText(0, radio({ station: { name: 'A\u0000\nB' }, nowPlaying: null })), 'A B');
+  assert.equal(Array.from(trayTitleText(0, radio({ station: { name: '😀'.repeat(40) }, nowPlaying: null }))).length, 28, 'Zeichen, nicht UTF-16-Einheiten');
+  assert.ok(!trayTitleText(0, radio({ station: { name: 'Rock & Pop' }, nowPlaying: null })).includes('&&'), 'Titeltext ist kein Menü: unmaskiert');
 });
 
 // ── Icon und Tooltip ──
@@ -230,6 +307,8 @@ function makeController(radioFake, extra = {}) {
     setTimer: (fn, ms) => { const t = { fn, ms }; timers.push(t); return t; },
     clearTimer: t => { t.cleared = true; },
     appRoot: path.join(__dirname, '..'),
+    platform: 'darwin',
+    ...(extra.opts || {}),
   });
   return { controller, timers, advance: ms => { nowMs += ms; } };
 }
@@ -243,25 +322,27 @@ test('TrayController: Radio-Abschnitt im Menü, Aktionen rufen RadioController-M
   const fake = fakeRadio();
   const { controller } = makeController(fake, { calls });
   controller.create();
-  assert.equal(last()[0].label, '▶ Zwei — I – T1');
+  assert.equal(last()[0].label, 'Zwei — I – T1');
   find(last(), 'Pause').click();
-  find(last(), 'Radio stoppen').click();
+  find(last(), 'Stopp').click();
   find(last(), 'Nächster Favorit').click();
   find(last(), 'Vorheriger Favorit').click();
-  find(find(last(), 'Favoriten').submenu, 'Drei').click();
-  find(find(last(), 'Lautstärke').submenu, '75 %').click();
+  find(last(), 'Drei').click();
+  find(find(last(), 'Lautstärke').submenu, 'Lauter').click();
+  find(find(last(), 'Lautstärke').submenu, 'Leiser').click();
   find(last(), 'Radio-Dashboard öffnen').click();
   assert.deepEqual(fake.calls, [
     ['pause'], ['stop'], ['next'], ['prev'],
     ['play', { sourceId: 's', stationId: 'c' }],
-    ['setVolume', 0.75],
+    ['setVolume', 0.6],
+    ['setVolume', 0.4],
   ]);
   assert.deepEqual(calls, ['show', 'radio']);
   fake.state = { ...fake.state, status: 'paused' };
   controller.refresh();
   find(last(), 'Fortsetzen').click();
   assert.deepEqual(fake.calls.at(-1), ['resume']);
-  assert.ok(!('sourceId' in find(last(), 'Favoriten').submenu[0]), 'Modell-Metadaten gelangen nicht ins Electron-Template');
+  assert.ok(!('sourceId' in find(last(), 'Drei')) && !('logo' in find(last(), 'Drei')), 'Modell-Metadaten gelangen nicht ins Electron-Template');
   controller.destroy();
 });
 
@@ -400,8 +481,249 @@ test('Tray-Etiketten: "&" wird als "&&" maskiert (Mnemonic unter Windows/Linux)'
     nowMs: NOW,
     radio: radio({ station: { name: 'Rock & Pop' }, nowPlaying: { artist: 'Simon & Garfunkel', title: 'A & B' }, favorites: [{ sourceId: 's', id: 'a', name: 'Rock & Pop', active: true }] }),
   });
-  assert.equal(items[0].label, '▶ Rock && Pop — Simon && Garfunkel – A && B');
-  const favorites = items.find(item => item.id === 'radio-favorites');
-  assert.equal(favorites.submenu[0].label, 'Rock && Pop');
+  assert.equal(items[0].label, 'Rock && Pop — Simon && Garfunkel – A && B');
+  assert.equal(items.find(item => item.id === 'radio-favorite').label, 'Rock && Pop');
   assert.equal(trayTooltip(0, radio({ station: { name: 'Rock & Pop' } })), 'Streaming Hub — Radio: Rock & Pop', 'Tooltip ist kein Menü: unmaskiert');
+});
+
+// ── Text neben dem Symbol, Menü-Icons, Lautstärke (TrayController) ──
+
+test('TrayController: Titeltext wird nur bei Änderung gesetzt; Zustände, Pause, Aufnahme-Vorrang', () => {
+  menuTemplates.length = 0;
+  trayCalls.titles.length = 0;
+  const fake = fakeRadio();
+  const { controller, advance } = makeController(fake);
+  controller.create();
+  assert.deepEqual(trayCalls.titles, ['Zwei · I – T1']);
+  controller.refresh();
+  controller.refreshRadioMenu();
+  assert.equal(trayCalls.titles.length, 1, 'unverändert: kein weiterer setTitle');
+  advance(6000);
+  fake.push({ nowPlaying: { artist: 'I', title: 'T2' } });
+  assert.equal(trayCalls.titles.at(-1), 'Zwei · I – T2');
+  fake.push({ status: 'paused' });
+  assert.equal(trayCalls.titles.at(-1), '⏸ Zwei');
+  fake.push({ status: 'idle', station: null, nowPlaying: null });
+  assert.equal(trayCalls.titles.at(-1), '', 'idle: Text weg');
+  const count = trayCalls.titles.length;
+  fake.push({ error: 'x', status: 'error' });
+  assert.equal(trayCalls.titles.length, count, 'bereits leer: kein setTitle');
+  controller.destroy();
+
+  trayCalls.titles.length = 0;
+  const rec = makeController(fakeRadio(), { jobs: [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }] });
+  rec.controller.create();
+  assert.deepEqual(trayCalls.titles, [], 'Aufnahme: kein Radiotext');
+  rec.controller.destroy();
+});
+
+test('TrayController: Einstellung trayDisplay steuert den Text (nur Sender / aus), refresh wertet sie neu aus', () => {
+  menuTemplates.length = 0;
+  trayCalls.titles.length = 0;
+  let display = 'station';
+  const { controller } = makeController(fakeRadio(), { opts: { getTrayDisplay: () => display } });
+  controller.create();
+  assert.equal(trayCalls.titles.at(-1), 'Zwei');
+  display = 'off';
+  controller.refresh();
+  assert.equal(trayCalls.titles.at(-1), '');
+  display = 'station-title';
+  controller.refresh();
+  assert.equal(trayCalls.titles.at(-1), 'Zwei · I – T1');
+  controller.destroy();
+});
+
+test('TrayController: ohne setTitle oder nicht unter macOS ein No-Op (Tooltip bleibt)', () => {
+  trayCalls.titles.length = 0;
+  trayCalls.tooltips.length = 0;
+  const linux = makeController(fakeRadio(), { opts: { platform: 'linux' } });
+  linux.controller.create();
+  linux.controller.refresh();
+  assert.deepEqual(trayCalls.titles, []);
+  assert.equal(trayCalls.tooltips.at(-1), 'Streaming Hub — Radio: Zwei');
+  linux.controller.destroy();
+
+  const original = Object.getOwnPropertyDescriptor(require('electron').Tray.prototype, 'setTitle');
+  delete require('electron').Tray.prototype.setTitle;
+  try {
+    const noTitle = makeController(fakeRadio());
+    assert.doesNotThrow(() => noTitle.controller.create());
+    noTitle.controller.destroy();
+  } finally {
+    Object.defineProperty(require('electron').Tray.prototype, 'setTitle', original);
+  }
+  assert.deepEqual(trayCalls.titles, []);
+});
+
+test('TrayController: „Abspielen“ im Leerlauf mit letztem Sender, Stumm merkt die Lautstärke', () => {
+  menuTemplates.length = 0;
+  const fake = fakeRadio({ status: 'idle', station: null, nowPlaying: null });
+  const { controller } = makeController(fake, { opts: { canPlayLast: () => true } });
+  controller.create();
+  assert.equal(last()[0].label, 'Radio aus');
+  find(last(), 'Abspielen').click();
+  assert.deepEqual(fake.calls.at(-1), ['play']);
+  controller.destroy();
+
+  const nothing = makeController(fakeRadio({ status: 'idle', station: null, nowPlaying: null }));
+  nothing.controller.create();
+  assert.ok(!find(last(), 'Abspielen'));
+  nothing.controller.destroy();
+
+  const radioFake = fakeRadio({ volume: 0.7 });
+  const mute = makeController(radioFake);
+  mute.controller.create();
+  find(find(last(), 'Lautstärke').submenu, 'Stumm').click();
+  assert.deepEqual(radioFake.calls.at(-1), ['setVolume', 0]);
+  radioFake.push({ volume: 0 });
+  assert.equal(find(find(last(), 'Lautstärke').submenu, 'Stumm').checked, true);
+  find(find(last(), 'Lautstärke').submenu, 'Stumm').click();
+  assert.deepEqual(radioFake.calls.at(-1), ['setVolume', 0.7], 'Entstummen stellt die vorherige Stufe wieder her');
+  radioFake.push({ volume: 1 });
+  find(find(last(), 'Lautstärke').submenu, 'Lauter').click();
+  assert.deepEqual(radioFake.calls.at(-1), ['setVolume', 1], 'Obergrenze');
+  radioFake.push({ volume: 0 });
+  find(find(last(), 'Lautstärke').submenu, 'Leiser').click();
+  assert.deepEqual(radioFake.calls.at(-1), ['setVolume', 0], 'Untergrenze, Item bleibt bedienbar');
+  mute.controller.destroy();
+});
+
+test('TrayController: Menü-Icons nur mit geladenem Logo, nicht unter Linux, nicht bei ausgeschaltetem Logo-Schalter', () => {
+  const LOGO = 'https://logos.test/zwei.png';
+  const makeCache = () => {
+    const cache = { requested: [], images: new Map(), peek: url => cache.images.get(url) || null, request: urls => cache.requested.push(...urls) };
+    return cache;
+  };
+  let cache = makeCache();
+  const favs = FAVS.map(({ sourceId, id, name }) => ({ sourceId, id, name, logo: id === 'b' ? LOGO : undefined }));
+  const setup = opts => {
+    menuTemplates.length = 0;
+    const made = makeController(fakeRadio(), { opts: { logoCache: cache, ...opts } });
+    made.controller.getRadioFavorites = () => favs;
+    made.controller.create();
+    return made.controller;
+  };
+
+  let controller = setup();
+  assert.deepEqual(cache.requested.slice(0, 1), [LOGO], 'Logos werden im Hintergrund angefordert');
+  assert.ok(!('icon' in find(last(), 'Zwei')), 'noch nicht geladen: kein Icon');
+  const image = { isEmpty: () => false, name: 'icon' };
+  cache.images.set(LOGO, image);
+  const before = menuTemplates.length;
+  controller.refreshRadioMenu();
+  assert.equal(menuTemplates.length, before + 1, 'Eintreffen eines Icons baut das Menü neu');
+  assert.equal(find(last(), 'Zwei').icon, image);
+  assert.ok(!('logo' in find(last(), 'Zwei')), 'URL gelangt nicht ins Electron-Template');
+  assert.ok(!('icon' in find(last(), 'Eins')), 'Sender ohne Logo: kein Icon');
+  controller.destroy();
+
+  controller = setup({ platform: 'linux' });
+  assert.ok(!('icon' in find(last(), 'Zwei')), 'Linux: keine Menü-Icons');
+  controller.destroy();
+
+  cache = makeCache();
+  cache.images.set(LOGO, image);
+  controller = setup({ logoCache: cache, logosEnabled: () => false });
+  assert.ok(!('icon' in find(last(), 'Zwei')), 'Logo-Schalter aus: keine Icons');
+  assert.deepEqual(cache.requested, [], 'und nichts wird geladen');
+  controller.destroy();
+});
+
+// ── Favoriten-Reihenfolge: Tray = Dashboard (globale Reihenfolge, lib/favorite-order.js) ──
+
+function twoSources() {
+  const mk = (id, n) => ({
+    id,
+    name: id,
+    type: 'bundled',
+    stations: Array.from({ length: n }, (_, i) => ({ id: `s${i}`, name: `${id}-${i}`, streamUrl: `https://${id}.test/${i}` })),
+    favorites: [],
+  });
+  let sources = [mk('alpha', 9), mk('beta', 9)];
+  // Favoriten abwechselnd aus beiden Quellen, 15 Stück; bewusst nicht alphabetisch
+  const picks = [['beta', 4], ['alpha', 7], ['beta', 0], ['alpha', 2], ['beta', 8], ['alpha', 0], ['beta', 3], ['alpha', 5], ['beta', 6], ['alpha', 1], ['beta', 1], ['alpha', 8], ['beta', 2], ['alpha', 3], ['beta', 5]];
+  for (const [src, i] of picks) sources = sourcesLogic.setStationFavorite(sources, src, `s${i}`, true);
+  return { sources, picks };
+}
+
+const trayFavoriteIds = items => [
+  ...items.filter(i => i.id === 'radio-favorite'),
+  ...(items.find(i => i.id === 'radio-favorites-more')?.submenu || []),
+].map(i => `${i.sourceId}/${i.stationId}`);
+
+function trayItemsFor(sources, active = null) {
+  const favorites = sourcesLogic.favoriteStations(sources).map(st => ({
+    sourceId: st.sourceId, id: st.id, name: st.name, active: Boolean(active) && active.sourceId === st.sourceId && active.id === st.id,
+  }));
+  return buildTrayMenuModel({ nowMs: NOW, radio: radio({ favorites }) });
+}
+
+test('Favoriten-Reihenfolge: Tray-Menü und Dashboard-Modell liefern dieselbe ID-Folge (mehrere Quellen, ab 13 unter „Weitere“)', () => {
+  const { sources, picks } = twoSources();
+  const dashboard = () => radioDashboardModel({ sources, state: { status: 'idle' } }).tiles.map(t => `${t.sourceId}/${t.id}`);
+  const expected = picks.map(([src, i]) => `${src}/s${i}`);
+  assert.deepEqual(dashboard(), expected);
+  const items = trayItemsFor(sources);
+  assert.deepEqual(trayFavoriteIds(items), expected, 'Tray = Reihenfolge der Nutzerauswahl');
+  assert.deepEqual(trayFavoriteIds(items), dashboard());
+  assert.deepEqual(items.filter(i => i.id === 'radio-favorite').map(i => `${i.sourceId}/${i.stationId}`), expected.slice(0, 12));
+  assert.deepEqual(items.find(i => i.id === 'radio-favorites-more').submenu.map(i => `${i.sourceId}/${i.stationId}`), expected.slice(12), 'Position 13 ff. in derselben Reihenfolge');
+});
+
+test('Favoriten-Reihenfolge: nach Umsortieren, Stern aus/an und Quellenwechsel folgt das Menü dem Dashboard', () => {
+  let { sources } = twoSources();
+  const dash = () => radioDashboardModel({ sources, state: { status: 'idle' } }).tiles.map(t => `${t.sourceId}/${t.id}`);
+  const current = sourcesLogic.favoriteKeys(sources);
+  const reversed = [...current].reverse();
+  sources = sourcesLogic.setFavoriteOrder(sources, reversed);
+  assert.deepEqual(trayFavoriteIds(trayItemsFor(sources)), reversed.map(k => `${k.sourceId}/${k.id}`));
+  assert.deepEqual(trayFavoriteIds(trayItemsFor(sources)), dash());
+  // Stern aus (mitten in der Liste) und wieder an: neuer Favorit steht hinten, wie im Dashboard
+  const victim = reversed[3];
+  sources = sourcesLogic.setStationFavorite(sources, victim.sourceId, victim.id, false);
+  assert.deepEqual(trayFavoriteIds(trayItemsFor(sources)), dash());
+  assert.ok(!dash().includes(`${victim.sourceId}/${victim.id}`));
+  sources = sourcesLogic.setStationFavorite(sources, victim.sourceId, victim.id, true);
+  assert.deepEqual(trayFavoriteIds(trayItemsFor(sources)), dash());
+  assert.equal(dash().at(-1), `${victim.sourceId}/${victim.id}`);
+
+  // TrayController: Menü folgt nach radio:sources-changed (refreshRadioMenu) ohne weiteren Anstoß
+  menuTemplates.length = 0;
+  const fake = fakeRadio();
+  const { controller } = makeController(fake);
+  const live = () => sourcesLogic.favoriteStations(sources).map(st => ({ sourceId: st.sourceId, id: st.id, name: st.name }));
+  controller.getRadioFavorites = live;
+  controller.create();
+  const names = () => last().filter(i => i.type === 'checkbox' && !i.submenu).map(i => i.label);
+  assert.deepEqual(names(), live().slice(0, 12).map(f => f.name));
+  sources = sourcesLogic.setFavoriteOrder(sources, [...sourcesLogic.favoriteKeys(sources)].reverse());
+  controller.refreshRadioMenu();
+  assert.deepEqual(names(), live().slice(0, 12).map(f => f.name));
+  controller.destroy();
+});
+
+test('Favoriten-Reihenfolge: Nächster/Vorheriger gehen in Menüreihenfolge, Umlauf am Ende und am Anfang', () => {
+  const { sources } = twoSources();
+  const keys = sourcesLogic.favoriteKeys(sources);
+  const menu = trayFavoriteIds(trayItemsFor(sources));
+  assert.deepEqual(keys.map(k => `${k.sourceId}/${k.id}`), menu, 'Controller-Liste = Menüliste');
+  const at = i => ({ sourceId: keys[i].sourceId, id: keys[i].id });
+  const label = k => `${k.sourceId}/${k.id}`;
+  for (let i = 0; i < keys.length; i += 1) {
+    assert.equal(label(radioState.favoriteNeighbor(keys, at(i), 1)), menu[(i + 1) % menu.length]);
+    assert.equal(label(radioState.favoriteNeighbor(keys, at(i), -1)), menu[(i + menu.length - 1) % menu.length]);
+  }
+  assert.equal(label(radioState.favoriteNeighbor(keys, at(keys.length - 1), 1)), menu[0], 'Umlauf am Ende');
+  assert.equal(label(radioState.favoriteNeighbor(keys, at(0), -1)), menu.at(-1), 'Umlauf am Anfang');
+});
+
+test('Hauptprozess: Favoritenliste des Tray kommt aus getFavoriteKeys und Quellenänderungen bauen das Menü neu', () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
+  assert.match(main, /radioLibrary\.getFavoriteKeys\(\)\s*\.map/, 'dieselbe globale Reihenfolge wie Dashboard und Controller');
+  assert.match(main, /channel === 'radio:sources-changed' && trayController\) trayController\.refreshRadioMenu\(\)/);
+  const ipc = fs.readFileSync(path.join(__dirname, '..', 'lib', 'radio', 'ipc.js'), 'utf8');
+  for (const channel of ['radio:set-favorite', 'radio:set-favorite-order', 'radio:add-custom', 'radio:update-custom', 'radio:remove-custom', 'radio:set-override', 'radio:clear-override']) {
+    const at = ipc.indexOf(`'${channel}'`);
+    assert.ok(at > 0 && ipc.slice(at, at + 420).includes('broadcastSources'), `${channel} sendet radio:sources-changed`);
+  }
 });

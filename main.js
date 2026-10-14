@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -38,6 +38,8 @@ const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
+const { createRadioLogoCache } = require('./lib/radio/radio-logo-cache.js');
+const { logosShown } = require('./radio-dashboard-model.js');
 const { refreshStreamUrls } = require('./lib/radio/radio-refresh.js');
 const { createApiClient, resolveApiServers } = require('./lib/radio/radio-browser.js');
 const { probeStream } = require('./lib/radio/radio-resolve.js');
@@ -767,6 +769,10 @@ app.whenReady().then(() => {
       controller: radioController,
       library: radioLibrary,
       requireMainRenderer,
+      // Anzeige neben dem Tray-Symbol geändert: Titeltext sofort neu bewerten
+      onSettingsChanged: () => {
+        if (trayController) trayController.refresh();
+      },
       refreshStreams: async () => {
         const api = createApiClient({ servers: await resolveApiServers() });
         const result = await refreshStreamUrls({ sources: radioLibrary.getSources(), refreshed: radioLibrary.getRefreshedStreams(), api, probe: probeStream });
@@ -1099,9 +1105,23 @@ app.whenReady().then(() => {
           radioLibrary
             ? radioLibrary.getFavoriteKeys().map(key => {
                 const station = radioLibrary.getStation({ sourceId: key.sourceId, stationId: key.id });
-                return { sourceId: key.sourceId, id: key.id, name: station ? station.name : '' };
+                return { sourceId: key.sourceId, id: key.id, name: station ? station.name : '', logo: station ? station.logo : undefined };
               })
             : [],
+        getTrayDisplay: () => (radioLibrary ? radioLibrary.getSettings().trayDisplay : 'station-title'),
+        canPlayLast: () => {
+          const last = radioLibrary ? radioLibrary.getSettings().lastStation : null;
+          return Boolean(last && radioLibrary.getStation({ sourceId: last.sourceId, stationId: last.id }));
+        },
+        // Menü-Icons der Favoriten (16 px, userData/radio-logo-cache); folgt dem zentralen Logo-Schalter
+        logoCache: createRadioLogoCache({
+          dir: path.join(app.getPath('userData'), 'radio-logo-cache'),
+          net: createLogoNet({ timeoutMs: 8000 }),
+          nativeImage,
+          onChange: () => trayController && trayController.refreshRadioMenu(),
+          logger,
+        }),
+        logosEnabled: () => logosShown(),
         openRadio: openRadioDashboard,
         appRoot: __dirname,
       });
