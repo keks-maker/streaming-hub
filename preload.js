@@ -200,6 +200,8 @@ contextBridge.exposeInMainWorld('radio', {
   setVolume: volume => ipcRenderer.invoke('radio:set-volume', volume),
   probe: url => ipcRenderer.invoke('radio:probe', url),
   getState: () => ipcRenderer.invoke('radio:get-state'),
+  // Wiedergabe-Optionen (lastStation, resumeOnStart, pauseOnTv, keepPlayingWhenClosed, volume); nur lesend
+  getSettings: () => ipcRenderer.invoke('radio:get-settings'),
   onState: radioListener('radio:state'),
   onSourcesChanged: radioListener('radio:sources-changed'),
 });

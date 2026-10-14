@@ -73,7 +73,7 @@ function setup({ probe } = {}) {
 
 test('alle radio:*-Kanäle sind registriert', () => {
   const { handlers } = setup();
-  const expected = ['get-sources', 'add-custom', 'update-custom', 'remove-custom', 'set-favorite', 'set-favorite-order', 'play', 'pause', 'stop', 'next', 'prev', 'set-volume', 'probe', 'get-state'];
+  const expected = ['get-sources', 'add-custom', 'update-custom', 'remove-custom', 'set-favorite', 'set-favorite-order', 'play', 'pause', 'stop', 'next', 'prev', 'set-volume', 'probe', 'get-state', 'get-settings'];
   for (const name of expected) assert.ok(handlers.has(`radio:${name}`), name);
   assert.equal(handlers.size, expected.length);
 });
@@ -99,6 +99,7 @@ test('Schema-Prüfung: ungültige Argumente erreichen Controller und Bibliothek 
   await assert.rejects(call('radio:set-volume', 5), /Lautstärke/);
   await assert.rejects(call('radio:pause', 'extra'), /Unerwartete/);
   await assert.rejects(call('radio:get-state', 1), /Unerwartete/);
+  await assert.rejects(call('radio:get-settings', 1), /Unerwartete/);
   assert.deepEqual(calls, []);
   assert.equal(controller.getState().status, 'idle');
 });
@@ -128,6 +129,7 @@ test('Wiedergabe-Kanäle steuern den Controller, Zustand geht als radio:state an
   controller.onPlayerReport({ t: 'ready' });
   controller.onPlayerReport({ t: 'playing', seq: 1 });
   assert.equal((await call('radio:get-state')).status, 'playing');
+  assert.equal((await call('radio:get-settings')).volume, 0.8);
   assert.equal((await call('radio:set-volume', 0.3)).volume, 0.3);
   assert.equal((await call('radio:pause')).status, 'paused');
   assert.equal((await call('radio:play')).status, 'loading');
