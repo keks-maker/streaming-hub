@@ -235,6 +235,17 @@ test.describe('Radio-Oberfläche', () => {
     expect(await page.evaluate(() => document.getElementById('overlayLocation').textContent)).not.toBe('Radio');
   });
 
+  test('Transport im echten Electron: Stream mit LF-only-Statuszeile (streamabc.net-Stil) hinter 302 wird erreicht', async () => {
+    // Regression: Electrons globaler fetch (undici) lehnt die Statuszeile ab, node:http mit insecureHTTPParser nicht.
+    // Node 22 allein zeigt das nicht (dort geht auch undici durch), deshalb läuft die Probe im Main-Prozess von Electron.
+    const result = await page.evaluate(url => window.radio.probe(url), `${testServer.rawBase}/redirect`);
+    expect(result.ok).toBe(true);
+    expect(result.icyName).toBe('Roher ICY');
+    expect(result.streamUrl).toContain('/icy.mp3?sABC=token');
+    const refused = await page.evaluate(() => window.radio.probe('http://localhost:1/x'));
+    expect(refused).toEqual({ ok: false, error: 'Verbindung abgelehnt' });
+  });
+
   test('Stopp blendet den Mini-Player aus; keine Konsolenfehler', async () => {
     await page.locator('#radioMiniStop').click();
     // großzügige Fristen: das Abbauen des Player-Fensters kann unter Last länger als die 5 s Standard dauern (Flake R4)
