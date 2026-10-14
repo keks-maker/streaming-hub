@@ -7,8 +7,7 @@
 
 const model = require('./settings-radio-stations-model.js');
 const { paginate } = require('./lib/settings-channel-logic.js');
-const { safeLogoUrl } = require('./radio-dashboard-model.js');
-const { el, statusLine, setStatus, labelledField, textInput, button, focusNode, findAll, childList, formatIpcError } = require('./settings-radio-dom.js');
+const { el, appendStationLogo, statusLine, setStatus, labelledField, textInput, button, focusNode, findAll, childList, formatIpcError } = require('./settings-radio-dom.js');
 
 const PAGE_SIZE = 50;
 
@@ -302,17 +301,7 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
     row.dataset.stationId = station.id;
     const head = el(doc, 'div', 'settings-chan-head');
 
-    const logo = el(doc, 'img', 'settings-chan-logo');
-    logo.alt = '';
-    logo.loading = 'lazy';
-    const src = safeLogoUrl(station.logo);
-    logo.addEventListener('error', () => {
-      logo.removeAttribute('src');
-      logo.classList.add('empty');
-    });
-    if (src) logo.src = src;
-    else logo.classList.add('empty');
-    head.appendChild(logo);
+    appendStationLogo(doc, head, station);
 
     const info = el(doc, 'div', 'settings-chan-info');
     info.appendChild(el(doc, 'div', 'settings-chan-name', station.name));

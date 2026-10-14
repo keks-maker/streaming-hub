@@ -3097,6 +3097,9 @@ body.epg-open .overlay-bar { z-index: 105; }
 .settings-chan-head { display: flex; align-items: center; gap: 12px; }
 .settings-chan-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 6px; background: rgba(255,255,255,0.06); flex-shrink: 0; }
 .settings-chan-logo.empty { visibility: hidden; }
+.settings-radio-logo.empty { display: none; }
+.settings-chan-logo-fallback { display: none; width: 40px; height: 40px; border-radius: 6px; background: rgba(245,158,11,0.14); color: #f59e0b; font-size: 18px; font-weight: 800; align-items: center; justify-content: center; flex-shrink: 0; }
+.settings-radio-logo.empty + .settings-chan-logo-fallback { display: flex; }
 .settings-chan-info { flex: 1; min-width: 0; }
 .settings-chan-name { font-size: 14px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .settings-chan-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -3157,6 +3160,11 @@ body.epg-open .overlay-bar { z-index: 105; }
 .settings-radio-preview[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 .settings-field-hint { font-size: 12px; color: var(--text-dim); margin: 2px 0 0; overflow-wrap: anywhere; }
 .settings-radio-custom-form-host { margin-top: 12px; }
+.settings-radio-logorow { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.settings-radio-logorow .settings-field { flex: 1; min-width: 200px; }
+.settings-radio-logoinfo { display: flex; gap: 12px; align-items: center; margin: 6px 0; min-height: 40px; }
+.settings-radio-logo-preview .settings-chan-logo { width: 56px; height: 56px; }
+.settings-radio-logo-preview .settings-chan-logo-fallback { width: 56px; height: 56px; font-size: 24px; }
 .settings-radio-probe { font-size: 13px; color: var(--text-dim); flex: 1; min-width: 160px; }
 .settings-radio-probe.ok { color: #22c55e; }
 .settings-radio-probe.error { color: #ef4444; }

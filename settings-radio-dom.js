@@ -4,12 +4,34 @@
 // den DOM, nie über innerHTML. Funktionen nehmen das Dokument entgegen, damit die Seiten ohne Browser testbar sind.
 
 const { formatIpcError } = require('./settings-tv-sources.js');
+const { safeLogoUrl, stationInitial } = require('./radio-dashboard-model.js');
 
 function el(doc, tag, className, text) {
   const node = doc.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/**
+ * Logo einer Senderzeile samt Platzhalter mit Anfangsbuchstaben (wie im Dashboard). Das Bild trägt „empty“, wenn es
+ * kein Logo gibt oder es nicht lädt; dann zeigt das Geschwister-Element den Buchstaben (CSS).
+ */
+function appendStationLogo(doc, parent, station) {
+  const logo = el(doc, 'img', 'settings-chan-logo settings-radio-logo');
+  logo.alt = '';
+  logo.loading = 'lazy';
+  const src = safeLogoUrl(station.logo);
+  logo.addEventListener('error', () => {
+    logo.removeAttribute('src');
+    logo.classList.add('empty');
+  });
+  if (src) logo.src = src;
+  else logo.classList.add('empty');
+  const fallback = el(doc, 'span', 'settings-chan-logo-fallback', stationInitial(station.name));
+  fallback.setAttribute('aria-hidden', 'true');
+  parent.append(logo, fallback);
+  return logo;
 }
 
 /** Statuszeile für Screenreader (role=status, aria-live=polite). */
@@ -85,4 +107,4 @@ function focusNode(node) {
   if (node && typeof node.focus === 'function') node.focus();
 }
 
-module.exports = { el, statusLine, setStatus, labelledField, textInput, button, focusNode, findAll, childList, formatIpcError };
+module.exports = { el, appendStationLogo, statusLine, setStatus, labelledField, textInput, button, focusNode, findAll, childList, formatIpcError };

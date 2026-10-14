@@ -148,7 +148,7 @@ test('Formularprüfung: Pflichtfelder und URL-Regeln wie im Main, klare Meldunge
   assert.match(custom.validateStationForm({ name: 'A', streamUrl: 'http://x.test/s', genre: 'g'.repeat(101) }).errors.genre, /zu lang/);
   const ok = custom.validateStationForm({ name: '  Mein Sender ', streamUrl: ' http://localhost:8000/s ', logo: '', genre: ' Rock ' });
   assert.deepEqual(ok.errors, {});
-  assert.deepEqual(ok.value, { name: 'Mein Sender', streamUrl: 'http://localhost:8000/s', logo: '', genre: 'Rock' });
+  assert.deepEqual(ok.value, { name: 'Mein Sender', streamUrl: 'http://localhost:8000/s', logo: '', genre: 'Rock', homepage: '' });
   assert.deepEqual(custom.toAddInput(ok.value), { name: 'Mein Sender', streamUrl: 'http://localhost:8000/s', genre: 'Rock' });
   assert.deepEqual(custom.toUpdatePatch(ok.value, { name: 'Mein Sender', streamUrl: 'http://x.test/s', logo: 'https://l.test/l.png', genre: 'Rock' }), { streamUrl: 'http://localhost:8000/s', logo: '' });
 });
@@ -193,4 +193,31 @@ test('Sicherheit: Nutzerdaten nie über innerHTML in die Radio-Einstellungsseite
   for (const file of ['settings-radio-stations.js', 'settings-radio-custom.js', 'settings-radio-playback.js', 'settings-radio-dom.js']) {
     assert.ok(!/\.(innerHTML|outerHTML)\b|insertAdjacentHTML\(/.test(read(file)), file);
   }
+});
+
+test('Webseite und Logo-Suche (Modell): Prefill nur in leeres Feld, Logo nie überschreiben, Statustexte', () => {
+  assert.equal(custom.prefillHomepage('', { ok: true, homepage: 'https://detektor.fm/' }), 'https://detektor.fm/');
+  assert.equal(custom.prefillHomepage('https://eigene.test', { ok: true, homepage: 'https://detektor.fm/' }), 'https://eigene.test');
+  assert.equal(custom.prefillHomepage('', { ok: true }), '', 'icy-url fehlt');
+  assert.equal(custom.prefillHomepage('', { ok: true, homepage: 'javascript:1' }), '');
+  assert.equal(custom.prefillHomepage('', { ok: false, homepage: 'https://x.test' }), '');
+  assert.equal(custom.canFillLogo('', ''), true);
+  assert.equal(custom.canFillLogo('https://nutzer.test/l.png', ''), false);
+  assert.equal(custom.canFillLogo('https://auto.test/l.png', 'https://auto.test/l.png'), true, 'automatisch eingetragenes Logo darf ersetzt werden');
+  assert.equal(custom.canFillLogo('https://nutzer.test/l.png', 'https://auto.test/l.png'), false);
+  assert.equal(custom.logoResultText({ ok: true, logo: 'https://l.test/a.png', source: 'homepage' }).text, 'Logo gefunden (Quelle: Webseite)');
+  assert.equal(custom.logoResultText({ ok: true, logo: 'https://l.test/a.png', source: 'google' }).text, 'Logo gefunden (Quelle: Google)');
+  assert.equal(custom.logoResultText({ ok: true, logo: null, source: null }).text, 'Kein Logo gefunden');
+  assert.equal(custom.logoResultText({ ok: true, logo: null, reason: 'no-homepage' }).text, 'Webseite eintragen, um ein Logo zu finden');
+  assert.match(custom.logoResultText({ ok: false, error: 'Zeitüberschreitung nach 25000 ms' }).text, /fehlgeschlagen: Zeitüberschreitung/);
+  assert.match(custom.logoResultText(null).text, /fehlgeschlagen/);
+});
+
+test('Webseite im Formular: ungültig wird markiert, gültig geht in Add-Eingabe und Update-Patch', () => {
+  assert.match(custom.validateStationForm({ name: 'A', streamUrl: 'http://x.test/s', homepage: 'ftp://x.test' }).errors.homepage, /Webseite/);
+  const ok = custom.validateStationForm({ name: 'A', streamUrl: 'http://x.test/s', homepage: ' https://a.test ' });
+  assert.deepEqual(ok.errors, {});
+  assert.equal(custom.toAddInput(ok.value).homepage, 'https://a.test');
+  assert.deepEqual(custom.toUpdatePatch(ok.value, { name: 'A', streamUrl: 'http://x.test/s', homepage: '' }), { homepage: 'https://a.test' });
+  assert.deepEqual(custom.toUpdatePatch({ ...ok.value, homepage: '' }, { name: 'A', streamUrl: 'http://x.test/s', homepage: 'https://a.test' }), { homepage: '' });
 });

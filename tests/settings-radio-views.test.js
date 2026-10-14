@@ -477,3 +477,147 @@ test('Eigene Sender: korrigiertes Feld bekommt den Fehler auch nach erneutem Ren
   assert.equal(field(root, 'streamUrl').getAttribute('aria-invalid'), 'true');
   assert.equal(root.byClass('settings-chan-error').length, 1);
 });
+
+// ───────── Webseite und Logo-Suche ─────────
+
+function withFindLogo(radio, impl) {
+  radio.findLogo = async query => {
+    radio.calls.push(['findLogo', query]);
+    return impl(query);
+  };
+  return radio;
+}
+const previewOf = root => root.byClass('settings-radio-logo-preview')[0];
+
+async function openAddForm(radio) {
+  const m = mount(createRadioCustomView, { radio });
+  await m.view.refresh();
+  byId(m.root, 'settingsRadioCustomAdd').click();
+  type(field(m.root, 'name'), 'Detektor');
+  type(field(m.root, 'streamUrl'), 'http://localhost:9000/live.mp3');
+  return m;
+}
+
+test('Eigene Sender: Prüfen füllt Webseite aus icy-url, sucht Logo und trägt es ein (Vorschau, Statuszeile)', async () => {
+  const radio = withFindLogo(makeRadio({ probe: () => ({ ok: true, kind: 'direct', contentType: 'audio/mpeg', homepage: 'https://detektor.fm/' }) }), () => ({ ok: true, logo: 'https://detektor.fm/icon.png', source: 'homepage', homepage: 'https://detektor.fm/' }));
+  const { root } = await openAddForm(radio);
+  action(root, 'probe').click();
+  await tick();
+  await tick();
+  assert.equal(field(root, 'homepage').value, 'https://detektor.fm/');
+  assert.deepEqual(radio.calls.filter(c => c[0] === 'findLogo'), [['findLogo', { homepage: 'https://detektor.fm/' }]]);
+  assert.equal(field(root, 'logo').value, 'https://detektor.fm/icon.png');
+  const status = byId(root, 'settingsRadioLogoStatus');
+  assert.equal(status.textContent, 'Logo gefunden (Quelle: Webseite)');
+  assert.equal(status.getAttribute('aria-live'), 'polite');
+  const img = previewOf(root).find(n => n.tagName === 'img')[0];
+  assert.equal(img.src, 'https://detektor.fm/icon.png');
+  submit(root);
+  await tick();
+  assert.deepEqual(radio.calls.at(-1), ['addCustom', { name: 'Detektor', streamUrl: 'http://localhost:9000/live.mp3', logo: 'https://detektor.fm/icon.png', homepage: 'https://detektor.fm/' }]);
+});
+
+test('Eigene Sender: eingetragenes Logo und eingetragene Webseite werden nie überschrieben, auch nicht beim erneuten Prüfen', async () => {
+  const radio = withFindLogo(makeRadio({ probe: () => ({ ok: true, kind: 'direct', contentType: 'audio/mpeg', homepage: 'https://icy.test/' }) }), () => ({ ok: true, logo: 'https://neu.test/x.png', source: 'google', homepage: 'x' }));
+  const { root } = await openAddForm(radio);
+  type(field(root, 'logo'), 'https://meins.test/logo.png');
+  type(field(root, 'homepage'), 'https://meine-seite.test/');
+  action(root, 'probe').click();
+  await tick();
+  action(root, 'probe').click();
+  await tick();
+  assert.equal(field(root, 'logo').value, 'https://meins.test/logo.png');
+  assert.equal(field(root, 'homepage').value, 'https://meine-seite.test/');
+  assert.equal(radio.calls.filter(c => c[0] === 'findLogo').length, 0, 'automatisch keine Suche bei vorhandenem Logo');
+  action(root, 'find-logo').click();
+  await tick();
+  assert.equal(field(root, 'logo').value, 'https://meins.test/logo.png');
+  assert.match(byId(root, 'settingsRadioLogoStatus').textContent, /bereits ausgefüllt/);
+});
+
+test('Eigene Sender: icy-url fehlt und keine Webseite: Hinweis, keine Suche; „Logo suchen“ geht auch ohne Prüfung', async () => {
+  const radio = withFindLogo(makeRadio(), query => (query.homepage.includes('leer') ? { ok: true, logo: null, source: null, homepage: query.homepage } : { ok: true, logo: 'https://g.test/l.png', source: 'google', homepage: query.homepage }));
+  const { root } = await openAddForm(radio);
+  action(root, 'probe').click();
+  await tick();
+  assert.equal(byId(root, 'settingsRadioLogoStatus').textContent, 'Webseite eintragen, um ein Logo zu finden');
+  assert.equal(radio.calls.filter(c => c[0] === 'findLogo').length, 0);
+  type(field(root, 'homepage'), 'https://leer.test/');
+  action(root, 'find-logo').click();
+  await tick();
+  assert.equal(byId(root, 'settingsRadioLogoStatus').textContent, 'Kein Logo gefunden');
+  assert.equal(field(root, 'logo').value, '');
+  type(field(root, 'homepage'), 'https://radio.test/');
+  action(root, 'find-logo').click();
+  await tick();
+  assert.equal(byId(root, 'settingsRadioLogoStatus').textContent, 'Logo gefunden (Quelle: Google)');
+  assert.equal(field(root, 'logo').value, 'https://g.test/l.png');
+  // automatisch eingetragenes Logo darf bei geänderter Webseite durch eine neue Suche ersetzt werden
+  type(field(root, 'homepage'), 'https://anders.test/');
+  action(root, 'find-logo').click();
+  await tick();
+  assert.equal(field(root, 'logo').value, 'https://g.test/l.png');
+});
+
+test('Eigene Sender: ungültige Webseite wird gemeldet (ohne Suche); Fehler und Timeout blockieren das Speichern nicht', async () => {
+  let fail = true;
+  const radio = withFindLogo(makeRadio(), () => {
+    if (fail) throw new Error("Error invoking remote method 'radio:find-logo': Error: Zeitüberschreitung nach 25000 ms");
+    return { ok: true, logo: null, source: null };
+  });
+  const { root } = await openAddForm(radio);
+  type(field(root, 'homepage'), 'ftp://x.test');
+  action(root, 'find-logo').click();
+  await tick();
+  assert.match(byId(root, 'settingsRadioLogoStatus').textContent, /Webseite/);
+  assert.equal(radio.calls.filter(c => c[0] === 'findLogo').length, 0);
+  type(field(root, 'homepage'), 'https://x.test/');
+  action(root, 'find-logo').click();
+  await tick();
+  assert.match(byId(root, 'settingsRadioLogoStatus').textContent, /Logo-Suche fehlgeschlagen: .*Zeitüberschreitung/);
+  assert.equal(action(root, 'find-logo').disabled, false);
+  submit(root);
+  await tick();
+  assert.equal(radio.calls.at(-1)[0], 'addCustom');
+  fail = false;
+});
+
+test('Eigene Sender: Doppelklick auf „Logo suchen“ startet nur eine Suche; Ergebnis nach Formularwechsel verfällt', async () => {
+  let release;
+  const gate = new Promise(resolve => (release = resolve));
+  const radio = withFindLogo(makeRadio(), async () => {
+    await gate;
+    return { ok: true, logo: 'https://l.test/a.png', source: 'homepage' };
+  });
+  const { root } = await openAddForm(radio);
+  type(field(root, 'homepage'), 'https://x.test/');
+  action(root, 'find-logo').click();
+  action(root, 'find-logo').click();
+  assert.equal(radio.calls.filter(c => c[0] === 'findLogo').length, 1);
+  assert.equal(action(root, 'find-logo').disabled, true);
+  type(field(root, 'homepage'), 'https://y.test/'); // Webseite geändert: altes Ergebnis gilt nicht mehr
+  release();
+  await tick();
+  assert.equal(field(root, 'logo').value, '');
+});
+
+test('Eigene Sender: Vorschau und Liste zeigen ohne Logo den Platzhalter mit Anfangsbuchstaben', async () => {
+  const sources = logic.addCustomStation(initialSources(), { name: 'ärger Radio', streamUrl: 'http://a.test/s', homepage: 'https://a.test' }, { idFactory: () => 'c1' }).sources;
+  const { root, view } = mount(createRadioCustomView, { radio: makeRadio({ sources }) });
+  await view.refresh();
+  const row = customList(root)[0];
+  assert.equal(row.byClass('settings-chan-logo-fallback')[0].textContent, 'Ä');
+  assert.equal(row.byClass('settings-chan-logo')[0].classList.contains('empty'), true);
+  view.edit('c1');
+  assert.equal(field(root, 'homepage').value, 'https://a.test');
+  const preview = previewOf(root);
+  assert.equal(preview.byClass('settings-chan-logo-fallback')[0].textContent, 'Ä');
+});
+
+test('Sender: Zeile ohne Logo zeigt den Platzhalter mit Anfangsbuchstaben', async () => {
+  const { root, view } = mount(createRadioStationsView, {});
+  await view.refresh();
+  const first = rows(root).find(r => r.byClass('settings-chan-name')[0].textContent === 'Zwei');
+  assert.equal(first.byClass('settings-chan-logo-fallback')[0].textContent, 'Z');
+  assert.equal(first.byClass('settings-chan-logo')[0].classList.contains('empty'), true);
+});

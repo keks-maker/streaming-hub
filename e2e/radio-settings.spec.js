@@ -60,6 +60,8 @@ test.describe('Radio-Einstellungen', () => {
   let audioServer;
   let streamUrl;
   let testServer;
+  let pageServer;
+  let pageUrl;
   let tmpDir;
 
   test.beforeAll(async () => {
@@ -67,8 +69,23 @@ test.describe('Radio-Einstellungen', () => {
     const tone = path.join(tmpDir, 'tone.aac');
     execFileSync(FFMPEG, ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100', '-t', '3', '-c:a', 'aac', '-b:a', '32k', '-f', 'adts', tone], { timeout: 30_000 });
     const data = fs.readFileSync(tone);
+    // Webseite des Senders mit apple-touch-icon (lokal über http: der Test-Hook STREAMING_HUB_TEST_LOGO_ALLOW_HTTP erlaubt das nur im Testlauf)
+    const icon = path.join(tmpDir, 'icon.png');
+    execFileSync(FFMPEG, ['-v', 'error', '-f', 'lavfi', '-i', 'color=c=0xf59e0b:s=96x96', '-frames:v', '1', icon], { timeout: 30_000 });
+    const iconData = fs.readFileSync(icon);
+    pageServer = http.createServer((req, res) => {
+      if (req.url === '/icon.png') {
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' });
+        res.end(iconData);
+      } else {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<html><head><link rel="apple-touch-icon" sizes="96x96" href="/icon.png"></head><body>Testsender</body></html>');
+      }
+    });
+    await new Promise(resolve => pageServer.listen(0, '127.0.0.1', resolve));
+    pageUrl = `http://localhost:${pageServer.address().port}/`;
     audioServer = http.createServer((req, res) => {
-      res.writeHead(200, { 'Content-Type': 'audio/aac', 'Cache-Control': 'no-store', Connection: 'close' });
+      res.writeHead(200, { 'Content-Type': 'audio/aac', 'Cache-Control': 'no-store', Connection: 'close', 'icy-url': pageUrl });
       let offset = 0;
       const push = () => {
         const end = Math.min(data.length, offset + 2048);
@@ -84,6 +101,7 @@ test.describe('Radio-Einstellungen', () => {
     streamUrl = `http://localhost:${audioServer.address().port}/tone.aac`;
     testServer = await startRadioServer();
     const base = Math.floor(Date.now() / MIN) * MIN;
+    process.env.STREAMING_HUB_TEST_LOGO_ALLOW_HTTP = '1';
     ctx = await launchApp({
       prefix: 'streaming-hub-e2e-radio-settings-',
       epgXml: buildEpg(base),
@@ -98,7 +116,9 @@ test.describe('Radio-Einstellungen', () => {
   test.afterAll(async () => {
     if (ctx) await ctx.cleanup();
     if (audioServer) await new Promise(resolve => audioServer.close(resolve));
+    if (pageServer) await new Promise(resolve => pageServer.close(resolve));
     if (testServer) await testServer.close();
+    delete process.env.STREAMING_HUB_TEST_LOGO_ALLOW_HTTP;
     if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -258,6 +278,43 @@ test.describe('Radio-Einstellungen', () => {
     // Löschen mit Bestätigung
     await custom.locator('[data-action="remove"]').click();
     await expect(custom.locator('#settingsRadioCustomList .settings-chan-row')).toHaveCount(1);
+    await custom.locator('[data-action="confirm-remove"]').click();
+    await expect(custom.locator('#settingsRadioCustomList')).toContainText('Noch keine eigenen Sender');
+  });
+
+  test('Eigene Sender: Prüfen übernimmt Webseite (icy-url) und schlägt ein Logo vor; eingetragenes Logo bleibt', async () => {
+    await openRadioSettingsTab(page, 'radio-custom');
+    const custom = page.locator('[data-settings-page="radio-custom"]');
+    await page.locator('#settingsRadioCustomAdd').click();
+    await custom.locator('[data-field="name"]').fill('E2E Logo-Sender');
+    await custom.locator('[data-field="streamUrl"]').fill(streamUrl);
+    await custom.locator('[data-action="probe"]').click();
+    await expect(custom.locator('[data-field="homepage"]')).toHaveValue(pageUrl);
+    await expect(page.locator('#settingsRadioLogoStatus')).toHaveText('Logo gefunden (Quelle: Webseite)');
+    await expect(custom.locator('[data-field="logo"]')).toHaveValue(`${pageUrl}icon.png`);
+    // Die CSP erlaubt Bilder nur über https; das lokale http-Testlogo scheitert daher und zeigt den Platzhalter mit Anfangsbuchstaben
+    await expect(custom.locator('.settings-radio-logo-preview img.settings-chan-logo')).toHaveClass(/empty/);
+    await expect(custom.locator('.settings-radio-logo-preview .settings-chan-logo-fallback')).toHaveText('E');
+    await expect(custom.locator('.settings-radio-logo-preview .settings-chan-logo-fallback')).toBeVisible();
+    await shot(page, 'radio-einstellungen-logo-vorschlag');
+    // erneutes Prüfen überschreibt ein vom Nutzer geändertes Logo nicht
+    await custom.locator('[data-field="logo"]').fill('https://meins.example/logo.png');
+    await custom.locator('[data-action="probe"]').click();
+    await expect(page.locator('#settingsRadioProbeResult')).toContainText('Erreichbar');
+    await expect(custom.locator('[data-field="logo"]')).toHaveValue('https://meins.example/logo.png');
+    // leer lassen: „Logo suchen“ findet es wieder
+    await custom.locator('[data-field="logo"]').fill('');
+    await custom.locator('[data-action="find-logo"]').click();
+    await expect(custom.locator('[data-field="logo"]')).toHaveValue(`${pageUrl}icon.png`);
+    await custom.locator('button[type="submit"]').click();
+    const savedRow = custom.locator('#settingsRadioCustomList .settings-chan-row');
+    await expect(savedRow).toHaveCount(1);
+    await expect(savedRow.locator('.settings-chan-logo-fallback')).toHaveText('E');
+    const saved = await page.evaluate(async () => (await window.radio.getSources()).find(s => s.id === 'eigene-radiosender').stations[0]);
+    expect(saved.homepage).toBe(pageUrl);
+    expect(saved.logo).toBe(`${pageUrl}icon.png`);
+    // Löschen
+    await savedRow.locator('[data-action="remove"]').click();
     await custom.locator('[data-action="confirm-remove"]').click();
     await expect(custom.locator('#settingsRadioCustomList')).toContainText('Noch keine eigenen Sender');
   });

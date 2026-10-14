@@ -118,6 +118,11 @@ function tileMeta(tileState, station, state) {
 
 const ACTION_LABEL = { play: 'abspielen', pause: 'pausieren', resume: 'fortsetzen', stop: 'Verbinden abbrechen' };
 
+/** Anfangsbuchstabe für den Logo-Platzhalter. */
+function stationInitial(name) {
+  return String(name || '?').trim().slice(0, 1).toUpperCase() || '?';
+}
+
 /** Kachel für einen Sender: Anzeigefelder, Zustand und Klickaktion. */
 function tileModel(station, state) {
   const tileState = tileStateOf(state, station);
@@ -130,7 +135,7 @@ function tileModel(station, state) {
     name: station.name,
     genre: station.genre || '',
     logo: safeLogoUrl(station.logo),
-    initial: (station.name || '?').trim().slice(0, 1).toUpperCase() || '?',
+    initial: stationInitial(station.name),
     state: tileState,
     active: tileState !== 'idle',
     action,
@@ -201,6 +206,7 @@ module.exports = {
   tileStateOf,
   tileAction,
   tileModel,
+  stationInitial,
   radioDashboardModel,
   popularFavoriteKeys,
 };

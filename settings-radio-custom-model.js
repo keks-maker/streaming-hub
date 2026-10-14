@@ -4,7 +4,7 @@
 // denselben Regeln wie der Main (lib/input-validation.js), Genre-Vorschläge und Klartext für „Stream prüfen“.
 
 const { ensureCustomSource, CUSTOM_SOURCE_ID } = require('./lib/radio/radio-sources-logic.js');
-const { radioStreamUrlError, radioLogoUrlError } = require('./lib/input-validation.js');
+const { radioStreamUrlError, radioLogoUrlError, radioHomepageUrlError } = require('./lib/input-validation.js');
 
 const NAME_MAX = 200;
 const GENRE_MAX = 100;
@@ -19,7 +19,7 @@ function customStations(sources) {
   return stations
     .map((station, index) => ({ station, index }))
     .sort((a, b) => pos(a.station.id) - pos(b.station.id) || a.index - b.index)
-    .map(({ station }) => ({ id: station.id, name: station.name || station.id, streamUrl: station.streamUrl || '', logo: station.logo || '', genre: station.genre || '' }));
+    .map(({ station }) => ({ id: station.id, name: station.name || station.id, streamUrl: station.streamUrl || '', logo: station.logo || '', genre: station.genre || '', homepage: station.homepage || '' }));
 }
 
 /** Genre-Vorschläge: Genres aller Sender und gängige Standards, alphabetisch ohne Doppelte. */
@@ -38,6 +38,7 @@ function validateStationForm(form) {
   const streamUrl = String(form.streamUrl || '').trim();
   const logo = String(form.logo || '').trim();
   const genre = String(form.genre || '').trim();
+  const homepage = String(form.homepage || '').trim();
   if (!name) errors.name = 'Bitte einen Namen eingeben';
   else if (name.length > NAME_MAX) errors.name = `Name ist zu lang (max. ${NAME_MAX} Zeichen)`;
   if (!streamUrl) errors.streamUrl = 'Bitte eine Stream-URL eingeben';
@@ -49,8 +50,12 @@ function validateStationForm(form) {
     const message = radioLogoUrlError(logo);
     if (message) errors.logo = message;
   }
+  if (homepage) {
+    const message = radioHomepageUrlError(homepage);
+    if (message) errors.homepage = message;
+  }
   if (genre.length > GENRE_MAX) errors.genre = `Genre ist zu lang (max. ${GENRE_MAX} Zeichen)`;
-  return { errors, value: { name, streamUrl, logo, genre } };
+  return { errors, value: { name, streamUrl, logo, genre, homepage } };
 }
 
 /** Eingabe für radio:add-custom (leere optionale Felder werden weggelassen). */
@@ -58,13 +63,14 @@ function toAddInput(value) {
   const input = { name: value.name, streamUrl: value.streamUrl };
   if (value.logo) input.logo = value.logo;
   if (value.genre) input.genre = value.genre;
+  if (value.homepage) input.homepage = value.homepage;
   return input;
 }
 
-/** Patch für radio:update-custom: nur geänderte Felder, leeres Logo/Genre entfernt das Feld (leerer String). */
+/** Patch für radio:update-custom: nur geänderte Felder, leeres Logo/Genre/Webseite entfernt das Feld (leerer String). */
 function toUpdatePatch(value, current) {
   const patch = {};
-  for (const field of ['name', 'streamUrl', 'logo', 'genre']) {
+  for (const field of ['name', 'streamUrl', 'logo', 'genre', 'homepage']) {
     if (value[field] !== (current[field] || '')) patch[field] = value[field];
   }
   return patch;
@@ -97,4 +103,33 @@ function probeResultText(result) {
   return { ok: true, text: parts.join(' · ') };
 }
 
-module.exports = { DEFAULT_GENRES, customStations, genreSuggestions, validateStationForm, toAddInput, toUpdatePatch, probeResultText };
+const SOURCE_NAMES = { homepage: 'Webseite', google: 'Google' };
+const NO_HOMEPAGE_TEXT = 'Webseite eintragen, um ein Logo zu finden';
+
+/** Webseite aus der Stream-Prüfung (icy-url) übernehmen, aber nur in ein leeres Feld. Liefert den neuen Feldwert. */
+function prefillHomepage(current, probeResult) {
+  const value = String(current || '').trim();
+  if (value) return current;
+  const found = probeResult && probeResult.ok && typeof probeResult.homepage === 'string' ? probeResult.homepage : '';
+  return found && !radioHomepageUrlError(found) ? found : '';
+}
+
+/**
+ * Darf die Logo-Suche das Logo-Feld füllen? Nur wenn es leer ist oder noch den zuletzt automatisch eingetragenen Wert
+ * enthält (ein vom Nutzer eingetragenes oder geändertes Logo wird nie überschrieben).
+ */
+function canFillLogo(logoValue, autoFilled) {
+  const value = String(logoValue || '').trim();
+  return !value || (Boolean(autoFilled) && value === autoFilled);
+}
+
+/** Ergebnis von radio:find-logo als { ok, found, text } (Statuszeile). */
+function logoResultText(result) {
+  if (!result || typeof result !== 'object') return { ok: false, found: false, text: 'Logo-Suche fehlgeschlagen: keine Antwort' };
+  if (!result.ok) return { ok: false, found: false, text: `Logo-Suche fehlgeschlagen: ${result.error || 'unbekannter Fehler'}` };
+  if (result.logo) return { ok: true, found: true, text: `Logo gefunden (Quelle: ${SOURCE_NAMES[result.source] || 'Webseite'})` };
+  if (result.reason === 'no-homepage') return { ok: true, found: false, text: NO_HOMEPAGE_TEXT };
+  return { ok: true, found: false, text: 'Kein Logo gefunden' };
+}
+
+module.exports = { NO_HOMEPAGE_TEXT, prefillHomepage, canFillLogo, logoResultText, DEFAULT_GENRES, customStations, genreSuggestions, validateStationForm, toAddInput, toUpdatePatch, probeResultText };

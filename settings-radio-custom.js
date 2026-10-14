@@ -1,14 +1,15 @@
 'use strict';
 
 // Einstellungen → Radio → Eigene Sender (R3): Liste, Hinzufügen, Bearbeiten, Löschen. Name und Stream-URL sind
-// Pflicht, Logo-URL und Genre optional. „Stream prüfen“ (radio:probe) zeigt Erreichbarkeit und Format vor dem
+// Pflicht, Webseite, Logo-URL und Genre optional. Aus der Webseite (oder dem ICY-Header des Streams) schlägt
+// „Logo suchen“ ein Logo vor (radio:find-logo), das nur in ein leeres Logo-Feld eingetragen wird. „Stream prüfen“ (radio:probe) zeigt Erreichbarkeit und Format vor dem
 // Speichern. Validierungsfehler des Main werden als Klartext angezeigt. Logik: settings-radio-custom-model.js.
 
 const model = require('./settings-radio-custom-model.js');
-const { safeLogoUrl } = require('./radio-dashboard-model.js');
-const { el, statusLine, setStatus, labelledField, textInput, button, focusNode, findAll, childList, formatIpcError } = require('./settings-radio-dom.js');
+const { el, appendStationLogo, statusLine, setStatus, labelledField, textInput, button, focusNode, findAll, childList, formatIpcError } = require('./settings-radio-dom.js');
+const { radioHomepageUrlError } = require('./lib/input-validation.js');
 
-const EMPTY_FORM = Object.freeze({ name: '', streamUrl: '', logo: '', genre: '' });
+const EMPTY_FORM = Object.freeze({ name: '', streamUrl: '', logo: '', genre: '', homepage: '' });
 
 function createRadioCustomView(root, { radio, logger = null } = {}) {
   const doc = root.ownerDocument || document;
@@ -62,8 +63,11 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
     state.confirmRemove = null;
     state.form = {
       id: station ? station.id : null,
-      current: station ? { name: station.name, streamUrl: station.streamUrl, logo: station.logo, genre: station.genre } : { ...EMPTY_FORM },
-      values: station ? { name: station.name, streamUrl: station.streamUrl, logo: station.logo, genre: station.genre } : { ...EMPTY_FORM },
+      current: station ? { name: station.name, streamUrl: station.streamUrl, logo: station.logo, genre: station.genre, homepage: station.homepage } : { ...EMPTY_FORM },
+      values: station ? { name: station.name, streamUrl: station.streamUrl, logo: station.logo, genre: station.genre, homepage: station.homepage } : { ...EMPTY_FORM },
+      controls: {},
+      logoSearch: null, // { busy, ok, text }
+      autoLogo: '', // zuletzt automatisch eingetragenes Logo (darf von einer neuen Suche ersetzt werden)
       errors: {},
       probe: null,
       focusField: 'name',
@@ -113,6 +117,80 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
     form.probe = { busy: false, ...model.probeResultText(result) };
     updateProbeUi(form);
     focusNode(form.ui.button);
+    // Webseite aus icy-url nur in ein leeres Feld übernehmen, danach Logo vorschlagen
+    const prefilled = model.prefillHomepage(form.values.homepage, result);
+    if (prefilled !== form.values.homepage) setFieldValue(form, 'homepage', prefilled);
+    if (result && result.ok) await runLogoSearch({ auto: true });
+  }
+
+  function setFieldValue(form, field, value) {
+    form.values[field] = value;
+    if (form.errors[field]) delete form.errors[field];
+    const control = form.controls[field];
+    if (control) control.value = value;
+    if (field === 'logo') updateLogoPreview(form);
+  }
+
+  // Vorschau neben dem Logo-Feld; Fehler oder leer: Platzhalter mit Anfangsbuchstaben
+  function updateLogoPreview(form) {
+    const ui = form.ui;
+    if (!ui || !ui.preview) return;
+    ui.preview.textContent = '';
+    appendStationLogo(doc, ui.preview, { name: form.values.name, logo: String(form.values.logo || '').trim() });
+  }
+
+  function updateLogoUi(form) {
+    const ui = form.ui;
+    if (!ui || !ui.logoStatus) return;
+    const search = form.logoSearch;
+    ui.logoButton.disabled = Boolean(search && search.busy);
+    ui.logoStatus.textContent = search ? search.text : '';
+    ui.logoStatus.className = `settings-radio-probe${search && !search.busy ? (search.ok ? ' ok' : ' error') : ''}`;
+  }
+
+  /**
+   * Logo-Vorschlag aus der Webseite. auto: nach „Stream prüfen“ (still, wenn schon ein Logo eingetragen ist);
+   * manuell („Logo suchen“) meldet ein gefülltes Logo-Feld. Das Formular bleibt währenddessen bedienbar.
+   */
+  async function runLogoSearch({ auto = false } = {}) {
+    const form = state.form;
+    if (!form || (form.logoSearch && form.logoSearch.busy)) return;
+    const homepage = String(form.values.homepage || '').trim();
+    if (!model.canFillLogo(form.values.logo, form.autoLogo)) {
+      if (!auto) {
+        form.logoSearch = { busy: false, ok: false, text: 'Das Logo-Feld ist bereits ausgefüllt – zum Suchen zuerst leeren' };
+        updateLogoUi(form);
+      }
+      return;
+    }
+    if (!homepage) {
+      form.logoSearch = { busy: false, ok: false, text: model.NO_HOMEPAGE_TEXT };
+      updateLogoUi(form);
+      return;
+    }
+    const homepageError = radioHomepageUrlError(homepage);
+    if (homepageError) {
+      form.logoSearch = { busy: false, ok: false, text: homepageError };
+      updateLogoUi(form);
+      return;
+    }
+    form.logoSearch = { busy: true, ok: false, text: 'Suche Logo …' };
+    updateLogoUi(form);
+    let result;
+    try {
+      result = await radio.findLogo({ homepage });
+    } catch (error) {
+      result = { ok: false, error: formatIpcError(error) };
+    }
+    // Ergebnis gilt nur für diese Webseite und dieses Formular
+    if (state.form !== form || String(form.values.homepage || '').trim() !== homepage) return;
+    const text = model.logoResultText(result);
+    form.logoSearch = { busy: false, ok: text.ok && text.found, text: text.text };
+    if (result && result.ok && result.logo && model.canFillLogo(form.values.logo, form.autoLogo)) {
+      form.autoLogo = result.logo;
+      setFieldValue(form, 'logo', result.logo);
+    }
+    updateLogoUi(form);
   }
 
   async function saveForm() {
@@ -164,9 +242,11 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
     wrap.appendChild(el(doc, 'h4', 'settings-card-title', form.id ? 'Sender bearbeiten' : 'Sender hinzufügen'));
     const input = (field, label, placeholder, extra = {}) => {
       const control = textInput(doc, { field, value: form.values[field], placeholder });
+      form.controls[field] = control;
       if (extra.list) control.setAttribute('list', extra.list);
       control.addEventListener('input', () => {
         form.values[field] = control.value;
+        if (field === 'name') updateLogoPreview(form);
         // Feldfehler ist mit der Eingabe überholt (auch im Zustand, sonst käme er beim nächsten Rendern zurück)
         if (form.errors[field]) delete form.errors[field];
         if (statusEl.classList.contains('error')) setStatus(statusEl, '');
@@ -175,7 +255,8 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
           updateProbeUi(form);
         }
       });
-      wrap.appendChild(labelledField(doc, label, control, { error: form.errors[field], hint: extra.hint, idBase: `settingsRadioCustom-${field}` }));
+      const fieldNode = labelledField(doc, label, control, { error: form.errors[field], hint: extra.hint, idBase: `settingsRadioCustom-${field}` });
+      (extra.parent || wrap).appendChild(fieldNode);
       return control;
     };
     input('name', 'Name (Pflicht)', 'z. B. Mein Sender');
@@ -193,7 +274,28 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
     form.ui = { button: probeBtn, text: probeText };
     updateProbeUi(form);
 
-    input('logo', 'Logo-URL (optional)', 'https://…');
+    input('homepage', 'Webseite (optional)', 'https://… (für die Logo-Suche)');
+
+    const logoRow = el(doc, 'div', 'settings-radio-logorow');
+    const logoControl = input('logo', 'Logo-URL (optional)', 'https://…', { parent: logoRow });
+    logoControl.addEventListener('change', () => updateLogoPreview(form));
+    const logoBtn = button(doc, 'settings-action-btn', 'Logo suchen', 'find-logo');
+    logoBtn.addEventListener('click', () => runLogoSearch({ auto: false }));
+    logoRow.appendChild(logoBtn);
+    wrap.appendChild(logoRow);
+    const preview = el(doc, 'div', 'settings-radio-logo-preview');
+    const logoStatus = el(doc, 'div', 'settings-radio-probe');
+    logoStatus.id = 'settingsRadioLogoStatus';
+    logoStatus.setAttribute('role', 'status');
+    logoStatus.setAttribute('aria-live', 'polite');
+    const logoInfo = el(doc, 'div', 'settings-radio-logoinfo');
+    logoInfo.append(preview, logoStatus);
+    wrap.appendChild(logoInfo);
+    form.ui.preview = preview;
+    form.ui.logoButton = logoBtn;
+    form.ui.logoStatus = logoStatus;
+    updateLogoPreview(form);
+    updateLogoUi(form);
     input('genre', 'Genre (optional)', 'z. B. Rock', { list: genreList.id });
 
     if (form.mainError) {
@@ -229,17 +331,7 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
     row.setAttribute('role', 'listitem');
     row.dataset.key = station.id;
     const head = el(doc, 'div', 'settings-chan-head');
-    const logo = el(doc, 'img', 'settings-chan-logo');
-    logo.alt = '';
-    logo.loading = 'lazy';
-    const src = safeLogoUrl(station.logo);
-    logo.addEventListener('error', () => {
-      logo.removeAttribute('src');
-      logo.classList.add('empty');
-    });
-    if (src) logo.src = src;
-    else logo.classList.add('empty');
-    head.appendChild(logo);
+    appendStationLogo(doc, head, station);
     const info = el(doc, 'div', 'settings-chan-info');
     info.appendChild(el(doc, 'div', 'settings-chan-name', station.name));
     const meta = el(doc, 'div', 'settings-chan-meta');
