@@ -1,0 +1,263 @@
+[
+  {
+    "id": "deutsche-radiosender",
+    "name": "Deutsche Radiosender",
+    "type": "bundled",
+    "stations": [
+      {
+        "id": "1live",
+        "name": "1LIVE",
+        "streamUrl": "http://wdr-1live-live.icecast.wdr.de/wdr/1live/live/mp3/128/stream.mp3",
+        "genre": "Pop",
+        "region": "NRW",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www1.wdr.de/radio/1live/"
+      },
+      {
+        "id": "wdr2-rheinland",
+        "name": "WDR 2 Rheinland",
+        "streamUrl": "http://wdr-wdr2-rheinland.icecast.wdr.de/wdr/wdr2/rheinland/mp3/128/stream.mp3",
+        "genre": "Pop",
+        "region": "NRW",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www1.wdr.de/radio/wdr2/"
+      },
+      {
+        "id": "wdr4",
+        "name": "WDR 4",
+        "streamUrl": "http://wdr-wdr4-live.icecast.wdr.de/wdr/wdr4/live/mp3/128/stream.mp3",
+        "genre": "Schlager",
+        "region": "NRW",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www1.wdr.de/radio/wdr4/"
+      },
+      {
+        "id": "wdr5",
+        "name": "WDR 5",
+        "streamUrl": "http://wdr-wdr5-live.icecast.wdr.de/wdr/wdr5/live/mp3/128/stream.mp3",
+        "genre": "Information",
+        "region": "NRW",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www1.wdr.de/radio/wdr5/"
+      },
+      {
+        "id": "swr3",
+        "name": "SWR3",
+        "streamUrl": "https://liveradio.swr.de/sw282p3/swr3/play.mp3",
+        "genre": "Pop",
+        "region": "BW/RP",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.swr3.de/"
+      },
+      {
+        "id": "antenne-bayern",
+        "name": "Antenne Bayern",
+        "streamUrl": "http://mp3channels.webradio.antenne.de/antenne",
+        "genre": "Pop",
+        "region": "BY",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.antenne.de/"
+      },
+      {
+        "id": "antenne-bayern-chillout",
+        "name": "Antenne Bayern Chillout",
+        "streamUrl": "http://mp3channels.webradio.antenne.de/chillout",
+        "genre": "Chillout",
+        "region": "BY",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.antenne.de/"
+      },
+      {
+        "id": "rock-antenne",
+        "name": "Rock Antenne",
+        "streamUrl": "http://mp3channels.webradio.rockantenne.de/rockantenne",
+        "genre": "Rock",
+        "region": "BY",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.rockantenne.de/"
+      },
+      {
+        "id": "rock-antenne-heavy-metal",
+        "name": "Rock Antenne Heavy Metal",
+        "streamUrl": "http://mp3channels.webradio.rockantenne.de/heavy-metal",
+        "genre": "Metal",
+        "region": "BY",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.rockantenne.de/"
+      },
+      {
+        "id": "b5-aktuell",
+        "name": "B5 aktuell",
+        "streamUrl": "http://dispatcher.rndfnk.com/br/br24/live/mp3/mid",
+        "genre": "Information",
+        "region": "BY",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.br.de/radio/b5-aktuell/"
+      },
+      {
+        "id": "inforadio",
+        "name": "Inforadio",
+        "streamUrl": "http://dispatcher.rndfnk.com/rbb/inforadio/live/mp3/mid",
+        "genre": "Information",
+        "region": "BE/BB",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.inforadio.de/"
+      },
+      {
+        "id": "mdr-aktuell",
+        "name": "MDR Aktuell",
+        "streamUrl": "http://mdr-284340-0.cast.mdr.de/mdr/284340/0/mp3/high/stream.mp3",
+        "genre": "Information",
+        "region": "MDR",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.mdr.de/mdr-aktuell/"
+      },
+      {
+        "id": "mdr-klassik",
+        "name": "MDR Klassik",
+        "streamUrl": "http://mdr-284350-0.cast.mdr.de/mdr/284350/0/mp3/high/stream.mp3",
+        "genre": "Klassik",
+        "region": "MDR",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.mdr.de/mdr-klassik/"
+      },
+      {
+        "id": "hit-radio-ffh",
+        "name": "Hit Radio FFH",
+        "streamUrl": "http://mp3.ffh.de/radioffh/hqlivestream.mp3",
+        "genre": "Pop",
+        "region": "HE",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.ffh.de/"
+      },
+      {
+        "id": "ffh-80er",
+        "name": "Hit Radio FFH 80er",
+        "streamUrl": "http://mp3.ffh.de/ffhchannels/hq80er.mp3",
+        "genre": "Oldies",
+        "region": "HE",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.ffh.de/"
+      },
+      {
+        "id": "deutschlandfunk",
+        "name": "Deutschlandfunk",
+        "streamUrl": "https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3",
+        "genre": "Information",
+        "region": "DE",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.deutschlandfunk.de/"
+      },
+      {
+        "id": "deutschlandfunk-kultur",
+        "name": "Deutschlandfunk Kultur",
+        "streamUrl": "https://st02.sslstream.dlf.de/dlf/02/128/mp3/stream.mp3",
+        "genre": "Kultur",
+        "region": "DE",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.deutschlandfunkkultur.de/"
+      },
+      {
+        "id": "dlf-nova",
+        "name": "Deutschlandfunk Nova",
+        "streamUrl": "https://st03.sslstream.dlf.de/dlf/03/128/mp3/stream.mp3",
+        "genre": "Pop",
+        "region": "DE",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 128,
+        "homepage": "https://www.deutschlandfunknova.de/"
+      },
+      {
+        "id": "sunshine-live",
+        "name": "Sunshine Live",
+        "streamUrl": "http://stream.sunshine-live.de/live/mp3-192/stream.sunshine-live.de/",
+        "genre": "Electro",
+        "region": "BW",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 192,
+        "homepage": "https://www.sunshine-live.de/"
+      },
+      {
+        "id": "80s80s",
+        "name": "80s80s",
+        "streamUrl": "http://streams.80s80s.de/web/mp3-192/streams.80s80s.de/",
+        "genre": "Oldies",
+        "region": "DE",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 192,
+        "homepage": "https://www.80s80s.de/"
+      },
+      {
+        "id": "90s90s-hits",
+        "name": "90s90s Hits",
+        "streamUrl": "http://streams.90s90s.de/pop/mp3-192/streams.90s90s.de/",
+        "genre": "Oldies",
+        "region": "DE",
+        "country": "DE",
+        "codec": "mp3",
+        "bitrate": 192,
+        "homepage": "https://www.90s90s.de/"
+      }
+    ],
+    "sortOrder": [
+      "1live",
+      "wdr2-rheinland",
+      "wdr4",
+      "wdr5",
+      "swr3",
+      "antenne-bayern",
+      "antenne-bayern-chillout",
+      "rock-antenne",
+      "rock-antenne-heavy-metal",
+      "b5-aktuell",
+      "inforadio",
+      "mdr-aktuell",
+      "mdr-klassik",
+      "hit-radio-ffh",
+      "ffh-80er",
+      "deutschlandfunk",
+      "deutschlandfunk-kultur",
+      "dlf-nova",
+      "sunshine-live",
+      "80s80s",
+      "90s90s-hits"
+    ]
+  }
+]
