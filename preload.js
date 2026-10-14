@@ -174,3 +174,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('recording:shutdown-warning', handler);
   },
 });
+
+// Radio (Konzept §7): Fernbedienung für den RadioController im Main; Zustand kommt per radio:state.
+const radioListener = channel => cb => {
+  const handler = (_e, data) => cb(data);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.removeListener(channel, handler);
+};
+
+contextBridge.exposeInMainWorld('radio', {
+  getSources: () => ipcRenderer.invoke('radio:get-sources'),
+  addCustom: input => ipcRenderer.invoke('radio:add-custom', input),
+  updateCustom: (id, patch) => ipcRenderer.invoke('radio:update-custom', id, patch),
+  removeCustom: id => ipcRenderer.invoke('radio:remove-custom', id),
+  // key: { sourceId, stationId }
+  setFavorite: (key, favorite) => ipcRenderer.invoke('radio:set-favorite', key, favorite),
+  // patch: { name?, logo?, streamUrl? } (leer/null = Feld zurücksetzen); nur für gelieferte Sender, eigene über updateCustom
+  setOverride: (key, patch) => ipcRenderer.invoke('radio:set-override', key, patch),
+  clearOverride: key => ipcRenderer.invoke('radio:clear-override', key),
+  // order: [{ sourceId, id }] in gewünschter globaler Reihenfolge
+  setFavoriteOrder: order => ipcRenderer.invoke('radio:set-favorite-order', order),
+  // key: { sourceId, stationId }; ohne Argument: fortsetzen bzw. letzter Sender
+  play: key => ipcRenderer.invoke('radio:play', key),
+  pause: () => ipcRenderer.invoke('radio:pause'),
+  stop: () => ipcRenderer.invoke('radio:stop'),
+  next: () => ipcRenderer.invoke('radio:next'),
+  prev: () => ipcRenderer.invoke('radio:prev'),
+  setVolume: volume => ipcRenderer.invoke('radio:set-volume', volume),
+  probe: url => ipcRenderer.invoke('radio:probe', url),
+  findLogo: query => ipcRenderer.invoke('radio:find-logo', query),
+  refreshStreamUrls: () => ipcRenderer.invoke('radio:refresh-stream-urls'),
+  getState: () => ipcRenderer.invoke('radio:get-state'),
+  // Wiedergabe-Optionen (lastStation, resumeOnStart, pauseOnTv, keepPlayingWhenClosed, trayDisplay, trayScroll, volume); setSettings nimmt die Schalter (inkl. trayScroll) und trayDisplay
+  getSettings: () => ipcRenderer.invoke('radio:get-settings'),
+  setSettings: patch => ipcRenderer.invoke('radio:set-settings', patch),
+  onState: radioListener('radio:state'),
+  onSourcesChanged: radioListener('radio:sources-changed'),
+  // Tray „Radio-Dashboard öffnen“: Renderer zeigt das Radio-Dashboard
+  onOpen: radioListener('radio:open'),
+});

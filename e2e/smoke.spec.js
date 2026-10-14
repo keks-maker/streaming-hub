@@ -125,13 +125,13 @@ test('Hauptfenster rendert Titel und Kern-DOM', async () => {
   // Auf der Startseite ist die Navbar by design ausgeblendet (display:none) — nur im DOM prüfen.
   await expect(page.locator('#overlayBar')).toBeAttached();
   await expect(page.locator('#contentArea')).toBeAttached();
-  // Startdashboard mit den vier Bereichs-Kacheln (renderStartDashboard); „Aufnahmen“ ist seit 3.6b eine Karte im LiveTV-Dashboard.
+  // Startdashboard mit den fünf Bereichs-Kacheln (renderStartDashboard; Radio seit R2); „Aufnahmen“ ist seit 3.6b eine Karte im LiveTV-Dashboard.
   await expect(page.locator('#dashboardView')).toBeVisible();
   await expect(page.locator('#dashboardTitle')).toHaveText('Was möchtest du sehen?');
-  for (const key of ['livetv', 'streaming', 'mediathek', 'settings']) {
+  for (const key of ['livetv', 'radio', 'streaming', 'mediathek', 'settings']) {
     await expect(page.locator(`.dashboard-section-tile[data-section="${key}"]`)).toBeVisible();
   }
-  await expect(page.locator('.dashboard-section-tile')).toHaveCount(4);
+  await expect(page.locator('.dashboard-section-tile')).toHaveCount(5);
   await expect(page.locator('.dashboard-section-tile[data-section="recording"]')).toHaveCount(0);
   await expect(page.locator('#versionTag')).toHaveText(`v${PKG_VERSION}`);
 });
@@ -176,7 +176,7 @@ test('LiveTV: Werkzeugleiste (Senderverwaltung, Status, EPG aktualisieren); das 
 
 // LiveTV-Gruppe der Einstellungs-Seitenleiste aufklappen (falls zugeklappt).
 async function expandSettingsLiveTv() {
-  const group = page.locator('#settingsNav .settings-nav-group');
+  const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
   if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
   await expect(group).toHaveAttribute('aria-expanded', 'true');
 }
@@ -252,7 +252,7 @@ test('Einstellungen: Pfeiltasten im schmalen Layout erreichen LiveTV-Tabs', asyn
   try {
     await page.locator('#overlayNav [data-section="settings"]').click();
     await page.locator('#settingsTab-general').click();
-    const group = page.locator('#settingsNav .settings-nav-group');
+    const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
     if ((await group.getAttribute('aria-expanded')) === 'true') {
       await group.evaluate(el => el.click());
     }

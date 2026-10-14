@@ -19,6 +19,15 @@ const SETTINGS_NAV = [
       { page: 'livetv-recordings', label: 'Aufnahmen' },
     ],
   },
+  {
+    key: 'radio',
+    label: 'Radio',
+    children: [
+      { page: 'radio-stations', label: 'Sender' },
+      { page: 'radio-custom', label: 'Eigene Sender' },
+      { page: 'radio-playback', label: 'Wiedergabe' },
+    ],
+  },
   { page: 'streaming', label: 'Streaming' },
   { page: 'mediathek', label: 'Mediatheken' },
 ];

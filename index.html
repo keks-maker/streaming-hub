@@ -93,6 +93,7 @@
       </div>
       <div class="dashboard-grid" id="dashboardGrid"></div>
       <div class="dashboard-empty" id="dashboardEmpty" style="display:none"></div>
+      <div class="radio-dashboard" id="radioDashboard" hidden></div>
       <div class="settings-panel-host" id="settingsPanelHost" hidden></div>
     </div>
     <div class="dashboard-player" id="dashboardPlayer" style="display:none">
@@ -138,6 +139,9 @@
     <span class="nav-reveal-hint" aria-hidden="true">⌃</span>
     <span class="version-tag" id="versionTag"></span>
   </div>
+
+  <!-- Radio-Mini-Player (R2): Leiste unten, sichtbar auf allen Seiten solange Radio nicht idle ist -->
+  <div class="radio-miniplayer" id="radioMiniPlayer" hidden></div>
 
   <!-- Aufnahmen-Dashboard (Fix-Set 4): regulärer Dashboard-Bereich, kein Overlay.
        Das alte recordings-overlay-Markup wurde entfernt; die Wiedergabe läuft
@@ -399,6 +403,41 @@
               <h4 class="settings-card-title">ffmpeg</h4>
               <p class="settings-card-desc">Voraussetzung für Aufnahmen.</p>
               <div class="settings-rec-ffmpeg" id="recFfmpegStatus">ffmpeg-Status wird geprüft …</div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="radio-stations" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Radio: Sender</h3>
+              <p class="settings-page-desc">Favoriten, Reihenfolge, Vorhören und Anpassungen deiner Radiosender.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Senderverwaltung</h4>
+              <p class="settings-card-desc">Sender suchen, als Favorit markieren, vorhören und Name, Logo oder Stream-URL anpassen. Die Favoriten erscheinen im Radio-Dashboard.</p>
+              <div id="settingsRadioStationsRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="radio-custom" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Radio: Eigene Sender</h3>
+              <p class="settings-page-desc">Eigene Streams (Direktadresse, .pls, .m3u oder HLS) hinzufügen und verwalten.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Eigene Sender</h4>
+              <p class="settings-card-desc">Mit „Stream prüfen“ siehst du vor dem Speichern, ob der Stream erreichbar ist und in welchem Format er liefert.</p>
+              <div id="settingsRadioCustomRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="radio-playback" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Radio: Wiedergabe</h3>
+              <p class="settings-page-desc">Lautstärke, Start- und Schließverhalten des Radios.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Wiedergabe</h4>
+              <div id="settingsRadioPlaybackRoot"></div>
             </div>
           </section>
 

@@ -12,6 +12,8 @@ const KNOWN_HARMLESS = [
   'ERR_NAME_NOT_RESOLVED',
   'Failed to fetch',
   'net::ERR_',
+  // Webview-Navigation (about:blank beim Wechsel weg von TV) wird von einem überlappenden Laden abgebrochen: erwartet, harmlos
+  'ERR_ABORTED (-3) loading',
   'Component updater failed',
   'Electron Security Warning',
   'Autofill.enable',

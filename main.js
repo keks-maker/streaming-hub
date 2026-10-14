@@ -1,12 +1,12 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
-const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
+const { reconcilePostUpdate, reconcileRadioSources } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
 const { revealWindow, isBackgroundE2E } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
@@ -34,6 +34,17 @@ const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
+const { RadioController } = require('./lib/radio/RadioController.js');
+const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
+const { registerRadioIpc } = require('./lib/radio/ipc.js');
+const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
+const { createRadioLogoCache } = require('./lib/radio/radio-logo-cache.js');
+const { createTrayTextRenderer } = require('./lib/radio/tray-text-renderer.js');
+const { logosShown } = require('./radio-dashboard-model.js');
+const { refreshStreamUrls } = require('./lib/radio/radio-refresh.js');
+const { createApiClient, resolveApiServers } = require('./lib/radio/radio-browser.js');
+const { probeStream } = require('./lib/radio/radio-resolve.js');
+const { radioKeepsAppAlive, decideWindowAllClosed } = require('./lib/radio/keep-alive.js');
 
 /**
  * Freier Speicherplatz am Root (bytes) oder null, wenn nicht ermittelbar
@@ -63,6 +74,8 @@ let recorder = null;
 // Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
 let epgService = null;
 let trayController = null;
+let radioController = null;
+let radioLibrary = null;
 // Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
 let scheduler = null;
 // Standby-Schutz (Etappe 2b): powerSaveBlocker bei Aufnahme/anstehendem Start
@@ -570,6 +583,9 @@ function createWindow() {
   // (Tray „App öffnen“/„Planung öffnen“ und das Dock-Icon erzeugen es neu).
   createdWindow.on('closed', () => {
     if (mainWindow === createdWindow) mainWindow = null;
+    // Das unsichtbare Radio-Player-Fenster zählt als Fenster: ohne "weiterspielen" (oder ohne Tray) beenden,
+    // sonst käme window-all-closed nie und die App bliebe unsichtbar offen.
+    if (radioController && radioController.isActive() && !radioKeepsAppAlive(radioKeepAliveContext())) radioController.stop();
   });
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     if (errorCode !== -3) logger.error('Hauptfenster konnte nicht geladen werden:', errorCode, errorDescription, validatedURL);
@@ -617,20 +633,30 @@ function showMainWindow() {
   revealWindow(mainWindow, process.env);
 }
 
-/** Aufnahmen-Dashboard im Renderer öffnen (Tab 'library' | 'planned'), auch bei frisch erzeugtem Fenster. */
-function openRecordingsTab(tab) {
+/** Fenster zeigen und eine Nachricht an den Renderer schicken, auch bei frisch erzeugtem Fenster. */
+function showWindowAndSend(channel, payload) {
   showMainWindow();
   const win = mainWindow;
   if (!win) return;
   const send = () => {
     try {
-      win.webContents.send('recordings:open', { tab });
+      win.webContents.send(channel, payload);
     } catch (_) {
       // Fenster zwischendurch weg
     }
   };
   if (win.webContents.isLoading()) win.webContents.once('did-finish-load', send);
   else send();
+}
+
+/** Aufnahmen-Dashboard im Renderer öffnen (Tab 'library' | 'planned'). */
+function openRecordingsTab(tab) {
+  showWindowAndSend('recordings:open', { tab });
+}
+
+/** Radio-Dashboard im Renderer öffnen (Tray: „Radio-Dashboard öffnen“). */
+function openRadioDashboard() {
+  showWindowAndSend('radio:open', null);
 }
 
 app.whenReady().then(() => {
@@ -647,6 +673,12 @@ app.whenReady().then(() => {
   } catch (e) {
     logger.error('Nach-Update-Reconciliation fehlgeschlagen (Start läuft weiter):', e.message);
   }
+  // Radio: neue mitgelieferte Senderliste in die Nutzerkopie einarbeiten (Favoriten/Eigene bleiben); wirft nie
+  reconcileRadioSources({
+    userFile: userStorage.paths.radioSources,
+    bundleFile: path.join(__dirname, 'radiosources.json'),
+    baseFile: userStorage.paths.radioSourcesBase,
+  });
   // Selbstheilungs-Netz (Karte t_ea243f43, Schritt 5): Beim Start prüfen, ob
   // die eigene Bundle-Integrität intakt ist (keine toten/externen Symlinks,
   // Frameworks vorhanden). Bei Schaden NIEMALS still weiterlaufen — sauberer
@@ -715,6 +747,66 @@ app.whenReady().then(() => {
   }
   // Startansicht des Programmführers (Etappe 3.5): unabhängig vom EPG-Dienst, damit die Einstellung immer erreichbar bleibt
   registerEpgViewSettingsIpc({ ipcMain, storage: userStorage, requireMainRenderer });
+
+  // ── Radio (Konzept §2/§7): Zustand im Main, Audio im unsichtbaren Player-Fenster ──
+  // Das Player-Fenster wird erst beim ersten Abspielen erzeugt (show:false), in Tests öffnet sich nichts.
+  try {
+    radioLibrary = new RadioLibrary({ userStorage, logger });
+    radioController = new RadioController({
+      BrowserWindow,
+      playerHtml: path.join(__dirname, 'radio-player.html'),
+      preloadPath: path.join(__dirname, 'preload-radio.js'),
+      library: radioLibrary,
+      logger,
+    });
+    // Test-Hook (E2E): STREAMING_HUB_TEST_LOGO_ALLOW_HTTP=1 erlaubt http-Logos/-Seiten (lokaler Testserver), nur in isolierten Testläufen
+    const logoFinder = createLogoFinder({
+      net: createLogoNet({ timeoutMs: 8000 }),
+      allowHttp: isIsolatedTestRun(process.env) && process.env.STREAMING_HUB_TEST_LOGO_ALLOW_HTTP === '1',
+    });
+    registerRadioIpc({
+      ipcMain,
+      findLogo: homepage => logoFinder.find(homepage),
+      controller: radioController,
+      library: radioLibrary,
+      requireMainRenderer,
+      // Anzeige neben dem Tray-Symbol geändert: Titeltext sofort neu bewerten
+      onSettingsChanged: () => {
+        if (trayController) trayController.refresh();
+      },
+      refreshStreams: async () => {
+        const api = createApiClient({ servers: await resolveApiServers() });
+        const result = await refreshStreamUrls({ sources: radioLibrary.getSources(), refreshed: radioLibrary.getRefreshedStreams(), api, probe: probeStream });
+        radioLibrary.setRefreshedStreams(result.refreshed);
+        const { checked, updated, reverted, failed } = result;
+        return { checked, updated, reverted, failed };
+      },
+      sendToMain: (channel, payload) => {
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+        // Favoriten geändert: Tray-Menü (Untermenü „Favoriten“) auch bei geschlossenem Fenster auffrischen
+        if (channel === 'radio:sources-changed' && trayController) trayController.refreshRadioMenu();
+      },
+      logger,
+    });
+    // Option "Beim Start letzten Sender fortsetzen" (Standard aus): sonst startet das Radio nie von selbst
+    try {
+      if (radioController.resumeOnStart()) logger.info('Radio: letzter Sender wird fortgesetzt');
+    } catch (e) {
+      logger.warn('Radio: Fortsetzen beim Start fehlgeschlagen:', e.message);
+    }
+    // Radio stoppt oder scheitert, während kein Fenster mehr offen ist: kein Grund mehr, im Tray zu bleiben
+    radioController.on('state', status => {
+      if ((status.status === 'idle' || status.status === 'error') && BrowserWindow.getAllWindows().length === 0) {
+        quitUnlessKeptAlive();
+      }
+    });
+  } catch (e) {
+    logger.error('Radio konnte nicht eingerichtet werden:', e.message);
+  }
 
   // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
   // "vorhanden + ausführbar + -version ok". Fehlschlag wird als sichtbarer
@@ -1008,6 +1100,35 @@ app.whenReady().then(() => {
         openPlanning: () => openRecordingsTab('planned'),
         getPlanned: () => (scheduler ? scheduler.list() : []),
         confirmQuit: () => quitCoordinator.confirmQuit(),
+        // Radio (R4): Steuerung, Favoriten (Dashboard-Reihenfolge) und Sprung ins Radio-Dashboard
+        radio: radioController,
+        getRadioFavorites: () =>
+          radioLibrary
+            ? radioLibrary.getFavoriteKeys().map(key => {
+                const station = radioLibrary.getStation({ sourceId: key.sourceId, stationId: key.id });
+                return { sourceId: key.sourceId, id: key.id, name: station ? station.name : '', logo: station ? station.logo : undefined };
+              })
+            : [],
+        getTrayDisplay: () => (radioLibrary ? radioLibrary.getSettings().trayDisplay : 'station-title'),
+        getTrayScroll: () => (radioLibrary ? radioLibrary.getSettings().trayScroll !== false : true),
+        getTrayScrollMode: () => (radioLibrary ? radioLibrary.getSettings().trayScrollMode : 'smooth'),
+        // Pixelweiser Lauftext: Textbild kommt aus dem unsichtbaren Player-Fenster, Template-Bild, macOS färbt es wie den Menüleistentext
+        renderTrayText: createTrayTextRenderer({ getWebContents: () => (radioController ? radioController.playerWebContents() : null), nativeImage }),
+        getReducedMotion: () => Boolean(systemPreferences.getAnimationSettings && systemPreferences.getAnimationSettings().prefersReducedMotion),
+        canPlayLast: () => {
+          const last = radioLibrary ? radioLibrary.getSettings().lastStation : null;
+          return Boolean(last && radioLibrary.getStation({ sourceId: last.sourceId, stationId: last.id }));
+        },
+        // Menü-Icons der Favoriten (16 px, userData/radio-logo-cache); folgt dem zentralen Logo-Schalter
+        logoCache: createRadioLogoCache({
+          dir: path.join(app.getPath('userData'), 'radio-logo-cache'),
+          net: createLogoNet({ timeoutMs: 8000 }),
+          nativeImage,
+          onChange: () => trayController && trayController.refreshRadioMenu(),
+          logger,
+        }),
+        logosEnabled: () => logosShown(),
+        openRadio: openRadioDashboard,
         appRoot: __dirname,
       });
       trayController.create();
@@ -1110,22 +1231,31 @@ app.whenReady().then(() => {
   }
 });
 
-app.on('window-all-closed', () => {
+// Radio (Konzept §2): läuft oder pausiert das Radio, bleibt die App im Tray (Option "weiterspielen", Standard an).
+function radioKeepAliveContext() {
+  let settings = null;
+  try {
+    settings = radioLibrary ? radioLibrary.getSettings() : null;
+  } catch (_) {
+    // Einstellungen nicht lesbar: Standardverhalten (weiterspielen)
+  }
+  return { controller: radioController, settings, hasTray: Boolean(trayController) };
+}
+
+function quitUnlessKeptAlive() {
   // Konzept §3.2: Fenster schließen ≠ App beenden, solange ≥ 1 Aufnahme
   // läuft — die App geht in den Tray (TrayController übernimmt). Ohne
   // aktive Aufnahmen gilt das normale Quit-Verhalten.
-  if (recorder && recorder.activeJobs().length > 0) {
-    logger.info('Fenster geschlossen — App bleibt wegen laufender Aufnahme(n) im Tray aktiv');
-    return;
-  }
-  // Etappe 2a (§3.5): auch anstehende Planungen (state scheduled, Ende in der
-  // Zukunft) halten die App im Tray — der Scheduler läuft im Main.
-  if (scheduler && scheduler.hasPendingSchedules()) {
-    logger.info('Fenster geschlossen — App bleibt wegen geplanter Aufnahme(n) im Tray aktiv');
+  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext() });
+  if (!decision.quit) {
+    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio' }[decision.reason];
+    logger.info(`Fenster geschlossen — App bleibt wegen ${why} im Tray aktiv`);
     return;
   }
   app.quit();
-});
+}
+
+app.on('window-all-closed', quitUnlessKeptAlive);
 
 // Quit-Cleanup (Karte t_695bf150): JEDER Quit-Weg (Cmd+Q/Dock ohne Tray-
 // Umweg, app.quit() aus Tray/powerMonitor/Updater-Relaunch) läuft durch
@@ -1141,6 +1271,7 @@ app.on('before-quit', event => {
   // Beenden-Dialog bei Planung < 24 h (Etappe 2b): Quit wird dafür zunächst abgebrochen;
   // der Cleanup unten läuft erst, wenn der Quit wirklich durchgeht.
   if (quitCoordinator.handleBeforeQuit(event)) return;
+  if (radioController) radioController.dispose();
   if (standbyGuard) standbyGuard.release();
   // Wecktermine sind ohne laufende App sinnlos: löschen und Helfer beenden
   if (wakeScheduler) wakeScheduler.cancelAll();

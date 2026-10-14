@@ -123,7 +123,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
   test('Einstellung „Startansicht“ (LiveTV: EPG): speichern, ungültige Werte werden abgelehnt, nächstes Öffnen wirkt', async () => {
     await closeOverlay(page);
     await page.locator('#overlayNav [data-section="settings"]').click();
-    const group = page.locator('#settingsNav .settings-nav-group');
+    const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
     if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
     await page.locator('#settingsTab-livetv-epg').click();
     const select = page.locator('#settingsEpgStartView');

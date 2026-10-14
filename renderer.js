@@ -18,6 +18,9 @@ const { createSettingsView } = require('./settings-view.js');
 const { createEpgView } = require('./epg-view.js');
 const { createTvSourcesView } = require('./settings-tv-sources.js');
 const { createTvChannelsView } = require('./settings-tv-channels.js');
+const { createRadioStationsView } = require('./settings-radio-stations.js');
+const { createRadioCustomView } = require('./settings-radio-custom.js');
+const { createRadioPlaybackView } = require('./settings-radio-playback.js');
 const { orderFavoriteChannels } = require('./lib/settings-channel-logic.js');
 const {
   formatDuration,
@@ -26,6 +29,10 @@ const {
 } = require('./lib/recorder/ui-model.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const { createDashboardHub } = require('./dashboard-hub-view.js');
+const { createRadioDashboard } = require('./radio-dashboard-view.js');
+const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
+const { favoriteCountOf } = require('./radio-dashboard-model.js');
+const { radioActionForVideoStart } = require('./radio-tv-conflict-model.js');
 const { renderUpdateNotes } = require('./update-notes-model.js');
 
 function safeResourceUrl(value, { allowRelative = true } = {}) {
@@ -406,7 +413,8 @@ function switchWebview(useTv) {
   } else {
     // TV-Stream stoppen via about:blank (räumt HLS.js + Video in der IIFE auf)
     try {
-      tvView.loadURL('about:blank');
+      // Ein überlappendes Laden bricht diese Navigation mit ERR_ABORTED ab; die Ablehnung ist erwartet und harmlos
+      Promise.resolve(tvView.loadURL('about:blank')).catch(() => {});
     } catch (_e) {
       /* tvView noch nicht geladen */
     }
@@ -455,6 +463,8 @@ const dashboardGrid = document.getElementById('dashboardGrid');
 const dashboardEmpty = document.getElementById('dashboardEmpty');
 const dashboardHub = document.getElementById('dashboardHub');
 const dashboardHubCards = document.getElementById('dashboardHubCards');
+const radioDashboardRoot = document.getElementById('radioDashboard');
+const radioMiniPlayerRoot = document.getElementById('radioMiniPlayer');
 const dashboardTvStatus = document.getElementById('dashboardTvStatus');
 const dashboardTvStatusBtn = document.getElementById('dashboardTvStatusBtn');
 const dashboardTvRefresh = document.getElementById('dashboardTvRefresh');
@@ -517,10 +527,69 @@ function scheduleDashboardHubRefresh() {
     if (isLiveTvDashboardVisible()) dashboardHubView.refresh();
   }, 250);
 }
+// ── Radio (R2): Dashboard, Mini-Player und Ton-Konflikt mit Bildwiedergabe ──
+const RADIO_MANAGEMENT_PAGE = 'radio-stations';
+let radioFavoriteCount = 0;
+let radioLatestState = null;
+let htmlFullscreenActive = false;
+
+function openRadioManagement() {
+  openSettingsPage(RADIO_MANAGEMENT_PAGE);
+}
+
+const radioDashboardView = createRadioDashboard(radioDashboardRoot, {
+  radio: window.radio,
+  logger,
+  notify: showTvToast,
+  onOpenManagement: openRadioManagement,
+});
+const radioMiniPlayerView = createRadioMiniPlayer(radioMiniPlayerRoot, {
+  radio: window.radio,
+  logger,
+  notify: showTvToast,
+  getFavoriteCount: () => radioFavoriteCount,
+  onOpenRadio: () => showDashboard('radio'),
+});
+
+function updateRadioFavoriteCount(sources) {
+  radioFavoriteCount = favoriteCountOf(sources);
+  radioMiniPlayerView.render();
+}
+window.radio.getSources().then(updateRadioFavoriteCount).catch(() => {});
+window.radio.onSourcesChanged(updateRadioFavoriteCount);
+window.radio.onOpen?.(() => showDashboard('radio'));
+window.radio.getState().then(initial => (radioLatestState = radioLatestState || initial)).catch(() => {});
+window.radio.onState(next => {
+  radioLatestState = next;
+});
+
+// Mini-Player im Webview-/Player-Vollbild ausblenden
+function syncRadioMiniPlayerSuppression() {
+  radioMiniPlayerView.setSuppressed(htmlFullscreenActive || Boolean(document.fullscreenElement));
+}
+function setHtmlFullscreen(active) {
+  htmlFullscreenActive = active;
+  syncRadioMiniPlayerSuppression();
+}
+
+// Ton-Konflikt: Startet LiveTV, ein Streamingdienst oder eine Aufnahme-Wiedergabe, wird das Radio pausiert
+// (Einstellung pauseOnTv). Kein automatisches Fortsetzen; Radio-Start berührt laufende Bilder nicht.
+async function pauseRadioForVideo() {
+  if (!radioLatestState || radioLatestState.status === 'idle') return;
+  try {
+    const action = radioActionForVideoStart(radioLatestState, await window.radio.getSettings());
+    if (action === 'pause') await window.radio.pause();
+    else if (action === 'stop') await window.radio.stop();
+  } catch (error) {
+    logger.warn('Radio konnte beim Start der Bildwiedergabe nicht pausiert werden:', error && error.message ? error.message : error);
+  }
+}
+
 dashboardPlayerClose.addEventListener('click', closeDashboardPlayer);
 dashboardPlayer.addEventListener('dblclick', closeDashboardPlayer);
 document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement && activePreview?.fullscreen) closeDashboardPlayer();
+  syncRadioMiniPlayerSuppression();
 });
 
 // Mediathek mapping for EPG -> service search (now in typed-core tv.ts)
@@ -619,6 +688,7 @@ function openDashboardPlayer(tile, ch) {
   dashboardPlayer.style.display = '';
   activePreview.fullscreen = true;
   dashboardPlayer.requestFullscreen().catch(() => {});
+  pauseRadioForVideo();
 }
 
 function disposeDashboardPlayback() {
@@ -769,9 +839,11 @@ function renderStartDashboard() {
   dashboardGrid.setAttribute('aria-label', 'Bereiche');
   dashboardGrid.innerHTML = '';
   dashboardHub.hidden = true;
+  radioDashboardRoot.hidden = true;
   dashboardEmpty.style.display = 'none';
   const sections = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
+    { key: 'radio', label: 'Radio', icon: 'radio-icon.png', color: '#f59e0b' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
     // 3.6b: keine Kachel „Aufnahmen“ mehr (wie der NavBar-Eintrag, P21); der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
@@ -811,22 +883,26 @@ function renderDashboard(groupKey, opts = {}) {
   dashboardView.classList.toggle('settings-dashboard', groupKey === 'settings');
   dashboardView.classList.toggle('recordings-dashboard', groupKey === 'recording');
   const isTv = groupKey === 'livetv';
+  const isRadio = groupKey === 'radio';
   const isSettings = groupKey === 'settings';
   const isRecording = groupKey === 'recording';
-  const items = isTv || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
-  const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : isRecording ? 'Aufnahmen' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+  const items = isTv || isRadio || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
+  const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : isRadio ? 'Radio' : isRecording ? 'Aufnahmen' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
   dashboardEyebrow.textContent = isSettings
     ? 'Streaming Hub'
     : isTv
       ? 'Live Fernsehen'
-      : isRecording
-        ? 'Deine Aufnahmen'
-        : groupKey === 'mediathek'
-          ? 'Deine Mediatheken'
-          : 'Deine Streamingdienste';
+      : isRadio
+        ? 'Deine Radiosender'
+        : isRecording
+          ? 'Deine Aufnahmen'
+          : groupKey === 'mediathek'
+            ? 'Deine Mediatheken'
+            : 'Deine Streamingdienste';
   dashboardTitle.textContent = title;
   dashboardHub.hidden = !isTv;
-  dashboardCount.textContent = isTv || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
+  radioDashboardRoot.hidden = !isRadio;
+  dashboardCount.textContent = isTv || isRadio || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
   dashboardGrid.setAttribute('aria-label', title);
   settingsPanelHost.hidden = groupKey !== 'settings';
   dashboardGrid.innerHTML = '';
@@ -845,6 +921,8 @@ function renderDashboard(groupKey, opts = {}) {
     loadEpgStartViewUi();
   } else if (isTv) {
     renderLiveTvDashboard();
+  } else if (isRadio) {
+    radioDashboardView.render();
   } else if (isRecording) {
     // Aufnahmen-Dashboard (Fix-Set 4): reguläre View, kein Overlay
     renderRecordingDashboard();
@@ -888,17 +966,20 @@ function showDashboard(groupKey, opts = {}) {
         ? 'Einstellungen'
         : groupKey === 'livetv'
           ? 'LiveTV'
-          : groupKey === 'mediathek'
-            ? 'Mediatheken'
-            : groupKey === 'recording'
-              ? 'Aufnahmen'
-              : 'Streaming';
+          : groupKey === 'radio'
+            ? 'Radio'
+            : groupKey === 'mediathek'
+              ? 'Mediatheken'
+              : groupKey === 'recording'
+                ? 'Aufnahmen'
+                : 'Streaming';
   overlayBar.classList.add('always-visible');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   if (groupKey === 'livetv') {
     ensureTvDataLoaded();
     dashboardHubView.refresh();
   }
+  if (groupKey === 'radio') radioDashboardView.refresh();
 }
 
 function getIconSrc(svc) {
@@ -919,6 +1000,7 @@ function renderNav() {
 
   const groups = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png' },
+    { key: 'radio', label: 'Radio', icon: 'radio-icon.png' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png' },
     // 3.6b (P21): kein Aufnahmen-Eintrag mehr; der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
@@ -1081,6 +1163,7 @@ function navigateTo(svc) {
   currentProvider = svc.id;
   currentDashboardGroup = null;
   lastMediaTitle = '';
+  pauseRadioForVideo();
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const btn = nav.querySelector(`.nav-item[data-provider="${svc.id}"]`);
   if (btn) btn.classList.add('active');
@@ -1843,6 +1926,7 @@ async function selectTvChannel(ch, options = {}) {
   // Switch to TV mode: load player in tvView
   currentProvider = '__tv__';
   switchWebview(true);
+  pauseRadioForVideo();
   lastMediaTitle = 'TV: ' + ch.name;
   welcomeScreen.style.display = 'none';
   if (dashboardView) dashboardView.style.display = 'none';
@@ -2711,6 +2795,7 @@ async function openRecordingPlayback(meta) {
     closeRecordingPlayback();
     hideRecordingPlayerError();
     recordingPlayer.style.display = 'flex';
+    pauseRadioForVideo();
     if (file.kind === 'hls' && typeof Hls !== 'undefined' && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: false });
       recordingPlaybackHls = hls;
@@ -2965,9 +3050,11 @@ webview.addEventListener('permissionrequest', e => {
 
 webview.addEventListener('enter-html-full-screen', () => {
   overlayBar.classList.add('is-fullscreen');
+  setHtmlFullscreen(true);
 });
 webview.addEventListener('leave-html-full-screen', () => {
   overlayBar.classList.remove('is-fullscreen');
+  setHtmlFullscreen(false);
 });
 webview.addEventListener('did-fail-load', e => {
   if (e.errorCode === -3) return;
@@ -2989,9 +3076,11 @@ webview.addEventListener('unresponsive', () => {
 
 tvView.addEventListener('enter-html-full-screen', () => {
   overlayBar.classList.add('is-fullscreen');
+  setHtmlFullscreen(true);
 });
 tvView.addEventListener('leave-html-full-screen', () => {
   overlayBar.classList.remove('is-fullscreen');
+  setHtmlFullscreen(false);
 });
 tvView.addEventListener('did-attach', () => {
   tvViewReady = true;
@@ -3519,8 +3608,21 @@ const settingsPanelHost = document.getElementById('settingsPanelHost');
 const settingsView = createSettingsView(settingsPanel, {
   onShow: page => {
     if (page === 'livetv-channels' && settingsTvChannelsView) settingsTvChannelsView.render();
+    if (page === 'radio-stations') settingsRadioStationsView.refresh();
+    if (page === 'radio-custom') settingsRadioCustomView.refresh();
+    if (page === 'radio-playback') settingsRadioPlaybackView.refresh();
   },
 });
+const settingsRadioStationsView = createRadioStationsView(document.getElementById('settingsRadioStationsRoot'), {
+  radio: window.radio,
+  logger,
+  onEditCustom: id => {
+    settingsView.showPage('radio-custom');
+    settingsRadioCustomView.edit(id);
+  },
+});
+const settingsRadioCustomView = createRadioCustomView(document.getElementById('settingsRadioCustomRoot'), { radio: window.radio, logger });
+const settingsRadioPlaybackView = createRadioPlaybackView(document.getElementById('settingsRadioPlaybackRoot'), { radio: window.radio, logger });
 settingsTvChannelsView = createTvChannelsView({
   root: settingsPanel,
   api: window.electronAPI,
