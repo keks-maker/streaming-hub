@@ -22,7 +22,7 @@ require.cache[require.resolve('electron')] = {
   filename: 'electron-mock',
   loaded: true,
   exports: {
-    nativeImage: { createFromPath: p => ({ isEmpty: () => false, p, resize: () => ({ toBitmap: () => Buffer.alloc(64 * 64 * 4, 5) }) }), createEmpty: () => ({}) },
+    nativeImage: { createFromPath: p => ({ isEmpty: () => false, p, template: false, setTemplateImage(v) { this.template = v; }, isTemplateImage() { return this.template; }, resize: ({ width = 64 } = {}) => ({ toBitmap: () => Buffer.alloc(width * width * 4, 5) }) }), createEmpty: () => ({}) },
     Tray: class {
       setToolTip(t) { trayCalls.tooltips.push(t); }
       setTitle(t, o) { trayCalls.titles.push(t); trayCalls.fonts.push(o && o.fontType ? o.fontType : null); }
@@ -263,6 +263,37 @@ test('Tooltip: Aufnahme unverändert, sonst Sender bei Radio', () => {
   assert.equal(trayTooltip(0, radio({ state: 'idle', station: null })), 'Streaming Hub');
 });
 
+function readPngRgba(file) { // minimaler Dekoder für die vom Generator erzeugten PNGs (RGBA8, Filter 0)
+  const buf = fs.readFileSync(file);
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  let o = 8;
+  const idat = [];
+  while (o < buf.length) {
+    const len = buf.readUInt32BE(o);
+    if (buf.toString('ascii', o + 4, o + 8) === 'IDAT') idat.push(buf.subarray(o + 8, o + 8 + len));
+    o += 12 + len;
+  }
+  const raw = require('node:zlib').inflateSync(Buffer.concat(idat));
+  const rgba = Buffer.alloc(width * height * 4);
+  for (let y = 0; y < height; y += 1) raw.copy(rgba, y * width * 4, y * (1 + width * 4) + 1, (y + 1) * (1 + width * 4));
+  return { width, height, rgba };
+}
+
+test('Template-Glyph tray-radio-template(.@2x).png: 16/32 px, schwarz, nur Alpha trägt die Form', () => {
+  for (const [name, size] of [['tray-radio-template.png', 16], ['tray-radio-template@2x.png', 32]]) {
+    const { width, height, rgba } = readPngRgba(path.join(__dirname, '..', 'assets', 'tray', name));
+    assert.deepEqual([width, height], [size, size], name);
+    let solid = 0;
+    for (let i = 0; i < width * height; i += 1) {
+      assert.deepEqual([...rgba.subarray(i * 4, i * 4 + 3)], [0, 0, 0], 'RGB schwarz');
+      if (rgba[i * 4 + 3] === 255) solid += 1;
+    }
+    assert.ok(solid > width * height * 0.15, 'lesbare Silhouette');
+    assert.equal(rgba[3], 0, 'Ecke transparent');
+  }
+});
+
 test('Icon-Datei tray-radio.png existiert (vom Build-Skript erzeugt)', () => {
   const file = path.join(__dirname, '..', 'assets', 'tray', 'tray-radio.png');
   assert.ok(fs.existsSync(file));
@@ -367,7 +398,8 @@ test('TrayController: Icon und Tooltip folgen dem Radio; Aufnahme hat Vorrang', 
   const { controller } = makeController(fake);
   controller.create();
   controller.refresh();
-  assert.match(trayCalls.images.at(-1).p, /tray-radio\.png$/);
+  assert.match(trayCalls.images.at(-1).p, /tray-radio-template\.png$/);
+  assert.equal(trayCalls.images.at(-1).isTemplateImage(), true, 'Radio-Symbol ist ein Template-Bild');
   assert.equal(trayCalls.tooltips.at(-1), 'Streaming Hub — Radio: Zwei');
   fake.push({ status: 'paused' });
   assert.match(trayCalls.images.at(-1).p, /tray-idle\.png$/);
@@ -913,20 +945,17 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 function makePixel(initial = {}, opts = {}) {
   const renders = [];
   const created = [];
-  const theme = new EventEmitter();
-  theme.shouldUseDarkColors = false;
   const s = makeScrolling(initial, {
-    renderTrayText: async (text, { dark }) => {
-      renders.push({ text, dark });
+    renderTrayText: async text => {
+      renders.push({ text });
       if (opts.renderFails) return null;
       const width = (opts.textWidthPt || PIXEL_WINDOW_WIDTH + 80) * 2;
       return { buffer: Buffer.alloc(width * 64 * 4, 1), width, height: 64 };
     },
-    createImage: (buffer, options) => { const image = { frame: true, ...options }; created.push(image); return image; },
-    nativeTheme: theme,
+    createImage: (buffer, options) => { const image = { frame: true, template: false, setTemplateImage(v) { this.template = v; }, ...options }; created.push(image); return image; },
     ...(opts.controller || {}),
   });
-  return { ...s, renders, created, theme };
+  return { ...s, renders, created };
 }
 
 test('Pixelmodus: langer Text wird einmal gerendert, Frames per setImage, setTitle(\'\') währenddessen, genau ein Takt', async () => {
@@ -937,7 +966,6 @@ test('Pixelmodus: langer Text wird einmal gerendert, Frames per setImage, setTit
   await flush();
   assert.equal(s.renders.length, 1);
   assert.equal(s.renders[0].text, FULL);
-  assert.equal(s.renders[0].dark, false);
   assert.equal(s.live().length, 1, 'ein Takt (30 fps), kein Schrittmodus-Timer');
   assert.equal(s.live()[0].ms, 33);
   assert.equal(trayCalls.titles.at(-1), '', 'kein doppelter Text');
@@ -964,7 +992,7 @@ test('Pixelmodus: Titelwechsel rendert neu (ein Takt), Pause/idle/error/Aufnahme
   assert.equal(s.live().length, 0, 'Pause: Takt aus');
   assert.equal(trayCalls.titles.at(-1), '⏸ Zwei', 'statischer Titel');
   assert.equal(trayCalls.images.at(-1).frame, undefined, 'ursprüngliches Symbol wieder gesetzt');
-  assert.ok(trayCalls.images.at(-1).p.endsWith('tray-idle.png') || trayCalls.images.at(-1).p.endsWith('tray-radio.png'));
+  assert.ok(trayCalls.images.at(-1).p.endsWith('tray-idle.png') || trayCalls.images.at(-1).p.endsWith('tray-radio-template.png'));
   s.fake.push({ status: 'playing' });
   await flush();
   assert.equal(s.live().length, 1);
@@ -987,19 +1015,40 @@ test('Pixelmodus: Titelwechsel rendert neu (ein Takt), Pause/idle/error/Aufnahme
   rec.controller.destroy();
 });
 
-test('Pixelmodus: Symbolwechsel (refresh) überschreibt das Frame nicht; destroy räumt Takt, Bilder und Theme-Listener auf', async () => {
+test('Pixelmodus: Symbolwechsel (refresh) überschreibt das Frame nicht; destroy räumt Takt und Bilder auf', async () => {
   const s = makePixel();
   s.controller.create();
   await flush();
   const before = trayCalls.images.length;
   s.controller.refresh();
   assert.equal(trayCalls.images.length, before, 'refresh setzt im Bildmodus kein Symbol');
-  assert.equal(s.theme.listenerCount('updated'), 1);
   s.controller.destroy();
   assert.equal(s.live().length, 0);
-  assert.equal(s.theme.listenerCount('updated'), 0);
   assert.equal(s.controller._iconBitmaps.size, 0);
   assert.equal(s.controller._pixel.active, false);
+});
+
+test('Pixelmodus: Template-Symbol im Frame (nicht das farbige); Aufnahme verlässt den Bildmodus mit farbigem Symbol', async () => {
+  const s = makePixel();
+  s.controller.create();
+  await flush();
+  const icon = s.controller._iconBitmaps.get('radio');
+  assert.deepEqual({ w: icon.width, h: icon.height }, { w: 64, h: 64 });
+  assert.equal(icon.buffer.length, 64 * 64 * 4);
+  assert.equal(icon.buffer[0], 0, 'Rand des Template-Symbols transparent');
+  s.controller.recorder.activeJobs = () => [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }];
+  s.controller.refresh();
+  assert.equal(s.live().length, 0, 'Aufnahme: Takt aus');
+  assert.match(trayCalls.images.at(-1).p, /tray-rec\.png$/);
+  assert.equal(trayCalls.images.at(-1).isTemplateImage(), false, 'Aufnahme-Symbol bleibt farbig (kein Template)');
+  s.controller.destroy();
+});
+
+test('TrayController: kein nativeTheme-Bezug mehr (weder Option noch Listener)', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'TrayController.js'), 'utf8');
+  assert.doesNotMatch(src, /shouldUseDarkColors|nativeTheme|_onThemeUpdated/);
+  const trayText = fs.readFileSync(path.join(__dirname, '..', 'lib', 'radio', 'tray-text-renderer.js'), 'utf8');
+  assert.doesNotMatch(trayText, /shouldUseDarkColors|nativeTheme/);
 });
 
 test('Pixelmodus: Text, der ins Fenster passt, bleibt statischer Titel ohne Takt; Texte ≤ 28 Zeichen werden nicht gerendert', async () => {
@@ -1066,16 +1115,14 @@ test('Pixelmodus: trayScrollMode „steps“ rendert nie; Wechsel zur Laufzeit; 
   linux.controller.destroy();
 });
 
-test('Pixelmodus: Hell/Dunkel-Wechsel rendert den Text in der neuen Farbe neu; „Bewegung reduzieren“ stoppt den Bildmodus', async () => {
+test('Pixelmodus: Frames sind Template-Bilder, kein nativeTheme; „Bewegung reduzieren“ stoppt den Bildmodus', async () => {
   let reduced = false;
   const s = makePixel({}, { controller: { getReducedMotion: () => reduced } });
   s.controller.create();
   await flush();
-  s.theme.shouldUseDarkColors = true;
-  s.theme.emit('updated');
-  await flush();
-  assert.equal(s.renders.length, 2);
-  assert.equal(s.renders[1].dark, true);
+  assert.equal(s.renders.length, 1, 'Farbe ist Sache von macOS: kein Neu-Rendern bei Darstellungswechsel');
+  const frame = trayCalls.images.filter(i => i.frame).at(-1);
+  assert.equal(frame.template, true, 'Lauftext-Frame wird als Template-Bild gesetzt');
   assert.equal(s.live().length, 1);
   reduced = true;
   s.controller.refresh();

@@ -5,7 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { composeFrame, frameSize } = require('../lib/radio/tray-frame.js');
+const { composeFrame, frameSize, centerInSquare } = require('../lib/radio/tray-frame.js');
 const { TrayPixelMarquee, SCALE, FRAME_HEIGHT_PT, GAP_PT } = require('../lib/radio/tray-pixel-marquee.js');
 const { PIXEL_WINDOW_WIDTH, PIXEL_FPS } = require('../lib/radio/tray-marquee.js');
 const { createTrayTextRenderer, renderScript } = require('../lib/radio/tray-text-renderer.js');
@@ -78,7 +78,7 @@ const ICON = bitmap(FRAME_HEIGHT_PT * SCALE, FRAME_HEIGHT_PT * SCALE, () => 7);
 
 test('Pixelmarquee: Start rendert einmal, setzt das erste Frame und startet den Takt (30 fps)', async () => {
   const { marquee, calls, live } = makeMarquee();
-  assert.equal(await marquee.start({ text: 'lang', icon: ICON, dark: true }), 'scrolling');
+  assert.equal(await marquee.start({ text: 'lang', icon: ICON }), 'scrolling');
   assert.equal(marquee.active, true);
   assert.equal(live().length, 1);
   assert.equal(live()[0].ms, Math.round(1000 / PIXEL_FPS));
@@ -91,7 +91,7 @@ test('Pixelmarquee: Start rendert einmal, setzt das erste Frame und startet den 
 
 test('Pixelmarquee: Frame nur bei geändertem Pixelversatz, Breite bleibt konstant, Neustart nach dem Zyklus', async () => {
   const { marquee, calls, advance, tick } = makeMarquee({ textWidthPt: PIXEL_WINDOW_WIDTH + 64 });
-  await marquee.start({ text: 'x', icon: ICON, dark: false });
+  await marquee.start({ text: 'x', icon: ICON });
   const widths = new Set(calls.images.map(i => i.width));
   tick(); tick();
   assert.equal(calls.images.length, 1, 'Anfangspause und gleicher Versatz: kein neues Bild');
@@ -109,7 +109,7 @@ test('Pixelmarquee: Frame nur bei geändertem Pixelversatz, Breite bleibt konsta
 
 test('Pixelmarquee: Text passt ins Fenster → „static“, kein Takt, kein Bild', async () => {
   const { marquee, calls, live } = makeMarquee({ textWidthPt: PIXEL_WINDOW_WIDTH });
-  assert.equal(await marquee.start({ text: 'kurz', icon: ICON, dark: false }), 'static');
+  assert.equal(await marquee.start({ text: 'kurz', icon: ICON }), 'static');
   assert.equal(marquee.active, false);
   assert.equal(live().length, 0);
   assert.equal(calls.images.length, 0);
@@ -118,15 +118,15 @@ test('Pixelmarquee: Text passt ins Fenster → „static“, kein Takt, kein Bil
 test('Pixelmarquee: Renderfehler oder leeres Ergebnis → „failed“; Bildfehler im Takt → onFail und Takt aus', async () => {
   for (const render of [async () => null, async () => { throw new Error('x'); }, async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0 })]) {
     const { marquee, live } = makeMarquee({ render });
-    assert.equal(await marquee.start({ text: 'a', icon: ICON, dark: false }), 'failed');
+    assert.equal(await marquee.start({ text: 'a', icon: ICON }), 'failed');
     assert.equal(live().length, 0);
   }
   const broken = makeMarquee({ setImageThrows: true });
-  assert.equal(await broken.marquee.start({ text: 'a', icon: ICON, dark: false }), 'failed', 'erstes Frame nicht setzbar');
+  assert.equal(await broken.marquee.start({ text: 'a', icon: ICON }), 'failed', 'erstes Frame nicht setzbar');
   assert.equal(broken.live().length, 0, 'Takt aufgeräumt');
   let failed = 0;
   const later = makeMarquee({ onFail: () => { failed += 1; } });
-  await later.marquee.start({ text: 'a', icon: ICON, dark: false });
+  await later.marquee.start({ text: 'a', icon: ICON });
   later.advance(5000);
   later.calls.ticks[0].fn.call(null);
   assert.equal(failed, 0, 'solange das Setzen klappt, kein onFail');
@@ -143,13 +143,13 @@ test('Pixelmarquee: neuer Start ersetzt Textbild und Takt (genau ein Takt), alte
       return bitmap((PIXEL_WINDOW_WIDTH + 50) * SCALE, FRAME_HEIGHT_PT * SCALE);
     },
   });
-  const first = marquee.start({ text: 'a', icon: ICON, dark: false });
-  const second = marquee.start({ text: 'b', icon: ICON, dark: false });
+  const first = marquee.start({ text: 'a', icon: ICON });
+  const second = marquee.start({ text: 'b', icon: ICON });
   assert.equal(await second, 'scrolling');
   release();
   assert.equal(await first, 'stale', 'überholter Render wirkt nicht');
   assert.equal(live().length, 1);
-  await marquee.start({ text: 'c', icon: ICON, dark: false });
+  await marquee.start({ text: 'c', icon: ICON });
   assert.equal(live().length, 1, 'Titelwechsel: weiterhin genau ein Takt');
   marquee.stop();
   assert.equal(live().length, 0);
@@ -159,7 +159,7 @@ test('Pixelmarquee: neuer Start ersetzt Textbild und Takt (genau ein Takt), alte
 
 test('Pixelmarquee: setIcon erzwingt ein neues Frame mit dem neuen Symbol', async () => {
   const { marquee, calls, tick } = makeMarquee();
-  await marquee.start({ text: 'a', icon: ICON, dark: false });
+  await marquee.start({ text: 'a', icon: ICON });
   marquee.setIcon(bitmap(ICON.width, ICON.height, () => 99));
   tick();
   assert.equal(calls.images.length, 2);
@@ -168,18 +168,18 @@ test('Pixelmarquee: setIcon erzwingt ein neues Frame mit dem neuen Symbol', asyn
 
 test('Textrenderer: Text nur als JSON-Literal im Skript, Ergebnis wird zur Bitmap; Fehler/kein Fenster → null', async () => {
   const evil = '"; require("fs"); // `${1}';
-  const script = renderScript(evil, { dark: true, scale: 2, heightPt: 32 });
+  const script = renderScript(evil, { scale: 2, heightPt: 32 });
   assert.ok(script.includes(JSON.stringify(evil)), 'Text als JSON-Literal');
   assert.ok(!script.includes(`const text = ${evil}`));
-  assert.match(script, /rgba\(255,255,255/);
-  assert.match(renderScript('x', { dark: false, scale: 2, heightPt: 32 }), /rgba\(0,0,0/);
+  assert.match(script, /fillStyle = '#000'/, 'Template: immer schwarz, nur Alpha trägt die Form');
+  assert.doesNotMatch(script, /rgba\(255|dark|nativeTheme/, 'keine Farbwahl nach Hell/Dunkel');
   assert.match(script, /-apple-system/);
 
   const scripts = [];
   const image = { isEmpty: () => false, getSize: () => ({ width: 6, height: 4 }), toBitmap: () => Buffer.alloc(96) };
   const wc = { isDestroyed: () => false, executeJavaScript: async code => { scripts.push(code); return { url: 'data:image/png;base64,AAAA', width: 6, height: 4 }; } };
   const render = createTrayTextRenderer({ getWebContents: () => wc, nativeImage: { createFromDataURL: url => (url.startsWith('data:image/png') ? image : null) } });
-  const result = await render('Hallo', { dark: false });
+  const result = await render('Hallo');
   assert.deepEqual({ w: result.width, h: result.height, len: result.buffer.length }, { w: 6, h: 4, len: 96 });
   assert.equal(scripts.length, 1);
 
@@ -192,4 +192,26 @@ test('Textrenderer: Text nur als JSON-Literal im Skript, Ergebnis wird zur Bitma
   await assert.rejects(createTrayTextRenderer({ getWebContents: () => failing, nativeImage: {} })('x'), /boom/);
   const hang = { isDestroyed: () => false, executeJavaScript: () => new Promise(() => {}) };
   await assert.rejects(createTrayTextRenderer({ getWebContents: () => hang, nativeImage: {}, timeoutMs: 20 })('x'), /Zeitüberschreitung/);
+});
+
+test('composeFrame: Template-Bild (schwarz + Alpha): Alpha bleibt, Kanten-Fade wirkt über Alpha', () => {
+  const icon = { buffer: Buffer.alloc(4 * 4 * 4), width: 4, height: 4 };
+  const text = { buffer: Buffer.alloc(40 * 4 * 4), width: 40, height: 4 };
+  for (let i = 0; i < text.width * text.height; i += 1) text.buffer[i * 4 + 3] = 200; // rgb = 0 (schwarz), Alpha 200
+  const out = composeFrame({ icon, text, offsetPx: 10, windowPx: 16, gapPx: 2, height: 4, fadePx: 4 });
+  const width = 4 + 2 + 16;
+  assert.equal(alpha(out, width, 6 + 8, 1), 200, 'Mitte: volles Alpha');
+  assert.ok(alpha(out, width, 6, 1) < 100 && alpha(out, width, 6, 1) > 0, 'linker Rand läuft über Alpha aus');
+  assert.ok(alpha(out, width, 6 + 15, 1) < 100, 'rechter Rand läuft über Alpha aus');
+  assert.equal(px(out, width, 6 + 8, 1), 0, 'Farbe bleibt schwarz');
+});
+
+test('centerInSquare: Bild mittig in transparentem Quadrat', () => {
+  const image = bitmap(4, 4, () => 7);
+  const out = centerInSquare(image, 8);
+  assert.deepEqual({ w: out.width, h: out.height, len: out.buffer.length }, { w: 8, h: 8, len: 256 });
+  assert.equal(alpha(out.buffer, 8, 0, 0), 0);
+  assert.equal(alpha(out.buffer, 8, 2, 2), 255);
+  assert.equal(px(out.buffer, 8, 5, 5), 7);
+  assert.equal(alpha(out.buffer, 8, 6, 6), 0);
 });

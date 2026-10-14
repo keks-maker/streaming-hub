@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -1112,9 +1112,8 @@ app.whenReady().then(() => {
         getTrayDisplay: () => (radioLibrary ? radioLibrary.getSettings().trayDisplay : 'station-title'),
         getTrayScroll: () => (radioLibrary ? radioLibrary.getSettings().trayScroll !== false : true),
         getTrayScrollMode: () => (radioLibrary ? radioLibrary.getSettings().trayScrollMode : 'smooth'),
-        // Pixelweiser Lauftext: Textbild kommt aus dem unsichtbaren Player-Fenster, Textfarbe folgt Hell/Dunkel
+        // Pixelweiser Lauftext: Textbild kommt aus dem unsichtbaren Player-Fenster, Template-Bild, macOS färbt es wie den Menüleistentext
         renderTrayText: createTrayTextRenderer({ getWebContents: () => (radioController ? radioController.playerWebContents() : null), nativeImage }),
-        nativeTheme,
         getReducedMotion: () => Boolean(systemPreferences.getAnimationSettings && systemPreferences.getAnimationSettings().prefersReducedMotion),
         canPlayLast: () => {
           const last = radioLibrary ? radioLibrary.getSettings().lastStation : null;
