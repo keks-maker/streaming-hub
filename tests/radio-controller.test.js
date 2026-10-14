@@ -139,6 +139,21 @@ test('ICY: Now Playing nach "playing", Wiederholung nach Intervall, Titelwechsel
   assert.ok(states.filter(s => s.nowPlaying).length >= 2);
 });
 
+test('ICY-Abfrage nutzt bei reiner Redirect-Auflösung die ursprüngliche URL (frischer Token), der Player die aufgelöste', async () => {
+  const icyUrls = [];
+  const { timers, startPlaying } = setup({
+    icy: async url => {
+      icyUrls.push(url);
+      return { title: 'T', artist: 'A', metaint: 16000 };
+    },
+  });
+  const play = await startPlaying();
+  assert.match(play.url, /\?resolved$/);
+  await timers.fire(0);
+  assert.equal(icyUrls[0], 'http://a.test/stream');
+  assert.doesNotMatch(icyUrls[0], /resolved/);
+});
+
 test('ICY: gleicher Titel löst kein neues Zustandsereignis aus', async () => {
   const { controller, timers, states, startPlaying } = setup();
   await startPlaying();

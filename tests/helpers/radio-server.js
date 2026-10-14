@@ -4,6 +4,7 @@
 // Dateien in tests/helpers sind KEINE Tests.
 
 const http = require('node:http');
+const net = require('node:net');
 
 const AUDIO = Buffer.alloc(2048, 0x55);
 
@@ -23,6 +24,49 @@ function icyBody(metaint, titles, { encoding = 'utf8' } = {}) {
     parts.push(Buffer.from([blocks]), padded);
   }
   return Buffer.concat(parts);
+}
+
+/**
+ * Rohes TCP wie streamabc.net: Statuszeile endet nur mit LF ("HTTP/1.0 200 OK\n", danach CRLF-Header). Electrons
+ * eingebauter fetch (undici) lehnt das ab ("Missing expected CR after response line"), node:http mit
+ * insecureHTTPParser nimmt es an. (Echtes "ICY 200 OK" lehnt auch node:http ab.) /redirect leitet per 302 auf /icy.mp3 um (wie streams.detektor.fm -> streamabc.net).
+ */
+function startRawIcyServer() {
+  const server = net.createServer(socket => {
+    let head = '';
+    socket.on('error', () => {});
+    socket.on('data', chunk => {
+      head += chunk.toString('latin1');
+      if (!head.includes('\r\n\r\n')) return;
+      const line = head.split('\r\n')[0];
+      const path = (line.split(' ')[1] || '/').split('?')[0];
+      const wantsMeta = /icy-metadata:\s*1/i.test(head);
+      const base = `http://127.0.0.1:${server.address().port}`;
+      if (path === '/redirect') {
+        socket.end(`HTTP/1.1 302 Found\r\nLocation: ${base}/icy.mp3?sABC=token\r\nContent-Length: 0\r\n\r\n`);
+      } else if (path === '/icy.mp3') {
+        const body = wantsMeta ? icyBody(2048, [null, 'Roh - Titel']) : Buffer.alloc(8192, 0x33);
+        const metaint = wantsMeta ? 'icy-metaint:2048\r\n' : '';
+        socket.end(Buffer.concat([Buffer.from(`HTTP/1.0 200 OK\nicy-name:Roher ICY\r\ncontent-type:audio/mpeg\r\n${metaint}\r\n`, 'latin1'), body]));
+      } else if (path === '/garbage') {
+        socket.end('das ist kein HTTP\r\n\r\n');
+      } else {
+        socket.end('HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n');
+      }
+    });
+  });
+  return new Promise(resolve => {
+    server.listen(0, '127.0.0.1', () =>
+      resolve({
+        base: `http://127.0.0.1:${server.address().port}`,
+        close: () =>
+          new Promise(done => {
+            server.close(done);
+            server.closeAllConnections?.();
+          }),
+      })
+    );
+  });
 }
 
 async function startRadioServer() {
@@ -109,15 +153,20 @@ async function startRadioServer() {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   server.closeAllConnections?.();
+  const raw = await startRawIcyServer();
   return {
     base,
+    rawBase: raw.base,
     log,
     close: () =>
-      new Promise(resolve => {
-        server.closeAllConnections();
-        server.close(resolve);
-      }),
+      Promise.all([
+        raw.close(),
+        new Promise(resolve => {
+          server.closeAllConnections();
+          server.close(resolve);
+        }),
+      ]),
   };
 }
 
-module.exports = { startRadioServer, icyBody, AUDIO };
+module.exports = { startRadioServer, startRawIcyServer, icyBody, AUDIO };
