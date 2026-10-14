@@ -1,6 +1,6 @@
 # Streaming Hub
 
-Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Electron. Bündelt Streaming-Dienste, Mediatheken und Live-TV in einer einheitlichen Oberfläche. Der Installer unterstützt Linux x86_64 sowie macOS auf Intel- und Apple-Silicon-Macs.
+Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Electron. Bündelt Streaming-Dienste, Mediatheken, Live-TV und Online-Radio in einer einheitlichen Oberfläche. Der Installer unterstützt Linux x86_64 sowie macOS auf Intel- und Apple-Silicon-Macs.
 
 ## Unterstützte Dienste
 
@@ -23,7 +23,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 
 ## Funktionen
 
-- **Start-Dashboard** – Schnellzugriff auf Live-TV, Streaming-Dienste, Mediatheken und Einstellungen
+- **Start-Dashboard** – Schnellzugriff auf Live-TV, Radio, Streaming-Dienste, Mediatheken und Einstellungen
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
 - **Radio** – Online-Radio mit mitgelieferter Senderliste (rund 250 deutsche Sender), eigenen Sendern per Stream-URL, Favoriten, Mini-Player und Steuerung aus dem Menüzeilensymbol; spielt auch bei geschlossenem Fenster weiter
 - **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste, Raster oder „Jetzt & Gleich“, Suche, Senderauswahl, Genre-Filter, Kanalansicht mit 7 Tagen je Sender, Details mit Poster, Besetzung und weiteren Terminen, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
@@ -35,7 +35,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 - **Streaming-DRM** – Netflix, Disney+ und Prime Video funktionieren mit Widevine
 - **Gespeicherte Logins** – Du meldest dich bei jedem Dienst nur einmal an
 - **Einstellungen** – Dienste, TV-Quellen, Sender, EPG, Wiedergabe, Aufnahmen und Radio an einem Ort
-- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen und Verlauf sichern und wiederherstellen
+- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen, Radio und Verlauf sichern und wiederherstellen
 - **Auto-Update** – Neue Versionen direkt aus der App installieren
 - **Tastaturkürzel** – für Navigation, Verlauf, Aufnahmen, Bild-in-Bild und Vollbild
 
@@ -88,13 +88,13 @@ Installationen über den In-App-Updater oder den Installer sind nicht betroffen
 
 Die Startseite bündelt die Bereiche Live-TV, Radio, Streaming, Mediatheken und Einstellungen; die Aufnahmen erreichst du über die Karte **Aufnahmen** im Live-TV-Dashboard. Wähle eine Kachel, um den Bereich zu öffnen.
 
-![Start-Dashboard mit den Bereichen Live-TV, Streaming, Mediatheken und Einstellungen](assets/screenshots/startseite.png)
+![Start-Dashboard mit den Bereichen Live-TV, Radio, Streaming, Mediatheken und Einstellungen](assets/screenshots/startseite.png)
 
 ### Navigationsleiste
 
 In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Radio, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
 
-![Navigationsleiste (LiveTV, Streaming, Mediatheken, Einstellungen) und Streaming-Dashboard](assets/screenshots/navbar.png)
+![Navigationsleiste (LiveTV, Radio, Streaming, Mediatheken, Einstellungen) und Streaming-Dashboard](assets/screenshots/navbar.png)
 
 ### Streaming-Dienste nutzen
 

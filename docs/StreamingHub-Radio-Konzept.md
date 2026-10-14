@@ -1,6 +1,6 @@
 # Streaming Hub — Konzept Online-Radio (v0.2)
 
-Stand: 14.10.2026. Status: **umgesetzt R1–R5** (Branch `feature/radio`, noch nicht veröffentlicht); Entscheidungen §9 nach Empfehlung getroffen, R0 abgeschlossen (Messreport `docs/radio-r0-messreport.md` auf Branch `spike/radio-r0`). Abweichungen der Umsetzung vom Entwurf: §13.
+Stand: 14.10.2026. Status: **umgesetzt R1–R5 und veröffentlicht mit Version 0.10.0 (14.10.2026)**; Entscheidungen §9 nach Empfehlung getroffen, R0 abgeschlossen (Ergebnisse in §12; der Spike-Branch `spike/radio-r0` mit Messreport und Rohdaten wurde gelöscht, letzter Stand `395f5e9` nur noch über das lokale Reflog erreichbar). Abweichungen der Umsetzung vom Entwurf: §13.
 Vorbild ist LiveTV (Dashboard, Senderverwaltung, Favoriten mit globaler Reihenfolge, Quellen mit Merge beim Update) und der Tray aus dem Aufnahme-Konzept.
 
 ## 1. Ziele und Abgrenzung
