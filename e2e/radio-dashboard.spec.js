@@ -121,7 +121,7 @@ test.describe('Radio-Oberfläche', () => {
     await expect(page.locator('#radioEmpty')).toBeVisible();
   });
 
-  test('Senderverwaltung: ohne Seite (R3) öffnet die allgemeinen Einstellungen', async () => {
+  test('Senderverwaltung: öffnet die Einstellungen (Seite Radio: Sender, siehe radio-settings.spec.js)', async () => {
     await page.locator('#radioManage').click();
     await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
     await openRadio(page);

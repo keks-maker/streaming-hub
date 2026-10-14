@@ -176,7 +176,7 @@ test('LiveTV: Werkzeugleiste (Senderverwaltung, Status, EPG aktualisieren); das 
 
 // LiveTV-Gruppe der Einstellungs-Seitenleiste aufklappen (falls zugeklappt).
 async function expandSettingsLiveTv() {
-  const group = page.locator('#settingsNav .settings-nav-group');
+  const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
   if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
   await expect(group).toHaveAttribute('aria-expanded', 'true');
 }
@@ -252,7 +252,7 @@ test('Einstellungen: Pfeiltasten im schmalen Layout erreichen LiveTV-Tabs', asyn
   try {
     await page.locator('#overlayNav [data-section="settings"]').click();
     await page.locator('#settingsTab-general').click();
-    const group = page.locator('#settingsNav .settings-nav-group');
+    const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
     if ((await group.getAttribute('aria-expanded')) === 'true') {
       await group.evaluate(el => el.click());
     }
