@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
-const { reconcilePostUpdate } = require('./lib/post-update-reconcile.js');
+const { reconcilePostUpdate, reconcileRadioSources } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
 const { revealWindow, isBackgroundE2E } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
@@ -34,6 +34,10 @@ const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
+const { RadioController } = require('./lib/radio/RadioController.js');
+const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
+const { registerRadioIpc } = require('./lib/radio/ipc.js');
+const { radioKeepsAppAlive } = require('./lib/radio/keep-alive.js');
 
 /**
  * Freier Speicherplatz am Root (bytes) oder null, wenn nicht ermittelbar
@@ -63,6 +67,8 @@ let recorder = null;
 // Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
 let epgService = null;
 let trayController = null;
+let radioController = null;
+let radioLibrary = null;
 // Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
 let scheduler = null;
 // Standby-Schutz (Etappe 2b): powerSaveBlocker bei Aufnahme/anstehendem Start
@@ -570,6 +576,9 @@ function createWindow() {
   // (Tray „App öffnen“/„Planung öffnen“ und das Dock-Icon erzeugen es neu).
   createdWindow.on('closed', () => {
     if (mainWindow === createdWindow) mainWindow = null;
+    // Das unsichtbare Radio-Player-Fenster zählt als Fenster: ohne "weiterspielen" (oder ohne Tray) beenden,
+    // sonst käme window-all-closed nie und die App bliebe unsichtbar offen.
+    if (radioController && radioController.isActive() && !radioKeepsAppAlive(radioKeepAliveContext())) radioController.stop();
   });
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     if (errorCode !== -3) logger.error('Hauptfenster konnte nicht geladen werden:', errorCode, errorDescription, validatedURL);
@@ -647,6 +656,12 @@ app.whenReady().then(() => {
   } catch (e) {
     logger.error('Nach-Update-Reconciliation fehlgeschlagen (Start läuft weiter):', e.message);
   }
+  // Radio: neue mitgelieferte Senderliste in die Nutzerkopie einarbeiten (Favoriten/Eigene bleiben); wirft nie
+  reconcileRadioSources({
+    userFile: userStorage.paths.radioSources,
+    bundleFile: path.join(__dirname, 'radiosources.json'),
+    baseFile: userStorage.paths.radioSourcesBase,
+  });
   // Selbstheilungs-Netz (Karte t_ea243f43, Schritt 5): Beim Start prüfen, ob
   // die eigene Bundle-Integrität intakt ist (keine toten/externen Symlinks,
   // Frameworks vorhanden). Bei Schaden NIEMALS still weiterlaufen — sauberer
@@ -715,6 +730,41 @@ app.whenReady().then(() => {
   }
   // Startansicht des Programmführers (Etappe 3.5): unabhängig vom EPG-Dienst, damit die Einstellung immer erreichbar bleibt
   registerEpgViewSettingsIpc({ ipcMain, storage: userStorage, requireMainRenderer });
+
+  // ── Radio (Konzept §2/§7): Zustand im Main, Audio im unsichtbaren Player-Fenster ──
+  // Das Player-Fenster wird erst beim ersten Abspielen erzeugt (show:false), in Tests öffnet sich nichts.
+  try {
+    radioLibrary = new RadioLibrary({ userStorage, logger });
+    radioController = new RadioController({
+      BrowserWindow,
+      playerHtml: path.join(__dirname, 'radio-player.html'),
+      preloadPath: path.join(__dirname, 'preload-radio.js'),
+      library: radioLibrary,
+      logger,
+    });
+    registerRadioIpc({
+      ipcMain,
+      controller: radioController,
+      library: radioLibrary,
+      requireMainRenderer,
+      sendToMain: (channel, payload) => {
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+      },
+      logger,
+    });
+    // Radio stoppt oder scheitert, während kein Fenster mehr offen ist: kein Grund mehr, im Tray zu bleiben
+    radioController.on('state', status => {
+      if ((status.status === 'idle' || status.status === 'error') && BrowserWindow.getAllWindows().length === 0) {
+        quitUnlessKeptAlive();
+      }
+    });
+  } catch (e) {
+    logger.error('Radio konnte nicht eingerichtet werden:', e.message);
+  }
 
   // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
   // "vorhanden + ausführbar + -version ok". Fehlschlag wird als sichtbarer
@@ -1110,7 +1160,18 @@ app.whenReady().then(() => {
   }
 });
 
-app.on('window-all-closed', () => {
+// Radio (Konzept §2): läuft oder pausiert das Radio, bleibt die App im Tray (Option "weiterspielen", Standard an).
+function radioKeepAliveContext() {
+  let settings = null;
+  try {
+    settings = radioLibrary ? radioLibrary.getSettings() : null;
+  } catch (_) {
+    // Einstellungen nicht lesbar: Standardverhalten (weiterspielen)
+  }
+  return { controller: radioController, settings, hasTray: Boolean(trayController) };
+}
+
+function quitUnlessKeptAlive() {
   // Konzept §3.2: Fenster schließen ≠ App beenden, solange ≥ 1 Aufnahme
   // läuft — die App geht in den Tray (TrayController übernimmt). Ohne
   // aktive Aufnahmen gilt das normale Quit-Verhalten.
@@ -1124,8 +1185,14 @@ app.on('window-all-closed', () => {
     logger.info('Fenster geschlossen — App bleibt wegen geplanter Aufnahme(n) im Tray aktiv');
     return;
   }
+  if (radioKeepsAppAlive(radioKeepAliveContext())) {
+    logger.info('Fenster geschlossen — App bleibt wegen Radio im Tray aktiv');
+    return;
+  }
   app.quit();
-});
+}
+
+app.on('window-all-closed', quitUnlessKeptAlive);
 
 // Quit-Cleanup (Karte t_695bf150): JEDER Quit-Weg (Cmd+Q/Dock ohne Tray-
 // Umweg, app.quit() aus Tray/powerMonitor/Updater-Relaunch) läuft durch
@@ -1141,6 +1208,7 @@ app.on('before-quit', event => {
   // Beenden-Dialog bei Planung < 24 h (Etappe 2b): Quit wird dafür zunächst abgebrochen;
   // der Cleanup unten läuft erst, wenn der Quit wirklich durchgeht.
   if (quitCoordinator.handleBeforeQuit(event)) return;
+  if (radioController) radioController.dispose();
   if (standbyGuard) standbyGuard.release();
   // Wecktermine sind ohne laufende App sinnlos: löschen und Helfer beenden
   if (wakeScheduler) wakeScheduler.cancelAll();

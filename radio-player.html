@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<!-- Unsichtbarer Radio-Player-Host (Konzept §2): nur Audio, keine Oberfläche. media-src erlaubt http, da viele
+     Sender nur http liefern; connect-src für hls.js (Playlists/Segmente); blob: für hls.js-Worker und MSE. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; media-src http: https: blob:; connect-src http: https:; worker-src blob:;">
+<title>Streaming Hub Radio</title>
+</head>
+<body>
+<audio id="radio-audio" preload="none"></audio>
+<script src="radio-player.js"></script>
+</body>
+</html>

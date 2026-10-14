@@ -70,7 +70,7 @@ export default [
   },
   // ── Main process (Node.js) ──
   {
-    files: ['main.js', 'preload.js', 'updater.js', 'logger.js', 'lib/**/*.js', 'bin/**/*.js', 'tests/**/*.js', 'scripts/**/*.js', 'e2e/**/*.js'],
+    files: ['main.js', 'preload.js', 'preload-radio.js', 'updater.js', 'logger.js', 'lib/**/*.js', 'bin/**/*.js', 'tests/**/*.js', 'scripts/**/*.js', 'e2e/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -113,7 +113,7 @@ export default [
   },
   // ── Renderer (Browser only) ──
   {
-    files: ['renderer.js', 'settings-view.js', 'settings-tv-sources.js', 'settings-tv-channels.js', 'epg-view.js', 'epg-view-model.js', 'epg-grid-model.js', 'epg-grid-view.js', 'epg-dom.js', 'epg-genres.js', 'epg-channel-model.js', 'epg-channel-view.js', 'epg-row-dom.js', 'epg-selection-model.js', 'epg-search-model.js', 'epg-search-view.js', 'epg-menu-view.js', 'epg-jng-model.js', 'epg-jng-view.js', 'epg-genre-filter-model.js', 'epg-genre-chips-view.js', 'epg-detail-model.js', 'epg-detail-view.js', 'dashboard-hub-model.js', 'dashboard-hub-view.js', 'update-notes-model.js'],
+    files: ['renderer.js', 'settings-view.js', 'settings-tv-sources.js', 'settings-tv-channels.js', 'epg-view.js', 'epg-view-model.js', 'epg-grid-model.js', 'epg-grid-view.js', 'epg-dom.js', 'epg-genres.js', 'epg-channel-model.js', 'epg-channel-view.js', 'epg-row-dom.js', 'epg-selection-model.js', 'epg-search-model.js', 'epg-search-view.js', 'epg-menu-view.js', 'epg-jng-model.js', 'epg-jng-view.js', 'epg-genre-filter-model.js', 'epg-genre-chips-view.js', 'epg-detail-model.js', 'epg-detail-view.js', 'dashboard-hub-model.js', 'dashboard-hub-view.js', 'update-notes-model.js', 'radio-player.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
