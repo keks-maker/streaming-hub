@@ -221,7 +221,7 @@ Unter **Einstellungen → Radio → Sender** (auch über **Senderverwaltung** im
 
 #### Eigene Sender
 
-Unter **Einstellungen → Radio → Eigene Sender** legst du Sender per Stream-URL an (Name und URL sind Pflicht, optional Logo-URL und Genre). Erlaubt sind http- und https-Adressen, auch im lokalen Netz; Playlists (`.pls`, `.m3u`, `.asx`) und HLS (`.m3u8`) werden aufgelöst. **Stream prüfen** testet die Adresse vor dem Speichern und zeigt, ob sie erreichbar ist, welches Format sie liefert und welche Bitrate gemeldet wird; bei einem Fehler steht der Grund dabei.
+Unter **Einstellungen → Radio → Eigene Sender** legst du Sender per Stream-URL an (Name und URL sind Pflicht, optional Webseite, Logo-URL und Genre). Erlaubt sind http- und https-Adressen, auch im lokalen Netz; Playlists (`.pls`, `.m3u`, `.asx`) und HLS (`.m3u8`) werden aufgelöst. **Stream prüfen** testet die Adresse vor dem Speichern und zeigt, ob sie erreichbar ist, welches Format sie liefert und welche Bitrate gemeldet wird; bei einem Fehler steht der Grund dabei. Meldet der Sender im Stream seine Webseite (ICY-Header `icy-url`), trägst du sie nicht selbst ein: Das Feld **Webseite** wird dann vorbefüllt. Aus der Webseite schlägt die App ein Logo vor (Icon der Seite, sonst der Google-Favicon-Dienst; es wird nur der Link gespeichert). Das geschieht nach **Stream prüfen** und mit **Logo suchen** neben dem Logo-Feld; ohne Webseite erscheint der Hinweis „Webseite eintragen, um ein Logo zu finden“. Ein selbst eingetragenes Logo bleibt unangetastet, das Speichern ist nie blockiert.
 
 #### Steuerung aus dem Menüzeilensymbol
 
