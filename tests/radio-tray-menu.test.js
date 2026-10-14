@@ -22,7 +22,7 @@ require.cache[require.resolve('electron')] = {
   filename: 'electron-mock',
   loaded: true,
   exports: {
-    nativeImage: { createFromPath: p => ({ isEmpty: () => false, p }), createEmpty: () => ({}) },
+    nativeImage: { createFromPath: p => ({ isEmpty: () => false, p, resize: () => ({ toBitmap: () => Buffer.alloc(64 * 64 * 4, 5) }) }), createEmpty: () => ({}) },
     Tray: class {
       setToolTip(t) { trayCalls.tooltips.push(t); }
       setTitle(t, o) { trayCalls.titles.push(t); trayCalls.fonts.push(o && o.fontType ? o.fontType : null); }
@@ -731,7 +731,8 @@ test('Hauptprozess: Favoritenliste des Tray kommt aus getFavoriteKeys und Quelle
 // ── Lauftext neben dem Symbol ──
 
 const LONG_ARTIST = 'Ein sehr langer Interpretenname';
-const { marqueeWindow } = require('../lib/radio/tray-marquee.js');
+const { marqueeWindow, MARQUEE_STEP_MS, MARQUEE_START_PAUSE_MS } = require('../lib/radio/tray-marquee.js');
+const START_PAUSE_STEPS = Math.ceil(MARQUEE_START_PAUSE_MS / MARQUEE_STEP_MS); // Schritte der Anfangspause inkl. Schritt 0
 
 function makeScrolling(initial = {}, opts = {}) {
   menuTemplates.length = 0;
@@ -752,33 +753,33 @@ function makeScrolling(initial = {}, opts = {}) {
 }
 const FULL = `Zwei · ${LONG_ARTIST} – Und ein ebenso langer Titel`;
 
-test('Lauftext: langer Text startet den Timer (400 ms), setTitle mit dem Fensteranfang in Monospace', () => {
+test('Lauftext: langer Text startet den Timer (150 ms), setTitle mit dem Fensteranfang in Monospace', () => {
   const { controller, live } = makeScrolling();
   controller.create();
   assert.equal(live().length, 1);
-  assert.equal(live()[0].ms, 400);
+  assert.equal(live()[0].ms, 150);
   assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text);
   assert.equal(Array.from(trayCalls.titles.at(-1)).length, 28);
   assert.equal(trayCalls.fonts.at(-1), 'monospaced');
   controller.destroy();
 });
 
-test('Lauftext: setTitle nur bei Fensteränderung (Pausen ohne Aufruf), höchstens ~3 Aufrufe pro Sekunde', () => {
+test('Lauftext: setTitle nur bei Fensteränderung (Pausen ohne Aufruf), höchstens ~7 Aufrufe pro Sekunde', () => {
   const { controller, tick } = makeScrolling();
   controller.create();
   const before = trayCalls.titles.length;
-  tick(4); // Pause am Anfang (5 Schritte inkl. Schritt 0)
+  tick(START_PAUSE_STEPS - 1); // Pause am Anfang (inkl. Schritt 0)
   assert.equal(trayCalls.titles.length, before, 'Anfangspause: kein setTitle');
   tick(1);
   assert.equal(trayCalls.titles.length, before + 1);
-  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 5).text);
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, START_PAUSE_STEPS).text);
   const total = marqueeWindow(FULL, 0).cycleSteps;
-  tick(total - 5 - 1); // bis eins vor Zyklusende
+  tick(total - START_PAUSE_STEPS - 1); // bis eins vor Zyklusende
   const atEnd = trayCalls.titles.length;
   tick(1); // Neustart
   assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text, 'Neustart am Anfang');
   assert.equal(trayCalls.titles.length, atEnd + 1);
-  assert.ok(1000 / 400 <= 3, 'Takt 400 ms = 2,5 Aufrufe pro Sekunde');
+  assert.ok(1000 / MARQUEE_STEP_MS <= 7, 'Takt 150 ms = höchstens 6,7 Aufrufe pro Sekunde');
   controller.destroy();
 });
 
@@ -817,7 +818,7 @@ test('Lauftext: statisch bei kurzem Text, Pause, idle, error und Aufnahme; Timer
 test('Lauftext: Titelwechsel setzt zurück auf den Anfang, derselbe Text nicht', () => {
   const s = makeScrolling();
   s.controller.create();
-  s.tick(8);
+  s.tick(START_PAUSE_STEPS + 3);
   const scrolled = trayCalls.titles.at(-1);
   assert.notEqual(scrolled, marqueeWindow(FULL, 0).text);
   s.controller.refresh(); // gleicher Text: kein Reset
@@ -827,8 +828,8 @@ test('Lauftext: Titelwechsel setzt zurück auf den Anfang, derselbe Text nicht',
   const next = `Zwei · ${LONG_ARTIST} – Ein ganz anderer langer Titel`;
   assert.equal(trayCalls.titles.at(-1), marqueeWindow(next, 0).text, 'Titelwechsel: wieder von vorn');
   assert.equal(s.live().length, 1, 'weiterhin genau ein Timer');
-  s.tick(5);
-  assert.equal(trayCalls.titles.at(-1), marqueeWindow(next, 5).text);
+  s.tick(START_PAUSE_STEPS);
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(next, START_PAUSE_STEPS).text);
   s.controller.destroy();
 });
 
@@ -901,4 +902,185 @@ test('Lauftext: nicht unter macOS kein Timer', () => {
   w.controller.create();
   assert.equal(w.ticks.length, 0);
   w.controller.destroy();
+});
+
+
+// ── Pixelweiser Lauftext (trayScrollMode 'smooth') ──
+
+const { PIXEL_WINDOW_WIDTH } = require('../lib/radio/tray-marquee.js');
+const flush = () => new Promise(resolve => setImmediate(resolve));
+
+function makePixel(initial = {}, opts = {}) {
+  const renders = [];
+  const created = [];
+  const theme = new EventEmitter();
+  theme.shouldUseDarkColors = false;
+  const s = makeScrolling(initial, {
+    renderTrayText: async (text, { dark }) => {
+      renders.push({ text, dark });
+      if (opts.renderFails) return null;
+      const width = (opts.textWidthPt || PIXEL_WINDOW_WIDTH + 80) * 2;
+      return { buffer: Buffer.alloc(width * 64 * 4, 1), width, height: 64 };
+    },
+    createImage: (buffer, options) => { const image = { frame: true, ...options }; created.push(image); return image; },
+    nativeTheme: theme,
+    ...(opts.controller || {}),
+  });
+  return { ...s, renders, created, theme };
+}
+
+test('Pixelmodus: langer Text wird einmal gerendert, Frames per setImage, setTitle(\'\') währenddessen, genau ein Takt', async () => {
+  const s = makePixel();
+  s.controller.create();
+  const baseImages = trayCalls.images.length;
+  assert.equal(trayCalls.titles.at(-1), `${FULL.slice(0, 27).trimEnd()}…`, 'bis das Bild fertig ist: statisch gekürzt');
+  await flush();
+  assert.equal(s.renders.length, 1);
+  assert.equal(s.renders[0].text, FULL);
+  assert.equal(s.renders[0].dark, false);
+  assert.equal(s.live().length, 1, 'ein Takt (30 fps), kein Schrittmodus-Timer');
+  assert.equal(s.live()[0].ms, 33);
+  assert.equal(trayCalls.titles.at(-1), '', 'kein doppelter Text');
+  assert.ok(trayCalls.images.length > baseImages);
+  assert.equal(trayCalls.images.at(-1).frame, true);
+  assert.equal(trayCalls.images.at(-1).scaleFactor, 2);
+  s.controller.refresh(); // gleicher Text: kein erneutes Rendern, Titel bleibt leer
+  s.controller.refresh();
+  await flush();
+  assert.equal(s.renders.length, 1);
+  assert.equal(trayCalls.titles.at(-1), '');
+  s.controller.destroy();
+});
+
+test('Pixelmodus: Titelwechsel rendert neu (ein Takt), Pause/idle/error/Aufnahme zurück auf statischen Titel und Symbol, Takt aus', async () => {
+  const s = makePixel();
+  s.controller.create();
+  await flush();
+  s.fake.push({ nowPlaying: { artist: LONG_ARTIST, title: 'Ein ganz anderer langer Titel' } });
+  await flush();
+  assert.equal(s.renders.length, 2);
+  assert.equal(s.live().length, 1, 'weiterhin genau ein Takt');
+  s.fake.push({ status: 'paused' });
+  assert.equal(s.live().length, 0, 'Pause: Takt aus');
+  assert.equal(trayCalls.titles.at(-1), '⏸ Zwei', 'statischer Titel');
+  assert.equal(trayCalls.images.at(-1).frame, undefined, 'ursprüngliches Symbol wieder gesetzt');
+  assert.ok(trayCalls.images.at(-1).p.endsWith('tray-idle.png') || trayCalls.images.at(-1).p.endsWith('tray-radio.png'));
+  s.fake.push({ status: 'playing' });
+  await flush();
+  assert.equal(s.live().length, 1);
+  s.fake.push({ status: 'error', error: 'x' });
+  assert.equal(s.live().length, 0, 'error: Takt aus');
+  assert.equal(trayCalls.images.at(-1).frame, undefined);
+  s.fake.push({ status: 'playing' });
+  await flush();
+  s.fake.push({ status: 'idle', station: null, nowPlaying: null });
+  assert.equal(s.live().length, 0);
+  assert.equal(trayCalls.titles.at(-1), '');
+  s.controller.destroy();
+
+  const rec = makePixel({}, {});
+  rec.controller.recorder.activeJobs = () => [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }];
+  rec.controller.create();
+  await flush();
+  assert.equal(rec.renders.length, 0, 'Aufnahme-Vorrang: kein Textbild');
+  assert.equal(rec.live().length, 0);
+  rec.controller.destroy();
+});
+
+test('Pixelmodus: Symbolwechsel (refresh) überschreibt das Frame nicht; destroy räumt Takt, Bilder und Theme-Listener auf', async () => {
+  const s = makePixel();
+  s.controller.create();
+  await flush();
+  const before = trayCalls.images.length;
+  s.controller.refresh();
+  assert.equal(trayCalls.images.length, before, 'refresh setzt im Bildmodus kein Symbol');
+  assert.equal(s.theme.listenerCount('updated'), 1);
+  s.controller.destroy();
+  assert.equal(s.live().length, 0);
+  assert.equal(s.theme.listenerCount('updated'), 0);
+  assert.equal(s.controller._iconBitmaps.size, 0);
+  assert.equal(s.controller._pixel.active, false);
+});
+
+test('Pixelmodus: Text, der ins Fenster passt, bleibt statischer Titel ohne Takt; Texte ≤ 28 Zeichen werden nicht gerendert', async () => {
+  const wide = makePixel({}, { textWidthPt: 120 });
+  wide.controller.create();
+  await flush();
+  assert.equal(wide.renders.length, 1);
+  assert.equal(wide.live().length, 0);
+  assert.equal(trayCalls.titles.at(-1), FULL, 'ganzer Text als normaler Titel');
+  wide.controller.destroy();
+  const short = makePixel({ nowPlaying: null });
+  short.controller.create();
+  await flush();
+  assert.equal(short.renders.length, 0);
+  assert.equal(trayCalls.titles.at(-1), 'Zwei');
+  short.controller.destroy();
+});
+
+test('Pixelmodus: Rendern schlägt fehl → Schrittmodus (setTitle mit Fenster, Takt 150 ms), kein Bild', async () => {
+  const s = makePixel({}, { renderFails: true });
+  s.controller.create();
+  await flush();
+  assert.equal(s.renders.length, 1);
+  assert.equal(s.live().length, 1);
+  assert.equal(s.live()[0].ms, 150);
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text);
+  assert.equal(trayCalls.fonts.at(-1), 'monospaced');
+  s.controller.refresh();
+  await flush();
+  assert.equal(s.renders.length, 1, 'derselbe Text wird nicht erneut versucht');
+  s.fake.push({ nowPlaying: { artist: LONG_ARTIST, title: 'Ein ganz anderer langer Titel' } });
+  await flush();
+  assert.equal(s.renders.length, 2, 'neuer Text: neuer Versuch');
+  s.controller.destroy();
+});
+
+test('Pixelmodus: trayScrollMode „steps“ rendert nie; Wechsel zur Laufzeit; Nicht-macOS ohne Bildmodus', async () => {
+  let mode = 'steps';
+  const s = makePixel({}, { controller: { getTrayScrollMode: () => mode } });
+  s.controller.create();
+  await flush();
+  assert.equal(s.renders.length, 0);
+  assert.equal(s.live().length, 1);
+  assert.equal(s.live()[0].ms, 150);
+  mode = 'smooth';
+  s.controller.refresh();
+  await flush();
+  assert.equal(s.renders.length, 1, 'sofortige Wirkung der Einstellung');
+  assert.equal(s.live().length, 1, 'Schritt-Timer ersetzt durch Bildtakt');
+  assert.equal(s.live()[0].ms, 33);
+  assert.equal(trayCalls.titles.at(-1), '');
+  mode = 'steps';
+  s.controller.refresh();
+  assert.equal(s.live()[0].ms, 150);
+  assert.equal(trayCalls.images.at(-1).frame, undefined, 'Symbol wieder als Tray-Bild');
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text);
+  s.controller.destroy();
+
+  const linux = makePixel({}, { controller: { platform: 'linux' } });
+  linux.controller.create();
+  await flush();
+  assert.equal(linux.renders.length, 0);
+  assert.equal(linux.live().length, 0);
+  linux.controller.destroy();
+});
+
+test('Pixelmodus: Hell/Dunkel-Wechsel rendert den Text in der neuen Farbe neu; „Bewegung reduzieren“ stoppt den Bildmodus', async () => {
+  let reduced = false;
+  const s = makePixel({}, { controller: { getReducedMotion: () => reduced } });
+  s.controller.create();
+  await flush();
+  s.theme.shouldUseDarkColors = true;
+  s.theme.emit('updated');
+  await flush();
+  assert.equal(s.renders.length, 2);
+  assert.equal(s.renders[1].dark, true);
+  assert.equal(s.live().length, 1);
+  reduced = true;
+  s.controller.refresh();
+  assert.equal(s.live().length, 0);
+  assert.ok(trayCalls.titles.at(-1).endsWith('…'));
+  assert.equal(trayCalls.images.at(-1).frame, undefined);
+  s.controller.destroy();
 });

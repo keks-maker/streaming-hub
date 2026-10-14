@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -39,6 +39,7 @@ const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
 const { createRadioLogoCache } = require('./lib/radio/radio-logo-cache.js');
+const { createTrayTextRenderer } = require('./lib/radio/tray-text-renderer.js');
 const { logosShown } = require('./radio-dashboard-model.js');
 const { refreshStreamUrls } = require('./lib/radio/radio-refresh.js');
 const { createApiClient, resolveApiServers } = require('./lib/radio/radio-browser.js');
@@ -1110,6 +1111,10 @@ app.whenReady().then(() => {
             : [],
         getTrayDisplay: () => (radioLibrary ? radioLibrary.getSettings().trayDisplay : 'station-title'),
         getTrayScroll: () => (radioLibrary ? radioLibrary.getSettings().trayScroll !== false : true),
+        getTrayScrollMode: () => (radioLibrary ? radioLibrary.getSettings().trayScrollMode : 'smooth'),
+        // Pixelweiser Lauftext: Textbild kommt aus dem unsichtbaren Player-Fenster, Textfarbe folgt Hell/Dunkel
+        renderTrayText: createTrayTextRenderer({ getWebContents: () => (radioController ? radioController.playerWebContents() : null), nativeImage }),
+        nativeTheme,
         getReducedMotion: () => Boolean(systemPreferences.getAnimationSettings && systemPreferences.getAnimationSettings().prefersReducedMotion),
         canPlayLast: () => {
           const last = radioLibrary ? radioLibrary.getSettings().lastStation : null;
