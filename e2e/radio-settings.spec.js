@@ -120,12 +120,13 @@ test.describe('Radio-Einstellungen', () => {
     const total = await page.evaluate(async () => (await window.radio.getSources()).reduce((n, s) => n + s.stations.length, 0));
     await expect(page.locator('#settingsRadioCount')).toHaveText(`${total} Sender`);
     const rows = page.locator('#settingsRadioList .settings-chan-row');
+    // „1live“ trifft auch die WDR-1Live-Webkanäle der großen Liste; der Sender „1LIVE“ steht (Votes) zuerst
     await page.locator('#settingsRadioSearch').fill('1LIVE');
-    await expect(rows).toHaveCount(1);
+    await expect(rows).toHaveCount(3);
     await expect(rows.first().locator('.settings-chan-name')).toHaveText('1LIVE');
-    await expect(page.locator('#settingsRadioCount')).toHaveText(`1 von ${total} Sendern`);
+    await expect(page.locator('#settingsRadioCount')).toHaveText(`3 von ${total} Sendern`);
     await page.locator('#settingsRadioSearch').fill('1live');
-    await expect(rows).toHaveCount(1);
+    await expect(rows).toHaveCount(3);
     await page.locator('#settingsRadioSearch').fill('zzzzzz');
     await expect(page.locator('#settingsRadioList')).toContainText('Keine Sender gefunden');
     await page.locator('#settingsRadioSearch').fill('');

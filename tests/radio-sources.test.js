@@ -41,7 +41,7 @@ test('mitgelieferte radiosources.json: gültiges Format, eindeutige IDs, sinnvol
     }
     assert.deepEqual([...source.sortOrder].sort(), [...ids].sort(), 'sortOrder enthält genau die Sender');
   }
-  assert.ok(total >= 15 && total <= 40, `Startliste ${total} Sender`);
+  assert.ok(total >= 150 && total <= 300, `Startliste ${total} Sender`);
   assert.ok(!list.some(s => s.id === logic.CUSTOM_SOURCE_ID), 'eigene Quelle wird zur Laufzeit ergänzt');
 });
 
