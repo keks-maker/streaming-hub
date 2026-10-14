@@ -37,6 +37,9 @@ const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
+const { refreshStreamUrls } = require('./lib/radio/radio-refresh.js');
+const { createApiClient, resolveApiServers } = require('./lib/radio/radio-browser.js');
+const { probeStream } = require('./lib/radio/radio-resolve.js');
 const { radioKeepsAppAlive, decideWindowAllClosed } = require('./lib/radio/keep-alive.js');
 
 /**
@@ -757,6 +760,13 @@ app.whenReady().then(() => {
       controller: radioController,
       library: radioLibrary,
       requireMainRenderer,
+      refreshStreams: async () => {
+        const api = createApiClient({ servers: await resolveApiServers() });
+        const result = await refreshStreamUrls({ sources: radioLibrary.getSources(), refreshed: radioLibrary.getRefreshedStreams(), api, probe: probeStream });
+        radioLibrary.setRefreshedStreams(result.refreshed);
+        const { checked, updated, reverted, failed } = result;
+        return { checked, updated, reverted, failed };
+      },
       sendToMain: (channel, payload) => {
         try {
           if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);

@@ -5,10 +5,12 @@
 
 'use strict';
 
-const { radioDashboardModel, popularFavoriteKeys } = require('./radio-dashboard-model.js');
+const { radioDashboardModel, popularFavoriteKeys, refreshSummaryText } = require('./radio-dashboard-model.js');
 
 const ICON_MANAGE =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="8" cy="18" r="2" fill="currentColor"/></svg>';
+const ICON_REFRESH =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>';
 const EQ_BARS = 4;
 
 function el(doc, tag, className, text) {
@@ -39,10 +41,18 @@ function createRadioDashboard(root, options = {}) {
   manageIcon.innerHTML = ICON_MANAGE; // statisches SVG, keine Nutzerdaten
   manage.append(manageIcon, el(doc, 'span', 'dashboard-hub-tool-label', 'Senderverwaltung'));
   manage.addEventListener('click', () => onOpenManagement && onOpenManagement());
+  const refreshList = el(doc, 'button', 'dashboard-hub-tool');
+  refreshList.type = 'button';
+  refreshList.id = 'radioRefreshList';
+  refreshList.title = 'Stream-Adressen der mitgelieferten Sender beim Senderverzeichnis abgleichen';
+  const refreshIcon = el(doc, 'span');
+  refreshIcon.setAttribute('aria-hidden', 'true');
+  refreshIcon.innerHTML = ICON_REFRESH; // statisches SVG, keine Nutzerdaten
+  refreshList.append(refreshIcon, el(doc, 'span', 'dashboard-hub-tool-label', 'Liste aktualisieren'));
   const status = el(doc, 'span', 'radio-status');
   status.id = 'radioStatus';
   status.setAttribute('aria-live', 'polite');
-  toolbar.append(manage, status);
+  toolbar.append(manage, refreshList, status);
 
   const grid = el(doc, 'div', 'dashboard-grid radio-grid');
   grid.id = 'radioGrid';
@@ -174,6 +184,22 @@ function createRadioDashboard(root, options = {}) {
       report('Radio: Beliebte Sender konnten nicht hinzugefügt werden', error);
     } finally {
       addPopular.disabled = false;
+    }
+  });
+
+  refreshList.addEventListener('click', async () => {
+    if (refreshList.disabled || typeof radio.refreshStreamUrls !== 'function') return;
+    refreshList.disabled = true;
+    refreshList.setAttribute('aria-busy', 'true');
+    try {
+      const result = await radio.refreshStreamUrls();
+      if (notify) notify(refreshSummaryText(result));
+      if (result && result.ok) await refresh();
+    } catch (error) {
+      report('Radio: Liste konnte nicht aktualisiert werden', error);
+    } finally {
+      refreshList.disabled = false;
+      refreshList.removeAttribute('aria-busy');
     }
   });
 

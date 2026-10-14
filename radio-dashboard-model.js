@@ -35,17 +35,39 @@ function favoriteCountOf(sources) {
   return favoriteKeys(Array.isArray(sources) ? sources : []).length;
 }
 
-/** Logo-URL nur als http(s) ohne Zugangsdaten; sonst null (Platzhalter). */
+// Zentraler Schalter für alle Logo-Anzeigen (Dashboard, Mini-Player, Einstellungen): Logos werden nur verlinkt,
+// nie eingebettet (Konzept §3.1/§12). Standard an; false zeigt überall den Platzhalter (z. B. vor einer öffentlichen Verbreitung).
+const DEFAULT_SHOW_LOGOS = true;
+let showLogos = DEFAULT_SHOW_LOGOS;
+
+function setShowLogos(value) {
+  showLogos = value !== false;
+}
+
+function logosShown() {
+  return showLogos;
+}
+
+/** Logo-URL nur als https ohne Zugangsdaten (CSP: img-src https:); sonst null (Platzhalter). Bei ausgeschaltetem Schalter immer null. */
 function safeLogoUrl(value) {
+  if (!showLogos) return null;
   if (typeof value !== 'string' || !value.trim()) return null;
   try {
     const parsed = new URL(value);
-    if ((parsed.protocol === 'https:' || parsed.protocol === 'http:') && !parsed.username && !parsed.password)
+    if (parsed.protocol === 'https:' && !parsed.username && !parsed.password)
       return parsed.toString();
   } catch {
     /* ungültige URL → Platzhalter */
   }
   return null;
+}
+
+/** Meldung nach „Liste aktualisieren“ (Ergebnis von radio:refresh-stream-urls). */
+function refreshSummaryText(result) {
+  if (!result || result.ok !== true) return `Liste nicht aktualisiert: ${(result && result.error) || 'unbekannter Fehler'}`;
+  const changed = (Number(result.updated) || 0) + (Number(result.reverted) || 0);
+  if (!changed) return `Liste aktuell (${Number(result.checked) || 0} Sender geprüft)`;
+  return `${changed} ${changed === 1 ? 'Stream-Adresse' : 'Stream-Adressen'} aktualisiert`;
 }
 
 function isCurrent(state, station) {
@@ -170,7 +192,11 @@ module.exports = {
   MSG_EMPTY_HINT,
   favoriteCountText,
   favoriteCountOf,
+  DEFAULT_SHOW_LOGOS,
+  setShowLogos,
+  logosShown,
   safeLogoUrl,
+  refreshSummaryText,
   nowPlayingText,
   tileStateOf,
   tileAction,

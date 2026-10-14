@@ -106,6 +106,9 @@ test.describe('Radio-Oberfläche', () => {
     await expect(page.locator('#radioEmpty')).toContainText('Senderverwaltung');
     await expect(page.locator('#radioAddPopular')).toBeVisible();
     await expect(page.locator('#radioManage')).toBeVisible();
+    // „Liste aktualisieren“ ist da; geklickt wird hier nicht (der Main-Prozess würde das echte Verzeichnis abfragen)
+    await expect(page.locator('#radioRefreshList')).toBeVisible();
+    await expect(page.locator('#radioRefreshList')).toContainText('Liste aktualisieren');
     await expect(page.locator('#dashboardHub')).toBeHidden();
     await expect(page.locator('#radioMiniPlayer')).toBeHidden();
     await shot(page, 'radio-leer');
@@ -234,8 +237,9 @@ test.describe('Radio-Oberfläche', () => {
 
   test('Stopp blendet den Mini-Player aus; keine Konsolenfehler', async () => {
     await page.locator('#radioMiniStop').click();
-    await expect.poll(async () => (await radioState(page)).status).toBe('idle');
-    await expect(page.locator('#radioMiniPlayer')).toBeHidden();
+    // großzügige Fristen: das Abbauen des Player-Fensters kann unter Last länger als die 5 s Standard dauern (Flake R4)
+    await expect.poll(async () => (await radioState(page)).status, { timeout: 20_000 }).toBe('idle');
+    await expect(page.locator('#radioMiniPlayer')).toBeHidden({ timeout: 10_000 });
     expect(ctx.problems).toEqual([]);
   });
 });

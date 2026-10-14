@@ -12,7 +12,7 @@ const { createFakeWindowClass, createFakeLibrary } = require('./helpers/radio-fa
 const MAIN = { id: 'main' };
 const OTHER = { id: 'webview' };
 
-function setup({ probe } = {}) {
+function setup({ probe, refreshStreams } = {}) {
   const handlers = new Map();
   const listeners = new Map();
   const ipcMain = {
@@ -66,6 +66,7 @@ function setup({ probe } = {}) {
     },
     sendToMain: (channel, payload) => sent.push({ channel, payload }),
     probe: probe || (async url => ({ ok: true, streamUrl: url, kind: 'direct' })),
+    refreshStreams,
   });
   const call = async (channel, ...args) => handlers.get(channel)({ sender: MAIN }, ...args);
   return { handlers, listeners, call, calls, sent, controller, instances };
@@ -73,7 +74,7 @@ function setup({ probe } = {}) {
 
 test('alle radio:*-Kanäle sind registriert', () => {
   const { handlers } = setup();
-  const expected = ['get-sources', 'add-custom', 'update-custom', 'remove-custom', 'set-favorite', 'set-favorite-order', 'set-override', 'clear-override', 'set-settings', 'play', 'pause', 'stop', 'next', 'prev', 'set-volume', 'probe', 'get-state', 'get-settings'];
+  const expected = ['get-sources', 'add-custom', 'update-custom', 'remove-custom', 'set-favorite', 'set-favorite-order', 'set-override', 'clear-override', 'set-settings', 'play', 'pause', 'stop', 'next', 'prev', 'set-volume', 'probe', 'get-state', 'get-settings', 'refresh-stream-urls'];
   for (const name of expected) assert.ok(handlers.has(`radio:${name}`), name);
   assert.equal(handlers.size, expected.length);
 });
@@ -177,6 +178,29 @@ test('radio:probe: URL-Prüfung, Ergebnis durchgereicht, nur eine Prüfung gleic
   release();
   assert.equal((await slow).ok, true);
   assert.equal((await call('radio:probe', 'http://x.test/other')).ok, true);
+});
+
+test('radio:refresh-stream-urls: Ergebnis durchgereicht, Quellen neu gesendet, nur ein Lauf, Fehler als Meldung', async () => {
+  let release;
+  const gate = new Promise(resolve => (release = resolve));
+  let runs = 0;
+  const { call, sent } = setup({
+    refreshStreams: async () => {
+      runs += 1;
+      await gate;
+      return { checked: 3, updated: 1, reverted: 0, failed: 0 };
+    },
+  });
+  await assert.rejects(call('radio:refresh-stream-urls', 'x'), /Unerwartete/);
+  const first = call('radio:refresh-stream-urls');
+  assert.deepEqual(await call('radio:refresh-stream-urls'), { ok: false, error: 'Es läuft bereits eine Aktualisierung' });
+  release();
+  assert.deepEqual(await first, { ok: true, checked: 3, updated: 1, reverted: 0, failed: 0 });
+  assert.equal(runs, 1);
+  assert.ok(sent.some(entry => entry.channel === 'radio:sources-changed'));
+  const failing = setup({ refreshStreams: async () => { throw new Error('offline'); } });
+  assert.deepEqual(await failing.call('radio:refresh-stream-urls'), { ok: false, error: 'Senderverzeichnis nicht erreichbar' });
+  assert.equal((await setup().call('radio:refresh-stream-urls')).ok, false);
 });
 
 test('Player-Nachrichten: nur vom Player-WebContents, nur Whitelist', async () => {

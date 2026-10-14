@@ -228,3 +228,31 @@ test('Ansicht: dispose löst alle Listener', () => {
   view.dispose();
   assert.equal(radio.listenerCount(), 0);
 });
+
+test('zentraler Logo-Schalter: aus = Platzhalter in Dashboard-Kachel und Mini-Player, Standard an', () => {
+  const mini = require('../radio-miniplayer-model.js');
+  assert.equal(model.DEFAULT_SHOW_LOGOS, true);
+  assert.equal(model.logosShown(), true);
+  const sources = [{ id: 's', name: 'S', type: 'bundled', stations: [{ id: 'a', name: 'A', streamUrl: 'http://a.test/s', logo: 'https://a.test/l.png' }], favorites: ['a'], favoriteRank: { a: 0 } }];
+  const station = { sourceId: 's', id: 'a', name: 'A', streamUrl: 'http://a.test/s', logo: 'https://a.test/l.png' };
+  try {
+    assert.equal(model.safeLogoUrl(station.logo), 'https://a.test/l.png');
+    model.setShowLogos(false);
+    assert.equal(model.logosShown(), false);
+    assert.equal(model.safeLogoUrl(station.logo), null);
+    const tiles = model.radioDashboardModel({ sources, state: IDLE }).tiles;
+    assert.ok(tiles.length && tiles.every(t => t.logo === null));
+    assert.equal(mini.miniPlayerModel({ station, status: 'playing' }).logo, null);
+  } finally {
+    model.setShowLogos(true);
+  }
+  assert.equal(model.safeLogoUrl(station.logo), 'https://a.test/l.png');
+});
+
+test('Meldung nach „Liste aktualisieren“', () => {
+  assert.equal(model.refreshSummaryText({ ok: true, checked: 40, updated: 0, reverted: 0 }), 'Liste aktuell (40 Sender geprüft)');
+  assert.equal(model.refreshSummaryText({ ok: true, checked: 40, updated: 1, reverted: 0 }), '1 Stream-Adresse aktualisiert');
+  assert.equal(model.refreshSummaryText({ ok: true, checked: 40, updated: 2, reverted: 1 }), '3 Stream-Adressen aktualisiert');
+  assert.match(model.refreshSummaryText({ ok: false, error: 'offline' }), /offline/);
+  assert.match(model.refreshSummaryText(null), /unbekannt/);
+});
