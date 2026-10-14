@@ -40,7 +40,7 @@ function makeRadio({ probe, sources = initialSources(), settings } = {}) {
     calls,
     sources,
     state: { status: 'idle', station: null, volume: 0.6 },
-    settings: { volume: 0.6, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title', lastStation: null, ...settings },
+    settings: { volume: 0.6, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title', trayScroll: true, lastStation: null, ...settings },
     getSources: async () => radio.sources,
     getState: async () => radio.state,
     getSettings: async () => radio.settings,
@@ -454,6 +454,39 @@ test('Wiedergabe: Radiobuttons „Anzeige neben dem Symbol“ laden, speichern u
   assert.equal(input('off').checked, true, 'Fehler: vorherige Auswahl bleibt');
   assert.equal(input('station-title').checked, false);
   assert.equal(byId(root, 'settingsRadioPlaybackStatus').classList.contains('error'), true);
+});
+
+test('Wiedergabe: Checkbox „Lange Texte durchlaufen lassen“ lädt, speichert, ist bei „Aus“ deaktiviert und setzt bei Fehler zurück', async () => {
+  const { root, view, radio } = mount(createRadioPlaybackView, { radio: makeRadio({ settings: { trayScroll: true } }) });
+  await view.refresh();
+  const box = byId(root, 'settingsRadio-trayScroll');
+  assert.equal(box.type, 'checkbox');
+  assert.equal(box.checked, true);
+  assert.equal(box.disabled, false);
+  assert.match(byId(root, 'settingsRadio-trayDisplay').textContent, /Lange Texte durchlaufen lassen/);
+  assert.equal(box.getAttribute('aria-describedby'), 'settingsRadio-trayScroll-hint');
+  assert.match(byId(root, 'settingsRadio-trayScroll-hint').textContent, /Bewegung reduzieren/);
+  box.checked = false;
+  box.dispatch('change');
+  await tick();
+  assert.deepEqual(radio.calls.at(-1), ['setSettings', { trayScroll: false }]);
+  assert.equal(box.checked, false);
+  radio.failSettings = true;
+  box.checked = true;
+  box.dispatch('change');
+  await tick();
+  assert.equal(box.checked, false, 'Fehler: vorheriger Wert bleibt');
+  radio.failSettings = false;
+  const off = byId(root, 'settingsRadio-trayDisplay-off');
+  off.checked = true;
+  off.dispatch('change');
+  await tick();
+  assert.equal(box.disabled, true, 'Anzeige „Aus“: Lauftext ohne Wirkung, deaktiviert');
+  const station = byId(root, 'settingsRadio-trayDisplay-station');
+  station.checked = true;
+  station.dispatch('change');
+  await tick();
+  assert.equal(box.disabled, false);
 });
 
 test('Wiedergabe: ohne gespeicherten Wert ist „Sender und Titel“ gewählt', async () => {

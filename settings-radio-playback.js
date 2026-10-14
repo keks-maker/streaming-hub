@@ -93,6 +93,19 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
       if (input.checked) saveTrayDisplay(option.value);
     });
   }
+  // Lauftext: lange Texte durchlaufen lassen (bei „Aus“ ohne Wirkung, daher deaktiviert)
+  const scrollLabel = el(doc, 'label', 'tv-mode-label');
+  const scrollInput = el(doc, 'input');
+  scrollInput.type = 'checkbox';
+  scrollInput.id = 'settingsRadio-trayScroll';
+  scrollInput.dataset.field = 'trayScroll';
+  scrollLabel.appendChild(scrollInput);
+  scrollLabel.appendChild(el(doc, 'span', '', ' Lange Texte durchlaufen lassen'));
+  const scrollHint = el(doc, 'p', 'settings-field-hint', 'Zu lange Texte laufen langsam durch, damit man alles lesen kann. Ist die Option aus oder in macOS „Bewegung reduzieren“ aktiv, wird der Text gekürzt und mit „…“ beendet.');
+  scrollHint.id = 'settingsRadio-trayScroll-hint';
+  scrollInput.setAttribute('aria-describedby', scrollHint.id);
+  scrollInput.addEventListener('change', () => saveFlag('trayScroll', scrollInput));
+  displayGroup.append(scrollLabel, scrollHint);
   displayGroup.appendChild(displayHint);
   const statusEl = statusLine(doc, 'settingsRadioPlaybackStatus');
   root.textContent = '';
@@ -108,6 +121,7 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   function showTrayDisplay(value) {
     const current = displayRadios.has(value) ? value : DEFAULT_TRAY_DISPLAY;
     for (const [optionValue, input] of displayRadios) input.checked = optionValue === current;
+    scrollInput.disabled = current === 'off';
   }
 
   async function saveTrayDisplay(wanted) {
@@ -123,6 +137,7 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   function show(settings) {
     state.settings = settings;
     for (const [key, input] of checks) input.checked = Boolean(settings[key]);
+    scrollInput.checked = settings.trayScroll !== false;
     showTrayDisplay(settings.trayDisplay);
     if (state.volume === null) showVolume(settings.volume);
   }

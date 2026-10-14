@@ -186,7 +186,7 @@ test('RadioLibrary: kaputte Nutzerdatei führt nicht zum Absturz', () => {
 });
 
 test('Radio-Einstellungen: Standardwerte, Normalisierung, Patch-Validierung', () => {
-  assert.deepEqual(normalizeRadioSettings(undefined), { volume: 0.8, lastStation: null, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title' });
+  assert.deepEqual(normalizeRadioSettings(undefined), { volume: 0.8, lastStation: null, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title', trayScroll: true });
   const n = normalizeRadioSettings({ volume: 7, lastStation: { sourceId: 's', id: 'a' }, pauseOnTv: 'ja', resumeOnStart: true });
   assert.deepEqual([n.volume, n.lastStation, n.pauseOnTv, n.resumeOnStart], [1, { sourceId: 's', id: 'a' }, true, true]);
   assert.equal(normalizeRadioSettings({ lastStation: { sourceId: 1 } }).lastStation, null);

@@ -91,6 +91,19 @@ test('Validierung set-settings: trayDisplay nur aus der Auswahl (off, station, s
   for (const bad of ['', 'title', 'OFF', true, null, 1, undefined]) assert.throws(() => validateRadioSettingsPatch({ trayDisplay: bad }), /trayDisplay/);
 });
 
+test('Validierung set-settings: trayScroll ist ein Boolean (Standard an), auch zusammen mit trayDisplay', () => {
+  const { DEFAULT_RADIO_SETTINGS, normalizeRadioSettings, applyRadioSettingsPatch } = require('../lib/radio/radio-settings.js');
+  assert.deepEqual(validateRadioSettingsPatch({ trayScroll: false }), { trayScroll: false });
+  assert.deepEqual(validateRadioSettingsPatch({ trayScroll: true, trayDisplay: 'station' }), { trayScroll: true, trayDisplay: 'station' });
+  for (const bad of ['true', 1, null, undefined, 0]) assert.throws(() => validateRadioSettingsPatch({ trayScroll: bad }), /trayScroll/);
+  assert.equal(DEFAULT_RADIO_SETTINGS.trayScroll, true);
+  assert.equal(normalizeRadioSettings({}).trayScroll, true);
+  assert.equal(normalizeRadioSettings({ trayScroll: false }).trayScroll, false);
+  assert.equal(normalizeRadioSettings({ trayScroll: 'nein' }).trayScroll, true, 'ungültiger Dateiwert fällt auf den Standard zurück');
+  assert.equal(applyRadioSettingsPatch(normalizeRadioSettings({}), { trayScroll: false }).trayScroll, false);
+  assert.throws(() => applyRadioSettingsPatch(normalizeRadioSettings({}), { trayScroll: 'x' }), /Boolean/);
+});
+
 test('Einstellungen: trayDisplay Standard station-title, ungültige Dateiwerte fallen zurück, Patch wird geprüft', () => {
   const { normalizeRadioSettings, applyRadioSettingsPatch, DEFAULT_RADIO_SETTINGS } = require('../lib/radio/radio-settings.js');
   assert.equal(DEFAULT_RADIO_SETTINGS.trayDisplay, 'station-title');
