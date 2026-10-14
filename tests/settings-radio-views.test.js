@@ -40,7 +40,7 @@ function makeRadio({ probe, sources = initialSources(), settings } = {}) {
     calls,
     sources,
     state: { status: 'idle', station: null, volume: 0.6 },
-    settings: { volume: 0.6, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, lastStation: null, ...settings },
+    settings: { volume: 0.6, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title', lastStation: null, ...settings },
     getSources: async () => radio.sources,
     getState: async () => radio.state,
     getSettings: async () => radio.settings,
@@ -429,6 +429,37 @@ test('Wiedergabe: Schalter laden und speichern über setSettings; Lautstärke ü
   // Hinweis zum Tray ist mit der Option verknüpft
   assert.match(byId(root, 'settingsRadio-keepPlayingWhenClosed-hint').textContent, /Tray/);
   assert.equal(byId(root, 'settingsRadio-keepPlayingWhenClosed').getAttribute('aria-describedby'), 'settingsRadio-keepPlayingWhenClosed-hint');
+});
+
+test('Wiedergabe: Radiobuttons „Anzeige neben dem Symbol“ laden, speichern und bei Fehler zurücksetzen', async () => {
+  const { root, view, radio } = mount(createRadioPlaybackView, { radio: makeRadio({ settings: { trayDisplay: 'station' } }) });
+  await view.refresh();
+  const input = value => byId(root, `settingsRadio-trayDisplay-${value}`);
+  assert.deepEqual(['station', 'station-title', 'off'].map(v => input(v).type), ['radio', 'radio', 'radio']);
+  assert.equal(new Set(['station', 'station-title', 'off'].map(v => input(v).name)).size, 1, 'eine Gruppe');
+  assert.deepEqual(['station', 'station-title', 'off'].map(v => input(v).checked), [true, false, false]);
+  assert.match(byId(root, 'settingsRadio-trayDisplay').textContent, /Nur Sender/);
+  assert.match(byId(root, 'settingsRadio-trayDisplay').textContent, /Sender und Titel/);
+  assert.match(byId(root, 'settingsRadio-trayDisplay').textContent, /Aus/);
+  input('off').checked = true;
+  input('off').dispatch('change');
+  await tick();
+  assert.deepEqual(radio.calls.at(-1), ['setSettings', { trayDisplay: 'off' }]);
+  assert.deepEqual(['station', 'station-title', 'off'].map(v => input(v).checked), [false, false, true]);
+  assert.match(byId(root, 'settingsRadioPlaybackStatus').textContent, /Gespeichert/);
+  radio.failSettings = true;
+  input('station-title').checked = true;
+  input('station-title').dispatch('change');
+  await tick();
+  assert.equal(input('off').checked, true, 'Fehler: vorherige Auswahl bleibt');
+  assert.equal(input('station-title').checked, false);
+  assert.equal(byId(root, 'settingsRadioPlaybackStatus').classList.contains('error'), true);
+});
+
+test('Wiedergabe: ohne gespeicherten Wert ist „Sender und Titel“ gewählt', async () => {
+  const { root, view } = mount(createRadioPlaybackView, { radio: makeRadio({ settings: { trayDisplay: undefined } }) });
+  await view.refresh();
+  assert.equal(byId(root, 'settingsRadio-trayDisplay-station-title').checked, true);
 });
 
 test('Wiedergabe: Speicherfehler setzt den Schalter zurück und zeigt Klartext', async () => {

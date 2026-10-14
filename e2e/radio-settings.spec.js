@@ -326,6 +326,11 @@ test.describe('Radio-Einstellungen', () => {
     await expect(page.locator('#settingsRadio-keepPlayingWhenClosed')).toBeChecked();
     await expect(page.locator('#settingsRadio-keepPlayingWhenClosed-hint')).toContainText('Tray');
     await expect(page.locator('#settingsRadioVolume')).toHaveValue('0');
+    await expect(page.locator('#settingsRadio-trayDisplay-station-title')).toBeChecked();
+    await page.locator('#settingsRadio-trayDisplay-station').check();
+    await expect.poll(async () => (await page.evaluate(() => window.radio.getSettings())).trayDisplay).toBe('station');
+    await page.locator('#settingsRadio-trayDisplay-station-title').check();
+    await expect.poll(async () => (await page.evaluate(() => window.radio.getSettings())).trayDisplay).toBe('station-title');
     await page.locator('#settingsRadio-resumeOnStart').check();
     await expect(page.locator('#settingsRadioPlaybackStatus')).toContainText('Gespeichert');
     expect((await page.evaluate(() => window.radio.getSettings())).resumeOnStart).toBe(true);

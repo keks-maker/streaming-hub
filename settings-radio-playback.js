@@ -24,6 +24,14 @@ const OPTIONS = [
   },
 ];
 
+// Anzeige neben dem Tray-Symbol (nur macOS-Menüleiste); Standard „Sender und Titel“
+const TRAY_DISPLAY_OPTIONS = [
+  { value: 'station', label: 'Nur Sender' },
+  { value: 'station-title', label: 'Sender und Titel' },
+  { value: 'off', label: 'Aus' },
+];
+const DEFAULT_TRAY_DISPLAY = 'station-title';
+
 function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   const doc = root.ownerDocument || document;
   const state = { settings: null, volume: null };
@@ -60,9 +68,35 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
     checks.set(option.key, input);
     input.addEventListener('change', () => saveFlag(option.key, input));
   }
+
+  // Anzeige neben dem Symbol: Radiobuttons (eine Auswahl), Speichern über radio:set-settings
+  const displayGroup = el(doc, 'fieldset', 'settings-row settings-row-stack settings-radio-group');
+  displayGroup.id = 'settingsRadio-trayDisplay';
+  displayGroup.appendChild(el(doc, 'legend', 'settings-row-label', 'Anzeige neben dem Symbol'));
+  const displayHint = el(doc, 'p', 'settings-field-hint', 'Zeigt in der Menüleiste (macOS) neben dem Symbol den laufenden Sender und auf Wunsch den Titel. Bei einer laufenden Aufnahme erscheint kein Radiotext.');
+  displayHint.id = 'settingsRadio-trayDisplay-hint';
+  displayGroup.setAttribute('aria-describedby', displayHint.id);
+  const displayRadios = new Map();
+  for (const option of TRAY_DISPLAY_OPTIONS) {
+    const label = el(doc, 'label', 'tv-mode-label');
+    const input = el(doc, 'input');
+    input.type = 'radio';
+    input.name = 'settingsRadio-trayDisplay';
+    input.value = option.value;
+    input.id = `settingsRadio-trayDisplay-${option.value}`;
+    input.dataset.field = 'trayDisplay';
+    label.appendChild(input);
+    label.appendChild(el(doc, 'span', '', ` ${option.label}`));
+    displayGroup.appendChild(label);
+    displayRadios.set(option.value, input);
+    input.addEventListener('change', () => {
+      if (input.checked) saveTrayDisplay(option.value);
+    });
+  }
+  displayGroup.appendChild(displayHint);
   const statusEl = statusLine(doc, 'settingsRadioPlaybackStatus');
   root.textContent = '';
-  root.append(volumeRow, volumeHint, optionHost, statusEl);
+  root.append(volumeRow, volumeHint, optionHost, displayGroup, statusEl);
 
   const showVolume = value => {
     const percent = Math.round(Math.max(0, Math.min(1, Number(value) || 0)) * 100);
@@ -71,9 +105,25 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
     output.textContent = `${percent} %`;
   };
 
+  function showTrayDisplay(value) {
+    const current = displayRadios.has(value) ? value : DEFAULT_TRAY_DISPLAY;
+    for (const [optionValue, input] of displayRadios) input.checked = optionValue === current;
+  }
+
+  async function saveTrayDisplay(wanted) {
+    try {
+      show(await radio.setSettings({ trayDisplay: wanted }));
+      setStatus(statusEl, '✓ Gespeichert');
+    } catch (error) {
+      showTrayDisplay(state.settings && state.settings.trayDisplay);
+      setStatus(statusEl, formatIpcError(error), true);
+    }
+  }
+
   function show(settings) {
     state.settings = settings;
     for (const [key, input] of checks) input.checked = Boolean(settings[key]);
+    showTrayDisplay(settings.trayDisplay);
     if (state.volume === null) showVolume(settings.volume);
   }
 
@@ -134,4 +184,4 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   return { refresh, getState: () => state, dispose: () => unsubscribers.forEach(off => typeof off === 'function' && off()) };
 }
 
-module.exports = { createRadioPlaybackView, OPTIONS };
+module.exports = { createRadioPlaybackView, OPTIONS, TRAY_DISPLAY_OPTIONS };

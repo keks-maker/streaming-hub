@@ -85,7 +85,23 @@ test('Validierung set-settings: nur die drei Schalter, nur Booleans', () => {
   assert.throws(() => validateRadioSettingsPatch(null), /ungültig/);
 });
 
-function ipcSetup(storage = memoryStorage()) {
+test('Validierung set-settings: trayDisplay nur aus der Auswahl (off, station, station-title)', () => {
+  for (const value of ['off', 'station', 'station-title']) assert.deepEqual(validateRadioSettingsPatch({ trayDisplay: value }), { trayDisplay: value });
+  assert.deepEqual(validateRadioSettingsPatch({ trayDisplay: 'off', pauseOnTv: true }), { trayDisplay: 'off', pauseOnTv: true });
+  for (const bad of ['', 'title', 'OFF', true, null, 1, undefined]) assert.throws(() => validateRadioSettingsPatch({ trayDisplay: bad }), /trayDisplay/);
+});
+
+test('Einstellungen: trayDisplay Standard station-title, ungültige Dateiwerte fallen zurück, Patch wird geprüft', () => {
+  const { normalizeRadioSettings, applyRadioSettingsPatch, DEFAULT_RADIO_SETTINGS } = require('../lib/radio/radio-settings.js');
+  assert.equal(DEFAULT_RADIO_SETTINGS.trayDisplay, 'station-title');
+  assert.equal(normalizeRadioSettings({}).trayDisplay, 'station-title');
+  assert.equal(normalizeRadioSettings({ trayDisplay: 'station' }).trayDisplay, 'station');
+  assert.equal(normalizeRadioSettings({ trayDisplay: 'kaputt' }).trayDisplay, 'station-title');
+  assert.equal(applyRadioSettingsPatch(normalizeRadioSettings({}), { trayDisplay: 'off' }).trayDisplay, 'off');
+  assert.throws(() => applyRadioSettingsPatch(normalizeRadioSettings({}), { trayDisplay: 'x' }), /ungültig/);
+});
+
+function ipcSetup(storage = memoryStorage(), onSettingsChanged = null) {
   const handlers = new Map();
   const sent = [];
   const library = new RadioLibrary({ userStorage: storage });
@@ -99,6 +115,7 @@ function ipcSetup(storage = memoryStorage()) {
       if (!event || event.sender !== MAIN) throw new Error('IPC-Aufruf von nicht autorisiertem Renderer');
     },
     sendToMain: (channel, payload) => sent.push({ channel, payload }),
+    onSettingsChanged,
   });
   const call = (channel, ...args) => Promise.resolve().then(() => handlers.get(channel)({ sender: MAIN }, ...args));
   return { call, sent, storage, library, controller };
@@ -125,6 +142,18 @@ test('IPC: ungültige Anpassungen erreichen den Speicher nie', async () => {
   await assert.rejects(call('radio:set-override', { sourceId: 'bundle', stationId: 'zzz' }, { name: 'x' }), /nicht gefunden/);
   await assert.rejects(call('radio:clear-override', 'a'), /ungültig/);
   assert.deepEqual(storage.data.radioSources, sources());
+});
+
+test('IPC: set-settings trayDisplay speichert, meldet die Änderung (Tray) und übersteht einen Fehler der Folgeaktion', async () => {
+  const seen = [];
+  const { call, library } = ipcSetup(memoryStorage(), settings => seen.push(settings.trayDisplay));
+  assert.equal((await call('radio:set-settings', { trayDisplay: 'off' })).trayDisplay, 'off');
+  assert.equal(library.getSettings().trayDisplay, 'off');
+  assert.deepEqual(seen, ['off']);
+  await assert.rejects(call('radio:set-settings', { trayDisplay: 'bogus' }), /trayDisplay/);
+  assert.deepEqual(seen, ['off'], 'ungültig: keine Folgeaktion');
+  const broken = ipcSetup(memoryStorage(), () => { throw new Error('boom'); });
+  assert.equal((await broken.call('radio:set-settings', { trayDisplay: 'station' })).trayDisplay, 'station');
 });
 
 test('IPC: set-settings speichert Schalter und liefert die normalisierten Einstellungen', async () => {

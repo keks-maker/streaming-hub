@@ -2993,6 +2993,8 @@ body.epg-open .overlay-bar { z-index: 105; }
 }
 .settings-row-stack { flex-direction: column; align-items: flex-start; gap: 2px; }
 .settings-row-label { font-size: 14px; color: var(--text); }
+.settings-radio-group { border: 0; margin: 0; padding: 0; min-width: 0; }
+.settings-radio-group legend { padding: 0; margin-bottom: 4px; }
 .settings-tv-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .settings-status {
   font-size: 12px;

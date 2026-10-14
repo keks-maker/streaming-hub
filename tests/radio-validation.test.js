@@ -158,7 +158,7 @@ test('Backup mit Radio: Quellen und Einstellungen werden übernommen, LAN-Stream
   const settings = { volume: 0.4, lastStation: { sourceId: 's', id: 'a' }, evil: true };
   const value = parseBackup(JSON.stringify({ ...legacy, radioSources: radio, radioSettings: settings }));
   assert.deepEqual(value.radioSources, radio);
-  assert.deepEqual(value.radioSettings, { volume: 0.4, lastStation: { sourceId: 's', id: 'a' }, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true });
+  assert.deepEqual(value.radioSettings, { volume: 0.4, lastStation: { sourceId: 's', id: 'a' }, resumeOnStart: false, pauseOnTv: true, keepPlayingWhenClosed: true, trayDisplay: 'station-title' });
 });
 
 test('Backup akzeptiert den Schlüssel "radiosources" und normalisiert ihn zu radioSources', () => {

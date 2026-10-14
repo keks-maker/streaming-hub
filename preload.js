@@ -205,7 +205,7 @@ contextBridge.exposeInMainWorld('radio', {
   findLogo: query => ipcRenderer.invoke('radio:find-logo', query),
   refreshStreamUrls: () => ipcRenderer.invoke('radio:refresh-stream-urls'),
   getState: () => ipcRenderer.invoke('radio:get-state'),
-  // Wiedergabe-Optionen (lastStation, resumeOnStart, pauseOnTv, keepPlayingWhenClosed, volume); setSettings nimmt nur die drei Schalter
+  // Wiedergabe-Optionen (lastStation, resumeOnStart, pauseOnTv, keepPlayingWhenClosed, trayDisplay, volume); setSettings nimmt die drei Schalter und trayDisplay
   getSettings: () => ipcRenderer.invoke('radio:get-settings'),
   setSettings: patch => ipcRenderer.invoke('radio:set-settings', patch),
   onState: radioListener('radio:state'),
