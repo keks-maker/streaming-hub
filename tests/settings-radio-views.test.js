@@ -462,3 +462,18 @@ test('Eigene Sender: Fehlermeldung verschwindet, sobald das Feld geändert wird'
   assert.deepEqual(root.byClass('settings-chan-error').map(n => n.textContent), ['Bitte eine Stream-URL eingeben']);
   assert.equal(byId(root, 'settingsRadioCustomStatus').textContent, '');
 });
+
+test('Eigene Sender: korrigiertes Feld bekommt den Fehler auch nach erneutem Rendern nicht zurück', async () => {
+  const { root, view } = mount(createRadioCustomView, {});
+  await view.refresh();
+  byId(root, 'settingsRadioCustomAdd').click();
+  submit(root);
+  type(field(root, 'name'), 'Neu');
+  assert.equal(field(root, 'name').getAttribute('aria-invalid'), undefined);
+  // Prüfen ohne URL rendert das Formular neu und behält nur noch gültige Fehlerzustände
+  root.byClass('settings-action-btn').find(n => n.textContent === 'Stream prüfen').click();
+  await tick();
+  assert.equal(field(root, 'name').getAttribute('aria-invalid'), undefined);
+  assert.equal(field(root, 'streamUrl').getAttribute('aria-invalid'), 'true');
+  assert.equal(root.byClass('settings-chan-error').length, 1);
+});

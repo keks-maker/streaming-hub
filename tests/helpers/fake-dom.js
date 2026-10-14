@@ -57,6 +57,9 @@ class FakeNode {
   setAttribute(name, value) {
     this.attrs[name] = value;
   }
+  removeAttribute(name) {
+    delete this.attrs[name];
+  }
   getAttribute(name) {
     return this.attrs[name];
   }

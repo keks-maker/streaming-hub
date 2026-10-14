@@ -167,6 +167,8 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
       if (extra.list) control.setAttribute('list', extra.list);
       control.addEventListener('input', () => {
         form.values[field] = control.value;
+        // Feldfehler ist mit der Eingabe überholt (auch im Zustand, sonst käme er beim nächsten Rendern zurück)
+        if (form.errors[field]) delete form.errors[field];
         if (statusEl.classList.contains('error')) setStatus(statusEl, '');
         if (field === 'streamUrl' && form.probe) {
           form.probe = null; // Ergebnis gilt nur für die geprüfte URL
