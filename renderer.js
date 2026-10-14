@@ -413,7 +413,8 @@ function switchWebview(useTv) {
   } else {
     // TV-Stream stoppen via about:blank (räumt HLS.js + Video in der IIFE auf)
     try {
-      tvView.loadURL('about:blank');
+      // Ein überlappendes Laden bricht diese Navigation mit ERR_ABORTED ab; die Ablehnung ist erwartet und harmlos
+      Promise.resolve(tvView.loadURL('about:blank')).catch(() => {});
     } catch (_e) {
       /* tvView noch nicht geladen */
     }
