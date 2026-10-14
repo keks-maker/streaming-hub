@@ -3260,3 +3260,90 @@ body.epg-open .overlay-bar { z-index: 105; }
 .schedule-wake-hint { font-size: 12px; color: #f59e0b; margin-bottom: 10px; }
 .schedule-wake-hint.ok { color: var(--text-muted); }
 .schedule-wake-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
+
+/* ── Radio (R2): Startkachel, Dashboard, Mini-Player ── */
+.dashboard-view.start-page .dashboard-grid { grid-template-columns:repeat(5,minmax(150px,236px)); gap:20px; }
+.dashboard-section-radio .dashboard-section-tile-art { background:linear-gradient(145deg,#4a2a08,#241b14 62%,#11141c); }
+.dashboard-section-radio .dashboard-section-tile-art::before {
+  top: 30px; right: -30px; width: 170px; height: 170px;
+  border: 1px solid rgba(251,191,36,.3); border-radius: 50%;
+  box-shadow: 0 0 0 20px rgba(245,158,11,.1), 0 0 0 42px rgba(245,158,11,.065), 0 0 0 64px rgba(245,158,11,.04);
+}
+.dashboard-section-radio .dashboard-section-tile-art::after {
+  top: 48px; left: 30px; width: 8px; height: 30px; border-radius: 4px;
+  background: #fbbf24;
+  box-shadow: 14px 12px 0 #f59e0b, 28px -6px 0 #fcd34d, 42px 8px 0 #f59e0b, 56px 18px 0 #fbbf24;
+}
+.dashboard-section-radio .dashboard-section-tile-art-detail {
+  top: 40px; right: 40px; width: 9px; height: 9px; border-radius: 50%;
+  background: #fbbf24; box-shadow: 0 0 18px #fbbf24;
+}
+
+.radio-dashboard { max-width:1480px; margin:0 auto 24px; }
+.radio-dashboard[hidden],.radio-grid[hidden],.radio-empty[hidden],.radio-empty-btn[hidden] { display:none; }
+.radio-toolbar { margin-bottom:22px; }
+.radio-status { flex:1; min-width:0; margin-left:auto; padding:0 6px; text-align:right; color:var(--text-dim); font-size:13px; }
+.radio-grid { max-width:none; }
+.radio-empty { max-width:640px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+.radio-empty-message,.radio-empty-hint { margin:0; line-height:1.5; }
+.radio-empty-hint { color:var(--text-muted); font-size:13px; }
+.radio-empty-btn { padding:11px 20px; font:inherit; font-weight:600; color:#1b1306; background:#f59e0b; border:0; border-radius:12px; cursor:pointer; transition:filter .15s, transform .15s; }
+.radio-empty-btn:hover,.radio-empty-btn:focus-visible { filter:brightness(1.1); transform:translateY(-1px); outline:2px solid #fde68a; outline-offset:2px; }
+.radio-empty-btn:disabled { opacity:.5; cursor:wait; }
+.radio-tile { isolation:isolate; min-height:190px; }
+.radio-tile > * { position:relative; z-index:1; }
+.radio-tile > .dashboard-tile-glow { position:absolute; z-index:0; }
+.radio-tile.is-active { border-color:var(--tile-color); box-shadow:0 22px 44px color-mix(in srgb,var(--tile-color) 26%,transparent); }
+.radio-tile .dashboard-tile-name,.radio-tile .dashboard-tile-meta { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.radio-tile.is-error { border-color:var(--rec); }
+.radio-tile.is-error .dashboard-tile-meta { color:var(--rec); }
+/* Equalizer: läuft bei „playing“, steht bei „paused“, blinkt beim Verbinden */
+.radio-eq { position:absolute !important; top:18px; right:18px; display:none; align-items:flex-end; gap:3px; height:20px; }
+.radio-tile.is-active .radio-eq { display:flex; }
+.radio-eq span { display:block; width:4px; height:100%; background:var(--tile-color); border-radius:2px; transform-origin:bottom; transform:scaleY(.35); }
+.radio-tile[data-state="playing"] .radio-eq span { animation:radio-eq-bounce .9s ease-in-out infinite; }
+.radio-tile[data-state="playing"] .radio-eq span:nth-child(2) { animation-delay:-.25s; animation-duration:.7s; }
+.radio-tile[data-state="playing"] .radio-eq span:nth-child(3) { animation-delay:-.5s; animation-duration:1.1s; }
+.radio-tile[data-state="playing"] .radio-eq span:nth-child(4) { animation-delay:-.1s; animation-duration:.8s; }
+.radio-tile[data-state="loading"] .radio-eq span { animation:radio-eq-pulse 1s ease-in-out infinite; }
+.radio-tile[data-state="paused"] .radio-eq span { opacity:.6; }
+.radio-tile[data-state="error"] .radio-eq { display:none; }
+@keyframes radio-eq-bounce { 0%,100% { transform:scaleY(.25); } 50% { transform:scaleY(1); } }
+@keyframes radio-eq-pulse { 0%,100% { opacity:.3; } 50% { opacity:1; } }
+
+.radio-miniplayer { flex:none; display:flex; align-items:center; gap:14px; min-height:60px; padding:8px 18px; background:linear-gradient(90deg,rgba(245,158,11,.14),rgba(17,21,29,.96) 38%),#11151d; border-top:1px solid rgba(245,158,11,.35); color:var(--text); position:relative; z-index:30; }
+.radio-miniplayer[hidden] { display:none; }
+.radio-mini-logo { position:relative; display:grid; flex:none; width:42px; height:42px; place-items:center; padding:5px; background:rgba(255,255,255,.09); border-radius:10px; overflow:hidden; }
+.radio-mini-logo img { width:100%; height:100%; object-fit:contain; }
+.radio-mini-logo-fallback { display:none; color:#f59e0b; font-size:20px; font-weight:800; }
+.radio-mini-logo.has-error .radio-mini-logo-fallback { display:block; }
+.radio-mini-info { display:flex; flex-direction:column; flex:1; min-width:0; gap:2px; padding:4px 6px; font:inherit; text-align:left; color:inherit; background:none; border:1px solid transparent; border-radius:8px; cursor:pointer; }
+.radio-mini-info:hover,.radio-mini-info:focus-visible { background:var(--glass-hover); border-color:var(--border); outline:none; }
+.radio-mini-name { font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.radio-mini-subtitle { color:var(--text-dim); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.radio-miniplayer[data-state="error"] .radio-mini-subtitle { color:var(--rec); }
+.radio-mini-controls { display:flex; align-items:center; flex:none; gap:4px; }
+.radio-mini-btn { display:grid; place-items:center; width:36px; height:36px; color:var(--text-dim); background:none; border:1px solid transparent; border-radius:50%; cursor:pointer; transition:background .15s,color .15s,border-color .15s; }
+.radio-mini-btn:hover,.radio-mini-btn:focus-visible { color:var(--text); background:var(--glass-hover); border-color:var(--border-strong); outline:none; }
+.radio-mini-btn:disabled { opacity:.35; cursor:default; pointer-events:none; }
+.radio-mini-primary { width:42px; height:42px; color:#1b1306; background:#f59e0b; }
+.radio-mini-primary:hover,.radio-mini-primary:focus-visible { color:#1b1306; background:#fbbf24; border-color:#fde68a; }
+.radio-mini-volume { display:flex; align-items:center; flex:none; gap:8px; color:var(--text-dim); }
+.radio-mini-volume-icon { display:grid; place-items:center; }
+.radio-mini-volume input[type="range"] { width:110px; accent-color:#f59e0b; cursor:pointer; }
+.radio-mini-volume input[type="range"]:focus-visible { outline:2px solid #fde68a; outline-offset:3px; border-radius:4px; }
+@media (max-width:700px) {
+  .dashboard-view.start-page { overflow:auto; }
+  .radio-mini-volume input[type="range"] { width:70px; }
+  .radio-miniplayer { gap:8px; padding:8px 10px; }
+}
+@media (max-width:1100px) { .dashboard-view.start-page .dashboard-grid { grid-template-columns:repeat(5,minmax(120px,1fr)); gap:14px; } }
+@media (max-width:700px) { .dashboard-view.start-page .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (prefers-reduced-motion: reduce) {
+  .radio-eq span { animation:none !important; }
+  .radio-tile[data-state="playing"] .radio-eq span:nth-child(odd) { transform:scaleY(.9); }
+  .radio-tile[data-state="playing"] .radio-eq span:nth-child(even) { transform:scaleY(.5); }
+  .radio-empty-btn { transition:none; }
+}
+/* .content-area hat min-height:100vh; mit sichtbarer Leiste muss der Bereich schrumpfen, damit sie im Fenster liegt */
+body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }

@@ -93,6 +93,7 @@
       </div>
       <div class="dashboard-grid" id="dashboardGrid"></div>
       <div class="dashboard-empty" id="dashboardEmpty" style="display:none"></div>
+      <div class="radio-dashboard" id="radioDashboard" hidden></div>
       <div class="settings-panel-host" id="settingsPanelHost" hidden></div>
     </div>
     <div class="dashboard-player" id="dashboardPlayer" style="display:none">
@@ -138,6 +139,9 @@
     <span class="nav-reveal-hint" aria-hidden="true">⌃</span>
     <span class="version-tag" id="versionTag"></span>
   </div>
+
+  <!-- Radio-Mini-Player (R2): Leiste unten, sichtbar auf allen Seiten solange Radio nicht idle ist -->
+  <div class="radio-miniplayer" id="radioMiniPlayer" hidden></div>
 
   <!-- Aufnahmen-Dashboard (Fix-Set 4): regulärer Dashboard-Bereich, kein Overlay.
        Das alte recordings-overlay-Markup wurde entfernt; die Wiedergabe läuft
