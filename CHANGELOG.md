@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 (2026-10-14) — Online-Radio
 
 ### Radio (Feature, Konzept `docs/StreamingHub-Radio-Konzept.md`)
 
