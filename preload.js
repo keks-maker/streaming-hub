@@ -189,6 +189,9 @@ contextBridge.exposeInMainWorld('radio', {
   removeCustom: id => ipcRenderer.invoke('radio:remove-custom', id),
   // key: { sourceId, stationId }
   setFavorite: (key, favorite) => ipcRenderer.invoke('radio:set-favorite', key, favorite),
+  // patch: { name?, logo?, streamUrl? } (leer/null = Feld zurücksetzen); nur für gelieferte Sender, eigene über updateCustom
+  setOverride: (key, patch) => ipcRenderer.invoke('radio:set-override', key, patch),
+  clearOverride: key => ipcRenderer.invoke('radio:clear-override', key),
   // order: [{ sourceId, id }] in gewünschter globaler Reihenfolge
   setFavoriteOrder: order => ipcRenderer.invoke('radio:set-favorite-order', order),
   // key: { sourceId, stationId }; ohne Argument: fortsetzen bzw. letzter Sender
@@ -200,8 +203,9 @@ contextBridge.exposeInMainWorld('radio', {
   setVolume: volume => ipcRenderer.invoke('radio:set-volume', volume),
   probe: url => ipcRenderer.invoke('radio:probe', url),
   getState: () => ipcRenderer.invoke('radio:get-state'),
-  // Wiedergabe-Optionen (lastStation, resumeOnStart, pauseOnTv, keepPlayingWhenClosed, volume); nur lesend
+  // Wiedergabe-Optionen (lastStation, resumeOnStart, pauseOnTv, keepPlayingWhenClosed, volume); setSettings nimmt nur die drei Schalter
   getSettings: () => ipcRenderer.invoke('radio:get-settings'),
+  setSettings: patch => ipcRenderer.invoke('radio:set-settings', patch),
   onState: radioListener('radio:state'),
   onSourcesChanged: radioListener('radio:sources-changed'),
 });

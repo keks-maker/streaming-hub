@@ -756,6 +756,12 @@ app.whenReady().then(() => {
       },
       logger,
     });
+    // Option "Beim Start letzten Sender fortsetzen" (Standard aus): sonst startet das Radio nie von selbst
+    try {
+      if (radioController.resumeOnStart()) logger.info('Radio: letzter Sender wird fortgesetzt');
+    } catch (e) {
+      logger.warn('Radio: Fortsetzen beim Start fehlgeschlagen:', e.message);
+    }
     // Radio stoppt oder scheitert, während kein Fenster mehr offen ist: kein Grund mehr, im Tray zu bleiben
     radioController.on('state', status => {
       if ((status.status === 'idle' || status.status === 'error') && BrowserWindow.getAllWindows().length === 0) {
