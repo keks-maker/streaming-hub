@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -1109,6 +1109,8 @@ app.whenReady().then(() => {
               })
             : [],
         getTrayDisplay: () => (radioLibrary ? radioLibrary.getSettings().trayDisplay : 'station-title'),
+        getTrayScroll: () => (radioLibrary ? radioLibrary.getSettings().trayScroll !== false : true),
+        getReducedMotion: () => Boolean(systemPreferences.getAnimationSettings && systemPreferences.getAnimationSettings().prefersReducedMotion),
         canPlayLast: () => {
           const last = radioLibrary ? radioLibrary.getSettings().lastStation : null;
           return Boolean(last && radioLibrary.getStation({ sourceId: last.sourceId, stationId: last.id }));

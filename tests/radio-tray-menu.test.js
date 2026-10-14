@@ -13,7 +13,7 @@ const path = require('node:path');
 const { EventEmitter } = require('node:events');
 
 const menuTemplates = [];
-const trayCalls = { images: [], tooltips: [], titles: [] };
+const trayCalls = { images: [], tooltips: [], titles: [], fonts: [] };
 const shows = [];
 let quitCalls = 0;
 
@@ -25,7 +25,7 @@ require.cache[require.resolve('electron')] = {
     nativeImage: { createFromPath: p => ({ isEmpty: () => false, p }), createEmpty: () => ({}) },
     Tray: class {
       setToolTip(t) { trayCalls.tooltips.push(t); }
-      setTitle(t) { trayCalls.titles.push(t); }
+      setTitle(t, o) { trayCalls.titles.push(t); trayCalls.fonts.push(o && o.fontType ? o.fontType : null); }
       setImage(img) { trayCalls.images.push(img); }
       setContextMenu() {}
       on() {}
@@ -726,4 +726,179 @@ test('Hauptprozess: Favoritenliste des Tray kommt aus getFavoriteKeys und Quelle
     const at = ipc.indexOf(`'${channel}'`);
     assert.ok(at > 0 && ipc.slice(at, at + 420).includes('broadcastSources'), `${channel} sendet radio:sources-changed`);
   }
+});
+
+// ── Lauftext neben dem Symbol ──
+
+const LONG_ARTIST = 'Ein sehr langer Interpretenname';
+const { marqueeWindow } = require('../lib/radio/tray-marquee.js');
+
+function makeScrolling(initial = {}, opts = {}) {
+  menuTemplates.length = 0;
+  trayCalls.titles.length = 0;
+  trayCalls.fonts.length = 0;
+  const fake = fakeRadio({ nowPlaying: { artist: LONG_ARTIST, title: 'Und ein ebenso langer Titel' }, ...initial });
+  const ticks = [];
+  const made = makeController(fake, {
+    opts: {
+      setTick: (fn, ms) => { const t = { fn, ms, cleared: false }; ticks.push(t); return t; },
+      clearTick: t => { t.cleared = true; },
+      ...opts,
+    },
+  });
+  const live = () => ticks.filter(t => !t.cleared);
+  const tick = (n = 1) => { for (let i = 0; i < n; i++) live().at(-1).fn(); };
+  return { fake, ticks, live, tick, ...made };
+}
+const FULL = `Zwei · ${LONG_ARTIST} – Und ein ebenso langer Titel`;
+
+test('Lauftext: langer Text startet den Timer (400 ms), setTitle mit dem Fensteranfang in Monospace', () => {
+  const { controller, live } = makeScrolling();
+  controller.create();
+  assert.equal(live().length, 1);
+  assert.equal(live()[0].ms, 400);
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text);
+  assert.equal(Array.from(trayCalls.titles.at(-1)).length, 28);
+  assert.equal(trayCalls.fonts.at(-1), 'monospaced');
+  controller.destroy();
+});
+
+test('Lauftext: setTitle nur bei Fensteränderung (Pausen ohne Aufruf), höchstens ~3 Aufrufe pro Sekunde', () => {
+  const { controller, tick } = makeScrolling();
+  controller.create();
+  const before = trayCalls.titles.length;
+  tick(4); // Pause am Anfang (5 Schritte inkl. Schritt 0)
+  assert.equal(trayCalls.titles.length, before, 'Anfangspause: kein setTitle');
+  tick(1);
+  assert.equal(trayCalls.titles.length, before + 1);
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 5).text);
+  const total = marqueeWindow(FULL, 0).cycleSteps;
+  tick(total - 5 - 1); // bis eins vor Zyklusende
+  const atEnd = trayCalls.titles.length;
+  tick(1); // Neustart
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text, 'Neustart am Anfang');
+  assert.equal(trayCalls.titles.length, atEnd + 1);
+  assert.ok(1000 / 400 <= 3, 'Takt 400 ms = 2,5 Aufrufe pro Sekunde');
+  controller.destroy();
+});
+
+test('Lauftext: statisch bei kurzem Text, Pause, idle, error und Aufnahme; Timer wird aufgeräumt', () => {
+  const s = makeScrolling({ nowPlaying: null });
+  s.controller.create();
+  assert.equal(s.live().length, 0, 'kurzer Text: kein Timer');
+  assert.equal(trayCalls.titles.at(-1), 'Zwei');
+  s.fake.push({ nowPlaying: { artist: LONG_ARTIST, title: 'Und ein ebenso langer Titel' } });
+  s.advance(6000);
+  s.controller.refresh();
+  assert.equal(s.live().length, 1, 'langer Text: Timer läuft');
+  s.fake.push({ status: 'paused' });
+  assert.equal(s.live().length, 0, 'Pause: Timer gestoppt');
+  assert.equal(trayCalls.titles.at(-1), '⏸ Zwei');
+  assert.equal(trayCalls.fonts.at(-1), null, 'statisch wieder in der Systemschrift');
+  s.fake.push({ status: 'playing' });
+  assert.equal(s.live().length, 1);
+  s.fake.push({ status: 'idle', station: null, nowPlaying: null });
+  assert.equal(s.live().length, 0);
+  assert.equal(trayCalls.titles.at(-1), '');
+  s.fake.push({ status: 'playing', station: { sourceId: 's', id: 'b', name: 'Zwei' }, nowPlaying: { artist: LONG_ARTIST, title: 'Und ein ebenso langer Titel' } });
+  assert.equal(s.live().length, 1);
+  s.fake.push({ status: 'error', error: 'x' });
+  assert.equal(s.live().length, 0, 'error: Timer gestoppt');
+  s.controller.destroy();
+
+  const rec = makeScrolling({}, {});
+  rec.controller.recorder.activeJobs = () => [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }];
+  rec.controller.create();
+  assert.equal(rec.live().length, 0, 'Aufnahme-Vorrang: kein Lauftext');
+  assert.deepEqual(trayCalls.titles, []);
+  rec.controller.destroy();
+});
+
+test('Lauftext: Titelwechsel setzt zurück auf den Anfang, derselbe Text nicht', () => {
+  const s = makeScrolling();
+  s.controller.create();
+  s.tick(8);
+  const scrolled = trayCalls.titles.at(-1);
+  assert.notEqual(scrolled, marqueeWindow(FULL, 0).text);
+  s.controller.refresh(); // gleicher Text: kein Reset
+  assert.equal(trayCalls.titles.at(-1), scrolled);
+  s.advance(6000);
+  s.fake.push({ nowPlaying: { artist: LONG_ARTIST, title: 'Ein ganz anderer langer Titel' } });
+  const next = `Zwei · ${LONG_ARTIST} – Ein ganz anderer langer Titel`;
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(next, 0).text, 'Titelwechsel: wieder von vorn');
+  assert.equal(s.live().length, 1, 'weiterhin genau ein Timer');
+  s.tick(5);
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(next, 5).text);
+  s.controller.destroy();
+});
+
+test('Lauftext: trayScroll aus, „Bewegung reduzieren“ und trayDisplay „off“/„station“ → statisch gekürzt', () => {
+  let scroll = false;
+  const s = makeScrolling({}, { getTrayScroll: () => scroll });
+  s.controller.create();
+  assert.equal(s.live().length, 0);
+  assert.equal(trayCalls.titles.at(-1), `${FULL.slice(0, 27).trimEnd()}…`, 'gekürzt mit …');
+  assert.equal(trayCalls.fonts.at(-1), null);
+  scroll = true;
+  s.controller.refresh(); // Einstellung geändert: sofortige Wirkung
+  assert.equal(s.live().length, 1);
+  scroll = false;
+  s.controller.refresh();
+  assert.equal(s.live().length, 0, 'trayScroll aus: Timer weg');
+  assert.ok(trayCalls.titles.at(-1).endsWith('…'));
+  s.controller.destroy();
+
+  let reduced = true;
+  const r = makeScrolling({}, { getReducedMotion: () => reduced });
+  r.controller.create();
+  assert.equal(r.live().length, 0, 'reducedMotion: kein Timer');
+  assert.ok(trayCalls.titles.at(-1).endsWith('…'));
+  reduced = false;
+  r.controller.refresh();
+  assert.equal(r.live().length, 1);
+  reduced = true; // während des Laufens eingeschaltet: nächster Tick stoppt und kürzt
+  r.tick();
+  assert.equal(r.live().length, 0);
+  assert.ok(trayCalls.titles.at(-1).endsWith('…'));
+  r.controller.destroy();
+
+  let display = 'off';
+  const d = makeScrolling({}, { getTrayDisplay: () => display });
+  d.controller.create();
+  assert.equal(d.live().length, 0, 'off: kein Timer');
+  display = 'station';
+  d.controller.refresh();
+  assert.equal(d.live().length, 0, 'nur Sender (kurz): kein Timer');
+  display = 'station-title';
+  d.controller.refresh();
+  assert.equal(d.live().length, 1);
+  display = 'off';
+  d.controller.refresh();
+  assert.equal(d.live().length, 0);
+  assert.equal(trayCalls.titles.at(-1), '');
+  d.controller.destroy();
+});
+
+test('Lauftext: destroy räumt den Timer auf; Tick nach destroy ist wirkungslos', () => {
+  const s = makeScrolling();
+  s.controller.create();
+  const timer = s.live()[0];
+  s.controller.destroy();
+  assert.equal(timer.cleared, true);
+  const count = trayCalls.titles.length;
+  timer.fn();
+  assert.equal(trayCalls.titles.length, count);
+});
+
+test('Lauftext: nicht unter macOS kein Timer', () => {
+  const s = makeScrolling({}, { platform: 'linux' });
+  s.controller.create();
+  s.controller.refresh();
+  assert.equal(s.ticks.length, 0);
+  assert.deepEqual(trayCalls.titles, []);
+  s.controller.destroy();
+  const w = makeScrolling({}, { platform: 'win32' });
+  w.controller.create();
+  assert.equal(w.ticks.length, 0);
+  w.controller.destroy();
 });
