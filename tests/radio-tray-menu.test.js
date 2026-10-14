@@ -394,3 +394,14 @@ test('Player: mediaSession-Handler für play/pause/stop/nexttrack/previoustrack 
   assert.match(source, /new window\.MediaMetadata\(\{ title: command\.title/);
   assert.match(source, /command\.cmd === 'meta'/);
 });
+
+test('Tray-Etiketten: "&" wird als "&&" maskiert (Mnemonic unter Windows/Linux)', () => {
+  const items = buildTrayMenuModel({
+    nowMs: NOW,
+    radio: radio({ station: { name: 'Rock & Pop' }, nowPlaying: { artist: 'Simon & Garfunkel', title: 'A & B' }, favorites: [{ sourceId: 's', id: 'a', name: 'Rock & Pop', active: true }] }),
+  });
+  assert.equal(items[0].label, '▶ Rock && Pop — Simon && Garfunkel – A && B');
+  const favorites = items.find(item => item.id === 'radio-favorites');
+  assert.equal(favorites.submenu[0].label, 'Rock && Pop');
+  assert.equal(trayTooltip(0, radio({ station: { name: 'Rock & Pop' } })), 'Streaming Hub — Radio: Rock & Pop', 'Tooltip ist kein Menü: unmaskiert');
+});
