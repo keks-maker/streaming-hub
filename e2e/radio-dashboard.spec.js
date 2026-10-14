@@ -14,7 +14,6 @@ const { MIN, xmltvTime, launchApp, waitForEpgChannels } = require('./epg-helpers
 const { startRadioServer } = require('../tests/helpers/radio-server');
 
 const FFMPEG = path.join(__dirname, '..', 'bin', 'ffmpeg');
-const CUSTOM = 'eigene-radiosender';
 const SHOTS = process.env.RADIO_E2E_SHOTS || '';
 
 function buildEpg(base) {

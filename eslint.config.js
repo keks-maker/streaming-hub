@@ -14,6 +14,7 @@ const NODE_GLOBALS = {
   clearTimeout: 'readable',
   setInterval: 'readable',
   clearInterval: 'readable',
+  setImmediate: 'readable',
   global: 'readable',
   URL: 'readable',
 };
@@ -109,6 +110,17 @@ export default [
       'prefer-const': 'warn',
       'no-redeclare': 'off',
       'preserve-caught-error': 'off',
+    },
+  },
+  // ── E2E: page.evaluate-Code laeuft im Browser-Kontext ──
+  {
+    files: ['e2e/**/*.js'],
+    languageOptions: {
+      globals: {
+        document: 'readable',
+        Event: 'readable',
+        getComputedStyle: 'readable',
+      },
     },
   },
   // ── Renderer (Browser only) ──
