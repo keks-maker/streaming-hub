@@ -37,6 +37,7 @@ const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
+const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
 const { refreshStreamUrls } = require('./lib/radio/radio-refresh.js');
 const { createApiClient, resolveApiServers } = require('./lib/radio/radio-browser.js');
 const { probeStream } = require('./lib/radio/radio-resolve.js');
@@ -755,8 +756,14 @@ app.whenReady().then(() => {
       library: radioLibrary,
       logger,
     });
+    // Test-Hook (E2E): STREAMING_HUB_TEST_LOGO_ALLOW_HTTP=1 erlaubt http-Logos/-Seiten (lokaler Testserver), nur in isolierten Testläufen
+    const logoFinder = createLogoFinder({
+      net: createLogoNet({ timeoutMs: 8000 }),
+      allowHttp: isIsolatedTestRun(process.env) && process.env.STREAMING_HUB_TEST_LOGO_ALLOW_HTTP === '1',
+    });
     registerRadioIpc({
       ipcMain,
+      findLogo: homepage => logoFinder.find(homepage),
       controller: radioController,
       library: radioLibrary,
       requireMainRenderer,

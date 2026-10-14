@@ -74,7 +74,7 @@ function setup({ probe, refreshStreams } = {}) {
 
 test('alle radio:*-Kanäle sind registriert', () => {
   const { handlers } = setup();
-  const expected = ['get-sources', 'add-custom', 'update-custom', 'remove-custom', 'set-favorite', 'set-favorite-order', 'set-override', 'clear-override', 'set-settings', 'play', 'pause', 'stop', 'next', 'prev', 'set-volume', 'probe', 'get-state', 'get-settings', 'refresh-stream-urls'];
+  const expected = ['get-sources', 'add-custom', 'update-custom', 'remove-custom', 'set-favorite', 'set-favorite-order', 'set-override', 'clear-override', 'set-settings', 'play', 'pause', 'stop', 'next', 'prev', 'set-volume', 'probe', 'find-logo', 'get-state', 'get-settings', 'refresh-stream-urls'];
   for (const name of expected) assert.ok(handlers.has(`radio:${name}`), name);
   assert.equal(handlers.size, expected.length);
 });

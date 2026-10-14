@@ -202,6 +202,7 @@ contextBridge.exposeInMainWorld('radio', {
   prev: () => ipcRenderer.invoke('radio:prev'),
   setVolume: volume => ipcRenderer.invoke('radio:set-volume', volume),
   probe: url => ipcRenderer.invoke('radio:probe', url),
+  findLogo: query => ipcRenderer.invoke('radio:find-logo', query),
   refreshStreamUrls: () => ipcRenderer.invoke('radio:refresh-stream-urls'),
   getState: () => ipcRenderer.invoke('radio:get-state'),
   // Wiedergabe-Optionen (lastStation, resumeOnStart, pauseOnTv, keepPlayingWhenClosed, volume); setSettings nimmt nur die drei Schalter
