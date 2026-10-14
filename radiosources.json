@@ -27,7 +27,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.rockantenne.de/"
+        "homepage": "https://www.rockantenne.de/",
+        "logo": "https://www.rockantenne.de/logos/station-rock-antenne/favicon.ico"
       },
       {
         "id": "1live",
@@ -52,7 +53,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 192,
-        "homepage": "https://www.80s80s.de/"
+        "homepage": "https://www.80s80s.de/",
+        "logo": "https://upload.80s80s.de/production/static/1791269758018/icons/icon_512.ewwAEi8A30w.png"
       },
       {
         "id": "90s90s-hits",
@@ -64,7 +66,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 192,
-        "homepage": "https://www.90s90s.de/"
+        "homepage": "https://www.90s90s.de/",
+        "logo": "https://upload.90s90s.de/production/static/1791269790508/icons/icon_512.cno7CdHz6$i.png"
       },
       {
         "id": "sunshine-live-die-90er",
@@ -75,7 +78,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "90s90s-hiphop-rap",
@@ -85,7 +89,8 @@
         "genre": "HipHop",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.90s90s.de/radios/hiphop-rap"
+        "homepage": "https://www.90s90s.de/radios/hiphop-rap",
+        "logo": "https://upload.90s90s.de/production/static/1791269790508/icons/icon_512.cno7CdHz6$i.png"
       },
       {
         "id": "rock-antenne",
@@ -97,7 +102,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.rockantenne.de/"
+        "homepage": "https://www.rockantenne.de/",
+        "logo": "https://www.rockantenne.de/logos/rock-antenne/apple-touch-icon.png"
       },
       {
         "id": "wdr5",
@@ -134,7 +140,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.antenne.de/"
+        "homepage": "https://www.antenne.de/",
+        "logo": "https://www.antenne.de/logos/station-antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "swr3",
@@ -158,7 +165,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "0-n-classic-rock-on-radio",
@@ -183,7 +191,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 192,
-        "homepage": "https://www.sunshine-live.de/"
+        "homepage": "https://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "antenne-bayern-chillout",
@@ -195,7 +204,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.antenne.de/"
+        "homepage": "https://www.antenne.de/",
+        "logo": "https://www.antenne.de/logos/station-antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "90s90s-dance-hq",
@@ -216,7 +226,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.radioeins.de/"
+        "homepage": "http://www.radioeins.de/",
+        "logo": "https://www.radioeins.de/content/dam/rbb/rbb/logos/touch/rad-128.png"
       },
       {
         "id": "inforadio",
@@ -228,7 +239,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.inforadio.de/"
+        "homepage": "https://www.inforadio.de/",
+        "logo": "https://www.inforadio.de/content/dam/rbb/rbb/logos/touch/inf-128.png"
       },
       {
         "id": "deutschlandfunk",
@@ -265,7 +277,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.rockantenne.de/"
+        "homepage": "http://www.rockantenne.de/",
+        "logo": "https://www.rockantenne.de/logos/station-rock-antenne/apple-touch-icon.png"
       },
       {
         "id": "best-of-rock-fm-alternative-rock",
@@ -311,7 +324,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.country108.com/"
+        "homepage": "http://www.country108.com/",
+        "logo": "https://www.country108.com/assets/images/logo.png"
       },
       {
         "id": "b5-aktuell",
@@ -360,7 +374,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://laut.fm/deutschrap"
+        "homepage": "https://laut.fm/deutschrap",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "sunshine-live-classics",
@@ -371,7 +386,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "hit-radio-ffh",
@@ -406,7 +422,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet"
+        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet",
+        "logo": "https://www.antenne.de/logos/station-antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "total-instrumental",
@@ -429,14 +446,15 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.ffh.de/"
+        "homepage": "https://www.ffh.de/",
+        "logo": "https://www.ffh.de/apple-touch-icon.png"
       },
       {
         "id": "mdr-aktuell",
         "name": "MDR Aktuell",
         "streamUrl": "http://mdr-284340-0.cast.mdr.de/mdr/284340/0/mp3/high/stream.mp3",
         "rbUuid": "9608c0e3-0601-11e8-ae97-52543be04c81",
-        "logo": "https://cdn.mdr.de/resources/global/img/mdrde/favicons/apple-icon-120x120.png",
+        "logo": "https://www.google.com/s2/favicons?domain=www.mdr.de&sz=128",
         "genre": "Information",
         "region": "MDR",
         "country": "DE",
@@ -464,7 +482,8 @@
         "genre": "Electro",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.90s90s.de/"
+        "homepage": "http://www.90s90s.de/",
+        "logo": "https://upload.90s90s.de/production/static/1791269790508/icons/icon_512.cno7CdHz6$i.png"
       },
       {
         "id": "hit-radio-ffh-eurodance",
@@ -476,7 +495,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.ffh.de/"
+        "homepage": "http://www.ffh.de/",
+        "logo": "https://www.ffh.de/apple-touch-icon.png"
       },
       {
         "id": "laut-fm-1000-oldies",
@@ -487,7 +507,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://1000oldies.de/"
+        "homepage": "http://1000oldies.de/",
+        "logo": "https://1000oldies.de/apple-icon-120x120.png"
       },
       {
         "id": "0-n-90s-on-radio",
@@ -511,7 +532,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "i-love-radio-hip-hop-turnup",
@@ -544,7 +566,8 @@
         "genre": "Metal",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.radiobob.de/"
+        "homepage": "http://www.radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "0nlineradio-soft-rock",
@@ -576,7 +599,7 @@
         "name": "MDR Klassik",
         "streamUrl": "http://mdr-284350-0.cast.mdr.de/mdr/284350/0/mp3/high/stream.mp3",
         "rbUuid": "960536e6-0601-11e8-ae97-52543be04c81",
-        "logo": "https://cdn.mdr.de/resources/global/img/mdrde/favicons/apple-icon-120x120.png",
+        "logo": "https://www.mdr.de/resources/assets/resources/images/favicon/apple-touch-icon.png",
         "genre": "Klassik",
         "region": "MDR",
         "country": "DE",
@@ -606,7 +629,8 @@
         "region": "SH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.80s80s.de/"
+        "homepage": "http://www.80s80s.de/",
+        "logo": "https://upload.80s80s.de/production/static/1791269758018/icons/icon_512.ewwAEi8A30w.png"
       },
       {
         "id": "0-n-smooth-jazz-on-radio",
@@ -629,7 +653,8 @@
         "genre": "Rock",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.radiobob.de/"
+        "homepage": "http://www.radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "98-8-kiss-fm",
@@ -662,7 +687,7 @@
         "name": "NDR Info (Hamburg)",
         "streamUrl": "http://icecast.ndr.de/ndr/ndrinfo/hamburg/mp3/128/stream.mp3",
         "rbUuid": "9648702b-0601-11e8-ae97-52543be04c81",
-        "logo": "https://www.ndr.de/apple-touch-icon-120x120.png",
+        "logo": "https://www.ndr.de/resources/assets/resources/images/favicon/favicon.svg",
         "genre": "Information",
         "region": "HH",
         "country": "DE",
@@ -679,7 +704,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet"
+        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet",
+        "logo": "https://www.antenne.de/logos/station-antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "ndr-info-schleswig-holstein",
@@ -691,7 +717,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.ndr.de/info/"
+        "homepage": "http://www.ndr.de/info/",
+        "logo": "https://www.ndr.de/favicon.ico"
       },
       {
         "id": "radio-bob-classic-rock",
@@ -701,7 +728,8 @@
         "genre": "Rock",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.radiobob.de/"
+        "homepage": "http://www.radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "bayern-3",
@@ -721,7 +749,7 @@
         "name": "Radio Paloma",
         "streamUrl": "http://icepool.silvacast.com/RADIOPALOMA.mp3",
         "rbUuid": "96352604-0601-11e8-ae97-52543be04c81",
-        "logo": "https://schlager.radio/wp-content/uploads/2020/11/cropped-radio-paloma-fav-180x180.png",
+        "logo": "https://www.google.com/s2/favicons?domain=www.radiopaloma.de&sz=128",
         "genre": "Schlager",
         "region": "BE",
         "country": "DE",
@@ -734,7 +762,7 @@
         "name": "NDR 2",
         "streamUrl": "https://icecast.ndr.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3",
         "rbUuid": "9e3b0f8e-95d3-11e9-a605-52543be04c81",
-        "logo": "https://www.ndr.de//apple-touch-icon-57x57.png",
+        "logo": "https://www.ndr.de/resources/assets/resources/images/favicon/favicon.svg",
         "genre": "Pop",
         "region": "NI",
         "country": "DE",
@@ -775,7 +803,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet"
+        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet",
+        "logo": "https://www.google.com/s2/favicons?domain=www.antenne.de&sz=128"
       },
       {
         "id": "104-6-rtl",
@@ -786,7 +815,8 @@
         "region": "BE",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.104.6rtl.com/"
+        "homepage": "http://www.104.6rtl.com/",
+        "logo": "https://www.104.6rtl.com/assets/icons/icon-152x152.png"
       },
       {
         "id": "technobase-fm",
@@ -818,7 +848,8 @@
         "genre": "Rock",
         "country": "DE",
         "codec": "aac",
-        "homepage": "http://www.rockantenne.de/"
+        "homepage": "http://www.rockantenne.de/",
+        "logo": "https://www.rockantenne.de/logos/station-rock-antenne/apple-touch-icon.png"
       },
       {
         "id": "gayfm",
@@ -830,7 +861,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.gayfm.de/"
+        "homepage": "http://www.gayfm.de/",
+        "logo": "https://www.gayfm.de/favicon.png"
       },
       {
         "id": "electronic-music-club",
@@ -842,7 +874,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://laut.fm/emc"
+        "homepage": "http://laut.fm/emc",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "1000-discohits",
@@ -860,7 +893,7 @@
         "name": "NDR Info (Niedersachsen)",
         "streamUrl": "http://icecast.ndr.de/ndr/ndrinfo/live/mp3/128/stream.mp3",
         "rbUuid": "9639c07d-0601-11e8-ae97-52543be04c81",
-        "logo": "https://www.ndr.de/apple-touch-icon-120x120.png",
+        "logo": "https://www.ndr.de/resources/assets/resources/images/favicon/favicon.svg",
         "genre": "Information",
         "country": "DE",
         "codec": "mp3",
@@ -889,14 +922,15 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "swr1-bw",
         "name": "SWR1 Baden-Württemberg",
         "streamUrl": "https://liveradio.swr.de/sw282p3/swr1bw/play.mp3",
         "rbUuid": "36a6d57a-4d8a-45e3-aad9-7931c6e43c56",
-        "logo": "https://www.radio.at/images/broadcasts/07/41/2273/2/c300.png",
+        "logo": "https://www.swr.de/assets/swr/swr1/apple-touch-icon.png",
         "genre": "Pop",
         "region": "BW",
         "country": "DE",
@@ -914,7 +948,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.fritz.de/"
+        "homepage": "http://www.fritz.de/",
+        "logo": "https://www.fritz.de/content/dam/rbb/rbb/logos/touch/fritz-128.png"
       },
       {
         "id": "wdr-3",
@@ -950,7 +985,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "wdr-cosmo",
@@ -961,7 +997,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.cosmoradio.de/"
+        "homepage": "http://www.cosmoradio.de/",
+        "logo": "https://www1.wdr.de/radio/cosmo/resources-v5.181.2/img/favicon/apple-touch-icon.png"
       },
       {
         "id": "1000-goldschlager",
@@ -983,7 +1020,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet"
+        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet",
+        "logo": "https://www.antenne.de/logos/antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "90s90s-dance",
@@ -1013,7 +1051,8 @@
         "genre": "Rock",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.radiobob.de/"
+        "homepage": "http://www.radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "wdr-1live-diggi",
@@ -1045,7 +1084,7 @@
         "name": "MDR Jump",
         "streamUrl": "http://mdr-284320-0.cast.mdr.de/mdr/284320/0/mp3/high/stream.mp3",
         "rbUuid": "961696dc-0601-11e8-ae97-52543be04c81",
-        "logo": "https://cdn.mdrjump.de/resources/jump/img/favicons/apple-icon-120x120.png",
+        "logo": "https://www.mdr.de/resources/assets/resources/images/favicon/apple-touch-icon.png",
         "genre": "Pop",
         "region": "MDR",
         "country": "DE",
@@ -1062,7 +1101,8 @@
         "region": "HH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.klassikradio.de/"
+        "homepage": "http://www.klassikradio.de/",
+        "logo": "https://www.klassikradio.de/img/ms-mediumtile.png"
       },
       {
         "id": "sunshine-live-house",
@@ -1073,7 +1113,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "klassik-1",
@@ -1109,7 +1150,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.rockantenne.de/"
+        "homepage": "http://www.rockantenne.de/",
+        "logo": "https://www.rockantenne.de/logos/station-rock-antenne/apple-touch-icon.png"
       },
       {
         "id": "rockantenne-heavy-metal-64-kbps-aac",
@@ -1130,7 +1172,8 @@
         "genre": "Schlager",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.ballermann-radio.de/"
+        "homepage": "http://www.ballermann-radio.de/",
+        "logo": "https://www.ballermann-radio.de/favicon.ico"
       },
       {
         "id": "wdr-2-rhein-und-ruhr",
@@ -1151,7 +1194,8 @@
         "rbUuid": "33de8eca-ae96-41fd-96e9-d3d3b7d00f39",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://80s80s.de/"
+        "homepage": "http://80s80s.de/",
+        "logo": "https://upload.80s80s.de/production/static/1791269758018/icons/icon_512.ewwAEi8A30w.png"
       },
       {
         "id": "bigfm-deutsch-rap",
@@ -1161,7 +1205,8 @@
         "genre": "HipHop",
         "country": "DE",
         "codec": "aac",
-        "homepage": "http://www.bigfm.de/webradio/deutschrap"
+        "homepage": "http://www.bigfm.de/webradio/deutschrap",
+        "logo": "https://www.google.com/s2/favicons?domain=www.bigfm.de&sz=128"
       },
       {
         "id": "technolovers-electro-house",
@@ -1192,14 +1237,15 @@
         "region": "SH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.80s80s.de/"
+        "homepage": "http://www.80s80s.de/",
+        "logo": "https://upload.80s80s.de/production/static/1791269758018/icons/icon_512.ewwAEi8A30w.png"
       },
       {
         "id": "radio-bollerwagen",
         "name": "Radio Bollerwagen",
         "streamUrl": "https://ffn-stream19.radiohost.de/radiobollerwagen_mp3-192?ref=radioplayer&listenerid=31363233323633323031-323030333a64653a343731363a3730313a623731343a346664383a313761363a39386165-3537373636-4d6f7a696c6c612f352e3020285831313b205562",
         "rbUuid": "a3a695be-35ba-4a1a-b8e7-d90815f4b942",
-        "logo": "https://www.radio.de/images/broadcasts/80/eb/100349/3/c300.png",
+        "logo": "https://player.ffn.de/assets/favicon/apple-touch-icon.png",
         "country": "DE",
         "codec": "mp3",
         "bitrate": 192,
@@ -1213,7 +1259,8 @@
         "genre": "Oldies",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.80s80s.de/"
+        "homepage": "https://www.80s80s.de/",
+        "logo": "https://upload.80s80s.de/production/static/1791269758018/icons/icon_512.ewwAEi8A30w.png"
       },
       {
         "id": "sunshine-live-chillout",
@@ -1224,14 +1271,14 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "absolut-relax",
         "name": "Absolut Relax",
         "streamUrl": "https://absolut-relax.live-sm.absolutradio.de/absolut-relax?__cb=130270101023249",
         "rbUuid": "ae209b3a-d20a-48f2-b303-22d68e385bf4",
-        "logo": "https://absolutradio.de/images/stations/229_relax.png",
         "country": "DE",
         "codec": "aac"
       },
@@ -1244,14 +1291,15 @@
         "region": "BE",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.thewaveradio.de/"
+        "homepage": "http://www.thewaveradio.de/",
+        "logo": "https://www.thewaveradio.de/assets/icons/apple-touch-icon.png"
       },
       {
         "id": "mdr-kultur",
         "name": "MDR Kultur",
         "streamUrl": "http://mdr-284310-0.cast.mdr.de/mdr/284310/0/mp3/high/stream.mp3",
         "rbUuid": "9612d85e-0601-11e8-ae97-52543be04c81",
-        "logo": "https://cdn.mdr.de/resources/global/img/mdrde/favicons/apple-icon-120x120.png",
+        "logo": "https://www.mdr.de/resources/assets/resources/images/favicon/apple-touch-icon.png",
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
@@ -1277,7 +1325,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "top-100-station",
@@ -1299,7 +1348,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://laut.fm/54-funk-soul-dance"
+        "homepage": "https://laut.fm/54-funk-soul-dance",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "oldie-antenne",
@@ -1335,7 +1385,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.ffh.de/"
+        "homepage": "http://www.ffh.de/",
+        "logo": "https://www.ffh.de/apple-touch-icon.png"
       },
       {
         "id": "0nlineradio-remix",
@@ -1382,7 +1433,8 @@
         "region": "HH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.klassikradio.de/"
+        "homepage": "http://www.klassikradio.de/",
+        "logo": "https://cdn-radiotime-logos.tunein.com/s25028q.png"
       },
       {
         "id": "hr-info",
@@ -1393,14 +1445,15 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.hr-inforadio.de/index.html"
+        "homepage": "https://www.hr-inforadio.de/index.html",
+        "logo": "https://www.hr-inforadio.de/favicon.png?v=4.50.2"
       },
       {
         "id": "technobase-fm-aac-hd-256k",
         "name": "TechnoBase.FM AAC HD 256k",
         "streamUrl": "http://listen.technobase.fm/tunein-aac-hd-pls",
         "rbUuid": "861d9811-a0b4-11e9-a787-52543be04c81",
-        "logo": "https://n.image.weareone.fm/news/grafiken/_314354/Grafiken/WAO_-_Sendeplangrafik.png",
+        "logo": "https://www.technobase.fm/media/icons/tb/apple-touch-icon.png",
         "country": "DE",
         "codec": "aac",
         "bitrate": 256,
@@ -1483,7 +1536,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.rockantenne.de/"
+        "homepage": "http://www.rockantenne.de/",
+        "logo": "https://www.rockantenne.de/logos/rock-antenne/apple-touch-icon.png"
       },
       {
         "id": "schlagerparadies",
@@ -1495,7 +1549,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 192,
-        "homepage": "http://www.schlagerparadies.de/"
+        "homepage": "http://www.schlagerparadies.de/",
+        "logo": "https://cdn.schlagerparadies.de/images/rsp_setup/apple-icon-180x180.png"
       },
       {
         "id": "sunshine-live-vocal-trance",
@@ -1505,7 +1560,8 @@
         "genre": "Electro",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.sunshine-live.de/"
+        "homepage": "https://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "1a-fitness-hits",
@@ -1574,7 +1630,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet"
+        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet",
+        "logo": "https://www.google.com/s2/favicons?domain=www.antenne.de&sz=128"
       },
       {
         "id": "oldschool-hiphop",
@@ -1585,7 +1642,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://laut.fm/oldschool-hiphop"
+        "homepage": "https://laut.fm/oldschool-hiphop",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "80s80s-italo-disco",
@@ -1608,14 +1666,15 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.ndr.de/wellenord/"
+        "homepage": "http://www.ndr.de/wellenord/",
+        "logo": "https://www.ndr.de/favicon.ico"
       },
       {
         "id": "ndr-kultur",
         "name": "NDR Kultur",
         "streamUrl": "http://icecast.ndr.de/ndr/ndrkultur/live/aac/192/stream.aac",
         "rbUuid": "59187563-aeca-11e8-aa67-52543be04c81",
-        "logo": "https://www.ndr.de//apple-touch-icon-57x57.png",
+        "logo": "https://www.ndr.de/resources/assets/resources/images/favicon/favicon.svg",
         "region": "HH",
         "country": "DE",
         "codec": "aac",
@@ -1630,7 +1689,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet"
+        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet",
+        "logo": "https://www.antenne.de/logos/antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "rautemusik-club",
@@ -1641,7 +1701,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 192,
-        "homepage": "http://www.rautemusik.fm/"
+        "homepage": "http://www.rautemusik.fm/",
+        "logo": "https://www.rm.fm/favicon.ico"
       },
       {
         "id": "energy-bremen-nrj",
@@ -1659,7 +1720,7 @@
         "name": "Absolut bella",
         "streamUrl": "https://absolut-bella.live-sm.absolutradio.de/absolut-bella/stream/mp3",
         "rbUuid": "df1045ec-c8ef-410f-b800-9a81cdf0d252",
-        "logo": "https://absolutradio.de/apple-touch-icon.png",
+        "logo": "https://absolutradio.de/favicon/apple-touch-icon.png",
         "genre": "Schlager",
         "country": "DE",
         "codec": "mp3",
@@ -1686,7 +1747,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://laut.fm/bluesrockcafe"
+        "homepage": "https://laut.fm/bluesrockcafe",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "ffh-workout",
@@ -1696,7 +1758,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://webradio.ffh.de/workout"
+        "homepage": "https://webradio.ffh.de/workout",
+        "logo": "https://www.ffh.de/apple-touch-icon.png"
       },
       {
         "id": "bayern-1-franken",
@@ -1744,7 +1807,8 @@
         "region": "HH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.klassikradio.de/"
+        "homepage": "http://www.klassikradio.de/",
+        "logo": "https://cdn-radiotime-logos.tunein.com/s25028q.png"
       },
       {
         "id": "rbb-88-8-radio-berlin",
@@ -1779,7 +1843,8 @@
         "region": "HH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.klassikradio.de/"
+        "homepage": "http://www.klassikradio.de/",
+        "logo": "https://www.klassikradio.de/apple-touch-icon.png"
       },
       {
         "id": "sunshine-live-ibiza",
@@ -1789,7 +1854,8 @@
         "genre": "Electro",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/#"
+        "homepage": "http://www.sunshine-live.de/#",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "mdr-sputnik",
@@ -1824,7 +1890,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://laut.fm/housebomb-fn"
+        "homepage": "http://laut.fm/housebomb-fn",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "bigfm-tomorrowland-one-world-radio",
@@ -1855,7 +1922,7 @@
         "name": "MDR Thüringen",
         "streamUrl": "http://avw.mdr.de/streams/284300-0_mp3_high.m3u",
         "rbUuid": "961266af-0601-11e8-ae97-52543be04c81",
-        "logo": "https://cdn.mdr.de/resources/global/img/mdrde/favicons/apple-icon-120x120.png",
+        "logo": "https://www.mdr.de/resources/assets/resources/images/favicon/apple-touch-icon.png",
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
@@ -1875,7 +1942,7 @@
         "name": "Nightride FM - Spacesynth",
         "streamUrl": "https://stream.nightride.fm/spacesynth.mp3",
         "rbUuid": "9aea4f9e-4170-4d8f-ad8c-67f2bfeaa9e0",
-        "logo": "https://nightride.fm/thumbnail.png",
+        "logo": "https://nightride.fm/apple-touch-icon.png",
         "country": "DE",
         "codec": "mp3",
         "bitrate": 320,
@@ -1899,7 +1966,8 @@
         "rbUuid": "f28460cb-9f0d-4602-9a46-be8c49975a16",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.radio.de/s/klassikradiobeats"
+        "homepage": "https://www.radio.de/s/klassikradiobeats",
+        "logo": "https://www.radio.de/assets/fav/apple-touch-icon.png"
       },
       {
         "id": "sunshine-live-drum-n-bass",
@@ -1909,7 +1977,8 @@
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.sunshine-live.de/"
+        "homepage": "http://www.sunshine-live.de/",
+        "logo": "https://upload.sunshine-live.de/production/static/1791270774219/icons/icon_512.fmRwc30M41g.png"
       },
       {
         "id": "technolovers-eurodance",
@@ -1931,7 +2000,8 @@
         "region": "SH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.80s80s.de/streams/80s80s-jackson"
+        "homepage": "http://www.80s80s.de/streams/80s80s-jackson",
+        "logo": "https://upload.80s80s.de/production/static/1791269758018/icons/icon_512.ewwAEi8A30w.png"
       },
       {
         "id": "radio-paloma-kultschlager",
@@ -1951,7 +2021,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://laut.fm/deep-house-sounds"
+        "homepage": "https://laut.fm/deep-house-sounds",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "laut-fm-sound",
@@ -1962,7 +2033,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://laut.fm/sound"
+        "homepage": "http://laut.fm/sound",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "r-sa-beatles-radio",
@@ -1971,7 +2043,8 @@
         "rbUuid": "9646971f-0601-11e8-ae97-52543be04c81",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.rsa-sachsen.de/rsa-beatles-radio"
+        "homepage": "http://www.rsa-sachsen.de/rsa-beatles-radio",
+        "logo": "https://upload.rsa-sachsen.de/production/static/1791270679700/icons/icon_512.dBo94pC88y8.png"
       },
       {
         "id": "hr4",
@@ -2020,7 +2093,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.hitradiogermany.net/"
+        "homepage": "https://www.hitradiogermany.net/",
+        "logo": "https://hitradiogermany.net/wp-content/uploads/2019/02/cropped-Logo-Germany-Icon-180x180.png"
       },
       {
         "id": "radio-bob-bobs-punk",
@@ -2030,7 +2104,8 @@
         "genre": "Rock",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.radiobob.de/"
+        "homepage": "http://www.radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "dnbradio-main-channel-192k",
@@ -2052,7 +2127,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://laut.fm/eurodance"
+        "homepage": "https://laut.fm/eurodance",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "wdr-3-hq",
@@ -2087,7 +2163,8 @@
         "genre": "Electro",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.90s90s.de/"
+        "homepage": "http://www.90s90s.de/",
+        "logo": "https://upload.90s90s.de/production/static/1791269790508/icons/icon_512.cno7CdHz6$i.png"
       },
       {
         "id": "hardbase-fm",
@@ -2121,7 +2198,8 @@
         "genre": "Rock",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.best-of-rock.fm/"
+        "homepage": "https://www.best-of-rock.fm/",
+        "logo": "https://www.best-of-rock.fm/favicons/apple-touch-icon.png"
       },
       {
         "id": "1000-christmashits",
@@ -2143,7 +2221,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://laut.fm/bluesrockcafe"
+        "homepage": "https://laut.fm/bluesrockcafe",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "hit-radio-ffh-soundtrack",
@@ -2154,7 +2233,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.ffh.de/"
+        "homepage": "http://www.ffh.de/",
+        "logo": "https://www.ffh.de/apple-touch-icon.png"
       },
       {
         "id": "dark-ambient-radio-96k-aac",
@@ -2165,14 +2245,15 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 192,
-        "homepage": "http://www.darkambientradio.de/news.php"
+        "homepage": "http://www.darkambientradio.de/news.php",
+        "logo": "https://darkambientradio.de/apple-touch-icon.png"
       },
       {
         "id": "nightride-fm-chillsynth",
         "name": "Nightride FM - Chillsynth",
         "streamUrl": "https://stream.nightride.fm/chillsynth.mp3",
         "rbUuid": "9067dc39-4bf4-4364-bd6b-8020cff3e15d",
-        "logo": "https://nightride.fm/thumbnail.png",
+        "logo": "https://nightride.fm/apple-touch-icon.png",
         "country": "DE",
         "codec": "mp3",
         "bitrate": 320,
@@ -2187,7 +2268,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://laut.fm/jazzrockfusion"
+        "homepage": "http://laut.fm/jazzrockfusion",
+        "logo": "https://www.google.com/s2/favicons?domain=laut.fm&sz=128"
       },
       {
         "id": "rock-antenne-hair-metal",
@@ -2196,14 +2278,15 @@
         "rbUuid": "2ed4195c-73a1-46ab-b6cb-e1afe68ea82a",
         "country": "DE",
         "codec": "aac",
-        "homepage": "https://www.rockantenne.de/"
+        "homepage": "https://www.rockantenne.de/",
+        "logo": "https://www.rockantenne.de/logos/station-rock-antenne/apple-touch-icon.png"
       },
       {
         "id": "maretimo-lounge",
         "name": "Maretimo Lounge",
         "streamUrl": "https://s35.derstream.net/lounge.mp3",
         "rbUuid": "aedd2edd-c8f1-4f75-9667-9d84cd6d690c",
-        "logo": "https://d3kle7qwymxpcy.cloudfront.net/images/broadcasts/08/a3/107873/5/c175.png",
+        "logo": "https://www.google.com/s2/favicons?domain=www.maretimo-lounge-radio.com&sz=128",
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
@@ -2218,7 +2301,8 @@
         "region": "BE",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.fluxfm.de/"
+        "homepage": "http://www.fluxfm.de/",
+        "logo": "https://www.fluxfm.de/assets/favicons/apple-icon-120x120.png"
       },
       {
         "id": "radio-bob-progressive-rock",
@@ -2229,7 +2313,8 @@
         "region": "HE",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.radiobob.de/bobs-prog-rock-stream"
+        "homepage": "https://www.radiobob.de/bobs-prog-rock-stream",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "best-of-rock-fm-rammstein-mp3-256",
@@ -2250,7 +2335,8 @@
         "region": "SH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.80s80s.de/"
+        "homepage": "http://www.80s80s.de/",
+        "logo": "https://upload.80s80s.de/production/static/1791269758018/icons/icon_512.ewwAEi8A30w.png"
       },
       {
         "id": "radio-bob-symphonic-metal",
@@ -2260,7 +2346,8 @@
         "genre": "Metal",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.radiobob.de/"
+        "homepage": "http://www.radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "swr1-rp",
@@ -2282,7 +2369,8 @@
         "rbUuid": "36c31ee9-181b-4047-9bf1-5e9a0fe8a8aa",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.90s90s.de/house"
+        "homepage": "https://www.90s90s.de/house",
+        "logo": "https://www.google.com/s2/favicons?domain=www.90s90s.de&sz=128"
       },
       {
         "id": "classic-rock-radio",
@@ -2294,7 +2382,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.classicrock-radio.de/"
+        "homepage": "http://www.classicrock-radio.de/",
+        "logo": "https://www.classicrock-radio.de//assets/img/apple-touch-icon.png"
       },
       {
         "id": "epic-rock-radio",
@@ -2336,7 +2425,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.webradio.de/antenne-bayern/coffeemusic"
+        "homepage": "https://www.webradio.de/antenne-bayern/coffeemusic",
+        "logo": "https://www.antenne.de/logos/station-antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "technolovers-drum-n-bass",
@@ -2357,7 +2447,8 @@
         "genre": "Rock",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.radiobob.de/"
+        "homepage": "http://www.radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "sunshine-live-trance-64kbps",
@@ -2391,7 +2482,8 @@
         "region": "BE",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://webradio.jam.fm/blk"
+        "homepage": "http://webradio.jam.fm/blk",
+        "logo": "https://webradio.jam.fm/assets/icons/apple-touch-icon.png"
       },
       {
         "id": "epic-lounge-ibiza-chillout-lounge",
@@ -2436,7 +2528,8 @@
         "region": "BE",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.jam.fm/"
+        "homepage": "http://www.jam.fm/",
+        "logo": "https://www.jam.fm/assets/icons/icon-180x180.png"
       },
       {
         "id": "chillout-piano-by-epic-piano",
@@ -2457,14 +2550,15 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet"
+        "homepage": "http://www.antenne.de/programm/empfang/antenne-bayern-hoeren-internet",
+        "logo": "https://www.antenne.de/logos/station-antenne-bayern/apple-touch-icon.png"
       },
       {
         "id": "ndr-blue",
         "name": "NDR Blue",
         "streamUrl": "http://icecast.ndr.de/ndr/ndrblue/live/mp3/128/stream.mp3",
         "rbUuid": "960e4255-0601-11e8-ae97-52543be04c81",
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/NDR_Blue_Logo.svg/1200px-NDR_Blue_Logo.svg.png",
+        "logo": "https://www.ndr.de/resources/assets/resources/images/favicon/favicon.svg",
         "genre": "Rock",
         "country": "DE",
         "codec": "mp3",
@@ -2489,7 +2583,7 @@
         "name": "Radio Regenbogen 2",
         "streamUrl": "http://streams.regenbogen.de/rr2-bw-128-mp3",
         "rbUuid": "007a3d2a-7ce4-41f2-be36-9852df6feb7e",
-        "logo": "https://cdn.regenbogen.de/sites/all/themes/regenbogen/assets/images/logos/regenbogen-zwei-logo.png",
+        "logo": "https://www.google.com/s2/favicons?domain=www.regenbogen.de&sz=128",
         "region": "BW",
         "country": "DE",
         "codec": "mp3",
@@ -2588,7 +2682,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 320,
-        "homepage": "http://schwany.de/"
+        "homepage": "http://schwany.de/",
+        "logo": "https://schwany.de/favicon.ico"
       },
       {
         "id": "radio-bob-bob-s-metalcore",
@@ -2598,7 +2693,8 @@
         "genre": "Metal",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.radiobob.de/metalcore-stream"
+        "homepage": "https://www.radiobob.de/metalcore-stream",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "90s90s-black-rnb-hq",
@@ -2609,7 +2705,8 @@
         "region": "SH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://www.90s90s.de/"
+        "homepage": "https://www.90s90s.de/",
+        "logo": "https://upload.90s90s.de/production/static/1791269790508/icons/icon_512.cno7CdHz6$i.png"
       },
       {
         "id": "0-n-dance-on-radio",
@@ -2632,7 +2729,8 @@
         "region": "HH",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "http://www.klassikradio.de/"
+        "homepage": "http://www.klassikradio.de/",
+        "logo": "https://cdn-radiotime-logos.tunein.com/s25028q.png"
       },
       {
         "id": "radio-bob-bobs-gothic-rock",
@@ -2642,7 +2740,8 @@
         "genre": "Metal",
         "country": "DE",
         "codec": "mp3",
-        "homepage": "https://radiobob.de/"
+        "homepage": "https://radiobob.de/",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png"
       },
       {
         "id": "technolovers-minimal",
@@ -2664,7 +2763,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://hirschmilch.de/channel/chillout"
+        "homepage": "https://hirschmilch.de/channel/chillout",
+        "logo": "https://hirschmilch.de/favicon-180.png"
       },
       {
         "id": "radio-hamburg",
@@ -2693,7 +2793,7 @@
         "name": "RADIO BOB - Power Metal",
         "streamUrl": "http://streams.radiobob.de/powermetal/mp3-192/streams.radiobob.de/",
         "rbUuid": "35ecc442-1ba3-48ff-a874-cacc4e5867c1",
-        "logo": "https://www.radio.de/images/broadcasts/b2/37/185513/1/c300.png",
+        "logo": "https://upload.radiobob.de/production/static/1791270449174/icons/icon_512.8WpccMNcjjc.png",
         "genre": "Metal",
         "country": "DE",
         "codec": "mp3",
@@ -2731,7 +2831,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.antennebrandenburg.de/"
+        "homepage": "http://www.antennebrandenburg.de/",
+        "logo": "https://www.antennebrandenburg.de/content/dam/rbb/rbb/logos/touch/ant-128.png"
       },
       {
         "id": "bigfm-edm-progressive",
@@ -2741,7 +2842,8 @@
         "genre": "Electro",
         "country": "DE",
         "codec": "aac",
-        "homepage": "http://www.bigfm.de/"
+        "homepage": "http://www.bigfm.de/",
+        "logo": "https://file.atsw.de/production/static/1791270044062/icons/icon_512.cWprpqopSeo.png"
       },
       {
         "id": "swr-aktuell",
@@ -2760,7 +2862,7 @@
         "name": "WDR 1Live - DJ Session",
         "streamUrl": "http://wdr-1live-djsession.icecast.wdr.de/wdr/1live/djsession/mp3/128/stream.mp3",
         "rbUuid": "963022af-0601-11e8-ae97-52543be04c81",
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/WDR_1LIVE_Logo_2016.svg/189px-WDR_1LIVE_Logo_2016.svg.png",
+        "logo": "https://www1.wdr.de/radio/1live/resources-v5.181.2/img/favicon/apple-touch-icon.png",
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
@@ -2776,14 +2878,15 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.radiobremen.de/bremeneins/"
+        "homepage": "http://www.radiobremen.de/bremeneins/",
+        "logo": "https://www.radiobremen.de/static/img/favicons/apple-touch-icon-180.png?v=4"
       },
       {
         "id": "mdr-sachsen",
         "name": "MDR Sachsen",
         "streamUrl": "http://mdr-284280-0.cast.mdr.de/mdr/284280/0/mp3/high/stream.mp3",
         "rbUuid": "9605da2f-0601-11e8-ae97-52543be04c81",
-        "logo": "https://cdn.mdr.de/resources/global/img/mdrde/favicons/apple-icon-120x120.png",
+        "logo": "https://www.mdr.de/resources/assets/resources/images/favicon/apple-touch-icon.png",
         "genre": "Information",
         "region": "SN",
         "country": "DE",
@@ -2814,7 +2917,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://sr3.de/"
+        "homepage": "https://sr3.de/",
+        "logo": "https://www.sr.de/sr/static/images/favicon.ico?20251022"
       },
       {
         "id": "ndr-903",
@@ -2826,7 +2930,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "http://www.ndr903.de/"
+        "homepage": "http://www.ndr903.de/",
+        "logo": "https://www.ndr.de/resources/assets/resources/images/favicon/favicon.svg"
       },
       {
         "id": "ndr-1-niedersachsen",
@@ -2851,7 +2956,8 @@
         "country": "DE",
         "codec": "mp3",
         "bitrate": 128,
-        "homepage": "https://www.bremenvier.de/"
+        "homepage": "https://www.bremenvier.de/",
+        "logo": "https://www.bremenvier.de/static/img/favicons/apple-touch-icon-180.png?v=4"
       }
     ],
     "sortOrder": [

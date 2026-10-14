@@ -165,5 +165,6 @@ Alle Etappen R1–R5 sind auf `feature/radio` umgesetzt und QA-geprüft; offen b
 - **Beim Start fortsetzen** (`resumeOnStart`, Standard aus): spielt den zuletzt gehörten Sender, ohne Rückgriff auf Favoriten.
 - **Tray-Icon** `tray-radio` mit bernsteinfarbenem Badge aus vier Klangbalken (A3-Stil), Vorrang Aufnahme (rot) > Radio > Leerlauf; Menü-Etiketten maskieren `&` als `&&` (Windows/Linux-Mnemonic).
 - **Logos**: nur https (CSP `img-src https:`); http-Logos werden nicht geladen und zeigen den Platzhalter. Schalter `showLogos` (siehe §3.1).
+- **Logo-Pflege**: `scripts/enrich-radio-logos.js` füllt `logo` je Sender in der Reihenfolge Verzeichnis-Favicon (http→https), Homepage-Icon, Google-Favicon-Dienst (nur mit echtem Bild, Globus-Platzhalter per Hash ausgeschlossen); nur Links, jeder Link auf Bild-Antwort geprüft. 217 von 250 Sendern haben ein Logo; der Rest zeigt den Platzhalter.
 - **„Liste aktualisieren“** nur im Dashboard (nicht in den Einstellungen); Ergebnis als Toast.
 - **Nicht umgesetzt (v1.1)**: Sleep-Timer, Online-Suche im Verzeichnis, Radio-Aufnahme, Plattform-Abgleich mit tvOS/iPad.
