@@ -3,8 +3,6 @@
 //   docs/icon-vorschlaege/a-varianten/tray-idle-farbig.svg   -> assets/tray/tray-idle.png
 //   docs/icon-vorschlaege/a-varianten/tray-rec-punkt-rot.svg -> assets/tray/tray-rec.png
 //   (R4) Radio spielt: idle-Motiv + bernsteinfarbenes Badge mit vier Klangbalken -> assets/tray/tray-radio.png
-//   Radio (Template): monochrome Klangbalken-Silhouette (nur Alpha zaehlt, macOS faerbt sie wie den Menueleistentext)
-//   -> assets/tray/tray-radio-template.png (16x16) und tray-radio-template@2x.png (32x32)
 //
 // Reines Node (zlib, kein natives Dep): ein kleiner Scanline-Rasterizer mit
 // 8x8-Supersampling rendert die SVG-Motive (Bezier-Pfad, Verlauf, Kontur,
@@ -183,41 +181,6 @@ function renderIcon(mode) {
   return px;
 }
 
-// ── Template-Glyph (monochrom) ──
-// Vier Klangbalken (Kapseln) wie im Radio-Badge, im 16-Einheiten-Raum; Farbe schwarz, nur der Alpha-Kanal traegt die
-// Form. Als Template-Bild faerbt macOS die Silhouette passend zu Hell/Dunkel/getoenter Menueleiste.
-const TEMPLATE_BARS = [[2, 6], [6, 10], [10, 14], [14, 8]]; // [Mitte x, Hoehe], auf das 16-px-Raster ausgerichtet (scharfe Kanten)
-const TEMPLATE_BAR_WIDTH = 2;
-
-function capsuleShape(cx, cy, width, height) {
-  const r = width / 2;
-  const inner = rectShape(cx - r, cy - height / 2 + r, cx + r, cy + height / 2 - r);
-  const top = circleShape(cx, cy - height / 2 + r, r);
-  const bottom = circleShape(cx, cy + height / 2 - r, r);
-  return (x, y) => inner(x, y) || top(x, y) || bottom(x, y);
-}
-
-/** Rendert die Template-Silhouette als size x size RGBA (rgb = 0, Alpha = Abdeckung). */
-function renderTemplateGlyph(size) {
-  const shapes = TEMPLATE_BARS.map(([cx, h]) => capsuleShape(cx, 8, TEMPLATE_BAR_WIDTH, h));
-  const px = new Uint8Array(size * size * 4);
-  const unit = 16 / size;
-  const n = SS * SS;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let hit = 0;
-      for (let sy = 0; sy < SS; sy++) {
-        for (let sx = 0; sx < SS; sx++) {
-          const fx = (x + (sx + 0.5) / SS) * unit, fy = (y + (sy + 0.5) / SS) * unit;
-          if (shapes.some(shape => shape(fx, fy))) hit++;
-        }
-      }
-      px[(y * size + x) * 4 + 3] = Math.round((hit / n) * 255);
-    }
-  }
-  return px;
-}
-
 // ── Minimaler PNG-Encoder (RGBA8, Filter 0, keine Interlace) ──
 
 const CRC_TABLE = (() => {
@@ -274,12 +237,6 @@ for (const mode of ['idle', 'rec', 'radio']) {
   const rgba = renderIcon(mode);
   const png = encodePng(rgba, SIZE, SIZE);
   const file = path.join(outDir, `tray-${mode}.png`);
-  fs.writeFileSync(file, png);
-  console.log(`✓ ${file} (${png.length} bytes)`);
-}
-for (const [size, name] of [[16, 'tray-radio-template.png'], [32, 'tray-radio-template@2x.png']]) {
-  const png = encodePng(renderTemplateGlyph(size), size, size);
-  const file = path.join(outDir, name);
   fs.writeFileSync(file, png);
   console.log(`✓ ${file} (${png.length} bytes)`);
 }

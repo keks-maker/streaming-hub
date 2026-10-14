@@ -14,6 +14,7 @@ const { EventEmitter } = require('node:events');
 
 const menuTemplates = [];
 const trayCalls = { images: [], tooltips: [], titles: [], fonts: [] };
+const fakeTrays = []; // alle erzeugten Tray-Einträge (Erzeugungsreihenfolge), mit destroyed-Flag
 const shows = [];
 let quitCalls = 0;
 
@@ -24,12 +25,23 @@ require.cache[require.resolve('electron')] = {
   exports: {
     nativeImage: { createFromPath: p => ({ isEmpty: () => false, p, template: false, setTemplateImage(v) { this.template = v; }, isTemplateImage() { return this.template; }, resize: ({ width = 64 } = {}) => ({ toBitmap: () => Buffer.alloc(width * width * 4, 5) }) }), createEmpty: () => ({}) },
     Tray: class {
-      setToolTip(t) { trayCalls.tooltips.push(t); }
-      setTitle(t, o) { trayCalls.titles.push(t); trayCalls.fonts.push(o && o.fontType ? o.fontType : null); }
-      setImage(img) { trayCalls.images.push(img); }
-      setContextMenu() {}
-      on() {}
-      destroy() {}
+      constructor(image) {
+        this.image = image;
+        this.images = [image];
+        this.tooltips = [];
+        this.titles = [];
+        this.menu = null;
+        this.handlers = {};
+        this.destroyed = false;
+        this.id = fakeTrays.length;
+        fakeTrays.push(this);
+      }
+      setToolTip(t) { trayCalls.tooltips.push(t); this.tooltips.push(t); }
+      setTitle(t, o) { trayCalls.titles.push(t); trayCalls.fonts.push(o && o.fontType ? o.fontType : null); this.titles.push(t); }
+      setImage(img) { trayCalls.images.push(img); this.image = img; this.images.push(img); }
+      setContextMenu(menu) { this.menu = menu; }
+      on(event, fn) { this.handlers[event] = fn; }
+      destroy() { this.destroyed = true; }
     },
     Menu: { buildFromTemplate: template => { menuTemplates.push(template); return { template }; } },
     app: { quit() { quitCalls += 1; }, exit() {} },
@@ -227,9 +239,10 @@ test('trayTitleText: Pause mit ⏸, Leerfälle (idle, Fehler, kein Radio, ohne S
   assert.equal(trayTitleText(0, radio({ station: { name: '   ' } })), '');
 });
 
-test('trayTitleText: Aufnahme hat Vorrang (kein Radiotext)', () => {
-  assert.equal(trayTitleText(1, radio()), '');
-  assert.equal(trayTitleText(2, radio({ state: 'paused' }), { display: 'station' }), '');
+test('trayTitleText: Aufnahme ändert den Radiotext nicht (er steht in einem eigenen Eintrag)', () => {
+  assert.equal(trayTitleText(1, radio()), trayTitleText(0, radio()));
+  assert.equal(trayTitleText(2, radio({ state: 'paused' }), { display: 'station' }), '⏸ Zwei');
+  assert.equal(trayTitleText(1, radio(), { display: 'off' }), '');
 });
 
 test('trayTitleText: hart auf 28 Zeichen gekürzt (mit „…“), Max einstellbar, Steuerzeichen raus', () => {
@@ -263,41 +276,12 @@ test('Tooltip: Aufnahme unverändert, sonst Sender bei Radio', () => {
   assert.equal(trayTooltip(0, radio({ state: 'idle', station: null })), 'Streaming Hub');
 });
 
-function readPngRgba(file) { // minimaler Dekoder für die vom Generator erzeugten PNGs (RGBA8, Filter 0)
-  const buf = fs.readFileSync(file);
-  const width = buf.readUInt32BE(16);
-  const height = buf.readUInt32BE(20);
-  let o = 8;
-  const idat = [];
-  while (o < buf.length) {
-    const len = buf.readUInt32BE(o);
-    if (buf.toString('ascii', o + 4, o + 8) === 'IDAT') idat.push(buf.subarray(o + 8, o + 8 + len));
-    o += 12 + len;
-  }
-  const raw = require('node:zlib').inflateSync(Buffer.concat(idat));
-  const rgba = Buffer.alloc(width * height * 4);
-  for (let y = 0; y < height; y += 1) raw.copy(rgba, y * width * 4, y * (1 + width * 4) + 1, (y + 1) * (1 + width * 4));
-  return { width, height, rgba };
-}
-
-test('Template-Glyph tray-radio-template(.@2x).png: 16/32 px, schwarz, nur Alpha trägt die Form', () => {
-  for (const [name, size] of [['tray-radio-template.png', 16], ['tray-radio-template@2x.png', 32]]) {
-    const { width, height, rgba } = readPngRgba(path.join(__dirname, '..', 'assets', 'tray', name));
-    assert.deepEqual([width, height], [size, size], name);
-    let solid = 0;
-    for (let i = 0; i < width * height; i += 1) {
-      assert.deepEqual([...rgba.subarray(i * 4, i * 4 + 3)], [0, 0, 0], 'RGB schwarz');
-      if (rgba[i * 4 + 3] === 255) solid += 1;
-    }
-    assert.ok(solid > width * height * 0.15, 'lesbare Silhouette');
-    assert.equal(rgba[3], 0, 'Ecke transparent');
-  }
-});
-
-test('Icon-Datei tray-radio.png existiert (vom Build-Skript erzeugt)', () => {
+test('Icon-Datei tray-radio.png existiert (vom Build-Skript erzeugt); kein Template-Glyph mehr', () => {
   const file = path.join(__dirname, '..', 'assets', 'tray', 'tray-radio.png');
   assert.ok(fs.existsSync(file));
   assert.equal(fs.readFileSync(file).subarray(1, 4).toString(), 'PNG');
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'assets', 'tray', 'tray-radio-template.png')));
+  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'scripts', 'generate-tray-icons.js'), 'utf8'), /tray-radio-template|renderTemplateGlyph/);
 });
 
 // ── TrayController mit Fakes ──
@@ -398,8 +382,8 @@ test('TrayController: Icon und Tooltip folgen dem Radio; Aufnahme hat Vorrang', 
   const { controller } = makeController(fake);
   controller.create();
   controller.refresh();
-  assert.match(trayCalls.images.at(-1).p, /tray-radio-template\.png$/);
-  assert.equal(trayCalls.images.at(-1).isTemplateImage(), true, 'Radio-Symbol ist ein Template-Bild');
+  assert.match(trayCalls.images.at(-1).p, /tray-radio\.png$/);
+  assert.equal(trayCalls.images.at(-1).isTemplateImage(), false, 'Radio-Symbol bleibt farbig (kein Template)');
   assert.equal(trayCalls.tooltips.at(-1), 'Streaming Hub — Radio: Zwei');
   fake.push({ status: 'paused' });
   assert.match(trayCalls.images.at(-1).p, /tray-idle\.png$/);
@@ -545,7 +529,7 @@ test('TrayController: Titeltext wird nur bei Änderung gesetzt; Zustände, Pause
   trayCalls.titles.length = 0;
   const rec = makeController(fakeRadio(), { jobs: [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }] });
   rec.controller.create();
-  assert.deepEqual(trayCalls.titles, [], 'Aufnahme: kein Radiotext');
+  assert.deepEqual(trayCalls.titles, ['Zwei · I – T1'], 'Aufnahme: Radiotext bleibt (Symbol zeigt rot)');
   rec.controller.destroy();
 });
 
@@ -842,8 +826,8 @@ test('Lauftext: statisch bei kurzem Text, Pause, idle, error und Aufnahme; Timer
   const rec = makeScrolling({}, {});
   rec.controller.recorder.activeJobs = () => [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }];
   rec.controller.create();
-  assert.equal(rec.live().length, 0, 'Aufnahme-Vorrang: kein Lauftext');
-  assert.deepEqual(trayCalls.titles, []);
+  assert.equal(rec.live().length, 1, 'Aufnahme: Lauftext läuft weiter');
+  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text);
   rec.controller.destroy();
 });
 
@@ -937,10 +921,14 @@ test('Lauftext: nicht unter macOS kein Timer', () => {
 });
 
 
-// ── Pixelweiser Lauftext (trayScrollMode 'smooth') ──
+// ── Pixelweiser Lauftext (trayScrollMode 'smooth'): zwei Einträge ──
+// Eintrag A (controller.tray): farbiges Symbol, ohne Titel. Eintrag B (controller.textTray): nur der Text als Template-Bild.
 
 const { PIXEL_WINDOW_WIDTH } = require('../lib/radio/tray-marquee.js');
+const { GAP_PT } = require('../lib/radio/tray-pixel-marquee.js');
 const flush = () => new Promise(resolve => setImmediate(resolve));
+const REC_JOBS = [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }];
+const liveTrays = () => fakeTrays.filter(t => !t.destroyed);
 
 function makePixel(initial = {}, opts = {}) {
   const renders = [];
@@ -949,132 +937,284 @@ function makePixel(initial = {}, opts = {}) {
     renderTrayText: async text => {
       renders.push({ text });
       if (opts.renderFails) return null;
-      const width = (opts.textWidthPt || PIXEL_WINDOW_WIDTH + 80) * 2;
+      const pt = typeof opts.textWidthPt === 'function' ? opts.textWidthPt(text) : (opts.textWidthPt || PIXEL_WINDOW_WIDTH + 80);
+      const width = pt * 2;
       return { buffer: Buffer.alloc(width * 64 * 4, 1), width, height: 64 };
     },
-    createImage: (buffer, options) => { const image = { frame: true, template: false, setTemplateImage(v) { this.template = v; }, ...options }; created.push(image); return image; },
+    createImage: (buffer, options) => { const image = { frame: true, template: false, setTemplateImage(v) { this.template = v; }, isTemplateImage() { return this.template; }, ...options }; created.push(image); return image; },
     ...(opts.controller || {}),
   });
   return { ...s, renders, created };
 }
 
-test('Pixelmodus: langer Text wird einmal gerendert, Frames per setImage, setTitle(\'\') währenddessen, genau ein Takt', async () => {
-  const s = makePixel();
+test('Zwei Einträge: Text als Template-Bild in B, farbiges Symbol in A ohne Titel; B entsteht vor dem neuen A (Reihenfolge Symbol → Text)', async () => {
+  const startIndex = fakeTrays.length;
+  const s = makePixel({}, {});
   s.controller.create();
-  const baseImages = trayCalls.images.length;
-  assert.equal(trayCalls.titles.at(-1), `${FULL.slice(0, 27).trimEnd()}…`, 'bis das Bild fertig ist: statisch gekürzt');
+  assert.equal(liveTrays().filter(t => t.id >= startIndex).length, 1, 'zunächst nur A');
+  const a0 = fakeTrays[startIndex];
+  assert.equal(s.controller.textTray, null, 'bis das Bild fertig ist: kein zweiter Eintrag, kein nativer Titel');
+  assert.deepEqual(trayCalls.titles, []);
   await flush();
-  assert.equal(s.renders.length, 1);
-  assert.equal(s.renders[0].text, FULL);
-  assert.equal(s.live().length, 1, 'ein Takt (30 fps), kein Schrittmodus-Timer');
-  assert.equal(s.live()[0].ms, 33);
-  assert.equal(trayCalls.titles.at(-1), '', 'kein doppelter Text');
-  assert.ok(trayCalls.images.length > baseImages);
-  assert.equal(trayCalls.images.at(-1).frame, true);
-  assert.equal(trayCalls.images.at(-1).scaleFactor, 2);
-  s.controller.refresh(); // gleicher Text: kein erneutes Rendern, Titel bleibt leer
-  s.controller.refresh();
-  await flush();
-  assert.equal(s.renders.length, 1);
-  assert.equal(trayCalls.titles.at(-1), '');
+  const mine = fakeTrays.slice(startIndex);
+  assert.equal(mine.length, 3, 'A0, dann B, dann neues A');
+  assert.equal(a0.destroyed, true, 'alter Symbol-Eintrag ersetzt');
+  const [, b, a1] = mine;
+  assert.equal(s.controller.textTray, b);
+  assert.equal(s.controller.tray, a1);
+  assert.equal(b.id < a1.id, true, 'B wurde vor dem neuen A erzeugt (macOS legt neue Einträge links ab)');
+  assert.equal(b.image.frame, true);
+  assert.equal(b.image.template, true, 'Text-Bild ist ein Template (Farbe durch macOS)');
+  assert.equal(b.image.scaleFactor, 2);
+  assert.match(a1.image.p, /tray-radio\.png$/, 'A zeigt das normale farbige Radio-Symbol');
+  assert.equal(a1.image.isTemplateImage(), false);
+  assert.deepEqual(a1.titles, [], 'A ohne Titel im Bildmodus');
+  assert.equal(liveTrays().filter(t => mine.includes(t)).length, 2);
+  // gleiches Menü, gleicher Tooltip, gleicher Klick auf beiden
+  assert.ok(a1.menu && b.menu);
+  assert.notEqual(a1.menu, b.menu);
+  assert.deepEqual(a1.menu.template, b.menu.template);
+  assert.equal(a1.tooltips.at(-1), b.tooltips.at(-1));
+  assert.equal(b.tooltips.at(-1), 'Streaming Hub — Radio: Zwei');
+  assert.equal(typeof a1.handlers.click, 'function');
+  assert.equal(typeof b.handlers.click, 'function');
   s.controller.destroy();
-});
-
-test('Pixelmodus: Titelwechsel rendert neu (ein Takt), Pause/idle/error/Aufnahme zurück auf statischen Titel und Symbol, Takt aus', async () => {
-  const s = makePixel();
-  s.controller.create();
-  await flush();
-  s.fake.push({ nowPlaying: { artist: LONG_ARTIST, title: 'Ein ganz anderer langer Titel' } });
-  await flush();
-  assert.equal(s.renders.length, 2);
-  assert.equal(s.live().length, 1, 'weiterhin genau ein Takt');
-  s.fake.push({ status: 'paused' });
-  assert.equal(s.live().length, 0, 'Pause: Takt aus');
-  assert.equal(trayCalls.titles.at(-1), '⏸ Zwei', 'statischer Titel');
-  assert.equal(trayCalls.images.at(-1).frame, undefined, 'ursprüngliches Symbol wieder gesetzt');
-  assert.ok(trayCalls.images.at(-1).p.endsWith('tray-idle.png') || trayCalls.images.at(-1).p.endsWith('tray-radio-template.png'));
-  s.fake.push({ status: 'playing' });
-  await flush();
-  assert.equal(s.live().length, 1);
-  s.fake.push({ status: 'error', error: 'x' });
-  assert.equal(s.live().length, 0, 'error: Takt aus');
-  assert.equal(trayCalls.images.at(-1).frame, undefined);
-  s.fake.push({ status: 'playing' });
-  await flush();
-  s.fake.push({ status: 'idle', station: null, nowPlaying: null });
-  assert.equal(s.live().length, 0);
-  assert.equal(trayCalls.titles.at(-1), '');
-  s.controller.destroy();
-
-  const rec = makePixel({}, {});
-  rec.controller.recorder.activeJobs = () => [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }];
-  rec.controller.create();
-  await flush();
-  assert.equal(rec.renders.length, 0, 'Aufnahme-Vorrang: kein Textbild');
-  assert.equal(rec.live().length, 0);
-  rec.controller.destroy();
-});
-
-test('Pixelmodus: Symbolwechsel (refresh) überschreibt das Frame nicht; destroy räumt Takt und Bilder auf', async () => {
-  const s = makePixel();
-  s.controller.create();
-  await flush();
-  const before = trayCalls.images.length;
-  s.controller.refresh();
-  assert.equal(trayCalls.images.length, before, 'refresh setzt im Bildmodus kein Symbol');
-  s.controller.destroy();
-  assert.equal(s.live().length, 0);
-  assert.equal(s.controller._iconBitmaps.size, 0);
+  assert.equal(liveTrays().filter(t => mine.includes(t)).length, 0, 'destroy zerstört beide');
+  assert.equal(s.controller.textTray, null);
   assert.equal(s.controller._pixel.active, false);
 });
 
-test('Pixelmodus: Template-Symbol im Frame (nicht das farbige); Aufnahme verlässt den Bildmodus mit farbigem Symbol', async () => {
-  const s = makePixel();
+test('Zwei Einträge: Klick auf beide öffnet das Fenster; Menüänderung und Tooltip erreichen beide', async () => {
+  const calls = [];
+  const s = makePixel({}, {});
+  s.controller.showWindow = () => calls.push('show');
   s.controller.create();
   await flush();
-  const icon = s.controller._iconBitmaps.get('radio');
-  assert.deepEqual({ w: icon.width, h: icon.height }, { w: 64, h: 64 });
-  assert.equal(icon.buffer.length, 64 * 64 * 4);
-  assert.equal(icon.buffer[0], 0, 'Rand des Template-Symbols transparent');
-  s.controller.recorder.activeJobs = () => [{ meta: { id: 'r1', channelName: 'ZDF' }, getRecordingSec: () => 5 }];
-  s.controller.refresh();
-  assert.equal(s.live().length, 0, 'Aufnahme: Takt aus');
-  assert.match(trayCalls.images.at(-1).p, /tray-rec\.png$/);
-  assert.equal(trayCalls.images.at(-1).isTemplateImage(), false, 'Aufnahme-Symbol bleibt farbig (kein Template)');
+  s.controller.tray.handlers.click();
+  s.controller.textTray.handlers.click();
+  assert.deepEqual(calls, ['show', 'show']);
+  s.fake.push({ volume: 0.7 });
+  assert.deepEqual(s.controller.tray.menu.template, s.controller.textTray.menu.template);
+  s.fake.push({ status: 'paused' });
+  await flush();
+  assert.equal(s.controller.tray.tooltips.at(-1), 'Streaming Hub — Radio pausiert: Zwei');
+  assert.equal(s.controller.textTray.tooltips.at(-1), 'Streaming Hub — Radio pausiert: Zwei');
+  assert.deepEqual(s.controller.tray.menu.template.map(i => i.label), s.controller.textTray.menu.template.map(i => i.label));
   s.controller.destroy();
 });
 
-test('TrayController: kein nativeTheme-Bezug mehr (weder Option noch Listener)', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'TrayController.js'), 'utf8');
-  assert.doesNotMatch(src, /shouldUseDarkColors|nativeTheme|_onThemeUpdated/);
-  const trayText = fs.readFileSync(path.join(__dirname, '..', 'lib', 'radio', 'tray-text-renderer.js'), 'utf8');
-  assert.doesNotMatch(trayText, /shouldUseDarkColors|nativeTheme/);
+test('Zwei Einträge: Bildrate auf B höchstens 30/s, nur bei geändertem Versatz, genau ein Takt', async () => {
+  const s = makePixel();
+  s.controller.create();
+  await flush();
+  assert.equal(s.live().length, 1);
+  assert.equal(s.live()[0].ms, 33);
+  const b = s.controller.textTray;
+  const before = b.images.length;
+  s.advance(2100); // Anfangspause vorbei
+  for (let i = 0; i < 30; i += 1) { s.advance(33); s.tick(); } // eine Sekunde in 33-ms-Takten
+  const perSecond = b.images.length - before;
+  assert.ok(perSecond > 0 && perSecond <= 30, `Bilder pro Sekunde: ${perSecond}`);
+  assert.equal(liveTrays().filter(t => t === b).length, 1);
+  assert.ok(b.images.every(i => i.template === true));
+  s.controller.destroy();
 });
 
-test('Pixelmodus: Text, der ins Fenster passt, bleibt statischer Titel ohne Takt; Texte ≤ 28 Zeichen werden nicht gerendert', async () => {
-  const wide = makePixel({}, { textWidthPt: 120 });
-  wide.controller.create();
+test('Zwei Einträge: Titelwechsel rendert neu, B bleibt bestehen (kein Neuerzeugen), Takt weiterhin genau einer', async () => {
+  const s = makePixel();
+  s.controller.create();
   await flush();
-  assert.equal(wide.renders.length, 1);
-  assert.equal(wide.live().length, 0);
-  assert.equal(trayCalls.titles.at(-1), FULL, 'ganzer Text als normaler Titel');
-  wide.controller.destroy();
-  const short = makePixel({ nowPlaying: null });
+  const b = s.controller.textTray;
+  const count = fakeTrays.length;
+  s.fake.push({ nowPlaying: { artist: LONG_ARTIST, title: 'Ein ganz anderer langer Titel' } });
+  await flush();
+  assert.equal(s.renders.length, 2);
+  assert.equal(s.controller.textTray, b);
+  assert.equal(fakeTrays.length, count, 'keine neuen Einträge');
+  assert.equal(s.live().length, 1);
+  s.controller.refresh();
+  await flush();
+  assert.equal(s.renders.length, 2, 'gleicher Text: kein erneutes Rendern');
+  s.controller.destroy();
+});
+
+test('Zwei Einträge: Pause → statisches Bild „⏸ Sender“, kurzer Text → statisches Bild; nie setTitle auf A, kein Takt', async () => {
+  const paused = makePixel({ status: 'paused', nowPlaying: null }, { textWidthPt: 60 });
+  paused.controller.create();
+  await flush();
+  assert.equal(paused.renders[0].text, '⏸ Zwei');
+  assert.ok(paused.controller.textTray, 'B zeigt den statischen Text');
+  assert.equal(paused.live().length, 0, 'kein Takt');
+  assert.equal(paused.controller.textTray.images.length, 1, 'genau ein Bild');
+  assert.equal(paused.controller.textTray.image.template, true);
+  assert.equal(paused.controller.textTray.image.width, (60 + GAP_PT) * 2, 'Breite = Text plus Randabstand');
+  assert.deepEqual(trayCalls.titles, []);
+  paused.controller.destroy();
+
+  const short = makePixel({ nowPlaying: null }, { textWidthPt: 40 });
   short.controller.create();
   await flush();
-  assert.equal(short.renders.length, 0);
-  assert.equal(trayCalls.titles.at(-1), 'Zwei');
+  assert.equal(short.renders[0].text, 'Zwei');
+  assert.ok(short.controller.textTray);
+  assert.equal(short.live().length, 0);
+  assert.deepEqual(trayCalls.titles, [], 'kein nativer Titel im Bildmodus, auch bei kurzem Text');
   short.controller.destroy();
 });
 
-test('Pixelmodus: Rendern schlägt fehl → Schrittmodus (setTitle mit Fenster, Takt 150 ms), kein Bild', async () => {
+test('Zwei Einträge: playing → paused → playing → error → idle: B nur bei Text, sonst zerstört, genau ein Eintrag übrig', async () => {
+  const startIndex = fakeTrays.length;
+  const s = makePixel({}, { textWidthPt: t => (t.startsWith('⏸') ? 50 : PIXEL_WINDOW_WIDTH + 80) });
+  const mine = () => liveTrays().filter(t => t.id >= startIndex);
+  s.controller.create();
+  await flush();
+  assert.equal(mine().length, 2);
+  s.fake.push({ status: 'paused' });
+  await flush();
+  assert.equal(mine().length, 2, 'Pause: statisches Bild in B');
+  assert.equal(s.live().length, 0, 'Takt aus');
+  s.fake.push({ status: 'playing' });
+  await flush();
+  assert.equal(mine().length, 2);
+  assert.equal(s.live().length, 1);
+  s.fake.push({ status: 'error', error: 'x' });
+  assert.equal(mine().length, 1, 'error: B zerstört');
+  assert.equal(s.controller.textTray, null);
+  assert.equal(s.live().length, 0);
+  s.fake.push({ status: 'playing' });
+  await flush();
+  assert.equal(mine().length, 2);
+  s.fake.push({ status: 'idle', station: null, nowPlaying: null });
+  assert.equal(mine().length, 1, 'idle: B zerstört, kein leerer Eintrag');
+  assert.match(s.controller.tray.image.p, /tray-idle\.png$/);
+  assert.deepEqual(s.controller.tray.titles, []);
+  s.controller.destroy();
+  assert.equal(mine().length, 0);
+});
+
+test('Zwei Einträge: Anzeige „aus“ zur Laufzeit zerstört B; wieder an erzeugt ihn neu', async () => {
+  let display = 'station-title';
+  const s = makePixel({}, { controller: { getTrayDisplay: () => display } });
+  s.controller.create();
+  await flush();
+  assert.ok(s.controller.textTray);
+  display = 'off';
+  s.controller.refresh();
+  assert.equal(s.controller.textTray, null);
+  assert.equal(s.live().length, 0);
+  display = 'station';
+  s.controller.refresh();
+  await flush();
+  assert.ok(s.controller.textTray);
+  assert.equal(s.renders.at(-1).text, 'Zwei');
+  s.controller.destroy();
+});
+
+test('Zwei Einträge: Aufnahme — A zeigt das rote Symbol (nie Template), der Radiotext in B läuft weiter; Menü unverändert', async () => {
+  const s = makePixel();
+  s.controller.create();
+  await flush();
+  const textBefore = s.controller.textTray;
+  s.controller.recorder.activeJobs = () => REC_JOBS;
+  s.controller.refresh();
+  await flush();
+  assert.equal(s.controller.textTray, textBefore, 'B bleibt');
+  assert.equal(s.live().length, 1, 'Lauftext läuft weiter');
+  assert.match(s.controller.tray.image.p, /tray-rec\.png$/);
+  assert.equal(s.controller.tray.image.isTemplateImage(), false, 'Aufnahme-Symbol bleibt farbig (kein Template)');
+  assert.equal(s.controller.tray.tooltips.at(-1), 'Streaming Hub — 1 Aufnahme laufen');
+  assert.equal(s.controller.textTray.tooltips.at(-1), 'Streaming Hub — 1 Aufnahme laufen');
+  assert.deepEqual(s.controller.tray.menu.template.map(i => i.label), s.controller.textTray.menu.template.map(i => i.label));
+  assert.ok(s.controller.tray.menu.template.some(i => /Aufnahme|ZDF/.test(i.label || '')), 'Aufnahme-Einträge im Menü');
+  s.controller.recorder.activeJobs = () => [];
+  s.controller.refresh();
+  assert.match(s.controller.tray.image.p, /tray-radio\.png$/);
+  s.controller.destroy();
+
+  // Aufnahme von Anfang an: Symbol rot, Text vorhanden (Beginn mit Aufnahme)
+  const rec = makePixel({}, {});
+  rec.controller.recorder.activeJobs = () => REC_JOBS;
+  rec.controller.create();
+  await flush();
+  assert.equal(rec.renders.length, 1);
+  assert.ok(rec.controller.textTray);
+  assert.match(rec.controller.tray.image.p, /tray-rec\.png$/);
+  assert.equal(rec.controller.tray.image.isTemplateImage(), false);
+  rec.controller.destroy();
+});
+
+test('Zwei Einträge: Aufnahme-Menü ist mit und ohne zweiten Eintrag inhaltlich gleich', async () => {
+  const withText = makePixel({}, {});
+  withText.controller.recorder.activeJobs = () => REC_JOBS;
+  withText.controller.create();
+  await flush();
+  const plain = makeScrolling({}, { getTrayScrollMode: () => 'steps' });
+  plain.controller.recorder.activeJobs = () => REC_JOBS;
+  plain.controller.create();
+  const json = menu => JSON.stringify(menu.template);
+  assert.equal(json(withText.controller.tray.menu), json(plain.controller.tray.menu));
+  assert.equal(json(withText.controller.textTray.menu), json(plain.controller.tray.menu));
+  withText.controller.destroy();
+  plain.controller.destroy();
+});
+
+test('Zwei Einträge: Moduswechsel smooth ↔ steps zur Laufzeit', async () => {
+  let mode = 'smooth';
+  const s = makePixel({}, { controller: { getTrayScrollMode: () => mode } });
+  s.controller.create();
+  await flush();
+  assert.ok(s.controller.textTray);
+  assert.deepEqual(s.controller.tray.titles, []);
+  mode = 'steps';
+  s.controller.refresh();
+  assert.equal(s.controller.textTray, null, 'steps: kein zweiter Eintrag');
+  assert.equal(s.live().length, 1);
+  assert.equal(s.live()[0].ms, 150);
+  assert.equal(s.controller.tray.titles.at(-1), marqueeWindow(FULL, 0).text, 'setTitle nativ auf A');
+  assert.match(s.controller.tray.image.p, /tray-radio\.png$/);
+  mode = 'smooth';
+  s.controller.refresh();
+  await flush();
+  assert.ok(s.controller.textTray);
+  assert.equal(s.live().length, 1);
+  assert.equal(s.live()[0].ms, 33);
+  assert.equal(s.controller._title, '');
+  assert.ok(s.controller.tray.titles.every(t => t === ''), 'kein Titel auf A (Text steckt in B)');
+  s.controller.destroy();
+});
+
+test('Zwei Einträge: „Bewegung reduzieren“ und trayScroll aus → statisch gekürztes Bild in B (kein Titel, kein Takt)', async () => {
+  let reduced = false;
+  const s = makePixel({}, { textWidthPt: 100, controller: { getReducedMotion: () => reduced } });
+  s.controller.create();
+  await flush();
+  assert.equal(s.renders.at(-1).text, FULL, 'ungekürzt, solange gescrollt werden darf');
+  reduced = true;
+  s.controller.refresh();
+  await flush();
+  assert.equal(s.live().length, 0);
+  assert.ok(s.controller.textTray);
+  assert.ok(s.renders.at(-1).text.endsWith('…'));
+  assert.equal(Array.from(s.renders.at(-1).text).length, 28);
+  assert.deepEqual(s.controller.tray.titles, []);
+  s.controller.destroy();
+
+  const off = makePixel({}, { textWidthPt: 100, controller: { getTrayScroll: () => false } });
+  off.controller.create();
+  await flush();
+  assert.ok(off.renders[0].text.endsWith('…'));
+  assert.equal(off.live().length, 0);
+  off.controller.destroy();
+});
+
+test('Zwei Einträge: Rendern schlägt fehl → Schrittmodus auf A (setTitle, Takt 150 ms), kein B', async () => {
   const s = makePixel({}, { renderFails: true });
   s.controller.create();
   await flush();
   assert.equal(s.renders.length, 1);
+  assert.equal(s.controller.textTray, null);
   assert.equal(s.live().length, 1);
   assert.equal(s.live()[0].ms, 150);
-  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text);
+  assert.equal(s.controller.tray.titles.at(-1), marqueeWindow(FULL, 0).text);
   assert.equal(trayCalls.fonts.at(-1), 'monospaced');
   s.controller.refresh();
   await flush();
@@ -1085,49 +1225,45 @@ test('Pixelmodus: Rendern schlägt fehl → Schrittmodus (setTitle mit Fenster, 
   s.controller.destroy();
 });
 
-test('Pixelmodus: trayScrollMode „steps“ rendert nie; Wechsel zur Laufzeit; Nicht-macOS ohne Bildmodus', async () => {
-  let mode = 'steps';
-  const s = makePixel({}, { controller: { getTrayScrollMode: () => mode } });
-  s.controller.create();
-  await flush();
-  assert.equal(s.renders.length, 0);
-  assert.equal(s.live().length, 1);
-  assert.equal(s.live()[0].ms, 150);
-  mode = 'smooth';
-  s.controller.refresh();
-  await flush();
-  assert.equal(s.renders.length, 1, 'sofortige Wirkung der Einstellung');
-  assert.equal(s.live().length, 1, 'Schritt-Timer ersetzt durch Bildtakt');
-  assert.equal(s.live()[0].ms, 33);
-  assert.equal(trayCalls.titles.at(-1), '');
-  mode = 'steps';
-  s.controller.refresh();
-  assert.equal(s.live()[0].ms, 150);
-  assert.equal(trayCalls.images.at(-1).frame, undefined, 'Symbol wieder als Tray-Bild');
-  assert.equal(trayCalls.titles.at(-1), marqueeWindow(FULL, 0).text);
-  s.controller.destroy();
-
+test('Zwei Einträge: nicht macOS ohne Bildmodus und ohne B; steps rendert nie', async () => {
   const linux = makePixel({}, { controller: { platform: 'linux' } });
   linux.controller.create();
   await flush();
   assert.equal(linux.renders.length, 0);
+  assert.equal(linux.controller.textTray, null);
   assert.equal(linux.live().length, 0);
   linux.controller.destroy();
+  const steps = makePixel({}, { controller: { getTrayScrollMode: () => 'steps' } });
+  steps.controller.create();
+  await flush();
+  assert.equal(steps.renders.length, 0);
+  assert.equal(steps.controller.textTray, null);
+  assert.equal(steps.live().length, 1);
+  assert.equal(steps.live()[0].ms, 150);
+  steps.controller.destroy();
 });
 
-test('Pixelmodus: Frames sind Template-Bilder, kein nativeTheme; „Bewegung reduzieren“ stoppt den Bildmodus', async () => {
-  let reduced = false;
-  const s = makePixel({}, { controller: { getReducedMotion: () => reduced } });
+test('Zwei Einträge: 20 × Spielen/Idle — keine hängenden Einträge, kein Takt-Leck', async () => {
+  const startIndex = fakeTrays.length;
+  const s = makePixel();
+  const mine = () => liveTrays().filter(t => t.id >= startIndex);
   s.controller.create();
-  await flush();
-  assert.equal(s.renders.length, 1, 'Farbe ist Sache von macOS: kein Neu-Rendern bei Darstellungswechsel');
-  const frame = trayCalls.images.filter(i => i.frame).at(-1);
-  assert.equal(frame.template, true, 'Lauftext-Frame wird als Template-Bild gesetzt');
-  assert.equal(s.live().length, 1);
-  reduced = true;
-  s.controller.refresh();
-  assert.equal(s.live().length, 0);
-  assert.ok(trayCalls.titles.at(-1).endsWith('…'));
-  assert.equal(trayCalls.images.at(-1).frame, undefined);
+  for (let i = 0; i < 20; i += 1) {
+    s.fake.push({ status: 'playing', station: { sourceId: 's', id: 'b', name: 'Zwei' }, nowPlaying: { artist: LONG_ARTIST, title: `Titel ${i} und ein ebenso langer Titel` } });
+    await flush();
+    assert.equal(mine().length, 2, `Runde ${i}: A und B`);
+    assert.equal(s.live().length, 1);
+    s.fake.push({ status: 'idle', station: null, nowPlaying: null });
+    assert.equal(mine().length, 1, `Runde ${i}: nur A`);
+    assert.equal(s.live().length, 0);
+  }
   s.controller.destroy();
+  assert.equal(mine().length, 0);
+});
+
+test('TrayController: kein nativeTheme-Bezug, kein Template-Glyph, kein Symbol im Textbild', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'recorder', 'TrayController.js'), 'utf8');
+  assert.doesNotMatch(src, /shouldUseDarkColors|nativeTheme|_onThemeUpdated|TEMPLATE_GLYPH|centerInSquare|tray-radio-template/);
+  const trayText = fs.readFileSync(path.join(__dirname, '..', 'lib', 'radio', 'tray-text-renderer.js'), 'utf8');
+  assert.doesNotMatch(trayText, /shouldUseDarkColors|nativeTheme/);
 });

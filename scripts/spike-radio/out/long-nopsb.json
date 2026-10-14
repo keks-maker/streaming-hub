@@ -1,0 +1,207 @@
+{
+ "mode": "long",
+ "startedAt": "2026-10-14T06:01:54.987Z",
+ "electron": "42.0.0",
+ "chrome": "148.0.7778.96",
+ "items": [],
+ "playerReady": {
+  "t": "ready",
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Electron/42.0.0 Safari/537.36",
+  "autoplay": "n/a",
+  "hasMediaSession": true
+ },
+ "psb": false,
+ "psbStarted": false,
+ "hubClosedAtSec": 30,
+ "samples": [
+  {
+   "wallSec": 30,
+   "currentTime": 61.9,
+   "advancedPer30s": null,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 46,
+   "windows": 1
+  },
+  {
+   "wallSec": 60,
+   "currentTime": 91.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 51,
+   "windows": 1
+  },
+  {
+   "wallSec": 90,
+   "currentTime": 121.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 55,
+   "windows": 1
+  },
+  {
+   "wallSec": 120,
+   "currentTime": 151.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 57,
+   "windows": 1
+  },
+  {
+   "wallSec": 150,
+   "currentTime": 181.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 60,
+   "windows": 1
+  },
+  {
+   "wallSec": 180,
+   "currentTime": 211.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 61,
+   "windows": 1
+  },
+  {
+   "wallSec": 210,
+   "currentTime": 241.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 64,
+   "windows": 1
+  },
+  {
+   "wallSec": 240,
+   "currentTime": 271.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 67,
+   "windows": 1
+  },
+  {
+   "wallSec": 270,
+   "currentTime": 301.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 69,
+   "windows": 1
+  },
+  {
+   "wallSec": 300,
+   "currentTime": 331.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 71,
+   "windows": 1
+  },
+  {
+   "wallSec": 330,
+   "currentTime": 361.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 74,
+   "windows": 1
+  },
+  {
+   "wallSec": 360,
+   "currentTime": 391.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 76,
+   "windows": 1
+  },
+  {
+   "wallSec": 390,
+   "currentTime": 421.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 79,
+   "windows": 1
+  },
+  {
+   "wallSec": 420,
+   "currentTime": 451.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 82,
+   "windows": 1
+  },
+  {
+   "wallSec": 450,
+   "currentTime": 481.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 84,
+   "windows": 1
+  },
+  {
+   "wallSec": 480,
+   "currentTime": 511.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 85,
+   "windows": 1
+  },
+  {
+   "wallSec": 510,
+   "currentTime": 541.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 89,
+   "windows": 1
+  },
+  {
+   "wallSec": 540,
+   "currentTime": 571.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 91,
+   "windows": 1
+  },
+  {
+   "wallSec": 570,
+   "currentTime": 601.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 93,
+   "windows": 1
+  },
+  {
+   "wallSec": 600,
+   "currentTime": 631.9,
+   "advancedPer30s": 30,
+   "paused": false,
+   "vis": "visible",
+   "ageMs": 96,
+   "windows": 1
+  }
+ ],
+ "maxTimerDriftMs": 3,
+ "stalls": 0,
+ "eventCounts": {
+  "emptied": 1,
+  "waiting": 1,
+  "playing": 1
+ },
+ "totalWallSec": 630,
+ "finishedAt": "2026-10-14T06:12:30.925Z"
+}
