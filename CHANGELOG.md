@@ -1,5 +1,16 @@
 # Changelog
 
+## Unveröffentlicht — Podcasts
+
+### Podcasts (Feature)
+- Neu: Module `lib/podcast/*`: `PodcastController` (Wiedergabe über das Player-Fenster, Zustand, Seek, Tempo, Sprünge, Lautstärke), `PodcastLibrary` (Abos, Katalog `podcastsources.json` mit 49 öffentlich-rechtlichen Sendungen, 3-way-Merge `podcast-sources-merge.js`), `feed-parser.js`, `podcast-fetch.js`, `podcast-refresh.js`/`podcast-refresh-timer.js`, `podcast-search.js` (iTunes Search), `podcast-state.js` (Hörzustand, Fortsetzen, 95 % = gehört), `podcast-settings.js`, `podcast-overrides.js`, `podcast-next.js`, `playback-power.js`, `ipc.js`.
+- Neu: IPC-Kanäle `podcast:*` (search, cover, catalog, list, subscribe, unsubscribe, reorder, set-override, episodes, refresh, probe-feed, set-played, save-position, get/set-settings, play, pause, resume, stop, get-state, seek, skip, rate, volume; Events `podcast:state`, `podcast:state-changed`, `podcast:subscriptions-changed`, `podcast:refreshed`) mit Absenderprüfung und Schema-Validierung in `lib/input-validation.js`.
+- Neu: Speichertypen `podcasts`, `podcastState`, `podcastEpisodes`, `podcastSettings`. Backup nimmt sie optional auf (ältere Sicherungen bleiben gültig); `validatePodcasts` prüft Abos und Feed-/Cover-URLs.
+- Neu: Oberfläche: Dashboard (Weiterhören, Neue Episoden, Abos), Sendungsseite, Suche, Player mit Seek/Tempo/Sprüngen, Mini-Player, Einstellungsgruppe „Podcasts“ (Abos, Eigene Feeds, Wiedergabe), Tray-Abschnitt „Podcast“. Navigation jetzt mit sechs Einträgen (Podcasts nach Radio, Icon `assets/icons/podcast-icon.png`).
+- Sicherheit: Cover werden nur im Main geladen (`podcast-cover.js`) mit Allowlist (`cover-allowlist.js`) und Ziel-IP-Filter samt Adress-Pinning (`lib/net-safety.js`); Trailing-Dot-localhost blockiert; Cover beim Abonnieren nur aus Main-Quellen (Suche, Probe, Katalog); Fehler werden 60 s gemerkt. Feed-Parser-Limits: 20 MB, 200 Episoden je Feed, höchstens 5000 geparste Items, Dauer höchstens 48 h; Fetch mit Timeout und höchstens 5 Weiterleitungen.
+- Behoben: Die automatische Feed-Prüfung übersprang jeden zweiten Timer-Lauf als „zu früh“, weil der Lauf wenige Millisekunden nach dem Tick stempelt; `podcast-refresh.js` rechnet jetzt mit 30 s Toleranz (`INTERVAL_TOLERANCE_MS`).
+- Behoben: Radio-Start setzt einen beendeten oder fehlerhaften Podcast zurück; Seek-Drag wird zurückgesetzt; http-Cover im Mini-Player.
+
 ## 0.10.0 (2026-10-14) — Online-Radio
 
 ### Radio (Feature, Konzept `docs/StreamingHub-Radio-Konzept.md`)

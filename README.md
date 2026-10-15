@@ -26,6 +26,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 - **Start-Dashboard** – Schnellzugriff auf Live-TV, Radio, Streaming-Dienste, Mediatheken und Einstellungen
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
 - **Radio** – Online-Radio mit mitgelieferter Senderliste (rund 250 deutsche Sender), eigenen Sendern per Stream-URL, Favoriten, Mini-Player und Steuerung aus dem Menüzeilensymbol; spielt auch bei geschlossenem Fenster weiter
+- **Podcasts** – Sendungen über die iTunes-Suche finden, abonnieren oder per Feed-Adresse hinzufügen, mitgelieferte öffentlich-rechtliche Liste, neue Episoden, Hörstatus und Fortsetzen, Player mit Tempo und Sprüngen, Mini-Player und Steuerung aus dem Menüzeilensymbol
 - **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste, Raster oder „Jetzt & Gleich“, Suche, Senderauswahl, Genre-Filter, Kanalansicht mit 7 Tagen je Sender, Details mit Poster, Besetzung und weiteren Terminen, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
 - **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, aus dem EPG im Voraus planen und später in der App abspielen
 - **Zeitversetztes Fernsehen (Timeshift)** – Bei unterstützten Live-Streams zurückspulen und Sendungen per EPG-Marker anspringen
@@ -34,8 +35,8 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 - **Verlauf** – Zuletzt gesehene Inhalte mit Direktsprung
 - **Streaming-DRM** – Netflix, Disney+ und Prime Video funktionieren mit Widevine
 - **Gespeicherte Logins** – Du meldest dich bei jedem Dienst nur einmal an
-- **Einstellungen** – Dienste, TV-Quellen, Sender, EPG, Wiedergabe, Aufnahmen und Radio an einem Ort
-- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen, Radio und Verlauf sichern und wiederherstellen
+- **Einstellungen** – Dienste, TV-Quellen, Sender, EPG, Wiedergabe, Aufnahmen, Radio und Podcasts an einem Ort
+- **Backup/Restore** – Einstellungen, Dienste, TV-Quellen, Radio, Podcasts und Verlauf sichern und wiederherstellen
 - **Auto-Update** – Neue Versionen direkt aus der App installieren
 - **Tastaturkürzel** – für Navigation, Verlauf, Aufnahmen, Bild-in-Bild und Vollbild
 
@@ -240,6 +241,41 @@ Unter **Einstellungen → Radio → Wiedergabe**:
 - **Beim Schließen des Fensters weiterspielen** (Standard: an; benötigt das Menüzeilensymbol)
 
 Favoriten, Reihenfolge, Anpassungen und eigene Sender bleiben bei Updates erhalten und sind Teil von Backup & Restore.
+
+### Podcasts
+
+#### Podcast-Dashboard
+
+Wähle in der Navigationsleiste oder auf der Startseite **Podcasts** (nach Radio). Das Dashboard zeigt oben **Weiterhören** (angefangene Episoden mit Fortschritt) und **Neue Episoden** deiner Abos, darunter die abonnierten Sendungen als Kacheln in der gespeicherten Reihenfolge. Ein Klick auf eine Episode startet sie bzw. setzt sie an der gemerkten Stelle fort. Ohne Abos bietet das Dashboard Suche und die mitgelieferte Liste an.
+
+#### Suchen, Abonnieren, Eigene Feeds
+
+Die **Suche** durchsucht das Verzeichnis iTunes Search; ein Klick auf ein Ergebnis öffnet die Sendungsseite mit **Abonnieren**. Die mitgelieferte Liste (rund 50 öffentlich-rechtliche Sendungen) lässt sich ebenfalls durchsuchen und abonnieren. Eigene Feeds fügst du unter **Einstellungen → Podcasts → Eigene Feeds** per RSS-Adresse hinzu; **Feed prüfen** zeigt vor dem Speichern Titel und Episodenzahl bzw. den Fehlergrund. Erlaubt sind http- und https-Adressen ohne Zugangsdaten.
+
+#### Sendungsseite und Hörstatus
+
+Die Sendungsseite listet die Episoden (bis zu 200 je Feed) mit Datum, Dauer und Hörstatus (neu, angefangen, gehört). Episoden lassen sich als gehört bzw. ungehört markieren. Die App merkt sich die Position je Episode und setzt dort fort; ab 95 % gilt eine Episode automatisch als gehört (abschaltbar). Neue Episoden prüft die App kurz nach dem Start und danach im eingestellten Intervall (30, 60 oder 120 Minuten).
+
+#### Player und Mini-Player
+
+Der Player bietet Play/Pause, Positionsleiste mit Suchen, **Sprünge** zurück und vor (10 bis 60 Sekunden einstellbar) und **Tempo** von 0,75x bis 2x. Die Leiste am unteren Rand (Mini-Player) steht auf allen Seiten zur Verfügung, solange eine Episode läuft oder pausiert ist. Podcast und Radio schließen sich aus: Startet das eine, endet das andere. Startest du LiveTV, einen Streamingdienst oder eine Aufnahme, wird die Wiedergabe pausiert.
+
+#### Steuerung aus dem Menüzeilensymbol
+
+Das Menüzeilensymbol enthält einen Abschnitt **Podcast** mit Sendung und Episode, **Pause / Fortsetzen**, **Stopp** und den Sprüngen zurück und vor. Das Symbol zeigt während der Wiedergabe das Radio-Zeichen; die Anzeige neben dem Symbol folgt den Radio-Einstellungen.
+
+#### Podcast-Einstellungen
+
+Unter **Einstellungen → Podcasts**:
+- **Abos** – Reihenfolge, Abbestellen, Name und Cover anpassen
+- **Eigene Feeds** – hinzufügen, prüfen, bearbeiten, löschen
+- **Wiedergabe** – Standardtempo, Sprungweiten, nächste ungehörte Episode automatisch abspielen, automatisch als gehört markieren, Prüfintervall, Lautstärke
+
+Abos, Hörstatus und Einstellungen bleiben bei Updates erhalten und sind Teil von Backup & Restore.
+
+> **Datenschutz:** Dein Suchbegriff geht an Apple (iTunes Search). Feeds, Cover und Audio lädt die App direkt von den Anbietern der jeweiligen Sendung. Cover werden nur über den Hauptprozess mit Adressprüfung geladen.
+>
+> **Nicht in dieser Version:** Episoden-Downloads, Benachrichtigungen über neue Episoden und OPML-Import/-Export.
 
 ### EPG – Programmführer
 
