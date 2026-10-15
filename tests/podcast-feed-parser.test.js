@@ -166,3 +166,44 @@ test('Großer normaler Feed (30 000 Items) parst in unter 1 s', () => {
   assert.ok(feed.episodes.length > 0);
   assert.ok(ms < 1000, `dauerte ${ms} ms`);
 });
+
+test('Summenbudget: bei ältesten-zuerst-Feed haben die neuesten 200 vollständige Bäume mit Links', () => {
+  const body = `<p>${'Text '.repeat(500)}<a href="https://example.org/s">Link</a></p>${'<p>Zeile</p>'.repeat(30)}`.slice(0, 3200);
+  let xml = '<rss><channel><title>t</title>';
+  for (let i = 0; i < 2000; i += 1) {
+    const day = new Date(Date.UTC(2020, 0, 1) + i * 86400000).toUTCString();
+    xml += `<item><title>E${i}</title><guid>g${i}</guid><pubDate>${day}</pubDate><enclosure url="https://a/${i}.mp3" type="audio/mpeg"/><description><![CDATA[<p>Kurz <a href="https://example.org/${i}">L${i}</a></p>${body}]]></description></item>`;
+  }
+  xml += '</channel></rss>';
+  const { feed } = timedParse(xml);
+  assert.equal(feed.episodes.length, 200);
+  assert.equal(feed.episodes[0].title, 'E1999');
+  for (const episode of feed.episodes) {
+    assert.ok(JSON.stringify(episode.notesTree).includes('"href"'), `${episode.title} ohne Link`);
+    assert.ok(!('block' in episode));
+  }
+});
+
+test('Neueste-zuerst-Feed: Reihenfolge, IDs und Bäume unverändert', () => {
+  let xml = '<rss><channel><title>t</title>';
+  for (let i = 5; i >= 1; i -= 1) xml += `<item><title>E${i}</title><guid>g${i}</guid><pubDate>${new Date(Date.UTC(2021, 0, i)).toUTCString()}</pubDate><enclosure url="https://a/${i}.mp3" type="audio/mpeg"/><description><![CDATA[<p>x <a href="https://e.org/${i}">l</a></p>]]></description></item>`;
+  xml += '</channel></rss>';
+  const { feed } = timedParse(xml);
+  assert.deepEqual(feed.episodes.map(e => e.id), ['g5', 'g4', 'g3', 'g2', 'g1']);
+  assert.equal(feed.episodes[0].notesTree[0].c[1].a.href, 'https://e.org/5');
+});
+
+test('Feed-Budget: nach Verbrauch bekommen spätere Episoden nur Klartext, Item-Budget begrenzt je Episode', () => {
+  const big = '<p>Absatz <a href="https://e.org/x">l</a></p>'.repeat(9000); // ca. 400 000 Zeichen
+  let xml = '<rss><channel><title>t</title>';
+  for (let i = 30; i >= 1; i -= 1) xml += `<item><title>E${i}</title><guid>g${i}</guid><pubDate>${new Date(Date.UTC(2021, 0, i)).toUTCString()}</pubDate><enclosure url="https://a/${i}.mp3" type="audio/mpeg"/><description><![CDATA[${big}]]></description></item>`;
+  xml += '</channel></rss>';
+  const { feed, ms } = timedParse(xml);
+  const withLinks = feed.episodes.filter(e => JSON.stringify(e.notesTree).includes('"href"'));
+  assert.ok(withLinks.length > 0 && withLinks.length < 30, `mit Links: ${withLinks.length}`);
+  assert.equal(feed.episodes[0].title, 'E30');
+  assert.ok(JSON.stringify(feed.episodes[0].notesTree).includes('"href"'));
+  const last = feed.episodes[29];
+  assert.ok(last.notesTree.length > 0 && !JSON.stringify(last.notesTree).includes('"href"'));
+  assert.ok(ms < 3000, `dauerte ${ms} ms`);
+});
