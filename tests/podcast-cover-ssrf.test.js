@@ -42,7 +42,7 @@ test('createSafeLookup: liefert nur öffentliche Adressen, sperrt gemischte und 
 });
 
 test('assertPublicUrl: Literale, localhost und Auflösung', async () => {
-  for (const url of ['http://127.0.0.1/a', 'http://[::1]/a', 'http://169.254.169.254/latest', 'http://localhost/a', 'http://x.localhost/a', 'http://2130706433/a', 'http://0x7f.1/a', 'http://[::ffff:127.0.0.1]/a', 'http://192.168.0.5:8080/a']) {
+  for (const url of ['http://127.0.0.1/a', 'http://[::1]/a', 'http://169.254.169.254/latest', 'http://localhost/a', 'http://localhost./a', 'http://x.localhost./a', 'http://x.localhost/a', 'http://2130706433/a', 'http://0x7f.1/a', 'http://[::ffff:127.0.0.1]/a', 'http://192.168.0.5:8080/a']) {
     await assert.rejects(assertPublicUrl(url, { resolve: pub }), { code: 'ESSRF' }, url);
   }
   await assert.rejects(assertPublicUrl('http://intern.test/a', { resolve: async () => [{ address: '10.0.0.8' }] }), { code: 'ESSRF' });

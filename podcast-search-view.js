@@ -113,7 +113,7 @@ function createPodcastSearchView(root, ctx) {
   const feedAdd = createFeedAddModel({
     probe: url => podcasts.probeFeed(url),
     subscribe: async feed => {
-      const reply = await podcasts.subscribe({ feedUrl: feed.feedUrl, source: 'eigene-podcasts', title: feed.title, author: feed.author || undefined, cover: feed.cover || undefined });
+      const reply = await podcasts.subscribe({ feedUrl: feed.feedUrl, source: 'eigene-podcasts', title: feed.title, author: feed.author || undefined });
       await data.load();
       return reply;
     },
@@ -143,7 +143,7 @@ function createPodcastSearchView(root, ctx) {
       if (!result || add.getAttribute('aria-disabled') === 'true') return;
       add.setAttribute('aria-disabled', 'true');
       try {
-        await podcasts.subscribe({ feedUrl: result.feedUrl, source: 'suche', title: result.title, author: result.author || undefined, cover: result.cover || undefined });
+        await podcasts.subscribe({ feedUrl: result.feedUrl, source: 'suche', title: result.title, author: result.author || undefined });
         await data.load();
         announce(`${result.title} abonniert`);
       } catch (error) {

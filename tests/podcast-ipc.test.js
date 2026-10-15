@@ -34,9 +34,9 @@ test('IPC-Schema: Suche, Abo, Aktualisierung, Position, Gehört', () => {
     assert.throws(() => v.validatePodcastSearch(bad), undefined, JSON.stringify(bad));
   }
   assert.deepEqual(v.validatePodcastSubscribe({ catalogId: 'deutschlandfunk-der-tag' }), { catalogId: 'deutschlandfunk-der-tag' });
-  assert.deepEqual(v.validatePodcastSubscribe({ feedUrl: 'https://a.test/f', title: ' T ', cover: 'https://a.test/c.png' }), { feedUrl: 'https://a.test/f', source: 'eigene-podcasts', title: 'T', cover: 'https://a.test/c.png' });
+  assert.deepEqual(v.validatePodcastSubscribe({ feedUrl: 'https://a.test/f', title: ' T ' }), { feedUrl: 'https://a.test/f', source: 'eigene-podcasts', title: 'T' });
   assert.equal(v.validatePodcastSubscribe({ feedUrl: 'https://a.test/f', source: 'suche' }).source, 'suche');
-  for (const bad of [null, {}, { catalogId: 'a', feedUrl: 'https://a.test/f' }, { feedUrl: 'ftp://a.test/f' }, { feedUrl: 'https://a.test/f', source: 'oeffentlich-rechtlich' }, { feedUrl: 'https://a.test/f', cover: 'javascript:1' }, { feedUrl: 'https://a.test/f', title: 'x'.repeat(301) }, { feedUrl: 'https://a.test/f', evil: 1 }, { catalogId: '' }, { catalogId: 'a|b' }]) {
+  for (const bad of [null, {}, { catalogId: 'a', feedUrl: 'https://a.test/f' }, { feedUrl: 'ftp://a.test/f' }, { feedUrl: 'https://a.test/f', source: 'oeffentlich-rechtlich' }, { feedUrl: 'https://a.test/f', cover: 'https://a.test/c.png' }, { feedUrl: 'https://a.test/f', title: 'x'.repeat(301) }, { feedUrl: 'https://a.test/f', evil: 1 }, { catalogId: '' }, { catalogId: 'a|b' }]) {
     assert.throws(() => v.validatePodcastSubscribe(bad), undefined, JSON.stringify(bad));
   }
   assert.deepEqual(v.validatePodcastRefresh(undefined), { force: false });
@@ -147,6 +147,7 @@ test('IPC: eigener Feed prüfen, abonnieren, Episoden mit Hörzustand, Position/
   assert.deepEqual([probe.ok, probe.title, probe.episodeCount], [true, 'Der & Test-Podcast', 3]);
   assert.deepEqual(await call('podcast:probe-feed', 'ftp://x.test/f'), { ok: false, error: 'Feed-URL muss mit http:// oder https:// beginnen' });
   const { subscription } = await call('podcast:subscribe', { feedUrl: 'https://own.test/feed?token=geheim' });
+  assert.equal(subscription.cover, probe.cover, 'Cover stammt aus dem Probe-Ergebnis im Main');
   assert.equal(subscription.title, 'Der & Test-Podcast', 'Titel aus dem Feed ergänzt');
   const listing = await call('podcast:episodes', subscription.id);
   assert.deepEqual(listing.episodes.map(e => e.id), ['ep-3', 'ep-2', 'ep-1']);
@@ -182,4 +183,10 @@ test('IPC: Suche und Aktualisierung validieren Eingaben; Suchfehler werden als E
   assert.equal(summary.ok, true);
   assert.equal((await call('podcast:refresh', { id: 'fremd' })).status, 'error');
   await assert.rejects(call('podcast:refresh', { force: 'x' }));
+});
+
+test('IPC: Renderer kann kein Cover beim Abonnieren mitgeben (Schema) und Fremd-Adressen bleiben gesperrt', async () => {
+  const { call } = setupIpc();
+  await assert.rejects(call('podcast:subscribe', { feedUrl: 'https://own.test/feed', cover: 'http://127.0.0.1/x.png' }), /Unerwartete|unbekannt|nicht erlaubt/i);
+  assert.equal(await call('podcast:cover', 'http://127.0.0.1/x.png').then(r => r.ok), false);
 });

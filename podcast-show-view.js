@@ -152,7 +152,7 @@ function createPodcastShowView(root, ctx) {
         announce(`${m.title} abbestellt`);
         home();
       } else if (preview && preview.feedUrl) {
-        await podcasts.subscribe({ feedUrl: preview.feedUrl, source: preview.source || 'suche', title: preview.title, author: preview.author || undefined, cover: preview.cover || undefined });
+        await podcasts.subscribe({ feedUrl: preview.feedUrl, source: preview.source || 'suche', title: preview.title, author: preview.author || undefined });
         await data.load();
         announce(`${m.title} abonniert`);
       } else if (preview && preview.catalogId) {
