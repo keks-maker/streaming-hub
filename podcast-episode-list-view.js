@@ -39,18 +39,21 @@ function createEpisodeList(doc, { podcasts, showShow = false, onOpen, onPlay, on
     main.type = 'button';
     const cover = createCover(doc, { podcasts });
     const eq = el(doc, 'span', 'podcast-eq');
-    eq.setAttribute('aria-hidden', 'true');
+    eq.setAttribute('aria-hidden', 'true'); // Text „spielt gerade“ steht im aria-label der Zeile
     for (let i = 0; i < 3; i += 1) eq.appendChild(el(doc, 'span'));
     const text = el(doc, 'span', 'podcast-episode-text');
     const show = el(doc, 'span', 'podcast-episode-show');
     show.hidden = !showShow;
     const title = el(doc, 'span', 'podcast-episode-title');
+    const metaRow = el(doc, 'span', 'podcast-episode-metarow');
+    const newTag = el(doc, 'span', 'podcast-episode-new', 'Neu');
     const meta = el(doc, 'span', 'podcast-episode-meta');
+    metaRow.append(newTag, meta);
     const progress = el(doc, 'span', 'podcast-progress');
     progress.setAttribute('aria-hidden', 'true');
     const bar = el(doc, 'span', 'podcast-progress-bar');
     progress.appendChild(bar);
-    text.append(show, title, meta, progress);
+    text.append(show, title, metaRow, progress);
     main.append(cover.element, eq, text);
     const play = el(doc, 'button', 'podcast-episode-play');
     play.type = 'button';
@@ -64,7 +67,7 @@ function createEpisodeList(doc, { podcasts, showShow = false, onOpen, onPlay, on
     markIcon.innerHTML = ICON_CHECK; // statisches SVG
     mark.appendChild(markIcon);
     li.append(main, play, mark);
-    const row = { li, main, play, playIcon, mark, cover, show, title, meta, bar, progress, item: null };
+    const row = { li, main, play, playIcon, mark, cover, show, title, meta, newTag, eq, bar, progress, item: null };
     main.addEventListener('click', () => row.item && onOpen && onOpen(row.item, main));
     play.addEventListener('click', () => row.item && onPlay && onPlay(row.item));
     mark.addEventListener('click', () => row.item && onMark && onMark(row.item));
@@ -80,6 +83,9 @@ function createEpisodeList(doc, { podcasts, showShow = false, onOpen, onPlay, on
     li.classList.toggle('is-active', item.active);
     li.classList.toggle('is-playing', item.playing);
     li.classList.toggle('is-failed', item.failed);
+    li.classList.toggle('is-new', item.isNew);
+    row.newTag.hidden = !item.isNew;
+    row.eq.title = item.playState;
     main.setAttribute('aria-label', item.ariaLabel);
     play.dataset.action = item.action;
     play.title = item.playLabel;

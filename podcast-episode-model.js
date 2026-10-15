@@ -38,7 +38,7 @@ const STATUS_TEXT = { new: 'Neu', started: 'Begonnen', played: 'Gehört' };
 
 /**
  * Anzeigemodell einer Episode. Ausgabe: { key, podcastId, episodeId, show, title, cover, dateText, durationText, status,
- * statusText, progress, active, playing, failed, action ('play'|'pause'|'resume'), actionLabel, markPlayed (Ziel von
+ * statusText, isNew (Zähler-Definition), playState ('spielt gerade'|'pausiert'|''), progress, active, playing, failed, action ('play'|'pause'|'resume'), actionLabel, markPlayed (Ziel von
  * „als gehört markieren“), markLabel, ariaLabel }
  */
 function episodeItem({ podcastId, show, episode, fallbackCover = null, player = null, now = Date.now() }) {
@@ -55,6 +55,9 @@ function episodeItem({ podcastId, show, episode, fallbackCover = null, player = 
   const dateText = formatEpisodeDate(episode.pubDate, now);
   const durationText = formatDuration(duration);
   const actionLabel = { play: 'abspielen', pause: 'pausieren', resume: 'fortsetzen' }[action];
+  const isNew = isNewEpisode(episode, now);
+  const statusText = status === 'new' && !isNew ? 'Ungehört' : STATUS_TEXT[status];
+  const playState = active ? (playing ? 'spielt gerade' : 'pausiert') : '';
   const progress = status === 'played' ? 0 : clampFraction(position, duration);
   return {
     key: `${podcastId}\u0000${episode.id}`,
@@ -69,7 +72,9 @@ function episodeItem({ podcastId, show, episode, fallbackCover = null, player = 
     dateText,
     durationText,
     status,
-    statusText: STATUS_TEXT[status],
+    statusText,
+    isNew,
+    playState,
     progress,
     active,
     playing,
@@ -78,7 +83,7 @@ function episodeItem({ podcastId, show, episode, fallbackCover = null, player = 
     actionLabel,
     markPlayed: status !== 'played',
     markLabel: status === 'played' ? 'Als ungehört markieren' : 'Als gehört markieren',
-    ariaLabel: [show, title, dateText, durationText, STATUS_TEXT[status]].filter(Boolean).join(', ') + ' – Details öffnen',
+    ariaLabel: [show, title, dateText, durationText, statusText, isNew && status !== 'new' ? 'Neu' : '', playState].filter(Boolean).join(', ') + ' – Details öffnen',
     playLabel: `${title}: ${actionLabel}`,
   };
 }

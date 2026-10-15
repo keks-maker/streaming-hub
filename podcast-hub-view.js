@@ -72,7 +72,7 @@ function createPodcastHub(root, options = {}) {
   };
 
   // Sitzungszustand des Dashboards (bleibt beim Wechsel zur Sendungsseite und zurück erhalten): Auswahl links, Filter, Sortierung
-  const view = { selection: ALL_ID, filter: 'all', sort: 'newest' };
+  const view = { selection: ALL_ID, filter: 'all', sort: 'newest', limit: 50 };
 
   const ctx = {
     podcasts,

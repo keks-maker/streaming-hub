@@ -36,17 +36,25 @@ test('Neue Episoden: über alle Abos, neueste zuerst; gehörte und alte fallen h
   assert.equal(started.progress, 0.17);
 });
 
-test('Neue Episoden: höchstens 5 je Abo und 40 insgesamt, Zähler zeigt alle', () => {
+test('Neue Episoden: keine Kappung je Abo/gesamt, Zähler = Zeilenzahl; ab 50 Zeilen „Mehr laden“ in Schritten von 50', () => {
   const many = Array.from({ length: 12 }, (_, i) => ep(`e${i}`, i * 0.1 + 0.1));
   const subs = Array.from({ length: 10 }, (_, i) => sub(`s${i}`, `Show ${i}`));
   const episodes = Object.fromEntries(subs.map(s => [s.id, { episodes: many }]));
   const model = dash.podcastDashboardModel({ subscriptions: subs, episodes, now: NOW });
-  assert.equal(model.newEpisodes.length, 40);
   assert.equal(model.newCount, 120);
+  assert.equal(model.newEpisodes.length, 50, 'erste Seite');
+  assert.equal(model.column.hasMore, true);
+  assert.equal(model.column.moreLabel, 'Mehr laden (70 weitere)');
   assert.ok(model.newEpisodes.every(item => item.podcastId));
+  const second = dash.podcastDashboardModel({ subscriptions: subs, episodes, now: NOW, view: { limit: 100 } });
+  assert.equal(second.newEpisodes.length, 100);
+  const third = dash.podcastDashboardModel({ subscriptions: subs, episodes, now: NOW, view: { limit: 150 } });
+  assert.deepEqual([third.newEpisodes.length, third.column.hasMore, third.newCount], [120, false, 120], 'zuletzt: Zeilen = Zähler');
+  const few = dash.podcastDashboardModel({ subscriptions: subs.slice(0, 3), episodes, now: NOW });
+  assert.deepEqual([few.newEpisodes.length, few.newCount, few.allEntry.newCount, few.column.hasMore], [36, 36, 36, false], 'unter 50: Zähler = Zeilen, kein „Mehr laden“');
 });
 
-test('Abo-Kacheln: Reihenfolge der Abos, Badge mit ungehörten, Fehlerzustand sichtbar, Text ohne Markup', () => {
+test('Abo-Kacheln: Reihenfolge der Abos, Badge mit neuen, Fehlerzustand sichtbar, Text ohne Markup', () => {
   const model = dash.podcastDashboardModel({
     subscriptions: [sub('b', '<b>Beta</b>', { feed: { lastChecked: null, lastError: 'HTTP 404' } }), sub('a', 'Alpha')],
     episodes: { a: { episodes: [ep('a1', 1), ep('a2', 2)] }, b: { episodes: [] } },
@@ -56,9 +64,11 @@ test('Abo-Kacheln: Reihenfolge der Abos, Badge mit ungehörten, Fehlerzustand si
   assert.equal(model.shows[0].title, '<b>Beta</b>'); // unverändert: die Ansicht setzt per textContent
   assert.equal(model.shows[0].error, true);
   assert.equal(model.shows[0].errorText, 'Feed nicht erreichbar');
-  assert.equal(model.shows[1].unheard, 2);
+  assert.equal(model.shows[1].newCount, 2);
   assert.equal(model.shows[1].badgeText, '2');
-  assert.match(model.shows[1].ariaLabel, /2 ungehörte Episoden/);
+  assert.match(model.shows[1].ariaLabel, /2 neue Episoden/);
+  assert.equal(model.shows[1].badgeLabel, '2 neue Episoden (ungehört, höchstens 30 Tage alt)');
+  assert.equal(model.shows[0].badgeLabel, '', 'bei 0 kein Badge-Text');
 });
 
 test('Statuszeile: Abos, neue Episoden, zuletzt geprüft', () => {

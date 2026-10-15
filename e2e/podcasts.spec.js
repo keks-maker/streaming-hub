@@ -60,6 +60,9 @@ function startServer(tone) {
       res.writeHead(200, { 'Content-Type': 'application/json+chapters' }).end(JSON.stringify({ version: '1.2.0', chapters: [{ startTime: 0, title: 'Anfang' }, { startTime: 2, title: 'Ende-Kapitel' }] }));
     } else if (url.pathname === '/feed2.xml') {
       res.writeHead(200, { 'Content-Type': 'application/rss+xml' }).end(feedXml(base, 'Eigener Feed', [{ title: 'Eigene Folge', guid: 'h1', file: 'ep1.aac' }]));
+    } else if (url.pathname === '/feed3.xml') {
+      const items = Array.from({ length: 8 }, (_, i) => ({ title: `Viele ${i + 1}`, guid: `v${i + 1}`, file: 'ep2.aac' }));
+      res.writeHead(200, { 'Content-Type': 'application/rss+xml' }).end(feedXml(base, 'Viele Folgen', items));
     } else if (url.pathname === '/broken.xml') {
       res.writeHead(200, { 'Content-Type': 'text/html' }).end('<html><body>kein Feed</body></html>');
     } else if (url.pathname === '/cover.png' || url.pathname === '/shownote.png') {
@@ -394,15 +397,15 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(page.locator('#podcastNewHeading')).toHaveText('Alle neuen Episoden');
     await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(1);
     await expect(page.locator('.podcast-filter')).toBeHidden();
-    // Testsendung: alle Episoden (auch gehörte), dann nur ungehörte
+    // Testsendung: alle Episoden (auch gehörte), dann nur neue
     const show = entries.filter({ hasText: 'Testsendung fett' });
     await show.locator('.podcast-show-btn').click();
     await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(2);
     await page.locator('#podcastNewList .podcast-episode', { hasText: 'Erste Folge' }).locator('.podcast-episode-mark').click(); // → ungehört
-    await page.getByRole('button', { name: 'Nur ungehörte' }).click();
+    await page.getByRole('button', { name: 'Nur neue' }).click();
     await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(1);
     await expect(page.locator('#podcastNewList')).toContainText('Erste Folge');
-    await page.getByRole('button', { name: 'Alle', exact: true }).click();
+    await page.getByRole('button', { name: 'Alle Episoden', exact: true }).click();
     await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(2);
     // Sortierung
     const titles = () => page.locator('#podcastNewList .podcast-episode-title').allTextContents();
@@ -439,6 +442,69 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(entries).toHaveCount(2);
     await expect(page.locator('#podcastNewHeading')).toHaveText('Alle neuen Episoden');
     expect(await page.evaluate(() => window.podcasts.list().then(list => list.length))).toBe(1);
+  });
+
+  test('Zähler = Zeilen: 8 neue Episoden in einem Abo, Kopfzeile „x neue · y Episoden“, Statuszeile und Badges stimmen nach „gehört“ überein', async () => {
+    await page.evaluate(url => window.podcasts.subscribe({ feedUrl: url, title: 'Viele Folgen', author: 'Test Autor' }), `${base}/feed3.xml`);
+    const entries = page.locator('#podcastShowGrid .podcast-show');
+    const many = entries.filter({ hasText: 'Viele Folgen' });
+    await expect(many.locator('.podcast-badge')).toHaveText('8', { timeout: 15_000 });
+    await expect(many.locator('.podcast-badge')).toHaveAttribute('title', '8 neue Episoden (ungehört, höchstens 30 Tage alt)');
+    await many.locator('.podcast-show-btn').click();
+    await expect(page.locator('#podcastNewHeading')).toHaveText('Viele Folgen');
+    await expect(page.locator('#podcastColumnHint')).toHaveText('8 neue · 8 Episoden');
+    await expect(page.getByRole('button', { name: 'Alle Episoden', exact: true })).toHaveAttribute('aria-pressed', 'true'); // Standard bei Abo-Auswahl
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(8);
+    await expect(page.locator('#podcastNewList .podcast-episode-new:visible')).toHaveCount(8);
+    await expect(page.locator('#podcastNewList .podcast-episode-new').first()).toHaveText('Neu');
+    // 3 als gehört markieren → 5 neue von 8; Badge, Kopfzeile und „Nur neue“ ziehen sofort nach
+    for (const title of ['Viele 6', 'Viele 7', 'Viele 8']) await page.locator('#podcastNewList .podcast-episode', { hasText: title }).locator('.podcast-episode-mark').click();
+    await expect(page.locator('#podcastColumnHint')).toHaveText('5 neue · 8 Episoden');
+    await expect(many.locator('.podcast-badge')).toHaveText('5');
+    await expect(page.locator('#podcastNewList .podcast-episode-new:visible')).toHaveCount(5);
+    await page.getByRole('button', { name: 'Nur neue' }).click();
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(5);
+    // „Alle neuen Episoden“: Zähler = Zeilen = Statuszeile
+    await entries.first().locator('.podcast-show-btn').click();
+    const badge = Number(await entries.first().locator('.podcast-badge').textContent());
+    expect(badge).toBeGreaterThanOrEqual(5);
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(badge);
+    await expect(page.locator('#podcastColumnHint')).toHaveText(`${badge} neue Episoden`);
+    await expect(page.locator('#podcastStatus')).toContainText(`· ${badge} neue Episoden ·`);
+    await page.locator('#podcastNewList .podcast-episode', { hasText: 'Viele 1' }).locator('.podcast-episode-mark').click();
+    await expect(entries.first().locator('.podcast-badge')).toHaveText(String(badge - 1));
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(badge - 1);
+    await expect(page.locator('#podcastStatus')).toContainText(`· ${badge - 1} neue Episoden ·`);
+  });
+
+  test('Wiedergabe-Markierung getrennt von der Auswahl: anderes Abo gewählt → nur Equalizer; gleiches Abo → Fläche und Equalizer', async () => {
+    const entries = page.locator('#podcastShowGrid .podcast-show');
+    const many = entries.filter({ hasText: 'Viele Folgen' });
+    const other = entries.filter({ hasText: 'Testsendung fett' });
+    await many.locator('.podcast-show-btn').click();
+    await page.locator('#podcastNewList .podcast-episode', { hasText: 'Viele 2' }).locator('.podcast-episode-play').click();
+    await expect.poll(() => page.evaluate(() => window.podcasts.player.getState().then(s => s.status)), { timeout: 15_000 }).toMatch(/playing|loading|ended/);
+    await page.evaluate(() => window.podcasts.player.pause());
+    await other.locator('.podcast-show-btn').click();
+    await expect(many).toHaveClass(/is-active/);
+    await expect(many).not.toHaveClass(/is-selected/);
+    await expect(other).toHaveClass(/is-selected/);
+    await expect(other).not.toHaveClass(/is-active/);
+    await expect(many.locator('.podcast-eq')).toBeVisible();
+    await expect(other.locator('.podcast-eq')).toBeHidden();
+    await expect(many.locator('.podcast-show-btn')).toHaveAttribute('aria-label', /pausiert/);
+    await expect(many.locator('.podcast-show-btn')).not.toHaveAttribute('aria-current', 'true');
+    const eqColor = await many.locator('.podcast-eq span').first().evaluate(node => getComputedStyle(node).backgroundColor);
+    expect(eqColor).toBe('rgb(255, 159, 28)'); // eigene Farbe, nicht der Akzent der Auswahl
+    await many.locator('.podcast-show-btn').click();
+    await expect(many).toHaveClass(/is-active/);
+    await expect(many).toHaveClass(/is-selected/);
+    const row = page.locator('#podcastNewList .podcast-episode.is-active');
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText('Viele 2');
+    await expect(row.locator('.podcast-eq')).toBeVisible();
+    await expect(row.locator('.podcast-episode-main')).toHaveAttribute('aria-label', /pausiert/);
+    await shot(page, 'podcasts-wiedergabe-auswahl');
   });
 
   test('Keine Konsolenfehler', async () => {

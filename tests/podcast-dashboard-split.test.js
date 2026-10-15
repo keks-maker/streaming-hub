@@ -28,6 +28,7 @@ test('Spalte rechts: Standard „Alle neuen Episoden“ zeigt die bisherige geme
   assert.equal(model.selection, dash.ALL_ID);
   assert.equal(model.heading, 'Alle neuen Episoden');
   assert.deepEqual(model.items.map(i => i.episodeId), ['b2', 'a1', 'b1', 'a2', 'a5']);
+  assert.equal(model.hint, '5 neue Episoden');
   assert.equal(model.filterVisible, false);
   assert.equal(model.canOpenShow, false);
   const same = dash.podcastDashboardModel({ subscriptions: SUBS, episodes: EPISODES, now: NOW });
@@ -43,12 +44,16 @@ test('Spalte rechts: Abo gewählt zeigt alle Episoden aus dem Cache (auch alte u
   assert.equal(all.canOpenShow, true);
   assert.equal(all.filterVisible, true);
   assert.equal(all.total, 5);
-  assert.match(all.hint, /5 Episoden, davon 4 ungehört/);
-  const unheard = column({ selection: 'a', filter: 'unheard' });
-  assert.deepEqual(unheard.items.map(i => i.episodeId), ['a1', 'a2', 'a5', 'a4'], 'gehörte Episode entfällt, alte ungehörte bleiben');
-  assert.match(unheard.hint, /4 ungehörte Episoden von 5 Episoden/);
-  const allPlayed = dash.episodeColumnModel({ subscriptions: [SUBS[0]], episodes: { a: { episodes: [ep('x', 3, { played: true })] } }, now: NOW, view: { selection: 'a', filter: 'unheard' } });
-  assert.deepEqual([allPlayed.items.length, allPlayed.emptyText], [0, 'Keine ungehörten Episoden. Alles gehört.']);
+  assert.equal(all.hint, '3 neue · 5 Episoden', 'Kopfzeile erklärt beides');
+  assert.deepEqual([all.newCount, all.rows], [3, 5]);
+  assert.deepEqual(all.items.filter(i => i.isNew).map(i => i.episodeId), ['a1', 'a2', 'a5'], 'Neu-Markierung = Zähler-Definition');
+  const unheard = column({ selection: 'a', filter: 'new' });
+  assert.deepEqual(unheard.items.map(i => i.episodeId), ['a1', 'a2', 'a5'], 'nur neue: gehörte und alte ungehörte (>30 Tage) entfallen, begonnene bleiben');
+  assert.equal(unheard.hint, '3 neue · 5 Episoden');
+  assert.equal(unheard.items.length, unheard.newCount, 'Zeilen = Zähler');
+  assert.equal(column({ selection: 'a', filter: 'unheard' }).filter, 'new', 'alter Filterwert wird übernommen');
+  const allPlayed = dash.episodeColumnModel({ subscriptions: [SUBS[0]], episodes: { a: { episodes: [ep('x', 3, { played: true })] } }, now: NOW, view: { selection: 'a', filter: 'new' } });
+  assert.deepEqual([allPlayed.items.length, allPlayed.emptyText], [0, 'Keine neuen Episoden in diesem Abo. „Alle Episoden“ zeigt die übrigen.']);
   const none = dash.episodeColumnModel({ subscriptions: [SUBS[0]], episodes: { a: { episodes: [] } }, now: NOW, view: { selection: 'a' } });
   assert.match(none.emptyText, /Noch keine Episoden geladen/);
 });
@@ -68,19 +73,22 @@ test('Sortierung: neueste/älteste zuerst, Titel A–Z (natürlich, ohne Groß-/
 });
 
 test('Auswahl wird bereinigt: unbekanntes/abbestelltes Abo und ungültige Werte fallen auf Standard', () => {
-  assert.deepEqual(dash.normalizeSelection({ selection: 'weg', filter: 'x', sort: 'y' }, SUBS), { selection: dash.ALL_ID, filter: 'all', sort: 'newest' });
-  assert.deepEqual(dash.normalizeSelection({ selection: 'b', filter: 'unheard', sort: 'title' }, SUBS), { selection: 'b', filter: 'unheard', sort: 'title' });
-  assert.deepEqual(dash.normalizeSelection(null, []), { selection: dash.ALL_ID, filter: 'all', sort: 'newest' });
+  assert.deepEqual(dash.normalizeSelection({ selection: 'weg', filter: 'x', sort: 'y' }, SUBS), { selection: dash.ALL_ID, filter: 'all', sort: 'newest', limit: 50 });
+  assert.deepEqual(dash.normalizeSelection({ selection: 'b', filter: 'new', sort: 'title', limit: 150 }, SUBS), { selection: 'b', filter: 'new', sort: 'title', limit: 150 });
+  assert.deepEqual(dash.normalizeSelection(null, []), { selection: dash.ALL_ID, filter: 'all', sort: 'newest', limit: 50 });
+  assert.equal(dash.normalizeSelection({ limit: -5 }, SUBS).limit, 50);
+  assert.equal(dash.normalizeSelection({ limit: 'x' }, SUBS).limit, 50);
   assert.equal(column({ selection: 'weg' }).isAll, true);
 });
 
-test('Abo-Liste: „Alle neuen Episoden“ zuerst mit Zahl, Abos mit Badge der ungehörten und Auswahlmarke', () => {
+test('Abo-Liste: „Alle neuen Episoden“ zuerst mit Zahl, Abos mit Badge der neuen Episoden und Auswahlmarke', () => {
   const model = dash.podcastDashboardModel({ subscriptions: SUBS, episodes: EPISODES, now: NOW, view: { selection: 'b' } });
   assert.equal(model.allEntry.id, dash.ALL_ID);
-  assert.equal(model.allEntry.unheard, 5);
+  assert.equal(model.allEntry.newCount, 5);
+  assert.equal(model.allEntry.badgeLabel, '5 neue Episoden (ungehört, höchstens 30 Tage alt)');
   assert.equal(model.allEntry.selected, false);
   assert.equal(model.allEntry.author, '5 neue Episoden');
-  assert.deepEqual(model.shows.map(s => [s.id, s.unheard, s.selected]), [['a', 3, false], ['b', 2, true]]);
+  assert.deepEqual(model.shows.map(s => [s.id, s.newCount, s.selected]), [['a', 3, false], ['b', 2, true]]);
   assert.match(model.shows[0].ariaLabel, /Episoden anzeigen$/);
   const empty = dash.podcastDashboardModel({ subscriptions: SUBS, episodes: { a: { episodes: [] }, b: { episodes: [] } }, now: NOW });
   assert.equal(empty.allEntry.author, 'Alles gehört');
@@ -159,4 +167,63 @@ test('Farben: Podcasts-Akzent ist auch bei Rot-Grün-/Blau-Gelb-Schwäche von al
   assert.ok(ratio('#86efac', '#11151d') >= 4.5, 'Text/Akzent hell auf dunkel');
   assert.ok(ratio('#ffffff', '#15803d') >= 4.5, 'weißer Text auf Knopf-/Badge-Grün');
   assert.ok(ratio('#5af2a6', '#11151d') >= 3, 'Linien/Flächen');
+});
+
+// ── Zähler = Zeilen, Wiedergabe getrennt von Auswahl ──
+
+test('Zähler stimmt in jeder Konstellation mit den Zeilen überein (Badge, Statuszeile, Liste), auch nach „gehört“', () => {
+  const check = (episodes, view) => {
+    const model = dash.podcastDashboardModel({ subscriptions: SUBS, episodes, now: NOW, view });
+    const fromTiles = model.shows.reduce((sum, tile) => sum + tile.newCount, 0);
+    assert.equal(model.newCount, fromTiles, 'Summe der Abo-Badges = „Alle neuen Episoden“');
+    assert.equal(model.allEntry.newCount, model.newCount);
+    assert.match(model.statusText, new RegExp(`· ${model.newCount} neue`), 'Statuszeile mit derselben Zahl');
+    const viaAll = dash.episodeColumnModel({ subscriptions: SUBS, episodes, now: NOW, view: { selection: dash.ALL_ID } });
+    assert.equal(viaAll.items.length, model.newCount, 'Liste „Alle neuen Episoden“ = Zähler');
+    for (const tile of model.shows) {
+      const col = dash.episodeColumnModel({ subscriptions: SUBS, episodes, now: NOW, view: { selection: tile.id, filter: 'new' } });
+      assert.equal(col.items.length, tile.newCount, `Nur neue in ${tile.id} = Badge`);
+      const full = dash.episodeColumnModel({ subscriptions: SUBS, episodes, now: NOW, view: { selection: tile.id, filter: 'all' } });
+      assert.equal(full.items.filter(item => item.isNew).length, tile.newCount, `Neu-Markierungen in ${tile.id} = Badge`);
+      assert.equal(full.newCount, tile.newCount);
+    }
+    return model.newCount;
+  };
+  assert.equal(check(EPISODES, null), 5);
+  const marked = { ...EPISODES, a: { episodes: EPISODES.a.episodes.map(e => (e.id === 'a1' ? { ...e, state: { ...e.state, played: true } } : e)) } };
+  assert.equal(check(marked, { selection: 'a' }), 4, 'nach „als gehört markieren“ sofort einer weniger überall');
+  assert.equal(check({ a: { episodes: [] }, b: { episodes: [] } }, null), 0);
+  const big = { a: { episodes: Array.from({ length: 7 }, (_, i) => ep(`n${i}`, i + 1)) }, b: { episodes: [] } };
+  assert.equal(check(big, { selection: 'a' }), 7, 'mehr als 5 neue in einem Abo');
+});
+
+test('Wiedergabe und Auswahl sind getrennte Merkmale: spielt A, ist B gewählt → A nur spielend, B nur gewählt; gleiches Abo → beides', () => {
+  const player = { status: 'playing', episode: { podcastId: 'a', episodeId: 'a1' } };
+  const other = dash.podcastDashboardModel({ subscriptions: SUBS, episodes: EPISODES, now: NOW, player, view: { selection: 'b' } });
+  const [a, b] = other.shows;
+  assert.deepEqual([a.active, a.playing, a.selected], [true, true, false]);
+  assert.deepEqual([b.active, b.playing, b.selected], [false, false, true]);
+  assert.match(a.ariaLabel, /spielt gerade/);
+  assert.doesNotMatch(b.ariaLabel, /spielt gerade/);
+  const allSel = dash.podcastDashboardModel({ subscriptions: SUBS, episodes: EPISODES, now: NOW, player, view: null });
+  assert.equal(allSel.allEntry.selected, true);
+  assert.equal(allSel.allEntry.playing, undefined, '„Alle neuen Episoden“ spielt nie selbst');
+  assert.deepEqual([allSel.shows[0].active, allSel.shows[0].selected], [true, false]);
+  const same = dash.podcastDashboardModel({ subscriptions: SUBS, episodes: EPISODES, now: NOW, player, view: { selection: 'a' } });
+  assert.deepEqual([same.shows[0].active, same.shows[0].selected], [true, true]);
+  const row = same.column.items.find(item => item.episodeId === 'a1');
+  assert.deepEqual([row.active, row.playing, row.playState], [true, true, 'spielt gerade']);
+  assert.match(row.ariaLabel, /spielt gerade/);
+  const paused = dash.podcastDashboardModel({ subscriptions: SUBS, episodes: EPISODES, now: NOW, player: { ...player, status: 'paused' }, view: { selection: 'a' } });
+  assert.deepEqual([paused.shows[0].active, paused.shows[0].playing, paused.column.items.find(i => i.episodeId === 'a1').playState], [true, false, 'pausiert']);
+});
+
+test('Wiedergabe-Stil: eigene Farbe, Equalizer in Abo-Liste und Zeilen, Auswahl getrennt, Bewegung reduzierbar', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+  assert.match(css, /--podcast-playing:#ff9f1c/);
+  assert.match(css, /\.podcast-show\.is-active \.podcast-eq/);
+  assert.match(css, /\.podcast-show\.is-playing \.podcast-eq span \{ animation/);
+  assert.doesNotMatch(css, /\.podcast-show\.is-active \.podcast-show-btn \{/, 'Wiedergabe färbt nicht mehr den Rahmen wie die Auswahl');
+  assert.match(css, /\.podcast-show\.is-selected \.podcast-show-btn \{ background/);
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.podcast-episode\.is-playing \.podcast-eq span,\.podcast-show\.is-playing \.podcast-eq span \{ animation:none/);
 });

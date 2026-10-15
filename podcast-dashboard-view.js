@@ -1,12 +1,12 @@
 // Podcast-Dashboard: Werkzeugleiste (Suchen, Jetzt aktualisieren, Statuszeile), zweigeteilt: links die abonnierten Podcasts
-// (erster Eintrag „Alle neuen Episoden“, Standard), rechts die Episodenliste der Auswahl (Filter „alle/ungehört“, Sortierung);
+// (erster Eintrag „Alle neuen Episoden“, Standard), rechts die Episodenliste der Auswahl (Filter „Alle Episoden/Nur neue“, Sortierung);
 // Leerzustand mit Suchfeld und Kurzliste „Beliebte öffentlich-rechtliche Sendungen“ (Abo erst nach Klick). Alle Feed-Texte per
 // textContent. Auswahl, Filter und Sortierung liegen im Sitzungszustand des Hubs (ctx.view) und bleiben beim Wechsel zur
 // Sendungsseite erhalten. Daten kommen aus podcast-data.js, Navigation und Meldungen aus dem Kontext (podcast-hub-view.js).
 
 'use strict';
 
-const { podcastDashboardModel, ALL_ID } = require('./podcast-dashboard-model.js');
+const { podcastDashboardModel, ALL_ID, PAGE_SIZE } = require('./podcast-dashboard-model.js');
 const { SORTS } = require('./podcast-episode-model.js');
 const { createEpisodeList, playEpisodeItem } = require('./podcast-episode-list-view.js');
 const { createCover } = require('./podcast-cover-view.js');
@@ -87,9 +87,9 @@ function createPodcastDashboard(root, ctx) {
   const controls = el(doc, 'div', 'podcast-column-controls');
   const filterGroup = el(doc, 'div', 'podcast-filter');
   filterGroup.setAttribute('role', 'group');
-  filterGroup.setAttribute('aria-label', 'Episoden filtern');
+  filterGroup.setAttribute('aria-label', 'Episoden filtern (neu: ungehört, höchstens 30 Tage alt)');
   const filterButtons = new Map();
-  for (const [value, text] of [['all', 'Alle'], ['unheard', 'Nur ungehörte']]) {
+  for (const [value, text] of [['all', 'Alle Episoden'], ['new', 'Nur neue']]) {
     const button = el(doc, 'button', 'podcast-filter-btn', text);
     button.type = 'button';
     button.dataset.filter = value;
@@ -124,7 +124,12 @@ function createPodcastDashboard(root, ctx) {
   newList.element.id = 'podcastNewList';
   const newEmpty = el(doc, 'p', 'podcast-section-empty', 'Keine neuen Episoden. Alles gehört.');
   newEmpty.id = 'podcastNewEmpty';
-  newSection.append(columnHead, columnHint, newList.element, newEmpty);
+  const newMore = el(doc, 'button', 'podcast-btn podcast-more', 'Mehr laden');
+  newMore.type = 'button';
+  newMore.id = 'podcastNewMore';
+  newMore.hidden = true;
+  newMore.addEventListener('click', () => setView({ limit: ctx.view.limit + PAGE_SIZE }));
+  newSection.append(columnHead, columnHint, newList.element, newEmpty, newMore);
   split.append(showSection, newSection);
 
   // Leerzustand: Suchfeld und Kurzliste
@@ -194,15 +199,17 @@ function createPodcastDashboard(root, ctx) {
     button.type = 'button';
     const cover = createCover(doc, { podcasts });
     const badge = el(doc, 'span', 'podcast-badge');
-    badge.setAttribute('aria-hidden', 'true');
+    const eq = el(doc, 'span', 'podcast-eq');
+    eq.setAttribute('aria-hidden', 'true'); // „spielt gerade“ steht im aria-label der Schaltfläche
+    for (let i = 0; i < 3; i += 1) eq.appendChild(el(doc, 'span'));
     const text = el(doc, 'span', 'podcast-show-text');
     const title = el(doc, 'span', 'podcast-show-title');
     const author = el(doc, 'span', 'podcast-show-author');
     const error = el(doc, 'span', 'podcast-show-error');
     text.append(title, author, error);
-    button.append(cover.element, text, badge);
+    button.append(cover.element, text, eq, badge);
     li.appendChild(button);
-    const entry = { li, button, cover, badge, title, author, error, id: null };
+    const entry = { li, button, cover, badge, eq, title, author, error, id: null };
     button.addEventListener('click', () => setView({ selection: entry.id }));
     // Doppelklick öffnet die Sendungsseite (Tastatur: Schaltfläche „Sendung öffnen“ rechts)
     button.addEventListener('dblclick', () => entry.id !== ALL_ID && open({ view: 'show', id: entry.id }));
@@ -212,7 +219,9 @@ function createPodcastDashboard(root, ctx) {
   function patchTile(entry, tile) {
     entry.id = tile.id;
     entry.li.dataset.podcastId = tile.id;
-    entry.li.classList.toggle('is-active', Boolean(tile.active));
+    entry.li.classList.toggle('is-active', Boolean(tile.active)); // Wiedergabe (eigene Markierung, getrennt von der Auswahl)
+    entry.li.classList.toggle('is-playing', Boolean(tile.playing));
+    entry.eq.title = tile.active ? (tile.playing ? 'spielt gerade' : 'pausiert') : '';
     entry.li.classList.toggle('is-selected', tile.selected);
     entry.li.classList.toggle('has-error', Boolean(tile.error));
     entry.button.setAttribute('aria-label', tile.ariaLabel);
@@ -220,8 +229,10 @@ function createPodcastDashboard(root, ctx) {
     else entry.button.removeAttribute('aria-current');
     entry.button.tabIndex = tile.selected ? 0 : -1; // Pfeiltasten wandern durch die Liste, Tab verlässt sie
     entry.cover.update({ url: tile.cover, initial: tile.initial });
-    entry.badge.hidden = tile.unheard === 0;
+    entry.badge.hidden = tile.newCount === 0;
     entry.badge.textContent = tile.badgeText;
+    entry.badge.title = tile.badgeLabel;
+    entry.badge.setAttribute('aria-label', tile.badgeLabel);
     entry.title.textContent = tile.title;
     entry.author.textContent = tile.author;
     entry.error.textContent = tile.errorText || '';
@@ -249,15 +260,17 @@ function createPodcastDashboard(root, ctx) {
   /** Auswahl, Filter oder Sortierung ändern (Sitzungszustand im Hub) und neu zeichnen. */
   function setView(patch) {
     Object.assign(ctx.view, patch);
+    if (patch.selection !== undefined) Object.assign(ctx.view, { filter: 'all', limit: PAGE_SIZE }); // neues Abo: alle Episoden, erste Seite
+    else if (patch.filter !== undefined) ctx.view.limit = PAGE_SIZE;
     const model = render();
-    if (patch.selection !== undefined && model) announce(model.column.isAll ? 'Alle neuen Episoden' : `${model.column.heading}: ${model.column.items.length} Episoden`);
+    if (patch.selection !== undefined && model) announce(model.column.isAll ? `Alle neuen Episoden: ${model.column.hint || 'keine'}` : `${model.column.heading}: ${model.column.hint}`);
   }
 
   function render() {
     const snap = data.snapshot();
     const model = podcastDashboardModel({ subscriptions: snap.subscriptions, episodes: snap.episodes, player: getPlayer(), catalog: snap.catalog, loaded: snap.loaded, loadError: snap.loadError, now: now(), view: ctx.view });
     const column = model.column;
-    Object.assign(ctx.view, { selection: column.selection, filter: column.filter, sort: column.sort }); // bereinigt (z. B. nach dem Abbestellen)
+    Object.assign(ctx.view, { selection: column.selection, filter: column.filter, sort: column.sort, limit: column.limit }); // bereinigt (z. B. nach dem Abbestellen)
     const hasShows = model.shows.length > 0;
     loading.hidden = model.loaded;
     loadError.hidden = !model.loadError;
@@ -282,6 +295,8 @@ function createPodcastDashboard(root, ctx) {
     newEmpty.hidden = column.items.length > 0 || !column.emptyText;
     newList.element.hidden = column.items.length === 0;
     newList.render(column.items);
+    newMore.hidden = !column.hasMore;
+    newMore.textContent = column.moreLabel;
     renderShows(model.allEntry, model.shows);
     popular.render(model.popular);
     return model;
