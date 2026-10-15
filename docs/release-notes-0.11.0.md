@@ -7,4 +7,3 @@ Streaming Hub bekommt Podcasts: suchen, abonnieren und bequem weiterhören.
 - **Player:** Vor- und zurückspringen, Tempo einstellen, und die App merkt sich, wo du aufgehört hast. Steuerung auch über den Mini-Player und die Menüleiste (macOS).
 - **Weiterspielen:** Podcasts laufen bei geschlossenem Fenster weiter. Startest du Radio, TV, einen Streamingdienst oder spielst du eine Aufnahme ab, pausiert der Podcast. Eine laufende Aufnahme stört den Podcast nicht.
 - **Einstellungen:** Neue Gruppe „Podcasts“ für Abos, eigene Feeds und Wiedergabe. Abos und Hörstand sind in der Datensicherung enthalten.
-- **Gut zu wissen:** Beim Suchen geht dein Suchbegriff an Apples Podcast-Verzeichnis. Nicht enthalten sind in dieser Version Downloads, Benachrichtigungen bei neuen Folgen und der Import von Abos aus anderen Apps.
