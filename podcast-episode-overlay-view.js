@@ -182,6 +182,10 @@ function createEpisodeOverlay(doc, ctx) {
           loadImages,
           openLink: url => run(async () => {
             const reply = await podcasts.openLink(url);
+            if (reply && reply.error === 'rate-limited') {
+              report('Podcast: Bitte einen Moment warten, bevor weitere Links geöffnet werden.');
+              return;
+            }
             if (!reply || reply.ok !== true) throw new Error('Link konnte nicht geöffnet werden');
           }, 'Link konnte nicht geöffnet werden'),
           getImage: url => podcasts.getShownoteImage({ podcastId: current.podcastId, episodeId: current.episodeId, url }),

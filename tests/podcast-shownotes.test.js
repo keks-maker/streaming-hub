@@ -369,3 +369,66 @@ test('IPC episode-details liefert den Baum erneut bereinigt (Cache-Datei nicht v
   const { call } = setupShownoteIpc({ tree: [{ t: 'p', c: ['x'] }] });
   assert.deepEqual((await call('podcast:episode-details', { podcastId: 'p1', episodeId: 'e1' })).notesTree, [{ t: 'p', c: ['x'] }]);
 });
+
+// --- Laufzeit-Regressionen (DoS) und Rate-Limit ---
+
+const { parseFeed } = require('../lib/podcast/feed-parser.js');
+
+const timed = fn => {
+  const start = process.hrtime.bigint();
+  const result = fn();
+  return { result, ms: Number(process.hrtime.bigint() - start) / 1e6 };
+};
+
+test('DoS: 400 000 × "<![CDATA[" ohne Ende in unter 200 ms (linear)', () => {
+  const { ms } = timed(() => sanitizeShownotes('<![CDATA['.repeat(44000)));
+  assert.ok(ms < 200, `${ms} ms`);
+});
+
+test('DoS: bösartige Muster je Feld (5 MB) in unter 1 s', () => {
+  for (const pattern of ['<![CDATA[', '<!--', '<!DOCTYPE', '<?', '<a ', '<img ', '&#', '<table>', '<![', '</', '<', '<a href="', 'https://a.b/' + '.'.repeat(50)]) {
+    const { ms } = timed(() => sanitizeShownotes(pattern.repeat(Math.ceil(5e6 / pattern.length))));
+    assert.ok(ms < 1000, `${pattern}: ${ms} ms`);
+  }
+});
+
+test('DoS: 20-MB-Feed mit 19 Items à drei Shownotes-Feldern parst in unter 3 s', () => {
+  for (const pattern of ['<![CDATA[', '<a ']) {
+    const bomb = pattern.repeat(Math.ceil(200000 / pattern.length));
+    let items = '';
+    for (let i = 0; i < 19; i += 1) items += `<item><title>t${i}</title><guid>g${i}</guid><enclosure url="http://a.b/x.mp3" type="audio/mpeg"/><description>${bomb}</description><content:encoded>${bomb}</content:encoded><itunes:summary>${bomb}</itunes:summary></item>`;
+    const xml = `<?xml version="1.0"?><rss><channel><title>x</title>${items}</channel></rss>`;
+    const { result, ms } = timed(() => parseFeed(xml));
+    assert.ok(ms < 3000, `${pattern}: ${ms} ms`);
+    assert.equal(result.episodes.length, 19);
+  }
+});
+
+test('Summenbudget: viele große Items liefern danach Klartext-Auszug statt Baum, Feed bleibt vollständig', () => {
+  const big = `<p>${'Absatz mit Text. '.repeat(11000)}</p>`; // ~190 000 Zeichen
+  let items = '';
+  for (let i = 0; i < 12; i += 1) items += `<item><title>t${i}</title><guid>g${i}</guid><enclosure url="http://a.b/x${i}.mp3" type="audio/mpeg"/><content:encoded><![CDATA[${big}]]></content:encoded><description><![CDATA[${big}]]></description><itunes:summary>${big.replace(/</g, '&lt;')}</itunes:summary></item>`;
+  const { episodes } = parseFeed(`<rss><channel><title>x</title>${items}</channel></rss>`);
+  assert.equal(episodes.length, 12);
+  for (const episode of episodes) assert.ok(episode.notesTree.length > 0 && episode.notes.length > 0);
+});
+
+test('CDATA-Shownotes bleiben unverändert (Text maskiert, Rest als HTML)', () => {
+  assert.deepEqual(sanitizeShownotes('<p>a</p><![CDATA[<b>x</b> & y]]><p>b</p>'), [{ t: 'p', c: ['a'] }, '<b>x</b> & y', { t: 'p', c: ['b'] }]);
+  assert.deepEqual(sanitizeShownotes('<![CDATA[<p>Hallo <b>Welt</b></p>]]>'), [{ t: 'p', c: ['Hallo ', { t: 'strong', c: ['Welt'] }] }]);
+  assert.deepEqual(sanitizeShownotes('<p>a</p><![CDATA[offen <b>'), [{ t: 'p', c: ['a'] }, 'offen <b>']);
+});
+
+test('IPC open-link: Rate-Limit 5 je 5 s, danach { ok: false, error: "rate-limited" }, nach Ablauf wieder frei', async t => {
+  let now = 1_000_000;
+  t.mock.method(Date, 'now', () => now);
+  const { call, opened } = setupShownoteIpc({ tree: [] });
+  for (let i = 0; i < 5; i += 1) {
+    assert.deepEqual(await call('podcast:open-link', `https://e.test/${i}`), { ok: true });
+    now += 100;
+  }
+  assert.deepEqual(await call('podcast:open-link', 'https://e.test/6'), { ok: false, error: 'rate-limited' });
+  assert.equal(opened.length, 5, 'gedrosselter Aufruf öffnet nichts');
+  now += 5000;
+  assert.deepEqual(await call('podcast:open-link', 'https://e.test/7'), { ok: true });
+});
