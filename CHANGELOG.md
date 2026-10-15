@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht — Podcasts
+## 0.11.0 (2026-10-15) — Podcasts
 
 ### Podcasts (Feature)
 - Neu: Module `lib/podcast/*`: `PodcastController` (Wiedergabe über das Player-Fenster, Zustand, Seek, Tempo, Sprünge, Lautstärke), `PodcastLibrary` (Abos, Katalog `podcastsources.json` mit 49 öffentlich-rechtlichen Sendungen, 3-way-Merge `podcast-sources-merge.js`), `feed-parser.js`, `podcast-fetch.js`, `podcast-refresh.js`/`podcast-refresh-timer.js`, `podcast-search.js` (iTunes Search), `podcast-state.js` (Hörzustand, Fortsetzen, 95 % = gehört), `podcast-settings.js`, `podcast-overrides.js`, `podcast-next.js`, `playback-power.js`, `ipc.js`.
