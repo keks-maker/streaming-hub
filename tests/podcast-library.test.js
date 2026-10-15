@@ -254,3 +254,31 @@ test('reconcilePodcastSources: schreibt Abos und Hörstatus, ohne Abos nichts zu
   assert.equal(reconcilePodcastSources({ podcastsFile, stateFile, bundleFile }).merged, false);
   assert.equal(fs.readFileSync(podcastsFile, 'utf8'), '{kaputt');
 });
+
+test('normalizeState verwirft Prototyp-Schlüssel in feeds', () => {
+  const raw = JSON.parse('{"feeds":{"__proto__":{"lastChecked":"2026-10-15T10:00:00Z"},"constructor":{"etag":"x"},"abc":{"etag":"y"}}}');
+  const normalized = state.normalizeState(raw);
+  assert.deepEqual(Object.keys(normalized.feeds), ['abc']);
+  assert.equal(Object.getPrototypeOf(normalized.feeds), Object.prototype);
+  assert.equal(normalized.feeds.lastChecked, undefined);
+});
+
+test('Backup-Import bereinigt Podcast-Overrides', () => {
+  const { validateBackup } = require('../lib/backup.js');
+  const feedUrl = 'https://example.test/feed.xml';
+  const id = podcastIdFromFeedUrl(feedUrl);
+  const overrides = JSON.parse(
+    `{"${id}":{"title":"Neu","cover":"https://user:pw@example.test/c.png"},"__proto__":{"title":"x"},"kein-id!":{"title":"y"},"abcdef":{"title":123,"cover":"javascript:alert(1)"},"abc123":{"title":"${'t'.repeat(301)}"}}`,
+  );
+  const data = { services: [], tvsources: [], podcasts: { subscriptions: [{ id, feedUrl, title: 'P' }], overrides } };
+  const result = validateBackup(data);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.podcasts.overrides, { [id]: { title: 'Neu' } });
+});
+
+test('applyOverride ignoriert ungültige Felder defensiv', () => {
+  const library = new PodcastLibrary({ userStorage: tmpStorage().storage });
+  const sub = { id: 'a1', title: 'Orig', cover: 'https://example.test/o.png' };
+  assert.deepEqual(library.applyOverride(sub, { title: { x: 1 }, cover: 'file:///etc/passwd' }), sub);
+  assert.equal(library.applyOverride(sub, { title: 'Neu' }).title, 'Neu');
+});
