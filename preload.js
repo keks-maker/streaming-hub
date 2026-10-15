@@ -224,6 +224,9 @@ contextBridge.exposeInMainWorld('podcasts', {
   unsubscribe: id => ipcRenderer.invoke('podcast:unsubscribe', id),
   episodes: id => ipcRenderer.invoke('podcast:episodes', id),
   episodeDetails: key => ipcRenderer.invoke('podcast:episode-details', key),
+  // Shownotes: Bild einer Episode ({ podcastId, episodeId, url }) über den Main; Link nach Klick im Standardbrowser öffnen
+  getShownoteImage: input => ipcRenderer.invoke('podcast:shownote-image', input),
+  openLink: url => ipcRenderer.invoke('podcast:open-link', url),
   refresh: options => ipcRenderer.invoke('podcast:refresh', options),
   probeFeed: url => ipcRenderer.invoke('podcast:probe-feed', url),
   setPlayed: input => ipcRenderer.invoke('podcast:set-played', input),

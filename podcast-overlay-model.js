@@ -1,6 +1,6 @@
 // Podcast-Oberfläche: Modell des Episoden-Overlays (Shownotes, Kapitel, Wiedergabe). Reine Funktionen ohne DOM und IPC.
-// Die Shownotes kommen bereits als bereinigter Text aus dem Main (lib/podcast/feed-parser.js); hier werden sie nur in Absätze
-// zerlegt und noch einmal begrenzt/von Steuerzeichen befreit – die Ansicht setzt sie ausschließlich per textContent.
+// Die Shownotes kommen als bereinigter Baum aus dem Main (lib/podcast/shownotes-sanitizer.js); nur ältere Cache-Einträge ohne
+// Baum liefern noch Klartext, der hier in Absätze zerlegt und von Steuerzeichen befreit wird.
 
 'use strict';
 
@@ -10,6 +10,7 @@ const { formatChapterTime, formatDuration } = require('./podcast-format.js');
 
 const MAX_NOTES_CHARS = 20000;
 const MAX_PARAGRAPHS = 400;
+const EMPTY_TREE = Object.freeze([]); // stabile Referenz, damit die Ansicht unverändertes Nichts nicht neu zeichnet
 
 // eslint-disable-next-line no-control-regex -- Steuerzeichen sind hier genau das Ziel
 const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g;
@@ -29,7 +30,7 @@ function notesToParagraphs(text) {
  * options: { podcastId, episodeId, subscriptions, episodes (je Abo), player, now, details (Antwort von episode-details | null),
  *            detailsState ('loading'|'ready'|'error') }
  * Ausgabe: { found, item (Anzeigemodell der Episode), showTitle, cover, positionText, metaText, chapters [{ index, start, startText, title, current }],
- *            hasChapters, chapterNote, notes { state ('loading'|'ready'|'none'|'error'), paragraphs, text }, playLabel, markLabel }
+ *            hasChapters, chapterNote, notes { state ('loading'|'ready'|'none'|'error'), tree, paragraphs, text }, playLabel, markLabel }
  */
 function episodeOverlayModel({ podcastId, episodeId, subscriptions = [], episodes = {}, player = null, now = Date.now(), details = null, detailsState = 'loading' } = {}) {
   const sub = (subscriptions || []).find(entry => entry.id === podcastId) || null;
@@ -40,8 +41,10 @@ function episodeOverlayModel({ podcastId, episodeId, subscriptions = [], episode
   const chapterList = details && Array.isArray(details.chapters) ? details.chapters : [];
   const position = item.active && player && Number.isFinite(player.position) ? player.position : Number(episode.state && episode.state.position) || 0;
   const current = item.active ? currentChapter(chapterList, position) : null;
-  const paragraphs = details ? notesToParagraphs(details.notes) : [];
-  let notesState = detailsState === 'error' ? 'error' : detailsState === 'loading' ? 'loading' : paragraphs.length ? 'ready' : 'none';
+  const tree = details && Array.isArray(details.notesTree) ? details.notesTree : EMPTY_TREE;
+  const paragraphs = details && !tree.length ? notesToParagraphs(details.notes) : []; // Klartext nur, wenn kein Baum vorliegt (alter Cache)
+  const hasNotes = tree.length > 0 || paragraphs.length > 0;
+  let notesState = detailsState === 'error' ? 'error' : detailsState === 'loading' ? 'loading' : hasNotes ? 'ready' : 'none';
   if (!details && detailsState === 'ready') notesState = 'none';
   const durationText = formatDuration(Number(episode.state && episode.state.duration) || Number(episode.duration) || 0);
   return {
@@ -53,7 +56,7 @@ function episodeOverlayModel({ podcastId, episodeId, subscriptions = [], episode
     chapters: chapterList.map((chapter, index) => ({ index, start: chapter.start, startText: formatChapterTime(chapter.start), title: chapter.title, current: Boolean(current) && current.index === index })),
     hasChapters: chapterList.length > 0,
     chapterNote: current ? `Aktuell: ${current.chapter.title}` : '',
-    notes: { state: notesState, paragraphs, text: paragraphs.join('\n\n') },
+    notes: { state: notesState, tree, paragraphs, text: paragraphs.join('\n\n') },
     playLabel: { play: 'Abspielen', pause: 'Pausieren', resume: 'Fortsetzen' }[item.action],
     markLabel: item.markLabel,
   };

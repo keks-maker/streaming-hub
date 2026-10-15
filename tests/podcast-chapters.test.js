@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const chapters = require('../lib/podcast/chapters.js');
-const { parseFeed, cleanText, MAX_NOTES_CHARS } = require('../lib/podcast/feed-parser.js');
+const { parseFeed, cleanText } = require('../lib/podcast/feed-parser.js');
 const { fetchFeed } = require('../lib/podcast/podcast-fetch.js');
 const { createChaptersLoader } = require('../lib/podcast/podcast-chapters.js');
 const { PodcastLibrary, MAX_NOTES_BUDGET } = require('../lib/podcast/PodcastLibrary.js');
@@ -98,18 +98,32 @@ test('Parser: podcast:chapters (JSON-URL) und psc:chapters (inline) werden geles
   assert.deepEqual(byId.a.chapters, []);
 });
 
-test('Shownotes: Absätze, Listen und Links als Text; Skripte und Markup entfernt; Längenlimit 20 000', () => {
-  const html = '<![CDATA[<p>Hallo <b>Welt</b>&nbsp;&amp; <a href="https://x.test/a?b=1&amp;c=2">Link</a></p><ul><li>Eins</li><li>Zwei</li></ul><p><a href="javascript:alert(1)">böse</a> <a href="https://y.test">https://y.test</a></p><script>alert(1)</script><img src=x onerror=alert(1)><p>Ende</p>]]>';
+test('Shownotes: bereinigter Baum plus Klartext-Auszug; Skripte, javascript:-Links und Fremd-Attribute entfernt', () => {
+  const html = '<![CDATA[<p>Hallo <b>Welt</b>&nbsp;&amp; <a href="https://x.test/a?b=1&amp;c=2" onclick="x()">Link</a></p><ul><li>Eins</li><li>Zwei</li></ul><p><a href="javascript:alert(1)">böse</a> <a href="https://y.test">https://y.test</a></p><script>alert(1)</script><img src=x onerror=alert(1)><p>Ende</p>]]>';
   const [episode] = parseFeed(rss(item(`<content:encoded>${html}</content:encoded><description>kurz</description>`))).episodes;
-  assert.equal(episode.notes, 'Hallo Welt & Link (https://x.test/a?b=1&c=2)\n\n• Eins\n• Zwei\n\nböse https://y.test\n\nEnde');
-  assert.ok(!/[<>]/.test(episode.notes) && !/alert/.test(episode.notes) && !/javascript:/.test(episode.notes));
+  assert.equal(episode.notes, 'Hallo Welt & Link\n• Eins\n• Zwei\nböse https://y.test\nEnde');
+  assert.deepEqual(episode.notesTree[0], { t: 'p', c: ['Hallo ', { t: 'strong', c: ['Welt'] }, ' & ', { t: 'a', a: { href: 'https://x.test/a?b=1&c=2' }, c: ['Link'] }] });
+  const json = JSON.stringify(episode.notesTree);
+  assert.ok(!/alert|javascript|onclick|onerror|script/.test(json), json);
   assert.equal(episode.description, 'kurz', 'Kurzbeschreibung (2000 Zeichen) bleibt unverändert');
   const long = parseFeed(rss(item(`<description>${'a'.repeat(30000)}</description>`))).episodes[0];
-  assert.ok(long.notes.length <= MAX_NOTES_CHARS && long.notes.endsWith('…'));
-  assert.equal(parseFeed(rss(item('<itunes:summary>Nur Summary</itunes:summary>'))).episodes[0].notes, 'Nur Summary');
-  assert.equal(parseFeed(rss(item(''))).episodes[0].notes, '');
-  assert.equal(cleanText('<p>a</p><p>b</p>', 100), 'a\nb', 'ohne notes-Option unverändert einzeilig getrennt');
-  assert.equal(cleanText('<p>a</p><p>b</p>', 100, { notes: true }), 'a\n\nb');
+  assert.ok(long.notes.length <= 600 && long.notes.endsWith('…'));
+  assert.equal(JSON.stringify(long.notesTree).length < 40000, true, 'Textlimit des Baums');
+  const summary = parseFeed(rss(item('<itunes:summary>Nur Summary</itunes:summary>'))).episodes[0];
+  assert.equal(summary.notes, 'Nur Summary');
+  assert.deepEqual(summary.notesTree, [{ t: 'p', c: ['Nur Summary'] }]);
+  const none = parseFeed(rss(item(''))).episodes[0];
+  assert.equal(none.notes, '');
+  assert.deepEqual(none.notesTree, []);
+  assert.equal(cleanText('<p>a</p><p>b</p>', 100), 'a\nb', 'cleanText bleibt Klartext');
+});
+
+test('Shownotes: reichhaltigstes Feld gewinnt (content:encoded vor kurzer description)', () => {
+  const rich = '<![CDATA[<h2>Titel</h2><p>Langer Text mit <a href="https://a.test/">Link</a> und viel mehr Inhalt, der länger ist.</p>]]>';
+  const [episode] = parseFeed(rss(item(`<description>kurz</description><content:encoded>${rich}</content:encoded>`))).episodes;
+  assert.equal(episode.notesTree[0].t, 'h2');
+  const [flip] = parseFeed(rss(item(`<description>${rich}</description><content:encoded>kurz</content:encoded>`))).episodes;
+  assert.equal(flip.notesTree[0].t, 'h2');
 });
 
 test('notesToParagraphs: Absätze, Steuerzeichen und Begrenzung; nie HTML-Auswertung (Text bleibt Text)', () => {
@@ -221,7 +235,7 @@ test('IPC episode-details: Shownotes als Text, Kapitel aus JSON (Adresse nur aus
   assert.deepEqual(list.episodes.map(e => [e.id, e.hasNotes, e.hasChapters]).sort(), [['j', true, true], ['n', true, false], ['p', false, true]]);
   for (const episode of list.episodes) assert.deepEqual(Object.keys(episode).filter(k => ['notes', 'chapters', 'chaptersUrl'].includes(k)), [], 'Liste enthält weder Shownotes noch Kapitel');
   const json = await call('podcast:episode-details', { podcastId: id, episodeId: 'j' });
-  assert.deepEqual(json, { ok: true, notes: 'Notizen fett', chapters: [{ start: 0, title: 'Aus JSON' }, { start: 60, title: 'Zwei' }], chaptersError: '' });
+  assert.deepEqual(json, { ok: true, notes: 'Notizen fett', notesTree: ['Notizen ', { t: 'strong', c: ['fett'] }], chapters: [{ start: 0, title: 'Aus JSON' }, { start: 60, title: 'Zwei' }], chaptersError: '' });
   assert.deepEqual(loadCalls, ['https://own.test/c.json']);
   const inline = await call('podcast:episode-details', { podcastId: id, episodeId: 'p' });
   assert.deepEqual(inline.chapters, [{ start: 0, title: 'Inline' }]);
@@ -249,15 +263,16 @@ test('IPC episode-details: Schema und Abo-Prüfung; Abruffehler liefert Hinweis 
 
 test('Bibliothek: Shownotes-Budget je Feed (neueste zuerst), Liste bleibt vollständig', () => {
   const { library, id } = setup();
-  const big = 'x'.repeat(20000);
-  const episodes = Array.from({ length: 50 }, (_, i) => ({ id: `e${i}`, title: `E${i}`, notes: big, audioUrl: 'https://a.test/a.mp3' }));
+  const big = [{ t: 'p', c: ['x'.repeat(20000)] }];
+  const episodes = Array.from({ length: 50 }, (_, i) => ({ id: `e${i}`, title: `E${i}`, notes: 'Auszug', notesTree: big, audioUrl: 'https://a.test/a.mp3' }));
   library.setEpisodes(id, { episodes, channel: null });
   const cached = library.getCachedFeed(id).episodes;
   assert.equal(cached.length, 50);
-  const total = cached.reduce((sum, e) => sum + (e.notes || '').length, 0);
+  const total = cached.reduce((sum, e) => sum + (e.notesTree ? JSON.stringify(e.notesTree).length : 0), 0);
   assert.ok(total <= MAX_NOTES_BUDGET, String(total));
-  assert.equal(cached[0].notes.length, 20000);
-  assert.equal(cached[49].notes, '');
+  assert.equal(cached[0].notesTree[0].c[0].length, 20000);
+  assert.equal(cached[49].notesTree, undefined);
+  assert.equal(cached[49].notes, 'Auszug', 'Klartext-Auszug bleibt');
 });
 
 // ── Overlay-Modell und Mini-Player ──

@@ -52,7 +52,7 @@ function startServer(tone) {
             title: 'Erste Folge',
             guid: 'g1',
             file: 'ep1.aac',
-            extra: `<content:encoded><![CDATA[<p>Absatz eins mit <a href="https://example.org/x">Link</a></p><p>Absatz zwei <b>fett</b></p><script>window.__pwned = 1</script><img src="x" onerror="window.__pwned = 2">]]></content:encoded><podcast:chapters url="${base}/chapters.json" type="application/json+chapters"/>`,
+            extra: `<content:encoded><![CDATA[<h3>Kapitel\u00fcbersicht</h3><p>Absatz eins mit <a href="https://example.org/x">Link</a> und <a href="javascript:window.__pwned=3">b\u00f6ser Link</a></p><p>Absatz zwei <b>fett</b> <a href="mailto:test@example.org">Mail</a></p><ul><li>Punkt A</li><li>Punkt B</li></ul><table><tr><th>Name</th><th>Wert</th></tr><tr><td>x</td><td>1</td></tr></table><blockquote>Zitat</blockquote><pre>code zeile</pre><img src="${base}/shownote.png" alt="Testbild" width="1" height="1"><script>window.__pwned = 1</script><img src="x" onerror="window.__pwned = 2"><iframe src="https://example.org/"></iframe>]]></content:encoded><podcast:chapters url="${base}/chapters.json" type="application/json+chapters"/>`,
           },
           { title: 'Zweite Folge', guid: 'g2', file: 'ep2.aac' },
         ]));
@@ -62,7 +62,7 @@ function startServer(tone) {
       res.writeHead(200, { 'Content-Type': 'application/rss+xml' }).end(feedXml(base, 'Eigener Feed', [{ title: 'Eigene Folge', guid: 'h1', file: 'ep1.aac' }]));
     } else if (url.pathname === '/broken.xml') {
       res.writeHead(200, { 'Content-Type': 'text/html' }).end('<html><body>kein Feed</body></html>');
-    } else if (url.pathname === '/cover.png') {
+    } else if (url.pathname === '/cover.png' || url.pathname === '/shownote.png') {
       res.writeHead(200, { 'Content-Type': 'image/png' }).end(PNG);
     } else if (url.pathname.endsWith('.aac')) {
       const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
@@ -194,7 +194,7 @@ test.describe('Podcast-Oberfläche', () => {
     await shot(page, 'podcasts-dashboard');
   });
 
-  test('Episoden-Overlay: Klick auf die Zeile öffnet Shownotes (nur Text), spielt nicht; Kapitel; Fokusfalle, Esc, Fokus zurück', async () => {
+  test('Episoden-Overlay: Klick auf die Zeile öffnet Shownotes mit Elementen, spielt nicht; Kapitel; Fokusfalle, Esc, Fokus zurück', async () => {
     const row = page.locator('#podcastNewList .podcast-episode', { hasText: 'Erste Folge' });
     const main = row.locator('.podcast-episode-main');
     await main.click();
@@ -205,9 +205,17 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(page.locator('#podcastOverlayShow')).toHaveText('Testsendung fett');
     await expect(page.locator('#podcastOverlayMeta')).toContainText('Neu');
     expect(await page.evaluate(() => window.podcasts.player.getState().then(s => s.status))).toBe('idle'); // bloßer Klick startet nichts
-    const paragraphs = page.locator('#podcastOverlayNotes .podcast-notes-paragraph');
-    await expect(paragraphs).toHaveText(['Absatz eins mit Link (https://example.org/x)', 'Absatz zwei fett']);
-    expect(await page.locator('#podcastOverlayNotes a, #podcastOverlayNotes script, #podcastOverlayNotes img, #podcastOverlayNotes b').count()).toBe(0);
+    const notes = page.locator('#podcastOverlayNotes');
+    await expect(notes.locator('h3')).toHaveText('Kapitelübersicht');
+    await expect(notes.locator('p').first()).toContainText('Absatz eins mit Link und böser Link');
+    await expect(notes.locator('ul > li')).toHaveText(['Punkt A', 'Punkt B']);
+    await expect(notes.locator('table th')).toHaveText(['Name', 'Wert']);
+    await expect(notes.locator('blockquote')).toHaveText('Zitat');
+    await expect(notes.locator('pre')).toHaveText('code zeile');
+    await expect(notes.locator('strong')).toHaveText('fett');
+    // bösartiges Material ist weg: kein Skript/Frame, kein javascript:-Link, keine Ereignis-Attribute
+    expect(await notes.locator('script, iframe, form, style, object, [onerror], [onclick], a[href^="javascript" i]').count()).toBe(0);
+    expect(await notes.locator('a').evaluateAll(els => els.map(e => e.getAttribute('href')))).toEqual(['https://example.org/x', 'mailto:test@example.org']);
     expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
     await expect(page.locator('#podcastOverlayChapters')).toBeVisible();
     await expect(page.locator('#podcastOverlayChapters .podcast-chapter-btn')).toHaveCount(2);
@@ -231,6 +239,61 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(page.locator('#podcastOverlayChapters')).toBeHidden();
     await page.locator('#podcastOverlayClose').click();
     await expect(page.locator('#podcastOverlay')).toHaveCount(0);
+  });
+
+  test('Shownotes: Link-Klick geht über den Main (Stub), Tastatur, Bild über den Main mit Allowlist, Einstellung „Bilder laden“, Navigation unverändert', async () => {
+    const urlBefore = page.url();
+    await page.locator('#podcastNewList .podcast-episode', { hasText: 'Erste Folge' }).locator('.podcast-episode-main').click();
+    const notes = page.locator('#podcastOverlayNotes');
+    const link = notes.locator('a', { hasText: 'Link' }).first();
+    await expect(link).toHaveAttribute('href', 'https://example.org/x');
+    await expect(link).toHaveAttribute('title', 'https://example.org/x');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(await link.getAttribute('target')).toBeNull();
+    const opened = () => ctx.electronApp.evaluate(() => (globalThis.__streamingHubTest && globalThis.__streamingHubTest.openedLinks) || []);
+    expect(await opened()).toEqual([]);
+    await link.click();
+    await expect.poll(opened).toEqual(['https://example.org/x']);
+    expect(page.url()).toBe(urlBefore); // keine Navigation des Hauptfensters
+    await link.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(opened).toEqual(['https://example.org/x', 'https://example.org/x']);
+    await expect(page.locator('#podcastOverlay')).toHaveCount(1); // Overlay bleibt offen
+    // Mailto öffnet erst nach Klick
+    await notes.locator('a[href^="mailto:"]').click();
+    await expect.poll(opened).toHaveLength(3);
+    expect((await opened())[2]).toBe('mailto:test@example.org');
+    // Bild lädt über den Main (data:-URL), Alt-Text bleibt
+    const image = notes.locator('img');
+    await expect(image).toHaveCount(1);
+    await expect(image).toHaveAttribute('src', /^data:image\/png;base64,/);
+    await expect(image).toHaveAttribute('alt', 'Testbild');
+    // Allowlist: nur Bilder aus den Shownotes der Episode; direkter Aufruf fremder Adressen bleibt ohne Abruf
+    const check = await page.evaluate(async base => {
+      const [sub] = await window.podcasts.list();
+      const { episodes } = await window.podcasts.episodes(sub.id);
+      const key = { podcastId: sub.id, episodeId: episodes.find(e => e.title === 'Erste Folge').id };
+      return {
+        inNotes: (await window.podcasts.getShownoteImage({ ...key, url: `${base}/shownote.png` })).ok,
+        foreign: (await window.podcasts.getShownoteImage({ ...key, url: `${base}/cover.png` })).ok,
+      };
+    }, base);
+    expect(check).toEqual({ inNotes: true, foreign: false }); // ungültige Adressen/Schemas prüfen die Unit-Tests (IPC-Fehler würden als Konsolenfehler zählen)
+    expect(await opened()).toHaveLength(3);
+    await shot(page, 'podcasts-shownotes');
+    // Einstellung aus: kein Bild, Alt-Text als Platzhalter mit Hinweis
+    await page.evaluate(() => window.podcasts.setSettings({ loadShownoteImages: false }));
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#podcastOverlay')).toHaveCount(0);
+    await page.locator('#podcastNewList .podcast-episode', { hasText: 'Erste Folge' }).locator('.podcast-episode-main').click();
+    await expect(notes.locator('h3')).toBeVisible();
+    await expect(notes.locator('img')).toHaveCount(0);
+    await expect(notes.locator('.podcast-notes-img-alt')).toHaveText('Testbild');
+    await expect(notes.locator('.podcast-notes-images-off')).toBeVisible();
+    await page.evaluate(() => window.podcasts.setSettings({ loadShownoteImages: true }));
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#podcastOverlay')).toHaveCount(0);
+    expect(page.url()).toBe(urlBefore);
   });
 
   test('Wiedergabe: Play-Knopf der Zeile spielt, aktive Zeile markiert, Mini-Player zeigt den Podcast', async () => {

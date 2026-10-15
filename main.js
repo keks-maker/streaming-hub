@@ -267,6 +267,18 @@ const guardCtx = () => {
   if (isIsolatedTestRun(process.env) && !globalThis.__streamingHubTest) globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
   return { dialog, env: process.env, logger, store: globalThis.__streamingHubTest };
 };
+// Links aus den Shownotes (podcast:open-link): im Normalbetrieb shell.openExternal; in isolierten Testläufen wird die
+// Adresse nur in globalThis.__streamingHubTest.openedLinks vermerkt (E2E öffnet keinen Browser).
+const SHOWNOTE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const SHOWNOTE_IMAGE_CACHE_ENTRIES = 16;
+function openShownoteLink(url) {
+  if (!isIsolatedTestRun(process.env)) return shell.openExternal(url);
+  if (!globalThis.__streamingHubTest) globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
+  const store = globalThis.__streamingHubTest;
+  if (!Array.isArray(store.openedLinks)) store.openedLinks = [];
+  store.openedLinks.push(url);
+  return Promise.resolve();
+}
 const quitDialogMock = process.env.STREAMING_HUB_USER_DATA && process.env.STREAMING_HUB_TEST_QUIT_DIALOG === 'mock';
 if (quitDialogMock) {
   globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
@@ -882,6 +894,8 @@ app.whenReady().then(() => {
       refresher: podcastRefresher,
       search: createPodcastSearch({ searchUrl: isIsolatedTestRun(process.env) ? process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL : undefined }),
       coverLoader: createCoverLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // Loopback nur im isolierten E2E-Lauf (lokaler Ersatzserver)
+      shownoteImageLoader: createCoverLoader({ maxBytes: SHOWNOTE_IMAGE_MAX_BYTES, maxEntries: SHOWNOTE_IMAGE_CACHE_ENTRIES, allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // Bilder der Shownotes: 2 MB, kleiner LRU-Cache
+      openExternal: openShownoteLink,
       chaptersLoader: createChaptersLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // wie die Cover: Loopback nur im isolierten E2E-Lauf
       requireMainRenderer,
       sendToMain: (channel, payload) => {

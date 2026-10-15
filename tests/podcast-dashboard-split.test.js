@@ -115,7 +115,7 @@ test('Verdrahtung: Suchansicht zeigt Vorschläge nur ohne Suchbegriff; Overlay/K
   assert.match(css, /\.podcast-split \{ display:grid/);
   assert.match(read('renderer.js'), /key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: '#5af2a6'/);
   assert.match(read('renderer.js'), /key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6'/, 'LiveTV unverändert');
-  for (const file of ['podcast-episode-overlay-view.js', 'podcast-dashboard-view.js', 'podcast-suggestions-view.js', 'podcast-episode-list-view.js']) {
+  for (const file of ['podcast-episode-overlay-view.js', 'podcast-dashboard-view.js', 'podcast-suggestions-view.js', 'podcast-episode-list-view.js', 'podcast-shownotes-view.js']) {
     const code = read(file);
     assert.doesNotMatch(code.replace(/innerHTML = (icon|ICON_[A-Z]+); \/\/ statisches SVG/g, ''), /innerHTML|insertAdjacentHTML|outerHTML|document\.write/, `${file}: kein HTML aus Feeds`);
   }

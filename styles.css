@@ -3551,8 +3551,38 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
 .podcast-chapter.is-current .podcast-chapter-btn { border-color:var(--podcast-accent); background:rgba(90,242,166,.14); }
 .podcast-chapter-time { flex:none; min-width:52px; color:var(--podcast-accent-soft); font-variant-numeric:tabular-nums; font-size:13px; }
 .podcast-chapter-title { min-width:0; overflow-wrap:anywhere; }
-.podcast-notes { color:var(--text); font-size:14px; line-height:1.6; overflow-wrap:anywhere; border-radius:8px; }
+.podcast-notes { user-select:text; color:var(--text); font-size:14px; line-height:1.6; overflow-wrap:anywhere; border-radius:8px; }
 .podcast-notes-paragraph { margin:0 0 12px; white-space:pre-line; }
+.podcast-notes > * + * { margin-top:12px; }
+.podcast-notes h1,.podcast-notes h2,.podcast-notes h3,.podcast-notes h4,.podcast-notes h5,.podcast-notes h6 { margin:18px 0 6px; line-height:1.3; font-weight:700; }
+.podcast-notes h1 { font-size:20px; } .podcast-notes h2 { font-size:18px; } .podcast-notes h3 { font-size:16px; }
+.podcast-notes h4,.podcast-notes h5,.podcast-notes h6 { font-size:14px; }
+.podcast-notes ul,.podcast-notes ol { margin:0; padding-left:24px; }
+.podcast-notes li + li { margin-top:4px; }
+.podcast-notes li > ul,.podcast-notes li > ol { margin-top:4px; }
+.podcast-notes dl { margin:0; } .podcast-notes dt { font-weight:700; margin-top:8px; } .podcast-notes dd { margin:2px 0 0 20px; }
+.podcast-notes blockquote { margin:0; padding:4px 0 4px 14px; border-left:3px solid var(--border-strong); color:var(--text-dim); }
+.podcast-notes code { padding:1px 5px; font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:rgba(255,255,255,.08); border-radius:5px; }
+.podcast-notes pre { margin:0; padding:10px 12px; overflow:auto; max-height:360px; white-space:pre; overflow-wrap:normal; background:rgba(0,0,0,.35); border:1px solid var(--border); border-radius:10px; }
+.podcast-notes pre code { padding:0; background:none; }
+.podcast-notes hr { border:0; border-top:1px solid var(--border-strong); margin:16px 0; }
+.podcast-notes mark { color:#111; background:#fde68a; padding:0 2px; border-radius:3px; }
+.podcast-notes small { font-size:12px; color:var(--text-dim); }
+.podcast-notes ins { text-decoration:underline; } .podcast-notes del,.podcast-notes s { text-decoration:line-through; } .podcast-notes u { text-decoration:underline; }
+.podcast-notes figure { margin:0; } .podcast-notes figcaption { margin-top:4px; font-size:12.5px; color:var(--text-dim); }
+.podcast-notes-table-wrap { max-width:100%; overflow-x:auto; border-radius:8px; }
+.podcast-notes table { border-collapse:collapse; font-size:13px; }
+.podcast-notes caption { padding:4px 0; text-align:left; color:var(--text-dim); }
+.podcast-notes th,.podcast-notes td { padding:6px 10px; text-align:left; vertical-align:top; border:1px solid var(--border-strong); overflow-wrap:normal; }
+.podcast-notes th { background:rgba(255,255,255,.06); font-weight:700; }
+.podcast-notes-link { color:var(--podcast-accent-soft,#86efac); text-decoration:underline; text-underline-offset:2px; text-decoration-thickness:1px; cursor:pointer; overflow-wrap:anywhere; }
+.podcast-notes-link:hover { color:#fff; text-decoration-thickness:2px; }
+.podcast-notes-link:focus-visible,.podcast-notes-table-wrap:focus-visible,.podcast-notes pre:focus-visible { outline:2px solid var(--podcast-accent-soft,#86efac); outline-offset:2px; border-radius:4px; }
+.podcast-notes-img { display:inline-block; max-width:100%; vertical-align:top; }
+.podcast-notes-img img { display:block; max-width:100%; height:auto; border-radius:8px; }
+.podcast-notes-img.is-pending,.podcast-notes-img.is-error,.podcast-notes-img.is-off { padding:6px 10px; font-size:12.5px; color:var(--text-dim); background:var(--glass); border:1px dashed var(--border-strong); border-radius:8px; }
+.podcast-notes-img.is-pending .podcast-notes-img-alt { opacity:.7; }
+.podcast-notes-img-alt::before { content:'Bild: '; }
 @media (max-width:700px) {
   .podcast-overlay { padding:8px; }
   .podcast-dialog-head { flex-direction:column; padding:18px 52px 10px 16px; }

@@ -147,13 +147,13 @@ test('ReDoS: unvollständige <psc:chapter (20 000) parsen in unter 1 s', () => {
   assert.ok(ms < 1000, `dauerte ${ms} ms`);
 });
 
-test('Shownotes mit Links werden weiterhin zu "Text (Adresse)"', () => {
-  const html = '<p>Siehe <a href="https://example.org/x?a=1&amp;b=2">die Seite</a> und <a href="https://example.org">https://example.org</a>.</p><ul><li>Eins</li></ul><script>alert(1)</script>';
+test('Shownotes mit Links: Baum mit anklickbarem Link, Klartext-Auszug ohne Markup', () => {
+  const html = '<p>Siehe <a href="https://example.org/x?a=1&amp;b=2">die Seite</a>.</p><ul><li>Eins</li></ul><script>alert(1)</script>';
   const { feed } = timedParse(`${REDOS_ITEM_HEAD}<content:encoded><![CDATA[${html}]]></content:encoded></item></channel></rss>`);
-  const notes = feed.episodes[0].notes;
-  assert.ok(notes.includes('die Seite (https://example.org/x?a=1&b=2)'), notes);
-  assert.ok(notes.includes('https://example.org.') && !notes.includes('(https://example.org)'), notes);
-  assert.ok(notes.includes('• Eins') && !notes.includes('alert') && !notes.includes('<'), notes);
+  const [episode] = feed.episodes;
+  assert.ok(episode.notes.includes('Siehe die Seite.') && episode.notes.includes('• Eins') && !episode.notes.includes('<'), episode.notes);
+  assert.equal(episode.notesTree[0].c[1].a.href, 'https://example.org/x?a=1&b=2');
+  assert.ok(!JSON.stringify(episode.notesTree).includes('alert'));
 });
 
 test('Großer normaler Feed (30 000 Items) parst in unter 1 s', () => {

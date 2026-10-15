@@ -1,13 +1,14 @@
 // Podcast-Oberfläche: Episoden-Overlay (Dialog) mit Cover, Titel, Sendung, Datum, Dauer, Fortschritt, Play/Pause, „als gehört
-// markieren“, Kapitelliste (nur wenn der Feed Kapitel liefert) und Shownotes als bereinigter Text. Fokusfalle, Esc schließt,
-// aria-modal, der Fokus kehrt zum Auslöser zurück. Alle Feed-Texte ausschließlich per textContent (nie HTML); Links aus den
-// Shownotes erscheinen als Text, nicht als anklickbare Adressen.
+// markieren“, Kapitelliste (nur wenn der Feed Kapitel liefert) und Shownotes (bereinigter Baum, podcast-shownotes-view.js).
+// Fokusfalle, Esc schließt, aria-modal, der Fokus kehrt zum Auslöser zurück. Feed-Inhalte nie als HTML-Zeichenkette: Titel und Texte per
+// textContent, Shownotes per createElement aus dem Baum; Links öffnet der Main nach Klick, Bilder lädt nur der Main.
 
 'use strict';
 
 const { episodeOverlayModel } = require('./podcast-overlay-model.js');
 const { playEpisodeItem } = require('./podcast-episode-list-view.js');
 const { createCover } = require('./podcast-cover-view.js');
+const { renderShownotes } = require('./podcast-shownotes-view.js');
 
 const ICON_PLAY =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="7 4 20 12 7 20"/></svg>';
@@ -105,6 +106,9 @@ function createEpisodeOverlay(doc, ctx) {
   let token = 0;
   let chaptersSignature = '';
   let notesSignature = '';
+  let notesTree = null;
+  let notesRender = null; // laufende Shownotes-Darstellung (Bilder-Warteschlange)
+  let loadImages = true; // Einstellung „Bilder in Shownotes laden“
   const chapterButtons = [];
 
   const report = (message, error) => {
@@ -159,13 +163,33 @@ function createEpisodeOverlay(doc, ctx) {
     chapterNote.hidden = !m.chapterNote;
   }
 
+  function disposeNotes() {
+    if (notesRender) notesRender.dispose();
+    notesRender = null;
+  }
+
   function renderNotes(m) {
-    const signature = `${m.notes.state}\u0000${m.notes.text}`;
-    if (signature === notesSignature) return;
+    const signature = `${m.notes.state}\u0000${m.notes.text}\u0000${loadImages}`;
+    if (signature === notesSignature && m.notes.tree === notesTree) return;
     notesSignature = signature;
+    notesTree = m.notes.tree;
+    disposeNotes();
     notes.textContent = '';
     if (m.notes.state === 'ready') {
-      for (const paragraph of m.notes.paragraphs) notes.appendChild(el(doc, 'p', 'podcast-notes-paragraph', paragraph)); // nur Text
+      if (m.notes.tree.length) {
+        const current = key;
+        notesRender = renderShownotes(doc, m.notes.tree, {
+          loadImages,
+          openLink: url => run(async () => {
+            const reply = await podcasts.openLink(url);
+            if (!reply || reply.ok !== true) throw new Error('Link konnte nicht geöffnet werden');
+          }, 'Link konnte nicht geöffnet werden'),
+          getImage: url => podcasts.getShownoteImage({ podcastId: current.podcastId, episodeId: current.episodeId, url }),
+        });
+        notes.appendChild(notesRender.element);
+      } else {
+        for (const paragraph of m.notes.paragraphs) notes.appendChild(el(doc, 'p', 'podcast-notes-paragraph', paragraph)); // Klartext (alter Cache)
+      }
       return;
     }
     const text = { loading: 'Shownotes werden geladen …', error: 'Shownotes konnten nicht geladen werden.', none: 'Zu dieser Episode gibt es keine Shownotes.' }[m.notes.state];
@@ -256,6 +280,16 @@ function createEpisodeOverlay(doc, ctx) {
     if (id) openShow(id);
   });
 
+  /** Einstellung „Bilder in Shownotes laden“ (Standard an; bei Lesefehler an). */
+  async function imageSetting() {
+    try {
+      const settings = typeof podcasts.getSettings === 'function' ? await podcasts.getSettings() : null;
+      return !settings || settings.loadShownoteImages !== false;
+    } catch {
+      return true;
+    }
+  }
+
   function open(next, opener = null) {
     if (!next || typeof next.podcastId !== 'string' || typeof next.episodeId !== 'string') return;
     key = { podcastId: next.podcastId, episodeId: next.episodeId };
@@ -264,6 +298,8 @@ function createEpisodeOverlay(doc, ctx) {
     detailsValue = null;
     chaptersSignature = '';
     notesSignature = '';
+    notesTree = null;
+    disposeNotes();
     const mine = ++token;
     if (!backdrop.isConnected) doc.body.appendChild(backdrop);
     const first = model();
@@ -275,9 +311,10 @@ function createEpisodeOverlay(doc, ctx) {
     dialog.scrollTop = 0;
     body.scrollTop = 0;
     play.focus();
-    Promise.resolve(details.get(key.podcastId, key.episodeId))
-      .then(value => {
+    Promise.all([Promise.resolve(details.get(key.podcastId, key.episodeId)), imageSetting()])
+      .then(([value, images]) => {
         if (mine !== token) return;
+        loadImages = images;
         detailsValue = value;
         detailsState = 'ready';
         render();
@@ -294,6 +331,7 @@ function createEpisodeOverlay(doc, ctx) {
     if (!key) return;
     key = null;
     token += 1;
+    disposeNotes();
     const back = trigger;
     trigger = null;
     if (backdrop.isConnected) backdrop.remove();

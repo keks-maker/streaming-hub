@@ -20,6 +20,11 @@ const FLAGS = [
     label: 'Episoden ab 95 % automatisch als gehört markieren',
     hint: 'Ist die Option aus, markierst du Episoden selbst als gehört. Ein begonnener Fortschritt wird trotzdem gemerkt.',
   },
+  {
+    key: 'loadShownoteImages',
+    label: 'Bilder in Shownotes laden',
+    hint: 'Die App lädt die Bilder aus den Shownotes über einen geschützten Abruf (höchstens 20 je Episode, nur Bilddateien bis 2 MB). Ist die Option aus, siehst du nur den Alt-Text.',
+  },
 ];
 
 function secondsLabel(value) {

@@ -111,7 +111,7 @@ function setupIpc() {
 
 test('IPC: alle Kanäle sind registriert und lehnen fremde Absender ab', async () => {
   const { handlers } = setupIpc();
-  const channels = ['search', 'catalog', 'cover', 'list', 'subscribe', 'unsubscribe', 'episodes', 'episode-details', 'refresh', 'probe-feed', 'set-played', 'save-position', 'reorder', 'set-override'].map(name => `podcast:${name}`);
+  const channels = ['search', 'catalog', 'cover', 'list', 'subscribe', 'unsubscribe', 'episodes', 'episode-details', 'refresh', 'probe-feed', 'set-played', 'save-position', 'reorder', 'set-override', 'shownote-image', 'open-link'].map(name => `podcast:${name}`);
   assert.deepEqual([...handlers.keys()].sort(), channels.sort());
   for (const channel of channels) {
     assert.throws(() => handlers.get(channel)({ sender: { id: 'webview' } }), /nicht autorisiert/, channel);

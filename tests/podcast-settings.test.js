@@ -33,15 +33,15 @@ function tmpStorage() {
 // ── Modell und Validierung ──
 
 test('Standardwerte: Rate 1, Sprünge 15/30, Autoplay aus, Intervall 60, „gehört“ an, Lautstärke 0,8', () => {
-  assert.deepEqual(settings.normalizePodcastSettings(undefined), { rate: 1, skipBack: 15, skipForward: 30, autoPlayNext: false, refreshIntervalMinutes: 60, autoMarkPlayed: true, volume: 0.8 });
+  assert.deepEqual(settings.normalizePodcastSettings(undefined), { rate: 1, skipBack: 15, skipForward: 30, autoPlayNext: false, refreshIntervalMinutes: 60, autoMarkPlayed: true, volume: 0.8, loadShownoteImages: true });
   assert.deepEqual(settings.normalizePodcastSettings([]), settings.normalizePodcastSettings({}));
 });
 
 test('Normalisierung: ungültige Werte fallen auf den Standard zurück, gültige bleiben', () => {
-  const clean = settings.normalizePodcastSettings({ rate: 1.5, skipBack: 10, skipForward: 60, autoPlayNext: true, refreshIntervalMinutes: 120, autoMarkPlayed: false, volume: 0.3 });
-  assert.deepEqual(clean, { rate: 1.5, skipBack: 10, skipForward: 60, autoPlayNext: true, refreshIntervalMinutes: 120, autoMarkPlayed: false, volume: 0.3 });
-  const broken = settings.normalizePodcastSettings({ rate: 'schnell', skipBack: 7, skipForward: -3, autoPlayNext: 'ja', refreshIntervalMinutes: 5, autoMarkPlayed: 0, volume: 'laut', extra: 1 });
-  assert.deepEqual(broken, { rate: 1, skipBack: 15, skipForward: 30, autoPlayNext: false, refreshIntervalMinutes: 60, autoMarkPlayed: true, volume: 0.8 });
+  const clean = settings.normalizePodcastSettings({ rate: 1.5, skipBack: 10, skipForward: 60, autoPlayNext: true, refreshIntervalMinutes: 120, autoMarkPlayed: false, volume: 0.3, loadShownoteImages: false });
+  assert.deepEqual(clean, { rate: 1.5, skipBack: 10, skipForward: 60, autoPlayNext: true, refreshIntervalMinutes: 120, autoMarkPlayed: false, volume: 0.3, loadShownoteImages: false });
+  const broken = settings.normalizePodcastSettings({ rate: 'schnell', skipBack: 7, skipForward: -3, autoPlayNext: 'ja', refreshIntervalMinutes: 5, autoMarkPlayed: 0, volume: 'laut', loadShownoteImages: 'nein', extra: 1 });
+  assert.deepEqual(broken, { rate: 1, skipBack: 15, skipForward: 30, autoPlayNext: false, refreshIntervalMinutes: 60, autoMarkPlayed: true, volume: 0.8, loadShownoteImages: true });
   assert.equal(settings.normalizePodcastSettings({ refreshIntervalMinutes: 15 }).refreshIntervalMinutes, 60, 'Minimum 30 Minuten');
   assert.equal(settings.normalizePodcastSettings({ volume: 5 }).volume, 1);
 });

@@ -4,9 +4,11 @@
 
 'use strict';
 
+const { cleanTree } = require('./lib/podcast/shownotes-schema.js');
+
 const MAX_ENTRIES = 40;
 
-/** options: { podcasts (window.podcasts) }. get(podcastId, episodeId) -> Promise<{ ok, notes, chapters, chaptersError }>; chapters(podcastId, episodeId) -> Promise<[{start,title}]> */
+/** options: { podcasts (window.podcasts) }. get(podcastId, episodeId) -> Promise<{ ok, notes, notesTree, chapters, chaptersError }>; chapters(podcastId, episodeId) -> Promise<[{start,title}]> */
 function createPodcastDetailsCache({ podcasts } = {}) {
   const cache = new Map(); // key -> Promise
 
@@ -24,7 +26,8 @@ function createPodcastDetailsCache({ podcasts } = {}) {
         if (!reply || reply.ok !== true) throw new Error('Details nicht verfügbar');
         return {
           ok: true,
-          notes: typeof reply.notes === 'string' ? reply.notes : '',
+          notes: typeof reply.notes === 'string' ? reply.notes : '', // Klartext-Auszug (Fallback ohne Baum)
+          notesTree: cleanTree(reply.notesTree), // Baum aus dem Main, hier erneut gegen die Allowlist geprüft
           chapters: Array.isArray(reply.chapters) ? reply.chapters : [],
           chaptersError: typeof reply.chaptersError === 'string' ? reply.chaptersError : '',
         };
