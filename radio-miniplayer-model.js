@@ -5,6 +5,7 @@
 'use strict';
 
 const { nowPlayingText, safeLogoUrl } = require('./radio-dashboard-model.js');
+const { currentChapter } = require('./lib/podcast/chapters.js');
 
 const STATUS_TEXT = {
   loading: 'Verbinde …',
@@ -103,4 +104,167 @@ function miniPlayerModel(state, { favoriteCount = 0, suppressed = false } = {}) 
   };
 }
 
-module.exports = { isMiniPlayerVisible, subtitleOf, playPauseAction, liveMessage, miniPlayerModel, PLAY_PAUSE_LABEL };
+// ───────── Podcast (P2) ─────────
+// Eingabe: öffentlicher Zustand aus podcast:state (status idle|loading|playing|paused|ended|error, episode, position,
+// duration, rate, volume, error). Bei Radio bleibt alles oben unverändert.
+
+const PODCAST_RATES = [0.75, 1, 1.25, 1.5, 1.75, 2];
+const SKIP_BACK_SECONDS = 15;
+const SKIP_FORWARD_SECONDS = 30;
+const SEEK_KEY_SECONDS = 5;
+
+const PODCAST_STATUS_TEXT = {
+  loading: 'Lädt …',
+  paused: 'Pausiert',
+  ended: 'Beendet',
+  error: 'Wiedergabe nicht möglich',
+};
+
+const PODCAST_PLAY_PAUSE_LABEL = {
+  pause: 'Pause',
+  resume: 'Wiedergabe fortsetzen',
+  replay: 'Erneut abspielen',
+  retry: 'Erneut versuchen',
+};
+
+/** Sprungweite aus den Podcast-Einstellungen (state.skipBack/skipForward); ungültige Werte fallen auf den Standard zurück. */
+function skipSeconds(value, fallback) {
+  return Number.isFinite(value) && value > 0 && value <= 3600 ? Math.round(value) : fallback;
+}
+
+/** Covers über http/https ohne Zugangsdaten (wie Controller/Player; die CSP bleibt unverändert). */
+function safeCoverUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    const parsed = new URL(value);
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && !parsed.username && !parsed.password ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Zeit als m:ss bzw. h:mm:ss (Sekunden, ungültig → 0:00). */
+function formatClock(seconds) {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = String(total % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+}
+
+function isPodcastMiniPlayerVisible(state, { suppressed = false } = {}) {
+  return Boolean(state && state.status && state.status !== 'idle' && state.episode) && !suppressed;
+}
+
+/** Primäre Aktion: playing/loading → pause · paused → resume · ended → replay · error → retry. */
+function podcastPlayPauseAction(status) {
+  if (status === 'playing' || status === 'loading') return 'pause';
+  if (status === 'paused') return 'resume';
+  if (status === 'ended') return 'replay';
+  return 'retry';
+}
+
+function podcastSubtitle(state) {
+  const title = state.episode.title || '';
+  if (state.status === 'playing') return title;
+  if (state.status === 'error') return state.error || PODCAST_STATUS_TEXT.error;
+  const status = PODCAST_STATUS_TEXT[state.status] || '';
+  return status && title ? `${status} – ${title}` : status || title;
+}
+
+/** aria-live-Text bei Statuswechsel: Sendung/Episode und Status, keine Positionsänderungen. */
+function podcastLiveMessage(state) {
+  if (!state || !state.episode || state.status === 'idle') return '';
+  const name = state.episode.show || state.episode.title || 'Podcast';
+  switch (state.status) {
+    case 'loading':
+      return `${name}: lädt`;
+    case 'playing':
+      return `${name}: spielt`;
+    case 'paused':
+      return `${name}: pausiert`;
+    case 'ended':
+      return `${name}: Episode beendet`;
+    case 'error':
+      return `${name}: Wiedergabe nicht möglich`;
+    default:
+      return '';
+  }
+}
+
+/** Aktuelles Kapitel als Zusatztext („Kapitel 2/5: Titel“); ohne Kapitel oder im Fehlerzustand leer. */
+function chapterText(chapters, position, status) {
+  if (status === 'error') return '';
+  const current = currentChapter(chapters, position);
+  return current ? `Kapitel ${current.index + 1}/${chapters.length}: ${current.chapter.title}` : '';
+}
+
+/**
+ * Modell der Leiste bei Podcast.
+ * Ausgabe: { visible, mode:'podcast', name (Sendung), subtitle (Episode/Status), chapterText (aktuelles Kapitel, leer ohne Kapitel), cover, initial, status, action, playPauseLabel,
+ *            position, duration, canSeek, seekMax, seekValue, valueText, positionText, durationText, rate, rates,
+ *            skipBack, skipForward, volume, volumePercent, live }
+ */
+function podcastMiniPlayerModel(state, { suppressed = false, chapters = null } = {}) {
+  if (!isPodcastMiniPlayerVisible(state, { suppressed })) {
+    return { visible: false, mode: 'podcast', status: 'idle', name: '', subtitle: '', chapterText: '', cover: null, initial: '', action: 'retry', playPauseLabel: PODCAST_PLAY_PAUSE_LABEL.retry, position: 0, duration: 0, canSeek: false, seekMax: 0, seekValue: 0, valueText: '', positionText: '0:00', durationText: '0:00', rate: 1, rates: PODCAST_RATES, skipBack: SKIP_BACK_SECONDS, skipForward: SKIP_FORWARD_SECONDS, volume: 0, volumePercent: 0, live: '' };
+  }
+  const duration = Number.isFinite(state.duration) && state.duration > 0 ? state.duration : 0;
+  const rawPosition = Number.isFinite(state.position) && state.position > 0 ? state.position : 0;
+  const position = duration > 0 ? Math.min(rawPosition, duration) : rawPosition;
+  const action = podcastPlayPauseAction(state.status);
+  const volume = Number.isFinite(state.volume) ? Math.min(1, Math.max(0, state.volume)) : 0;
+  const show = state.episode.show || state.episode.title || 'Podcast';
+  return {
+    visible: true,
+    mode: 'podcast',
+    name: show,
+    subtitle: podcastSubtitle(state),
+    chapterText: chapterText(chapters, position, state.status),
+    cover: safeCoverUrl(state.episode.cover),
+    initial: show.trim().slice(0, 1).toUpperCase() || '?',
+    status: state.status,
+    action,
+    playPauseLabel: PODCAST_PLAY_PAUSE_LABEL[action],
+    position,
+    duration,
+    canSeek: duration > 0 && state.status !== 'error',
+    seekMax: Math.floor(duration),
+    seekValue: Math.floor(position),
+    valueText: duration > 0 ? `${formatClock(position)} von ${formatClock(duration)}` : formatClock(position),
+    positionText: formatClock(position),
+    durationText: duration > 0 ? formatClock(duration) : '–:–',
+    rate: PODCAST_RATES.includes(state.rate) ? state.rate : 1,
+    rates: PODCAST_RATES,
+    skipBack: skipSeconds(state.skipBack, SKIP_BACK_SECONDS),
+    skipForward: skipSeconds(state.skipForward, SKIP_FORWARD_SECONDS),
+    volume,
+    volumePercent: Math.round(volume * 100),
+    live: podcastLiveMessage(state),
+  };
+}
+
+/** Beschriftung einer Geschwindigkeit ("1×", "1,25×"). */
+function rateLabel(rate) {
+  return `${String(rate).replace('.', ',')}×`;
+}
+
+module.exports = {
+  isMiniPlayerVisible,
+  subtitleOf,
+  playPauseAction,
+  liveMessage,
+  miniPlayerModel,
+  PLAY_PAUSE_LABEL,
+  PODCAST_RATES,
+  SKIP_BACK_SECONDS,
+  SKIP_FORWARD_SECONDS,
+  SEEK_KEY_SECONDS,
+  isPodcastMiniPlayerVisible,
+  podcastPlayPauseAction,
+  podcastMiniPlayerModel,
+  podcastLiveMessage,
+  safeCoverUrl,
+  formatClock,
+  rateLabel,
+};

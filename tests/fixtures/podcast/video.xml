@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Video-Podcast</title>
+<item><title>Nur Video</title><guid>v1</guid><enclosure url="https://example.test/v1.mp4" length="123" type="video/mp4"/></item>
+<item><title>Video mit Audio-Alternative</title><guid>v2</guid><enclosure url="https://example.test/v2.mp4" type="video/mp4"/><enclosure url="https://example.test/v2.mp3" type="audio/mpeg"/></item>
+<item><title>Typ fehlt, mp3-Endung</title><guid>v3</guid><enclosure url="https://example.test/v3.mp3?x=1"/></item>
+<item><title>Typ fehlt, keine Audio-Endung</title><guid>v4</guid><enclosure url="https://example.test/v4.mp4"/></item>
+</channel></rss>

@@ -17,4 +17,12 @@ function radioActionForVideoStart(radioState, settings) {
   return 'none';
 }
 
-module.exports = { radioActionForVideoStart };
+/**
+ * Dieselbe Regel für Podcasts (gleiche Einstellung pauseOnTv): Episode spielt → 'pause' (Position bleibt),
+ * lädt noch → 'stop' (Position wird gesichert), sonst 'none'.
+ */
+function podcastActionForVideoStart(podcastState, settings) {
+  return radioActionForVideoStart(podcastState, settings);
+}
+
+module.exports = { radioActionForVideoStart, podcastActionForVideoStart };

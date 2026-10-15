@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rss [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY remote SYSTEM "http://127.0.0.1:9/evil">
+]>
+<rss version="2.0"><channel><title>XXE &xxe; &lol2; &remote; Ende</title>
+<item><title>Folge &xxe;</title><guid>x1</guid><description>&lol2;</description><enclosure url="https://example.test/x1.mp3" type="audio/mpeg"/></item>
+</channel></rss>

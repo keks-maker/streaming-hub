@@ -28,6 +28,15 @@ const SETTINGS_NAV = [
       { page: 'radio-playback', label: 'Wiedergabe' },
     ],
   },
+  {
+    key: 'podcasts',
+    label: 'Podcasts',
+    children: [
+      { page: 'podcast-subs', label: 'Abos' },
+      { page: 'podcast-feeds', label: 'Eigene Feeds' },
+      { page: 'podcast-playback', label: 'Wiedergabe' },
+    ],
+  },
   { page: 'streaming', label: 'Streaming' },
   { page: 'mediathek', label: 'Mediatheken' },
 ];

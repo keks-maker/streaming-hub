@@ -33,7 +33,7 @@ function xmltvTime(ms) {
 }
 
 /** Startet die App mit lokaler Quelle (M3U), EPG-Fixture und Favoriten. */
-async function launchApp({ prefix, epgXml, channels, favorites }) {
+async function launchApp({ prefix, epgXml, channels, favorites, env: extraEnv = {} }) {
   const tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   const userData = path.join(tmpRoot, 'userData');
   const home = path.join(tmpRoot, 'home');
@@ -75,17 +75,30 @@ async function launchApp({ prefix, epgXml, channels, favorites }) {
       },
     ]),
   );
+  const env = {
+    ...process.env,
+    HOME: home,
+    STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(),
+    STREAMING_HUB_EPG_FIXTURE: fixture,
+    STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9',
+    ...extraEnv,
+  };
+  const session = await startSession(env);
+  const result = { ...session, env, userData };
+  result.cleanup = async () => {
+    await stopSession(result);
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  };
+  return result;
+}
+
+/** Startet Electron mit dem gegebenen Env und wartet auf das Dashboard. Liefert { electronApp, page, problems }. */
+async function startSession(env) {
   const target = resolveLaunchTarget();
   const electronApp = await electron.launch({
     executablePath: target.executablePath,
     args: launchArgs(target),
-    env: {
-      ...process.env,
-      HOME: home,
-      STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(),
-      STREAMING_HUB_EPG_FIXTURE: fixture,
-      STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9',
-    },
+    env,
     timeout: 45_000,
   });
   const problems = [];
@@ -99,13 +112,20 @@ async function launchApp({ prefix, epgXml, channels, favorites }) {
   });
   await page.waitForLoadState('domcontentloaded');
   await page.locator('#dashboardView').waitFor();
-  const cleanup = async () => {
-    const proc = electronApp.process();
-    await Promise.race([electronApp.close().catch(() => {}), new Promise(resolve => setTimeout(resolve, 5_000))]);
-    if (proc.exitCode === null && proc.signalCode === null) proc.kill('SIGKILL');
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
-  };
-  return { electronApp, page, problems, cleanup };
+  return { electronApp, page, problems };
+}
+
+async function stopSession({ electronApp }) {
+  const proc = electronApp.process();
+  await Promise.race([electronApp.close().catch(() => {}), new Promise(resolve => setTimeout(resolve, 5_000))]);
+  if (proc.exitCode === null && proc.signalCode === null) proc.kill('SIGKILL');
+}
+
+/** Beendet die laufende App und startet sie mit denselben Nutzerdaten neu (Persistenz-Tests). Aktualisiert ctx.electronApp/page/problems. */
+async function relaunchApp(ctx) {
+  await stopSession(ctx);
+  Object.assign(ctx, await startSession(ctx.env));
+  return ctx;
 }
 
 async function waitForEpgChannels(page, count) {
@@ -126,4 +146,4 @@ async function openOverlayFromDashboard(page) {
   await page.mouse.move(640, 600);
 }
 
-module.exports = { MIN, HOUR, MSG_RUNNING, isHarmless, xmltvTime, launchApp, waitForEpgChannels, openOverlayFromDashboard };
+module.exports = { MIN, HOUR, MSG_RUNNING, isHarmless, xmltvTime, launchApp, relaunchApp, waitForEpgChannels, openOverlayFromDashboard };

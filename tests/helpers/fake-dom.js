@@ -87,7 +87,10 @@ class FakeNode {
 }
 
 function makeDoc() {
+  const handlers = {};
   const doc = {
+    addEventListener: (type, fn) => (handlers[type] = handlers[type] || []).push(fn),
+    dispatch: (type, event = {}) => (handlers[type] || []).forEach(fn => fn(event)),
     createElement: tag => new FakeNode(tag, doc),
     createTextNode: text => ({ textContent: text, nodeType: 3 }),
   };

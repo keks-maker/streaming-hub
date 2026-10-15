@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Guid-Probleme</title>
+<item><title>A ohne guid</title><enclosure url="https://example.test/a.mp3" type="audio/mpeg"/></item>
+<item><title>B leere guid</title><guid>  </guid><enclosure url="https://example.test/b.mp3" type="audio/mpeg"/></item>
+<item><title>C doppelt 1</title><guid>same</guid><enclosure url="https://example.test/c1.mp3" type="audio/mpeg"/></item>
+<item><title>C doppelt 2 (andere Datei)</title><guid>same</guid><enclosure url="https://example.test/c2.mp3" type="audio/mpeg"/></item>
+<item><title>D Duplikat von A</title><enclosure url="https://example.test/a.mp3" type="audio/mpeg"/></item>
+<item><title>E eindeutig</title><guid>unique-e</guid><enclosure url="https://example.test/e.mp3" type="audio/mpeg"/></item>
+</channel></rss>

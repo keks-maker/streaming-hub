@@ -213,3 +213,47 @@ contextBridge.exposeInMainWorld('radio', {
   // Tray „Radio-Dashboard öffnen“: Renderer zeigt das Radio-Dashboard
   onOpen: radioListener('radio:open'),
 });
+
+// Podcasts (Konzept §7): Abos, Feeds, Suche und Hörzustand im Main; Änderungen kommen als Events.
+contextBridge.exposeInMainWorld('podcasts', {
+  search: query => ipcRenderer.invoke('podcast:search', query),
+  getCatalog: () => ipcRenderer.invoke('podcast:catalog'),
+  getCover: url => ipcRenderer.invoke('podcast:cover', url),
+  list: () => ipcRenderer.invoke('podcast:list'),
+  subscribe: input => ipcRenderer.invoke('podcast:subscribe', input),
+  unsubscribe: id => ipcRenderer.invoke('podcast:unsubscribe', id),
+  episodes: id => ipcRenderer.invoke('podcast:episodes', id),
+  episodeDetails: key => ipcRenderer.invoke('podcast:episode-details', key),
+  // Shownotes: Bild einer Episode ({ podcastId, episodeId, url }) über den Main; Link nach Klick im Standardbrowser öffnen
+  getShownoteImage: input => ipcRenderer.invoke('podcast:shownote-image', input),
+  openLink: url => ipcRenderer.invoke('podcast:open-link', url),
+  refresh: options => ipcRenderer.invoke('podcast:refresh', options),
+  probeFeed: url => ipcRenderer.invoke('podcast:probe-feed', url),
+  setPlayed: input => ipcRenderer.invoke('podcast:set-played', input),
+  savePosition: input => ipcRenderer.invoke('podcast:save-position', input),
+  // Verwaltung (Einstellungen → Podcasts): Reihenfolge { order: [id] }, Anpassung { id, title?, cover? } (leer = zurücksetzen)
+  reorder: input => ipcRenderer.invoke('podcast:reorder', input),
+  setOverride: input => ipcRenderer.invoke('podcast:set-override', input),
+  // Podcast-Einstellungen: rate, skipBack, skipForward, autoPlayNext, refreshIntervalMinutes, autoMarkPlayed, volume
+  getSettings: () => ipcRenderer.invoke('podcast:get-settings'),
+  setSettings: patch => ipcRenderer.invoke('podcast:set-settings', patch),
+  onSettingsChanged: radioListener('podcast:settings-changed'),
+  // Tray „Podcasts öffnen“: Renderer zeigt das Podcast-Dashboard (bzw. die Sendung der laufenden Episode)
+  onOpen: radioListener('podcast:open'),
+  onSubscriptionsChanged: radioListener('podcast:subscriptions-changed'),
+  onRefreshed: radioListener('podcast:refreshed'),
+  onStateChanged: radioListener('podcast:state-changed'),
+  // Wiedergabe (P2): Fernbedienung für den PodcastController im Main; Zustand kommt per podcast:state
+  player: {
+    play: (key, startPosition) => ipcRenderer.invoke('podcast:play', startPosition === undefined ? key : { ...key, startPosition }),
+    pause: () => ipcRenderer.invoke('podcast:pause'),
+    resume: () => ipcRenderer.invoke('podcast:resume'),
+    stop: () => ipcRenderer.invoke('podcast:stop'),
+    seek: position => ipcRenderer.invoke('podcast:seek', position),
+    skip: delta => ipcRenderer.invoke('podcast:skip', delta),
+    setRate: rate => ipcRenderer.invoke('podcast:rate', rate),
+    setVolume: volume => ipcRenderer.invoke('podcast:volume', volume),
+    getState: () => ipcRenderer.invoke('podcast:get-state'),
+    onState: radioListener('podcast:state'),
+  },
+});

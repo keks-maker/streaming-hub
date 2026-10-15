@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
-const { reconcilePostUpdate, reconcileRadioSources } = require('./lib/post-update-reconcile.js');
+const { reconcilePostUpdate, reconcileRadioSources, reconcilePodcastSources } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
 const { revealWindow, isBackgroundE2E } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
@@ -37,6 +37,17 @@ const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
+const { PodcastLibrary } = require('./lib/podcast/PodcastLibrary.js');
+const { registerPodcastIpc } = require('./lib/podcast/ipc.js');
+const { PodcastController } = require('./lib/podcast/PodcastController.js');
+const { createPlaybackPowerGuard } = require('./lib/podcast/playback-power.js');
+const { attachExclusivity } = require('./lib/playback-exclusivity.js');
+const { createPodcastRefresher } = require('./lib/podcast/podcast-refresh.js');
+const { createPodcastSettingsService } = require('./lib/podcast/podcast-settings-service.js');
+const { createRefreshSchedule } = require('./lib/podcast/podcast-refresh-timer.js');
+const { createPodcastSearch } = require('./lib/podcast/podcast-search.js');
+const { createCoverLoader } = require('./lib/podcast/podcast-cover.js');
+const { createChaptersLoader } = require('./lib/podcast/podcast-chapters.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
 const { createRadioLogoCache } = require('./lib/radio/radio-logo-cache.js');
 const { createTrayTextRenderer } = require('./lib/radio/tray-text-renderer.js');
@@ -76,6 +87,11 @@ let epgService = null;
 let trayController = null;
 let radioController = null;
 let radioLibrary = null;
+let podcastLibrary = null;
+let podcastController = null;
+let podcastPowerGuard = null;
+let podcastRefreshSchedule = null;
+let podcastSettingsService = null;
 // Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
 let scheduler = null;
 // Standby-Schutz (Etappe 2b): powerSaveBlocker bei Aufnahme/anstehendem Start
@@ -251,6 +267,18 @@ const guardCtx = () => {
   if (isIsolatedTestRun(process.env) && !globalThis.__streamingHubTest) globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
   return { dialog, env: process.env, logger, store: globalThis.__streamingHubTest };
 };
+// Links aus den Shownotes (podcast:open-link): im Normalbetrieb shell.openExternal; in isolierten Testläufen wird die
+// Adresse nur in globalThis.__streamingHubTest.openedLinks vermerkt (E2E öffnet keinen Browser).
+const SHOWNOTE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const SHOWNOTE_IMAGE_CACHE_ENTRIES = 16;
+function openShownoteLink(url) {
+  if (!isIsolatedTestRun(process.env)) return shell.openExternal(url);
+  if (!globalThis.__streamingHubTest) globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
+  const store = globalThis.__streamingHubTest;
+  if (!Array.isArray(store.openedLinks)) store.openedLinks = [];
+  store.openedLinks.push(url);
+  return Promise.resolve();
+}
 const quitDialogMock = process.env.STREAMING_HUB_USER_DATA && process.env.STREAMING_HUB_TEST_QUIT_DIALOG === 'mock';
 if (quitDialogMock) {
   globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
@@ -586,6 +614,7 @@ function createWindow() {
     // Das unsichtbare Radio-Player-Fenster zählt als Fenster: ohne "weiterspielen" (oder ohne Tray) beenden,
     // sonst käme window-all-closed nie und die App bliebe unsichtbar offen.
     if (radioController && radioController.isActive() && !radioKeepsAppAlive(radioKeepAliveContext())) radioController.stop();
+    if (podcastController && podcastController.isActive() && !radioKeepsAppAlive(podcastKeepAliveContext())) podcastController.stop();
   });
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     if (errorCode !== -3) logger.error('Hauptfenster konnte nicht geladen werden:', errorCode, errorDescription, validatedURL);
@@ -659,6 +688,12 @@ function openRadioDashboard() {
   showWindowAndSend('radio:open', null);
 }
 
+/** Podcast-Bereich im Renderer öffnen (Tray: „Podcasts öffnen“); mit laufender Episode deren Sendungsseite. */
+function openPodcastDashboard() {
+  const episode = podcastController ? podcastController.getState().episode : null;
+  showWindowAndSend('podcast:open', episode ? { podcastId: episode.podcastId } : null);
+}
+
 app.whenReady().then(() => {
   if (process.platform === 'darwin' && app.dock) {
     app.dock.setIcon(path.join(__dirname, 'assets/icon.png'));
@@ -678,6 +713,12 @@ app.whenReady().then(() => {
     userFile: userStorage.paths.radioSources,
     bundleFile: path.join(__dirname, 'radiosources.json'),
     baseFile: userStorage.paths.radioSourcesBase,
+  });
+  // Podcasts: Abos aus der mitgelieferten Liste abgleichen (geänderte Feed-URLs, entfernte Einträge); wirft nie
+  reconcilePodcastSources({
+    podcastsFile: userStorage.paths.podcasts,
+    stateFile: userStorage.paths.podcastState,
+    bundleFile: path.join(__dirname, 'podcastsources.json'),
   });
   // Selbstheilungs-Netz (Karte t_ea243f43, Schritt 5): Beim Start prüfen, ob
   // die eigene Bundle-Integrität intakt ist (keine toten/externen Symlinks,
@@ -806,6 +847,81 @@ app.whenReady().then(() => {
     });
   } catch (e) {
     logger.error('Radio konnte nicht eingerichtet werden:', e.message);
+  }
+
+  // ── Podcasts (Konzept §2/§7): Abos, Hörzustand, Feed-Abruf, Suche, Wiedergabe und Einstellungen im Main ──
+  try {
+    podcastLibrary = new PodcastLibrary({ userStorage, logger });
+    // Einstellungen (podcast-settings.json): Prüfintervall bestimmt auch den Mindestabstand für Feeds ohne ETag/Last-Modified
+    const podcastSettings = podcastLibrary.getSettings();
+    const podcastRefresher = createPodcastRefresher({ library: podcastLibrary, logger, noValidatorIntervalMs: () => podcastSettingsService.get().refreshIntervalMinutes * 60 * 1000 });
+    // Wiedergabe (P2): eigenes unsichtbares Player-Fenster (gleicher Host wie Radio), eigene Lautstärke und Standardgeschwindigkeit
+    podcastController = new PodcastController({
+      BrowserWindow,
+      playerHtml: path.join(__dirname, 'radio-player.html'),
+      preloadPath: path.join(__dirname, 'preload-radio.js'),
+      library: podcastLibrary,
+      volume: podcastSettings.volume,
+      rate: podcastSettings.rate,
+      getSettings: () => (podcastSettingsService ? podcastSettingsService.get() : podcastSettings),
+      logger,
+    });
+    podcastSettingsService = createPodcastSettingsService({
+      library: podcastLibrary,
+      controller: podcastController,
+      logger,
+      onChanged: next => {
+        if (podcastRefreshSchedule) podcastRefreshSchedule.reschedule();
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('podcast:settings-changed', next);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+      },
+    });
+    podcastPowerGuard = createPlaybackPowerGuard({ powerSaveBlocker, logger });
+    if (radioController) attachExclusivity({ radio: radioController, podcast: podcastController, logger });
+    podcastController.on('state', status => {
+      podcastPowerGuard.sync(status.status);
+      // Episode endet oder scheitert, während kein Fenster mehr offen ist: kein Grund mehr, im Tray zu bleiben
+      if (['idle', 'error', 'ended'].includes(status.status) && BrowserWindow.getAllWindows().length === 0) quitUnlessKeptAlive();
+    });
+    registerPodcastIpc({
+      controller: podcastController,
+      settings: podcastSettingsService,
+      ipcMain,
+      library: podcastLibrary,
+      refresher: podcastRefresher,
+      search: createPodcastSearch({ searchUrl: isIsolatedTestRun(process.env) ? process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL : undefined }),
+      coverLoader: createCoverLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // Loopback nur im isolierten E2E-Lauf (lokaler Ersatzserver)
+      shownoteImageLoader: createCoverLoader({ maxBytes: SHOWNOTE_IMAGE_MAX_BYTES, maxEntries: SHOWNOTE_IMAGE_CACHE_ENTRIES, allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // Bilder der Shownotes: 2 MB, kleiner LRU-Cache
+      openExternal: openShownoteLink,
+      chaptersLoader: createChaptersLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // wie die Cover: Loopback nur im isolierten E2E-Lauf
+      requireMainRenderer,
+      sendToMain: (channel, payload) => {
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+      },
+      logger,
+    });
+    // Aktualisierung nach dem Start (nicht blockierend) und im eingestellten Prüfintervall; ohne Abos und in isolierten Testläufen kein Netzverkehr
+    if (!isIsolatedTestRun(process.env)) {
+      try {
+        podcastLibrary.prune();
+      } catch (e) {
+        logger.warn('Podcast-Aufräumen fehlgeschlagen:', e.message);
+      }
+      podcastRefreshSchedule = createRefreshSchedule({
+        run: () => podcastRefresher.refreshAll().catch(error => logger.warn('Podcast-Aktualisierung fehlgeschlagen:', error.message)),
+        getIntervalMinutes: () => podcastSettingsService.get().refreshIntervalMinutes,
+      });
+      podcastRefreshSchedule.start();
+    }
+  } catch (e) {
+    logger.error('Podcasts konnten nicht eingerichtet werden:', e.message);
   }
 
   // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
@@ -1102,6 +1218,9 @@ app.whenReady().then(() => {
         confirmQuit: () => quitCoordinator.confirmQuit(),
         // Radio (R4): Steuerung, Favoriten (Dashboard-Reihenfolge) und Sprung ins Radio-Dashboard
         radio: radioController,
+        // Podcast: Steuerung der laufenden Episode im Menü, Text „Sendung – Episode“, Sprung in den Podcast-Bereich
+        podcast: podcastController,
+        openPodcasts: openPodcastDashboard,
         getRadioFavorites: () =>
           radioLibrary
             ? radioLibrary.getFavoriteKeys().map(key => {
@@ -1231,6 +1350,11 @@ app.whenReady().then(() => {
   }
 });
 
+// Podcast-Wiedergabe: gleiche Regel und Option ("weiterspielen") wie beim Radio.
+function podcastKeepAliveContext() {
+  return { ...radioKeepAliveContext(), controller: podcastController };
+}
+
 // Radio (Konzept §2): läuft oder pausiert das Radio, bleibt die App im Tray (Option "weiterspielen", Standard an).
 function radioKeepAliveContext() {
   let settings = null;
@@ -1246,9 +1370,9 @@ function quitUnlessKeptAlive() {
   // Konzept §3.2: Fenster schließen ≠ App beenden, solange ≥ 1 Aufnahme
   // läuft — die App geht in den Tray (TrayController übernimmt). Ohne
   // aktive Aufnahmen gilt das normale Quit-Verhalten.
-  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext() });
+  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext(), podcast: podcastKeepAliveContext() });
   if (!decision.quit) {
-    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio' }[decision.reason];
+    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio', podcast: 'Podcast' }[decision.reason];
     logger.info(`Fenster geschlossen — App bleibt wegen ${why} im Tray aktiv`);
     return;
   }
@@ -1272,6 +1396,10 @@ app.on('before-quit', event => {
   // der Cleanup unten läuft erst, wenn der Quit wirklich durchgeht.
   if (quitCoordinator.handleBeforeQuit(event)) return;
   if (radioController) radioController.dispose();
+  if (podcastController) podcastController.dispose();
+  if (podcastPowerGuard) podcastPowerGuard.release();
+  if (podcastRefreshSchedule) podcastRefreshSchedule.stop();
+  if (podcastSettingsService) podcastSettingsService.flushVolume();
   if (standbyGuard) standbyGuard.release();
   // Wecktermine sind ohne laufende App sinnlos: löschen und Helfer beenden
   if (wakeScheduler) wakeScheduler.cancelAll();
@@ -1658,6 +1786,7 @@ ipcMain.handle('backup-settings', async event => {
     services: loadServices(),
     tvsources: loadTvSources(),
     history: loadHistory(),
+    ...(podcastLibrary ? podcastLibrary.exportBackup() : {}),
   };
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: `streaming-hub-backup-${new Date().toISOString().slice(0, 10)}.json`,
@@ -1682,7 +1811,12 @@ ipcMain.handle('restore-settings', async event => {
       services: data.services,
       tvSources: data.tvsources,
       history: data.history,
+      // Podcasts nur, wenn die Sicherung sie enthält (ältere Sicherungen lassen die Podcast-Daten unberührt)
+      ...(data.podcasts !== undefined ? { podcasts: data.podcasts } : {}),
+      ...(data.podcastState !== undefined ? { podcastState: data.podcastState } : {}),
+      ...(data.podcastSettings !== undefined ? { podcastSettings: data.podcastSettings } : {}),
     });
+    if (data.podcastSettings !== undefined && podcastSettingsService) podcastSettingsService.reload();
     broadcastServices();
     broadcastTvSources();
     mainWindow?.webContents.send('history-changed', data.history);

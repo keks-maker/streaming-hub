@@ -94,6 +94,7 @@
       <div class="dashboard-grid" id="dashboardGrid"></div>
       <div class="dashboard-empty" id="dashboardEmpty" style="display:none"></div>
       <div class="radio-dashboard" id="radioDashboard" hidden></div>
+      <div class="podcast-dashboard" id="podcastDashboard" hidden></div>
       <div class="settings-panel-host" id="settingsPanelHost" hidden></div>
     </div>
     <div class="dashboard-player" id="dashboardPlayer" style="display:none">
@@ -438,6 +439,41 @@
             <div class="settings-card">
               <h4 class="settings-card-title">Wiedergabe</h4>
               <div id="settingsRadioPlaybackRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="podcast-subs" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Podcasts: Abos</h3>
+              <p class="settings-page-desc">Reihenfolge, Name und Cover deiner abonnierten Podcasts sowie der Status der Feeds.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Meine Abos</h4>
+              <p class="settings-card-desc">Abbestellen entfernt das Abo; dein Hörfortschritt bleibt erhalten, falls du es später erneut abonnierst.</p>
+              <div id="settingsPodcastSubsRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="podcast-feeds" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Podcasts: Eigene Feeds</h3>
+              <p class="settings-page-desc">Podcasts per Feed-Adresse hinzufügen, die nicht in der Suche oder der mitgelieferten Liste stehen.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Feed hinzufügen</h4>
+              <p class="settings-card-desc">Mit „Feed prüfen“ siehst du Titel, Cover und Episodenzahl, bevor du abonnierst.</p>
+              <div id="settingsPodcastFeedsRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="podcast-playback" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Podcasts: Wiedergabe</h3>
+              <p class="settings-page-desc">Geschwindigkeit, Sprungweiten, Fortsetzen und Prüfintervall der Podcasts.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Wiedergabe</h4>
+              <div id="settingsPodcastPlaybackRoot"></div>
             </div>
           </section>
 
