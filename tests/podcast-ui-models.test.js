@@ -260,3 +260,20 @@ test('Navigation: Routen werden für den Verlauf reduziert und beim Wiederherste
   assert.deepEqual(normalizeRoute('x'), { view: 'home' });
   assert.deepEqual(normalizeRoute(null), { view: 'home' });
 });
+
+test('Sendungsseite: Wiedergabe-Indikator im Kopf (spielt, pausiert, idle, anderes Abo)', () => {
+  const subscription = sub('a', 'Alpha');
+  const episode = { podcastId: 'a', episodeId: 'a1', title: 'Folge <b>1</b>' };
+  const build = player => showModel.podcastShowModel({ id: 'a', subscription, feed: { episodes: [ep('a1', 1)] }, player, now: NOW });
+  const playing = build({ status: 'playing', episode });
+  assert.deepEqual([playing.nowActive, playing.nowPlaying, playing.nowText, playing.nowEpisode], [true, true, 'Spielt gerade', 'Folge <b>1</b>']);
+  assert.equal(playing.nowLabel, 'Spielt gerade: Folge <b>1</b>');
+  const paused = build({ status: 'paused', episode });
+  assert.deepEqual([paused.nowActive, paused.nowPlaying, paused.nowText], [true, false, 'Pausiert']);
+  assert.equal(build({ status: 'loading', episode }).nowPlaying, true);
+  for (const idle of [null, { status: 'idle', episode: null }, { status: 'ended', episode }, { status: 'error', episode }, { status: 'playing', episode: { ...episode, podcastId: 'b' } }]) {
+    const m = build(idle);
+    assert.deepEqual([m.nowActive, m.nowPlaying, m.nowText, m.nowEpisode, m.nowLabel], [false, false, '', '', '']);
+  }
+  assert.equal(build({ status: 'playing', episode }).unheard, 1); // Zählung unverändert
+});

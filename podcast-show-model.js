@@ -14,7 +14,7 @@ const VIRTUAL_THRESHOLD = 200; // ab hier wäre eine virtuelle Liste nötig; der
  * options: { id, subscription (Abo mit feed-Zustand) | null, feed ({ episodes, channel, fetchedAt }) | null,
  *            preview ({ title, author, cover, description, episodeCount }) | null, player, limit, now, loading, sort ('newest'|'oldest'|'title') }
  * Ausgabe: { id, subscribed, title, author, description, cover, initial, errorText, checkedText, episodes, total,
- *            shown, hasMore, moreLabel, unheard, canMarkAll, emptyText, previewNote, subscribeLabel, subscribeAria }
+ *            nowActive/nowPlaying/nowText/nowEpisode/nowLabel (Episode dieser Sendung läuft bzw. pausiert), shown, hasMore, moreLabel, unheard, canMarkAll, emptyText, previewNote, subscribeLabel, subscribeAria }
  */
 function podcastShowModel({ id, subscription = null, feed = null, preview = null, player = null, limit = PAGE_SIZE, now = Date.now(), loading = false, sort = 'newest' } = {}) {
   const subscribed = Boolean(subscription);
@@ -39,9 +39,19 @@ function podcastShowModel({ id, subscription = null, feed = null, preview = null
     const count = preview && Number.isFinite(preview.episodeCount) ? preview.episodeCount : null;
     previewNote = `${count === null ? 'Vorschau' : `Vorschau: ${plural(count, 'Episode', 'Episoden')} im Feed`}. Die Episodenliste erscheint nach dem Abonnieren.`;
   }
+  const current = player && player.episode;
+  const active = Boolean(current) && current.podcastId === id && ['loading', 'playing', 'paused'].includes(player.status);
+  const playing = active && player.status !== 'paused';
+  const nowText = active ? (playing ? 'Spielt gerade' : 'Pausiert') : '';
+  const nowEpisode = active ? String(current.title || '') : '';
   return {
     id,
     subscribed,
+    nowActive: active,
+    nowPlaying: playing,
+    nowText,
+    nowEpisode,
+    nowLabel: active ? [nowText, nowEpisode].filter(Boolean).join(': ') : '',
     title: title || 'Podcast',
     author,
     description,

@@ -40,6 +40,13 @@ function createPodcastShowView(root, ctx) {
   const headText = el(doc, 'div', 'podcast-show-head-text');
   const title = el(doc, 'h2', 'podcast-show-heading');
   title.id = 'podcastShowTitle';
+  const titleRow = el(doc, 'div', 'podcast-show-title-row');
+  const eq = el(doc, 'span', 'podcast-eq');
+  eq.setAttribute('aria-hidden', 'true'); // Zustand steht als Text daneben
+  for (let i = 0; i < 3; i += 1) eq.appendChild(el(doc, 'span'));
+  const nowState = el(doc, 'span', 'podcast-show-now-state');
+  titleRow.append(title, eq, nowState);
+  const nowEpisode = el(doc, 'p', 'podcast-show-now-episode');
   const author = el(doc, 'p', 'podcast-show-head-author');
   const description = el(doc, 'p', 'podcast-show-description');
   const actions = el(doc, 'div', 'podcast-show-actions');
@@ -51,7 +58,7 @@ function createPodcastShowView(root, ctx) {
   markAll.id = 'podcastMarkAll';
   actions.append(subscribeBtn, markAll);
   const checked = el(doc, 'p', 'podcast-show-checked');
-  headText.append(title, author, description, actions, checked);
+  headText.append(titleRow, nowEpisode, author, description, actions, checked);
   head.append(cover.element, headText);
 
   const feedError = el(doc, 'p', 'podcast-error');
@@ -133,6 +140,12 @@ function createPodcastShowView(root, ctx) {
     const m = model();
     cover.update({ url: m.cover, initial: m.initial });
     title.textContent = m.title;
+    titleRow.classList.toggle('is-active', m.nowActive);
+    titleRow.classList.toggle('is-playing', m.nowPlaying);
+    nowState.textContent = m.nowText;
+    nowState.hidden = !m.nowActive;
+    nowEpisode.textContent = m.nowEpisode; // nur Text
+    nowEpisode.hidden = !m.nowEpisode;
     author.textContent = m.author;
     author.hidden = !m.author;
     description.textContent = m.description; // nur Text

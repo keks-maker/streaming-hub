@@ -507,6 +507,34 @@ test.describe('Podcast-Oberfläche', () => {
     await shot(page, 'podcasts-wiedergabe-auswahl');
   });
 
+  test('Sendungsseite: Wiedergabe-Indikator im Kopf bei laufender Episode, live bei Pause, weg bei Stopp', async () => {
+    await page.locator('#podcastShowGrid .podcast-show', { hasText: 'Viele Folgen' }).locator('.podcast-show-btn').dblclick();
+    await expect(page.locator('#podcastPanel-show')).toBeVisible();
+    const row = page.locator('.podcast-show-title-row');
+    await expect(page.locator('.podcast-show-now-state')).toHaveText('Pausiert'); // Episode aus dem Vortest, pausiert
+    await expect(row.locator('.podcast-eq')).toBeVisible();
+    await page.locator('#podcastEpisodeList .podcast-episode', { hasText: 'Viele 2' }).locator('.podcast-episode-play').click();
+    await expect.poll(() => page.evaluate(() => window.podcasts.player.getState().then(s => s.status)), { timeout: 15_000 }).toMatch(/playing|loading|ended/);
+    await page.locator('#podcastSubscribe').focus();
+    await expect(row).toHaveClass(/is-active/);
+    await expect(row.locator('.podcast-eq')).toBeVisible();
+    await expect(row.locator('.podcast-eq')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('.podcast-show-now-state')).toHaveText(/Spielt gerade|Pausiert/);
+    await expect(page.locator('.podcast-show-now-episode')).toHaveText('Viele 2');
+    expect(await row.locator('.podcast-eq span').first().evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgb(255, 159, 28)');
+    await page.evaluate(() => window.podcasts.player.pause());
+    await expect.poll(() => page.evaluate(() => window.podcasts.player.getState().then(s => s.status)), { timeout: 15_000 }).toBe('paused');
+    await expect(page.locator('.podcast-show-now-state')).toHaveText('Pausiert');
+    await expect(row).not.toHaveClass(/is-playing/);
+    await expect(page.locator('#podcastSubscribe')).toBeFocused(); // kein Neuaufbau, kein Fokusverlust
+    await page.evaluate(() => window.podcasts.player.stop());
+    await expect.poll(() => page.evaluate(() => window.podcasts.player.getState().then(s => s.status))).toBe('idle');
+    await expect(row).not.toHaveClass(/is-active/);
+    await expect(row.locator('.podcast-eq')).toBeHidden();
+    await expect(page.locator('.podcast-show-now-state')).toBeHidden();
+    await expect(page.locator('.podcast-show-now-episode')).toBeHidden();
+  });
+
   test('Keine Konsolenfehler', async () => {
     expect(ctx.problems).toEqual([]);
   });
