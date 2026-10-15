@@ -3355,6 +3355,21 @@ body.epg-open .overlay-bar { z-index: 105; }
 .radio-mini-volume-icon { display:grid; place-items:center; }
 .radio-mini-volume input[type="range"] { width:110px; accent-color:#f59e0b; cursor:pointer; }
 .radio-mini-volume input[type="range"]:focus-visible { outline:2px solid #fde68a; outline-offset:3px; border-radius:4px; }
+/* Podcast-Modus des Mini-Players (P2): Fortschritt mit Seek, Sprungtasten, Geschwindigkeit */
+.radio-miniplayer[data-mode="podcast"] .radio-mini-logo { border-radius:8px; padding:0; }
+.radio-miniplayer[data-mode="podcast"] .radio-mini-logo img { object-fit:cover; }
+.radio-mini-progress { display:flex; align-items:center; flex:1.4; min-width:160px; gap:8px; }
+.radio-mini-progress[hidden],.radio-mini-rate[hidden],.radio-mini-btn[hidden] { display:none; }
+.radio-mini-time { flex:none; min-width:38px; color:var(--text-dim); font-size:12px; font-variant-numeric:tabular-nums; text-align:center; }
+.radio-mini-seek { flex:1; min-width:0; accent-color:#f59e0b; cursor:pointer; }
+.radio-mini-seek:disabled { opacity:.4; cursor:default; }
+.radio-mini-seek:focus-visible,.radio-mini-rate select:focus-visible { outline:2px solid #fde68a; outline-offset:3px; border-radius:4px; }
+.radio-mini-skip { color:var(--text); }
+.radio-mini-rate select { height:30px; padding:0 6px; color:var(--text); font:inherit; font-size:12px; background:var(--glass-hover); border:1px solid var(--border); border-radius:8px; cursor:pointer; }
+@media (max-width:900px) {
+  .radio-miniplayer[data-mode="podcast"] { flex-wrap:wrap; }
+  .radio-mini-progress { order:5; flex-basis:100%; }
+}
 @media (max-width:700px) {
   .dashboard-view.start-page { overflow:auto; }
   .radio-mini-volume input[type="range"] { width:70px; }
@@ -3367,6 +3382,7 @@ body.epg-open .overlay-bar { z-index: 105; }
   .radio-tile[data-state="playing"] .radio-eq span:nth-child(odd) { transform:scaleY(.9); }
   .radio-tile[data-state="playing"] .radio-eq span:nth-child(even) { transform:scaleY(.5); }
   .radio-empty-btn { transition:none; }
+  .radio-mini-btn { transition:none; }
 }
 /* .content-area hat min-height:100vh; mit sichtbarer Leiste muss der Bereich schrumpfen, damit sie im Fenster liegt */
 body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }

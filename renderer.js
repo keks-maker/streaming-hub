@@ -32,7 +32,7 @@ const { createDashboardHub } = require('./dashboard-hub-view.js');
 const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
 const { favoriteCountOf } = require('./radio-dashboard-model.js');
-const { radioActionForVideoStart } = require('./radio-tv-conflict-model.js');
+const { radioActionForVideoStart, podcastActionForVideoStart } = require('./radio-tv-conflict-model.js');
 const { renderUpdateNotes } = require('./update-notes-model.js');
 
 function safeResourceUrl(value, { allowRelative = true } = {}) {
@@ -545,6 +545,7 @@ const radioDashboardView = createRadioDashboard(radioDashboardRoot, {
 });
 const radioMiniPlayerView = createRadioMiniPlayer(radioMiniPlayerRoot, {
   radio: window.radio,
+  podcasts: window.podcasts.player,
   logger,
   notify: showTvToast,
   getFavoriteCount: () => radioFavoriteCount,
@@ -572,9 +573,27 @@ function setHtmlFullscreen(active) {
   syncRadioMiniPlayerSuppression();
 }
 
+// Podcast-Episode: gleiche Regel und Einstellung (pauseOnTv) wie beim Radio; die Position bleibt erhalten.
+let podcastLatestState = null;
+window.podcasts.player.getState().then(initial => (podcastLatestState = podcastLatestState || initial)).catch(() => {});
+window.podcasts.player.onState(next => {
+  podcastLatestState = next;
+});
+async function pausePodcastForVideo() {
+  if (!podcastLatestState || podcastLatestState.status === 'idle') return;
+  try {
+    const action = podcastActionForVideoStart(podcastLatestState, await window.radio.getSettings());
+    if (action === 'pause') await window.podcasts.player.pause();
+    else if (action === 'stop') await window.podcasts.player.stop();
+  } catch (error) {
+    logger.warn('Podcast konnte beim Start der Bildwiedergabe nicht pausiert werden:', error && error.message ? error.message : error);
+  }
+}
+
 // Ton-Konflikt: Startet LiveTV, ein Streamingdienst oder eine Aufnahme-Wiedergabe, wird das Radio pausiert
 // (Einstellung pauseOnTv). Kein automatisches Fortsetzen; Radio-Start berührt laufende Bilder nicht.
 async function pauseRadioForVideo() {
+  pausePodcastForVideo();
   if (!radioLatestState || radioLatestState.status === 'idle') return;
   try {
     const action = radioActionForVideoStart(radioLatestState, await window.radio.getSettings());

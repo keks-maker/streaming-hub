@@ -39,6 +39,9 @@ const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
 const { PodcastLibrary } = require('./lib/podcast/PodcastLibrary.js');
 const { registerPodcastIpc } = require('./lib/podcast/ipc.js');
+const { PodcastController } = require('./lib/podcast/PodcastController.js');
+const { createPlaybackPowerGuard } = require('./lib/podcast/playback-power.js');
+const { attachExclusivity } = require('./lib/playback-exclusivity.js');
 const { createPodcastRefresher, NO_VALIDATOR_INTERVAL_MS } = require('./lib/podcast/podcast-refresh.js');
 const { createPodcastSearch } = require('./lib/podcast/podcast-search.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
@@ -81,6 +84,8 @@ let trayController = null;
 let radioController = null;
 let radioLibrary = null;
 let podcastLibrary = null;
+let podcastController = null;
+let podcastPowerGuard = null;
 let podcastRefreshTimer = null;
 let podcastStartTimer = null;
 // Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
@@ -593,6 +598,7 @@ function createWindow() {
     // Das unsichtbare Radio-Player-Fenster zählt als Fenster: ohne "weiterspielen" (oder ohne Tray) beenden,
     // sonst käme window-all-closed nie und die App bliebe unsichtbar offen.
     if (radioController && radioController.isActive() && !radioKeepsAppAlive(radioKeepAliveContext())) radioController.stop();
+    if (podcastController && podcastController.isActive() && !radioKeepsAppAlive(podcastKeepAliveContext())) podcastController.stop();
   });
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     if (errorCode !== -3) logger.error('Hauptfenster konnte nicht geladen werden:', errorCode, errorDescription, validatedURL);
@@ -825,7 +831,30 @@ app.whenReady().then(() => {
   try {
     podcastLibrary = new PodcastLibrary({ userStorage, logger });
     const podcastRefresher = createPodcastRefresher({ library: podcastLibrary, logger });
+    // Wiedergabe (P2): eigenes unsichtbares Player-Fenster (gleicher Host wie Radio), Lautstärke startet mit der Radio-Lautstärke
+    let startVolume;
+    try {
+      startVolume = radioLibrary ? radioLibrary.getSettings().volume : undefined;
+    } catch (_) {
+      startVolume = undefined;
+    }
+    podcastController = new PodcastController({
+      BrowserWindow,
+      playerHtml: path.join(__dirname, 'radio-player.html'),
+      preloadPath: path.join(__dirname, 'preload-radio.js'),
+      library: podcastLibrary,
+      volume: startVolume,
+      logger,
+    });
+    podcastPowerGuard = createPlaybackPowerGuard({ powerSaveBlocker, logger });
+    if (radioController) attachExclusivity({ radio: radioController, podcast: podcastController, logger });
+    podcastController.on('state', status => {
+      podcastPowerGuard.sync(status.status);
+      // Episode endet oder scheitert, während kein Fenster mehr offen ist: kein Grund mehr, im Tray zu bleiben
+      if (['idle', 'error', 'ended'].includes(status.status) && BrowserWindow.getAllWindows().length === 0) quitUnlessKeptAlive();
+    });
     registerPodcastIpc({
+      controller: podcastController,
       ipcMain,
       library: podcastLibrary,
       refresher: podcastRefresher,
@@ -1282,6 +1311,11 @@ app.whenReady().then(() => {
   }
 });
 
+// Podcast-Wiedergabe: gleiche Regel und Option ("weiterspielen") wie beim Radio.
+function podcastKeepAliveContext() {
+  return { ...radioKeepAliveContext(), controller: podcastController };
+}
+
 // Radio (Konzept §2): läuft oder pausiert das Radio, bleibt die App im Tray (Option "weiterspielen", Standard an).
 function radioKeepAliveContext() {
   let settings = null;
@@ -1297,9 +1331,9 @@ function quitUnlessKeptAlive() {
   // Konzept §3.2: Fenster schließen ≠ App beenden, solange ≥ 1 Aufnahme
   // läuft — die App geht in den Tray (TrayController übernimmt). Ohne
   // aktive Aufnahmen gilt das normale Quit-Verhalten.
-  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext() });
+  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext(), podcast: podcastKeepAliveContext() });
   if (!decision.quit) {
-    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio' }[decision.reason];
+    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio', podcast: 'Podcast' }[decision.reason];
     logger.info(`Fenster geschlossen — App bleibt wegen ${why} im Tray aktiv`);
     return;
   }
@@ -1323,6 +1357,8 @@ app.on('before-quit', event => {
   // der Cleanup unten läuft erst, wenn der Quit wirklich durchgeht.
   if (quitCoordinator.handleBeforeQuit(event)) return;
   if (radioController) radioController.dispose();
+  if (podcastController) podcastController.dispose();
+  if (podcastPowerGuard) podcastPowerGuard.release();
   clearTimeout(podcastStartTimer);
   clearInterval(podcastRefreshTimer);
   if (standbyGuard) standbyGuard.release();

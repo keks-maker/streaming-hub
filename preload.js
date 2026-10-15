@@ -229,4 +229,17 @@ contextBridge.exposeInMainWorld('podcasts', {
   onSubscriptionsChanged: radioListener('podcast:subscriptions-changed'),
   onRefreshed: radioListener('podcast:refreshed'),
   onStateChanged: radioListener('podcast:state-changed'),
+  // Wiedergabe (P2): Fernbedienung für den PodcastController im Main; Zustand kommt per podcast:state
+  player: {
+    play: (key, startPosition) => ipcRenderer.invoke('podcast:play', startPosition === undefined ? key : { ...key, startPosition }),
+    pause: () => ipcRenderer.invoke('podcast:pause'),
+    resume: () => ipcRenderer.invoke('podcast:resume'),
+    stop: () => ipcRenderer.invoke('podcast:stop'),
+    seek: position => ipcRenderer.invoke('podcast:seek', position),
+    skip: delta => ipcRenderer.invoke('podcast:skip', delta),
+    setRate: rate => ipcRenderer.invoke('podcast:rate', rate),
+    setVolume: volume => ipcRenderer.invoke('podcast:volume', volume),
+    getState: () => ipcRenderer.invoke('podcast:get-state'),
+    onState: radioListener('podcast:state'),
+  },
 });
