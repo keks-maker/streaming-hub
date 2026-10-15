@@ -1,0 +1,401 @@
+[
+  {
+    "id": "oeffentlich-rechtlich",
+    "name": "Öffentlich-rechtlich",
+    "type": "bundled",
+    "podcasts": [
+      {
+        "id": "deutschlandfunk-der-tag",
+        "name": "Der Tag",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/podcast-104.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/c3/55/abc3559e-3820-f436-3911-4a99c4c6ad30/mza_12286003691346138071.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "deutschlandfunk-die-nachrichten",
+        "name": "Die Nachrichten",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/nachrichten-108.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5e/ac/76/5eac766f-2230-383b-0e2d-038ea0ab779f/mza_17109931051476107979.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "deutschlandfunk-der-politikpodcast",
+        "name": "Der Politikpodcast",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/podcast-106.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/25/33/cd/2533cd4a-a5fd-68a1-5fa3-609cdda01abd/mza_10059370417710699869.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "deutschlandfunk-hintergrund",
+        "name": "Hintergrund",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/hintergrund-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4b/e1/54/4be154cd-6466-e1ad-960c-be4aca51bd1a/mza_15105765177156273404.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "deutschlandfunk-kultur-die-reportage",
+        "name": "Die Reportage",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/die-reportage-104.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/3e/b4/d0/3eb4d02e-c558-fe98-2728-0a880f9d422a/mza_14922073135774618729.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "deutschlandfunk-lebenszeit",
+        "name": "Lebenszeit",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/lebenszeit-podcast-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/91/eb/09/91eb097d-41ef-1b06-034e-20cc5257a268/mza_12592257985512007700.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "deutschlandfunk-ki-verstehen",
+        "name": "KI verstehen",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/ki-verstehen-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f8/f6/66/f8f666c9-c579-ad1d-5ef9-dfebd891afd9/mza_9599126053077777239.jpg/600x600bb.jpg",
+        "genre": "Wissenschaft"
+      },
+      {
+        "id": "deutschlandfunk-dlf-doku-serien",
+        "name": "Dlf Doku Serien",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/doku-serie-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cc/99/e0/cc99e0c7-8c88-45e0-d56b-b69e4ff786ee/mza_6401231374649417572.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "deutschlandfunk-systemfragen",
+        "name": "Systemfragen",
+        "author": "Deutschlandfunk",
+        "feedUrl": "https://www.deutschlandfunk.de/aus-kultur-und-sozialwissenschaften-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/64/f2/e2/64f2e2a0-41fd-ea76-036f-daceb4d2449e/mza_3919256191984285188.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "hoersaal-deutschlandfunk-nova",
+        "name": "Hörsaal - Deutschlandfunk Nova",
+        "author": "Deutschlandfunk Nova",
+        "feedUrl": "https://www.deutschlandfunknova.de/podcast/hoersaal-der-podcast",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5d/7e/a3/5d7ea312-df7b-272e-a9e8-3681a27ab231/mza_17856136290425808668.jpg/600x600bb.jpg",
+        "genre": "Bildung"
+      },
+      {
+        "id": "deutschlandfunk-kultur-studio-9-der-tag-mit",
+        "name": "Studio 9 - Der Tag mit ...",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/studio-9-der-tag-mit-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/df/e7/d3/dfe7d387-c9b4-0af0-7c2f-d98fd898b2bb/mza_8100371255441265349.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "deutschlandfunk-kultur-kulturnachrichten",
+        "name": "Kulturnachrichten",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/podcast-kulturnachrichten-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/be/3d/87/be3d872f-a130-3def-1f6b-b763aaa22fcc/mza_4139461736665775329.jpg/600x600bb.jpg",
+        "genre": "Kunst"
+      },
+      {
+        "id": "deutschlandfunk-kultur-lesart",
+        "name": "Lesart",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/lesart-das-literaturmagazin-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/5a/e5/11/5ae51162-a5cc-3b55-9f8c-5500c9e1ee9f/mza_6302988332806261525.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "deutschlandfunk-kultur-im-gespraech",
+        "name": "Im Gespräch",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/podcast-im-gespraech-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/82/21/40/8221404d-7636-b173-0b6a-ef91269da704/mza_18066482648982080999.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "deutschlandfunk-kultur-das-literarische-quartett",
+        "name": "Das Literarische Quartett",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/das-literarische-quartett-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/26/22/5e/26225eee-6315-fa40-763f-b626caaa0122/mza_10331924931830665671.jpg/600x600bb.jpg",
+        "genre": "Kunst"
+      },
+      {
+        "id": "deutschlandfunk-kultur-zeitfragen",
+        "name": "Zeitfragen",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/zeitfragen-magazin-114.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/48/f6/6a/48f66a73-b5a3-d17e-bc8f-5082c353527c/mza_6257835131638105258.png/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "deutschlandfunk-kultur-sein-und-streit",
+        "name": "Sein und Streit",
+        "author": "Deutschlandfunk Kultur",
+        "feedUrl": "https://www.deutschlandfunkkultur.de/sein-und-streit-das-philosophiemagazin-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b7/be/c2/b7bec26b-6c77-bb56-4dbb-3590234eaee6/mza_13175346140396344143.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "unboxing-news-deutschlandfunk-nova",
+        "name": "Unboxing News - Deutschlandfunk Nova",
+        "author": "Deutschlandfunk Nova",
+        "feedUrl": "https://www.deutschlandfunknova.de/podcast/update",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/8a/fb/27/8afb2743-b9ed-9ff1-4dca-b0fd57f3ea4d/mza_16022684922516974864.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "achtsam-deutschlandfunk-nova",
+        "name": "Achtsam - Deutschlandfunk Nova",
+        "author": "Deutschlandfunk Nova",
+        "feedUrl": "https://www.deutschlandfunknova.de/podcast/achtsam-mit-main-huong-und-diane",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/31/f7/64/31f764f8-26ca-6219-1d44-db1b7dde5af9/mza_2670003673076280672.jpg/600x600bb.jpg",
+        "genre": "Podcasts"
+      },
+      {
+        "id": "einhundert-deutschlandfunk-nova",
+        "name": "Einhundert - Deutschlandfunk Nova",
+        "author": "Deutschlandfunk Nova",
+        "feedUrl": "https://www.deutschlandfunknova.de/podcast/einhundert",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/48/c5/b3/48c5b3ac-f9b4-f194-63ca-1882cc605925/mza_5627876713617225979.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "eine-stunde-liebe-deutschlandfunk-nova",
+        "name": "Eine Stunde Liebe - Deutschlandfunk Nova",
+        "author": "Deutschlandfunk Nova",
+        "feedUrl": "https://www.deutschlandfunknova.de/podcast/eine-stunde-liebe",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f5/d5/fe/f5d5fe08-93cf-0423-3b45-db0549109582/mza_11106720109003186998.jpg/600x600bb.jpg",
+        "genre": "Gesundheit und Fitness"
+      },
+      {
+        "id": "das-kleingedruckte-im-essen-deutschlandfunk-nova",
+        "name": "Das Kleingedruckte im Essen - Deutschlandfunk Nova",
+        "author": "Deutschlandfunk Nova",
+        "feedUrl": "https://www.deutschlandfunknova.de/podcast/das-kleingedruckte-im-essen",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/71/d0/be/71d0beb8-dbf4-bb49-99fd-a96d47b4be87/mza_12820604192459735807.jpg/600x600bb.jpg",
+        "genre": "Wissenschaft"
+      },
+      {
+        "id": "das-wissen-swr",
+        "name": "Das Wissen | SWR",
+        "author": "SWR",
+        "feedUrl": "https://www.swr.de/~podcast/swrkultur/programm/podcast-swr-das-wissen-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5e/79/0d/5e790d5c-6968-2620-1299-0285f052800a/mza_15895010674887674056.jpg/600x600bb.jpg",
+        "genre": "Wissenschaft"
+      },
+      {
+        "id": "swr-wissen-aktuell-impuls",
+        "name": "Wissen aktuell – Impuls",
+        "author": "SWR",
+        "feedUrl": "https://www.swr.de/~podcast/swrkultur/programm/podcast-swr-kultur-impuls-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/3f/7e/37/3f7e37e8-78cf-8733-00c4-fa5a22f9fee9/mza_2874199135156967160.jpg/600x600bb.jpg",
+        "genre": "Wissenschaft"
+      },
+      {
+        "id": "swr-archivradio-geschichte-im-original",
+        "name": "Archivradio – Geschichte im Original",
+        "author": "SWR",
+        "feedUrl": "https://www.swr.de/~podcast/swrkultur/wissen/archivradio/archivradio-podcast-106.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/00/d4/83/00d483da-94d3-4d5a-809e-51f115ec7b9d/mza_15713710980574521906.jpeg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "swr-1000-antworten",
+        "name": "1000 Antworten",
+        "author": "SWR",
+        "feedUrl": "https://www.swr.de/~podcast/wissen/1000-antworten/1000-antworten-podcast-102.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/52/ff/10/52ff1077-8a4e-dbf5-2373-65da644bac4f/mza_9575670976367368468.jpeg/600x600bb.jpg",
+        "genre": "Wissenschaft"
+      },
+      {
+        "id": "wdr-5-neugier-genuegt-das-feature",
+        "name": "WDR 5 Neugier genügt - Das Feature",
+        "author": "WDR 5",
+        "feedUrl": "https://www1.wdr.de/mediathek/audio/wdr5/wdr5-neugier-genuegt-das-feature/neugier_genuegt100.podcast",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/47/1e/0e/471e0e47-79c6-7b70-ef72-b9d2fc687536/mza_13874020112786566854.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "wdr-5-neugier-genuegt-redezeit",
+        "name": "WDR 5 Neugier genügt - Redezeit",
+        "author": "WDR 5",
+        "feedUrl": "https://www1.wdr.de/mediathek/audio/wdr5/wdr5-neugier-genuegt-redezeit/redezeit104.podcast",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e1/8e/9a/e18e9a9c-cebb-e325-dfbe-15ba0d150c9a/mza_16412488075774398480.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "wdr-5-neugier-genuegt-gruesse-aus-der-zukunft",
+        "name": "WDR 5 Neugier genügt – Grüße aus der Zukunft",
+        "author": "WDR 5",
+        "feedUrl": "https://www1.wdr.de/mediathek/audio/wdr5/wdr5-neugier-genuegt-gruesse-aus-der-zukunft/gruesse-aus-der-zukunft-106.podcast",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/4d/79/f5/4d79f515-9448-ca4a-d882-1d0b2da080d0/mza_5329760740055148556.jpg/600x600bb.jpg",
+        "genre": "Comedy"
+      },
+      {
+        "id": "11km-der-tagesschau-podcast",
+        "name": "11KM: der tagesschau-Podcast",
+        "author": "tagesschau",
+        "feedUrl": "https://www.tagesschau.de/multimedia/podcasts/11km/index~podcast.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/da/cd/3c/dacd3c03-20e7-e0a2-db59-c80bb013fce6/mza_13975641150493506875.jpg/600x600bb.jpg",
+        "genre": "Nachrichten des Tages"
+      },
+      {
+        "id": "quarks-daily",
+        "name": "Quarks Daily",
+        "author": "Quarks",
+        "feedUrl": "https://www1.wdr.de/mediathek/audio/daily-quarks/daily-quarks-podcast-104.podcast",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/80/df/0a/80df0a51-a03c-4d88-be79-5218e7b96513/mza_2279849573389052619.jpg/600x600bb.jpg",
+        "genre": "Wissenschaft"
+      },
+      {
+        "id": "bayerischer-rundfunk-die-entscheidung-momente-die-alles-veraendern",
+        "name": "Die Entscheidung – Momente, die alles verändern",
+        "author": "Bayerischer Rundfunk",
+        "feedUrl": "https://feeds.br.de/1-thema-3-koepfe/feed.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/27/69/00/27690004-70fd-c13c-e835-f550095d86a7/mza_12755951930532760285.jpeg/600x600bb.jpg",
+        "genre": "Politik"
+      },
+      {
+        "id": "ndr-info-amerika-wir-muessen-reden",
+        "name": "Amerika, wir müssen reden!",
+        "author": "NDR Info",
+        "feedUrl": "https://www.ndr.de/nachrichten/info/podcast4932.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/97/61/d6/9761d648-2cf9-27a0-afb4-621c1c1e50f9/mza_16844409351435356532.jpg/600x600bb.jpg",
+        "genre": "Politik"
+      },
+      {
+        "id": "ndr-info-das-thema",
+        "name": "Das Thema",
+        "author": "NDR Info",
+        "feedUrl": "https://www.ndr.de/podcast/podcast2986.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6d/4b/d0/6d4bd082-7ec7-be6e-8a1c-b2989285a95b/mza_4370967548125065843.jpg/600x600bb.jpg",
+        "genre": "Nachrichten des Tages"
+      },
+      {
+        "id": "ndr-info-schabat-schalom-das-magazin",
+        "name": "Schabat Schalom - das Magazin",
+        "author": "NDR Info",
+        "feedUrl": "https://www.ndr.de/podcast/podcast4076.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/fc/a8/14/fca814de-3bc5-9072-51bf-537f6ffe9558/mza_2543057635266222234.jpg/600x600bb.jpg",
+        "genre": "Judentum"
+      },
+      {
+        "id": "ndr-info-machtfragen-das-sicherheitspolitische-update",
+        "name": "Machtfragen - Das sicherheitspolitische Update",
+        "author": "NDR Info",
+        "feedUrl": "https://www.ndr.de/nachrichten/info/podcast5342.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7f/bf/b6/7fbfb64a-13ed-2f54-4a91-11edd600efe4/mza_5933100533119525515.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "bayerischer-rundfunk-br24-thema-des-tages",
+        "name": "BR24 Thema des Tages",
+        "author": "Bayerischer Rundfunk",
+        "feedUrl": "https://feeds.br.de/br24-thema-des-tages/feed.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/29/40/57/29405761-0682-cd5b-251b-1bdbbf8d3356/mza_10334422926967171923.jpeg/600x600bb.jpg",
+        "genre": "Nachrichten des Tages"
+      },
+      {
+        "id": "bayerischer-rundfunk-br24-medien",
+        "name": "BR24 Medien",
+        "author": "Bayerischer Rundfunk",
+        "feedUrl": "https://feeds.br.de/br24-medien/feed.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/37/e5/e2/37e5e278-11ce-9d03-07df-e40d4143dc7f/mza_18097566832534304958.jpeg/600x600bb.jpg",
+        "genre": "Technologie"
+      },
+      {
+        "id": "bayerischer-rundfunk-br24-fuer-bergsteiger",
+        "name": "BR24 für Bergsteiger",
+        "author": "Bayerischer Rundfunk",
+        "feedUrl": "https://feeds.br.de/br24-fuer-bergsteiger/feed.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f1/87/8e/f1878e54-9239-b286-f56a-045c47899ee2/mza_14152086787743409637.jpeg/600x600bb.jpg",
+        "genre": "Freizeit"
+      },
+      {
+        "id": "mitteldeutscher-rundfunk-die-reportage-von-mdr-aktuell",
+        "name": "Die Reportage von MDR AKTUELL",
+        "author": "Mitteldeutscher Rundfunk",
+        "feedUrl": "https://www.mdr.de/nachrichten/podcast/reportage/reportage-114.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b1/35/a7/b135a7de-8c95-c2c4-9268-eefd9be94934/mza_14589560435357090411.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "mitteldeutscher-rundfunk-tabubruch-von-mdr-aktuell",
+        "name": "Tabubruch von MDR AKTUELL",
+        "author": "Mitteldeutscher Rundfunk",
+        "feedUrl": "https://www.mdr.de/nachrichten/podcast/tabubruch/hinter-den-nachrichten-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d5/2e/54/d52e5461-17fe-6a03-c76a-b4efabcba4f9/mza_9421937276748192522.jpg/600x600bb.jpg",
+        "genre": "Tagebücher"
+      },
+      {
+        "id": "mitteldeutscher-rundfunk-urteile-der-woche-von-mdr-aktuell",
+        "name": "Urteile der Woche von MDR AKTUELL",
+        "author": "Mitteldeutscher Rundfunk",
+        "feedUrl": "https://www.mdr.de/nachrichten/podcast/urteile/audiogalerie-mdr-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c4/4f/43/c44f4358-b18c-a2ba-23f9-595a2da626dd/mza_13937999395423852128.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "mitteldeutscher-rundfunk-eliten-in-der-ddr-von-mdr-aktuell",
+        "name": "Eliten in der DDR von MDR AKTUELL",
+        "author": "Mitteldeutscher Rundfunk",
+        "feedUrl": "https://www.mdr.de/nachrichten/podcast/eliten/eliten-ddr-100.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/03/07/09/0307094c-f975-a968-d0c1-1c09455259f7/mza_9634554618229323610.jpg/600x600bb.jpg",
+        "genre": "Geschichte"
+      },
+      {
+        "id": "hr-info-aktuell",
+        "name": "hr INFO Aktuell",
+        "author": "hr INFO",
+        "feedUrl": "https://podcast.hr.de/hrinfo_aktuell/podcast.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f2/9e/cc/f29eccda-f288-2e41-aa2a-e43a069481f9/mza_4632468868300677332.jpg/600x600bb.jpg",
+        "genre": "Politik"
+      },
+      {
+        "id": "hr-info-himmel-und-erde",
+        "name": "hr INFO Himmel und Erde",
+        "author": "hr INFO",
+        "feedUrl": "https://podcast.hr.de/hr-info_glauben/podcast.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/81/c7/1d/81c71df0-cd43-c305-8e1c-beebabcdd170/mza_9479941156181323474.jpg/600x600bb.jpg",
+        "genre": "Religion"
+      },
+      {
+        "id": "hr-info-kultur",
+        "name": "hr INFO Kultur",
+        "author": "hr INFO",
+        "feedUrl": "https://podcast.hr.de/hr-info_kulturlust/podcast.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f7/dd/2e/f7dd2e57-72a1-659c-a385-911fea1093ba/mza_15087528360430494392.jpg/600x600bb.jpg",
+        "genre": "Gesellschaft und Kultur"
+      },
+      {
+        "id": "15-minuten-der-tagesschau-podcast-am-morgen",
+        "name": "15 Minuten. Der tagesschau-Podcast am Morgen",
+        "author": "tagesschau",
+        "feedUrl": "https://www.tagesschau.de/multimedia/podcast/15-minuten/index~podcast.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7f/dc/ce/7fdcce74-47d8-5ff8-38df-44c4b0e2f51c/mza_8322428780415729606.jpg/600x600bb.jpg",
+        "genre": "Nachrichten des Tages"
+      },
+      {
+        "id": "der-tagesschau-faktenfinder-podcast",
+        "name": "Der tagesschau faktenfinder-Podcast",
+        "author": "tagesschau",
+        "feedUrl": "https://www.tagesschau.de/multimedia/podcast/faktenfinder/faktenfinder-feed-101~podcast.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/60/b3/55/60b35529-9f9b-b422-4600-cefbeb707d3b/mza_7307282026182459998.jpg/600x600bb.jpg",
+        "genre": "Nachrichten"
+      },
+      {
+        "id": "tagesschau-tagesthemen-den-tag-verstehen-audio",
+        "name": "tagesthemen: Den Tag verstehen (Audio)",
+        "author": "tagesschau",
+        "feedUrl": "https://www.tagesschau.de/multimedia/sendung/tagesthemen/podcast-tt-audio-100~podcast.xml",
+        "cover": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/80/a3/cf/80a3cfb3-208e-16d8-0b8b-39ecf67f6e12/mza_14929429591292276471.jpg/600x600bb.jpg",
+        "genre": "Nachrichten des Tages"
+      }
+    ]
+  }
+]

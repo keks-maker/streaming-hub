@@ -213,3 +213,20 @@ contextBridge.exposeInMainWorld('radio', {
   // Tray „Radio-Dashboard öffnen“: Renderer zeigt das Radio-Dashboard
   onOpen: radioListener('radio:open'),
 });
+
+// Podcasts (Konzept §7): Abos, Feeds, Suche und Hörzustand im Main; Änderungen kommen als Events.
+contextBridge.exposeInMainWorld('podcasts', {
+  search: query => ipcRenderer.invoke('podcast:search', query),
+  getCatalog: () => ipcRenderer.invoke('podcast:catalog'),
+  list: () => ipcRenderer.invoke('podcast:list'),
+  subscribe: input => ipcRenderer.invoke('podcast:subscribe', input),
+  unsubscribe: id => ipcRenderer.invoke('podcast:unsubscribe', id),
+  episodes: id => ipcRenderer.invoke('podcast:episodes', id),
+  refresh: options => ipcRenderer.invoke('podcast:refresh', options),
+  probeFeed: url => ipcRenderer.invoke('podcast:probe-feed', url),
+  setPlayed: input => ipcRenderer.invoke('podcast:set-played', input),
+  savePosition: input => ipcRenderer.invoke('podcast:save-position', input),
+  onSubscriptionsChanged: radioListener('podcast:subscriptions-changed'),
+  onRefreshed: radioListener('podcast:refreshed'),
+  onStateChanged: radioListener('podcast:state-changed'),
+});

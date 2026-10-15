@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>Dauer-Formate</title>
+<item><title>hms</title><guid>d1</guid><enclosure url="https://example.test/d1.mp3" type="audio/mpeg"/><itunes:duration>01:02:03</itunes:duration></item>
+<item><title>ms</title><guid>d2</guid><enclosure url="https://example.test/d2.mp3" type="audio/mpeg"/><itunes:duration>12:34</itunes:duration></item>
+<item><title>sekunden</title><guid>d3</guid><enclosure url="https://example.test/d3.mp3" type="audio/mpeg"/><itunes:duration>2711</itunes:duration></item>
+<item><title>dezimal</title><guid>d4</guid><enclosure url="https://example.test/d4.mp3" type="audio/mpeg"/><itunes:duration>1:00:00.500</itunes:duration></item>
+<item><title>iso</title><guid>d5</guid><enclosure url="https://example.test/d5.mp3" type="audio/mpeg"/><itunes:duration>PT1H30M</itunes:duration></item>
+<item><title>unsinn</title><guid>d6</guid><enclosure url="https://example.test/d6.mp3" type="audio/mpeg"/><itunes:duration>lang</itunes:duration></item>
+<item><title>riesig</title><guid>d7</guid><enclosure url="https://example.test/d7.mp3" type="audio/mpeg"/><itunes:duration>999:59:59</itunes:duration></item>
+<item><title>fehlt</title><guid>d8</guid><enclosure url="https://example.test/d8.mp3" type="audio/mpeg"/></item>
+</channel></rss>

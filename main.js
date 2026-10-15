@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
-const { reconcilePostUpdate, reconcileRadioSources } = require('./lib/post-update-reconcile.js');
+const { reconcilePostUpdate, reconcileRadioSources, reconcilePodcastSources } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
 const { revealWindow, isBackgroundE2E } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
@@ -37,6 +37,10 @@ const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
+const { PodcastLibrary } = require('./lib/podcast/PodcastLibrary.js');
+const { registerPodcastIpc } = require('./lib/podcast/ipc.js');
+const { createPodcastRefresher, NO_VALIDATOR_INTERVAL_MS } = require('./lib/podcast/podcast-refresh.js');
+const { createPodcastSearch } = require('./lib/podcast/podcast-search.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
 const { createRadioLogoCache } = require('./lib/radio/radio-logo-cache.js');
 const { createTrayTextRenderer } = require('./lib/radio/tray-text-renderer.js');
@@ -76,6 +80,9 @@ let epgService = null;
 let trayController = null;
 let radioController = null;
 let radioLibrary = null;
+let podcastLibrary = null;
+let podcastRefreshTimer = null;
+let podcastStartTimer = null;
 // Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
 let scheduler = null;
 // Standby-Schutz (Etappe 2b): powerSaveBlocker bei Aufnahme/anstehendem Start
@@ -679,6 +686,12 @@ app.whenReady().then(() => {
     bundleFile: path.join(__dirname, 'radiosources.json'),
     baseFile: userStorage.paths.radioSourcesBase,
   });
+  // Podcasts: Abos aus der mitgelieferten Liste abgleichen (geänderte Feed-URLs, entfernte Einträge); wirft nie
+  reconcilePodcastSources({
+    podcastsFile: userStorage.paths.podcasts,
+    stateFile: userStorage.paths.podcastState,
+    bundleFile: path.join(__dirname, 'podcastsources.json'),
+  });
   // Selbstheilungs-Netz (Karte t_ea243f43, Schritt 5): Beim Start prüfen, ob
   // die eigene Bundle-Integrität intakt ist (keine toten/externen Symlinks,
   // Frameworks vorhanden). Bei Schaden NIEMALS still weiterlaufen — sauberer
@@ -806,6 +819,44 @@ app.whenReady().then(() => {
     });
   } catch (e) {
     logger.error('Radio konnte nicht eingerichtet werden:', e.message);
+  }
+
+  // ── Podcasts (Konzept §2/§7): Abos, Hörzustand, Feed-Abruf und Suche im Main; noch ohne Wiedergabe/Oberfläche (P2/P3) ──
+  try {
+    podcastLibrary = new PodcastLibrary({ userStorage, logger });
+    const podcastRefresher = createPodcastRefresher({ library: podcastLibrary, logger });
+    registerPodcastIpc({
+      ipcMain,
+      library: podcastLibrary,
+      refresher: podcastRefresher,
+      search: createPodcastSearch(),
+      requireMainRenderer,
+      sendToMain: (channel, payload) => {
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+      },
+      logger,
+    });
+    // Aktualisierung nach dem Start (nicht blockierend) und stündlich; ohne Abos und in isolierten Testläufen kein Netzverkehr
+    if (!isIsolatedTestRun(process.env)) {
+      const refreshAll = () => {
+        podcastRefresher.refreshAll().catch(error => logger.warn('Podcast-Aktualisierung fehlgeschlagen:', error.message));
+      };
+      try {
+        podcastLibrary.prune();
+      } catch (e) {
+        logger.warn('Podcast-Aufräumen fehlgeschlagen:', e.message);
+      }
+      podcastStartTimer = setTimeout(refreshAll, 20 * 1000);
+      podcastRefreshTimer = setInterval(refreshAll, NO_VALIDATOR_INTERVAL_MS);
+      if (podcastStartTimer.unref) podcastStartTimer.unref();
+      if (podcastRefreshTimer.unref) podcastRefreshTimer.unref();
+    }
+  } catch (e) {
+    logger.error('Podcasts konnten nicht eingerichtet werden:', e.message);
   }
 
   // ffmpeg/ffprobe (Konzept §2.2 "Selbstheilung beim App-Start"): Prüfung
@@ -1272,6 +1323,8 @@ app.on('before-quit', event => {
   // der Cleanup unten läuft erst, wenn der Quit wirklich durchgeht.
   if (quitCoordinator.handleBeforeQuit(event)) return;
   if (radioController) radioController.dispose();
+  clearTimeout(podcastStartTimer);
+  clearInterval(podcastRefreshTimer);
   if (standbyGuard) standbyGuard.release();
   // Wecktermine sind ohne laufende App sinnlos: löschen und Helfer beenden
   if (wakeScheduler) wakeScheduler.cancelAll();
@@ -1658,6 +1711,7 @@ ipcMain.handle('backup-settings', async event => {
     services: loadServices(),
     tvsources: loadTvSources(),
     history: loadHistory(),
+    ...(podcastLibrary ? podcastLibrary.exportBackup() : {}),
   };
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: `streaming-hub-backup-${new Date().toISOString().slice(0, 10)}.json`,
@@ -1682,6 +1736,9 @@ ipcMain.handle('restore-settings', async event => {
       services: data.services,
       tvSources: data.tvsources,
       history: data.history,
+      // Podcasts nur, wenn die Sicherung sie enthält (ältere Sicherungen lassen die Podcast-Daten unberührt)
+      ...(data.podcasts !== undefined ? { podcasts: data.podcasts } : {}),
+      ...(data.podcastState !== undefined ? { podcastState: data.podcastState } : {}),
     });
     broadcastServices();
     broadcastTvSources();
