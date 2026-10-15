@@ -115,3 +115,54 @@ test('IDs: Abo-ID ist der Hash der normalisierten Feed-URL (Schema/Host klein, S
   assert.equal(normalizeFeedUrl('https://example.test'), 'https://example.test/');
   assert.throws(() => podcastIdFromFeedUrl('kein url'));
 });
+
+// ReDoS-Regression: bösartige Feeds dürfen den Main-Prozess nicht blockieren
+const REDOS_ITEM_HEAD = '<rss><channel><title>t</title><item><enclosure url="https://a/b.mp3" type="audio/mpeg"/>';
+function timedParse(xml) {
+  const start = Date.now();
+  const feed = parseFeed(xml);
+  return { feed, ms: Date.now() - start };
+}
+
+test('ReDoS: offene Links mit href (1,2 MB) parsen in unter 1 s', () => {
+  const { feed, ms } = timedParse(`${REDOS_ITEM_HEAD}<description>${'<a href="x" '.repeat(100000)}</description></item></channel></rss>`);
+  assert.equal(feed.episodes.length, 1);
+  assert.ok(ms < 1000, `dauerte ${ms} ms`);
+});
+
+test('ReDoS: offene Links mit URL (2 MB) parsen in unter 1 s', () => {
+  const { ms } = timedParse(`${REDOS_ITEM_HEAD}<description>${'<a href="https://x">'.repeat(100000)}</description></item></channel></rss>`);
+  assert.ok(ms < 1000, `dauerte ${ms} ms`);
+});
+
+test('ReDoS: 20 000 unvollständige <a-Tags und viele offene Tags parsen in unter 1 s', () => {
+  const { ms } = timedParse(`${REDOS_ITEM_HEAD}<description>${'<a '.repeat(20000)}</description></item></channel></rss>`);
+  const { ms: ms2 } = timedParse(`${REDOS_ITEM_HEAD}<title>${'<image '.repeat(50000)}${'<!-- '.repeat(50000)}</title></item></channel></rss>`);
+  assert.ok(ms < 1000 && ms2 < 1000, `dauerte ${ms} / ${ms2} ms`);
+});
+
+test('ReDoS: unvollständige <psc:chapter (20 000) parsen in unter 1 s', () => {
+  const { feed, ms } = timedParse(`${REDOS_ITEM_HEAD}<psc:chapters>${'<psc:chapter '.repeat(20000)}</psc:chapters></item></channel></rss>`);
+  assert.equal(feed.episodes.length, 1);
+  assert.ok(ms < 1000, `dauerte ${ms} ms`);
+});
+
+test('Shownotes mit Links werden weiterhin zu "Text (Adresse)"', () => {
+  const html = '<p>Siehe <a href="https://example.org/x?a=1&amp;b=2">die Seite</a> und <a href="https://example.org">https://example.org</a>.</p><ul><li>Eins</li></ul><script>alert(1)</script>';
+  const { feed } = timedParse(`${REDOS_ITEM_HEAD}<content:encoded><![CDATA[${html}]]></content:encoded></item></channel></rss>`);
+  const notes = feed.episodes[0].notes;
+  assert.ok(notes.includes('die Seite (https://example.org/x?a=1&b=2)'), notes);
+  assert.ok(notes.includes('https://example.org.') && !notes.includes('(https://example.org)'), notes);
+  assert.ok(notes.includes('• Eins') && !notes.includes('alert') && !notes.includes('<'), notes);
+});
+
+test('Großer normaler Feed (30 000 Items) parst in unter 1 s', () => {
+  const item = i => `<item><title>E${i}</title><guid>g${i}</guid><enclosure url="https://a/${i}.mp3" type="audio/mpeg"/><description>Text ${i}</description></item>`;
+  let xml = '<rss><channel><title>t</title>';
+  for (let i = 0; i < 30000; i += 1) xml += item(i);
+  xml += '</channel></rss>';
+  assert.ok(xml.length > 4 * 1024 * 1024);
+  const { feed, ms } = timedParse(xml);
+  assert.ok(feed.episodes.length > 0);
+  assert.ok(ms < 1000, `dauerte ${ms} ms`);
+});
