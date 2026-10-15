@@ -860,7 +860,7 @@ app.whenReady().then(() => {
       library: podcastLibrary,
       refresher: podcastRefresher,
       search: createPodcastSearch({ searchUrl: isIsolatedTestRun(process.env) ? process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL : undefined }),
-      coverLoader: createCoverLoader(),
+      coverLoader: createCoverLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // Loopback nur im isolierten E2E-Lauf (lokaler Ersatzserver)
       requireMainRenderer,
       sendToMain: (channel, payload) => {
         try {

@@ -23,7 +23,7 @@ function fakeFetch(handler) {
 
 test('Cover-Lader: http-Bild wird als data:-URL geliefert und zwischengespeichert', async () => {
   const { fetchImpl, calls } = fakeFetch(() => ({}));
-  const loader = createCoverLoader({ fetchImpl });
+  const loader = createCoverLoader({ fetchImpl, guardUrl: async () => {} });
   const first = await loader.load('http://img.test/c.png');
   assert.equal(first.ok, true);
   assert.match(first.dataUrl, /^data:image\/png;base64,/);
@@ -35,7 +35,7 @@ test('Cover-Lader: Nicht-Bilder, Fehlerstatus, zu große Dateien und ungültige 
   const html = Buffer.from('<html>kein Bild</html>');
   const big = Buffer.concat([PNG, Buffer.alloc(2000)]);
   const { fetchImpl } = fakeFetch(url => (url.includes('html') ? { body: html } : url.includes('404') ? { status: 404 } : url.includes('big') ? { body: big } : {}));
-  const loader = createCoverLoader({ fetchImpl, maxBytes: 1000 });
+  const loader = createCoverLoader({ fetchImpl, maxBytes: 1000, guardUrl: async () => {} });
   assert.equal((await loader.load('http://img.test/html')).ok, false);
   assert.equal((await loader.load('http://img.test/404')).ok, false);
   assert.equal((await loader.load('http://img.test/big')).ok, false);
@@ -87,7 +87,7 @@ test('Datenspeicher: lädt Abos und Episoden, patcht den Hörstatus ohne Neulade
   data.subscribe(() => (changes += 1));
   assert.equal(data.snapshot().loaded, false);
   await data.load();
-  let snap = data.snapshot();
+  const snap = data.snapshot();
   assert.equal(snap.loaded, true);
   assert.equal(snap.subscriptions.length, 1);
   assert.equal(snap.episodes.a.episodes.length, 1);
