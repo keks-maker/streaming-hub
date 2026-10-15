@@ -46,11 +46,11 @@ function setIcon(button, icon) {
 }
 
 /**
- * options: { radio, podcasts (optional: window.podcasts.player), getFavoriteCount(), onOpenRadio(), onOpenPodcast() (optional), notify(message), logger }
+ * options: { radio, podcasts (optional: window.podcasts.player), getFavoriteCount(), onOpenRadio(), onOpenPodcast(state) (optional), resolveCover(url) → Promise<ladbare URL|null> (optional; http-Cover über den Main), notify(message), logger }
  * Rückgabe: { render, setSuppressed(flag), dispose, getModel }
  */
 function createRadioMiniPlayer(root, options = {}) {
-  const { radio, podcasts = null, getFavoriteCount, onOpenRadio, onOpenPodcast, notify, logger } = options;
+  const { radio, podcasts = null, getFavoriteCount, onOpenRadio, onOpenPodcast, resolveCover = null, notify, logger } = options;
   const doc = root.ownerDocument || document;
 
   root.textContent = '';
@@ -72,7 +72,11 @@ function createRadioMiniPlayer(root, options = {}) {
   const name = el(doc, 'span', 'radio-mini-name');
   const subtitle = el(doc, 'span', 'radio-mini-subtitle');
   info.append(name, subtitle);
-  info.addEventListener('click', () => onOpenRadio && onOpenRadio());
+  info.addEventListener('click', () => {
+    if (root.dataset.mode === 'podcast') {
+      if (onOpenPodcast) onOpenPodcast(podcastState);
+    } else if (onOpenRadio) onOpenRadio();
+  });
 
   // Podcast: Fortschritt (Position, Balken mit Seek, Dauer); bei Radio verborgen
   const progress = el(doc, 'div', 'radio-mini-progress');
@@ -174,15 +178,27 @@ function createRadioMiniPlayer(root, options = {}) {
       if (model.logo) {
         const image = doc.createElement('img');
         image.alt = '';
-        image.src = model.logo;
-        image.addEventListener('error', () => {
+        const fail = () => {
           image.remove();
           if (logoImage === image) logoImage = null;
           logoFailed = true;
           logo.classList.add('has-error');
-        });
+        };
+        image.addEventListener('error', fail);
         logoImage = image;
         logo.appendChild(image);
+        if (/^http:/i.test(model.logo)) {
+          // http-Cover erlaubt die CSP nicht: der Main lädt das Bild (data:-URL); ohne Lader bleiben die Initialen
+          if (resolveCover) {
+            resolveCover(model.logo)
+              .then(source => {
+                if (logoImage !== image) return;
+                if (source) image.src = source;
+                else fail();
+              })
+              .catch(() => logoImage === image && fail());
+          } else fail();
+        } else image.src = model.logo;
       }
     }
     logo.classList.toggle('has-error', !model.logo || logoFailed);

@@ -218,6 +218,7 @@ contextBridge.exposeInMainWorld('radio', {
 contextBridge.exposeInMainWorld('podcasts', {
   search: query => ipcRenderer.invoke('podcast:search', query),
   getCatalog: () => ipcRenderer.invoke('podcast:catalog'),
+  getCover: url => ipcRenderer.invoke('podcast:cover', url),
   list: () => ipcRenderer.invoke('podcast:list'),
   subscribe: input => ipcRenderer.invoke('podcast:subscribe', input),
   unsubscribe: id => ipcRenderer.invoke('podcast:unsubscribe', id),

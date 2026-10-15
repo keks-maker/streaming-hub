@@ -31,6 +31,8 @@ const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const { createDashboardHub } = require('./dashboard-hub-view.js');
 const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
+const { createPodcastHub } = require('./podcast-hub-view.js');
+const { resolveCoverSource } = require('./podcast-cover-view.js');
 const { favoriteCountOf } = require('./radio-dashboard-model.js');
 const { radioActionForVideoStart, podcastActionForVideoStart } = require('./radio-tv-conflict-model.js');
 const { renderUpdateNotes } = require('./update-notes-model.js');
@@ -465,6 +467,7 @@ const dashboardHub = document.getElementById('dashboardHub');
 const dashboardHubCards = document.getElementById('dashboardHubCards');
 const radioDashboardRoot = document.getElementById('radioDashboard');
 const radioMiniPlayerRoot = document.getElementById('radioMiniPlayer');
+const podcastDashboardRoot = document.getElementById('podcastDashboard');
 const dashboardTvStatus = document.getElementById('dashboardTvStatus');
 const dashboardTvStatusBtn = document.getElementById('dashboardTvStatusBtn');
 const dashboardTvRefresh = document.getElementById('dashboardTvRefresh');
@@ -550,6 +553,23 @@ const radioMiniPlayerView = createRadioMiniPlayer(radioMiniPlayerRoot, {
   notify: showTvToast,
   getFavoriteCount: () => radioFavoriteCount,
   onOpenRadio: () => showDashboard('radio'),
+  // Klick auf den Titel öffnet die Sendungsseite der laufenden Episode
+  onOpenPodcast: state => {
+    const id = state && state.episode && state.episode.podcastId;
+    showDashboard('podcasts', id ? { route: { view: 'show', id } } : {});
+  },
+  resolveCover: url => resolveCoverSource(window.podcasts, url),
+});
+
+// ── Podcasts (P3): Dashboard, Sendungsseite und Suche; Verlauf über den gemeinsamen Navigationsstapel ──
+const podcastHub = createPodcastHub(podcastDashboardRoot, {
+  podcasts: window.podcasts,
+  logger,
+  notify: showTvToast,
+  onBeforeNavigate: () => {
+    if (!restoringNav) pushNavState();
+  },
+  onBack: () => handleBackNavigation(),
 });
 
 function updateRadioFavoriteCount(sources) {
@@ -859,10 +879,13 @@ function renderStartDashboard() {
   dashboardGrid.innerHTML = '';
   dashboardHub.hidden = true;
   radioDashboardRoot.hidden = true;
+  podcastDashboardRoot.hidden = true;
+  podcastHub.hideArea();
   dashboardEmpty.style.display = 'none';
   const sections = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
     { key: 'radio', label: 'Radio', icon: 'radio-icon.png', color: '#f59e0b' },
+    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: '#8b5cf6' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
     // 3.6b: keine Kachel „Aufnahmen“ mehr (wie der NavBar-Eintrag, P21); der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
@@ -903,17 +926,20 @@ function renderDashboard(groupKey, opts = {}) {
   dashboardView.classList.toggle('recordings-dashboard', groupKey === 'recording');
   const isTv = groupKey === 'livetv';
   const isRadio = groupKey === 'radio';
+  const isPodcasts = groupKey === 'podcasts';
   const isSettings = groupKey === 'settings';
   const isRecording = groupKey === 'recording';
-  const items = isTv || isRadio || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
-  const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : isRadio ? 'Radio' : isRecording ? 'Aufnahmen' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
+  const items = isTv || isRadio || isPodcasts || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
+  const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : isRadio ? 'Radio' : isPodcasts ? 'Podcasts' : isRecording ? 'Aufnahmen' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
   dashboardEyebrow.textContent = isSettings
     ? 'Streaming Hub'
     : isTv
       ? 'Live Fernsehen'
       : isRadio
         ? 'Deine Radiosender'
-        : isRecording
+        : isPodcasts
+          ? 'Deine Podcasts'
+          : isRecording
           ? 'Deine Aufnahmen'
           : groupKey === 'mediathek'
             ? 'Deine Mediatheken'
@@ -921,7 +947,9 @@ function renderDashboard(groupKey, opts = {}) {
   dashboardTitle.textContent = title;
   dashboardHub.hidden = !isTv;
   radioDashboardRoot.hidden = !isRadio;
-  dashboardCount.textContent = isTv || isRadio || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
+  podcastDashboardRoot.hidden = !isPodcasts;
+  if (!isPodcasts) podcastHub.hideArea();
+  dashboardCount.textContent = isTv || isRadio || isPodcasts || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
   dashboardGrid.setAttribute('aria-label', title);
   settingsPanelHost.hidden = groupKey !== 'settings';
   dashboardGrid.innerHTML = '';
@@ -942,6 +970,8 @@ function renderDashboard(groupKey, opts = {}) {
     renderLiveTvDashboard();
   } else if (isRadio) {
     radioDashboardView.render();
+  } else if (isPodcasts) {
+    podcastHub.showArea(opts.route);
   } else if (isRecording) {
     // Aufnahmen-Dashboard (Fix-Set 4): reguläre View, kein Overlay
     renderRecordingDashboard();
@@ -987,7 +1017,9 @@ function showDashboard(groupKey, opts = {}) {
           ? 'LiveTV'
           : groupKey === 'radio'
             ? 'Radio'
-            : groupKey === 'mediathek'
+            : groupKey === 'podcasts'
+              ? 'Podcasts'
+              : groupKey === 'mediathek'
               ? 'Mediatheken'
               : groupKey === 'recording'
                 ? 'Aufnahmen'
@@ -999,6 +1031,7 @@ function showDashboard(groupKey, opts = {}) {
     dashboardHubView.refresh();
   }
   if (groupKey === 'radio') radioDashboardView.refresh();
+  if (groupKey === 'podcasts') podcastHub.refresh();
 }
 
 function getIconSrc(svc) {
@@ -1020,6 +1053,7 @@ function renderNav() {
   const groups = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png' },
     { key: 'radio', label: 'Radio', icon: 'radio-icon.png' },
+    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png' },
     // 3.6b (P21): kein Aufnahmen-Eintrag mehr; der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
@@ -1090,7 +1124,9 @@ function currentNavState() {
     return { kind: 'tv', id: tvActiveChannelId || null };
   }
   if (!currentProvider) {
-    return currentDashboardGroup ? { kind: 'dashboard', group: currentDashboardGroup } : { kind: 'start' };
+    if (!currentDashboardGroup) return { kind: 'start' };
+    const route = currentDashboardGroup === 'podcasts' ? podcastHub.getRoute() : null;
+    return route ? { kind: 'dashboard', group: currentDashboardGroup, route } : { kind: 'dashboard', group: currentDashboardGroup };
   }
   return { kind: 'service', id: currentProvider, url: lastUrlByService[currentProvider] || null };
 }
@@ -1136,7 +1172,7 @@ function goBack() {
         goToStartPage();
       }
     } else if (target.kind === 'dashboard') {
-      showDashboard(target.group);
+      showDashboard(target.group, target.route ? { route: target.route } : {});
     } else {
       goToStartPage();
     }
@@ -1189,6 +1225,7 @@ function navigateTo(svc) {
   switchWebview(false);
   if (dashboardView) {
     dashboardView.style.display = 'none';
+    podcastHub.hideArea();
     dashboardView.classList.remove('settings-dashboard');
     dashboardView.classList.remove('recordings-dashboard');
   }
@@ -1949,6 +1986,7 @@ async function selectTvChannel(ch, options = {}) {
   lastMediaTitle = 'TV: ' + ch.name;
   welcomeScreen.style.display = 'none';
   if (dashboardView) dashboardView.style.display = 'none';
+  podcastHub.hideArea();
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
   // Jetzt/Nächste des Kanals frisch aus dem Main holen (Cache kann bis zu einer Minute alt sein)

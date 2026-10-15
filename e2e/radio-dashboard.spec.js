@@ -90,7 +90,7 @@ test.describe('Radio-Oberfläche', () => {
 
   test('Startseite: Kachel „Radio“ nach LiveTV; Navigation und Ort; Leerzustand mit Hinweis', async () => {
     const order = await page.locator('.dashboard-section-tile').evaluateAll(els => els.map(e => e.dataset.section));
-    expect(order).toEqual(['livetv', 'radio', 'streaming', 'mediathek', 'settings']);
+    expect(order).toEqual(['livetv', 'radio', 'podcasts', 'streaming', 'mediathek', 'settings']);
     await expect(page.locator('.dashboard-section-tile[data-section="radio"] .dashboard-tile-name')).toHaveText('Radio');
     await shot(page, 'startseite');
     await openRadio(page);

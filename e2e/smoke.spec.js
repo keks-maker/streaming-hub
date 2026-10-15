@@ -125,13 +125,13 @@ test('Hauptfenster rendert Titel und Kern-DOM', async () => {
   // Auf der Startseite ist die Navbar by design ausgeblendet (display:none) — nur im DOM prüfen.
   await expect(page.locator('#overlayBar')).toBeAttached();
   await expect(page.locator('#contentArea')).toBeAttached();
-  // Startdashboard mit den fünf Bereichs-Kacheln (renderStartDashboard; Radio seit R2); „Aufnahmen“ ist seit 3.6b eine Karte im LiveTV-Dashboard.
+  // Startdashboard mit den sechs Bereichs-Kacheln (renderStartDashboard; Radio seit R2, Podcasts seit P3); „Aufnahmen“ ist seit 3.6b eine Karte im LiveTV-Dashboard.
   await expect(page.locator('#dashboardView')).toBeVisible();
   await expect(page.locator('#dashboardTitle')).toHaveText('Was möchtest du sehen?');
-  for (const key of ['livetv', 'radio', 'streaming', 'mediathek', 'settings']) {
+  for (const key of ['livetv', 'radio', 'podcasts', 'streaming', 'mediathek', 'settings']) {
     await expect(page.locator(`.dashboard-section-tile[data-section="${key}"]`)).toBeVisible();
   }
-  await expect(page.locator('.dashboard-section-tile')).toHaveCount(5);
+  await expect(page.locator('.dashboard-section-tile')).toHaveCount(6);
   await expect(page.locator('.dashboard-section-tile[data-section="recording"]')).toHaveCount(0);
   await expect(page.locator('#versionTag')).toHaveText(`v${PKG_VERSION}`);
 });

@@ -33,7 +33,7 @@ function xmltvTime(ms) {
 }
 
 /** Startet die App mit lokaler Quelle (M3U), EPG-Fixture und Favoriten. */
-async function launchApp({ prefix, epgXml, channels, favorites }) {
+async function launchApp({ prefix, epgXml, channels, favorites, env: extraEnv = {} }) {
   const tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   const userData = path.join(tmpRoot, 'userData');
   const home = path.join(tmpRoot, 'home');
@@ -85,6 +85,7 @@ async function launchApp({ prefix, epgXml, channels, favorites }) {
       STREAMING_HUB_USER_DATA: userData, ...backgroundEnv(),
       STREAMING_HUB_EPG_FIXTURE: fixture,
       STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9',
+      ...extraEnv,
     },
     timeout: 45_000,
   });

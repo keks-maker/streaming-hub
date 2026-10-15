@@ -44,6 +44,7 @@ const { createPlaybackPowerGuard } = require('./lib/podcast/playback-power.js');
 const { attachExclusivity } = require('./lib/playback-exclusivity.js');
 const { createPodcastRefresher, NO_VALIDATOR_INTERVAL_MS } = require('./lib/podcast/podcast-refresh.js');
 const { createPodcastSearch } = require('./lib/podcast/podcast-search.js');
+const { createCoverLoader } = require('./lib/podcast/podcast-cover.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
 const { createRadioLogoCache } = require('./lib/radio/radio-logo-cache.js');
 const { createTrayTextRenderer } = require('./lib/radio/tray-text-renderer.js');
@@ -858,7 +859,8 @@ app.whenReady().then(() => {
       ipcMain,
       library: podcastLibrary,
       refresher: podcastRefresher,
-      search: createPodcastSearch(),
+      search: createPodcastSearch({ searchUrl: isIsolatedTestRun(process.env) ? process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL : undefined }),
+      coverLoader: createCoverLoader(),
       requireMainRenderer,
       sendToMain: (channel, payload) => {
         try {
