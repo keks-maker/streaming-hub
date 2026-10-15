@@ -47,16 +47,39 @@ test('Modell: Status, Play/Pause-Aktion und aria-live-Text', () => {
   assert.equal(mini.podcastMiniPlayerModel(ps('error')).canSeek, false);
 });
 
-test('Modell: Tempo-Auswahl, Lautstärke begrenzt, nur https-Cover, Position nie hinter der Dauer', () => {
+test('Modell: Tempo-Auswahl, Lautstärke begrenzt, http/https-Cover, Position nie hinter der Dauer', () => {
   assert.deepEqual(mini.PODCAST_RATES, [0.75, 1, 1.25, 1.5, 1.75, 2]);
   assert.equal(mini.podcastMiniPlayerModel(ps('playing', { rate: 1.5 })).rate, 1.5);
   assert.equal(mini.podcastMiniPlayerModel(ps('playing', { rate: 1.33 })).rate, 1);
   assert.equal(mini.podcastMiniPlayerModel(ps('playing', { volume: 7 })).volumePercent, 100);
-  assert.equal(mini.podcastMiniPlayerModel(ps('playing', { episode: { ...EPISODE, cover: 'http://a.test/c.jpg' } })).cover, null);
+  assert.equal(mini.podcastMiniPlayerModel(ps('playing', { episode: { ...EPISODE, cover: 'http://a.test/c.jpg' } })).cover, 'http://a.test/c.jpg');
+  assert.equal(mini.podcastMiniPlayerModel(ps('playing', { episode: { ...EPISODE, cover: 'https://u:p@a.test/c.jpg' } })).cover, null);
+  assert.equal(mini.podcastMiniPlayerModel(ps('playing', { episode: { ...EPISODE, cover: 'ftp://a.test/c.jpg' } })).cover, null);
   assert.equal(mini.podcastMiniPlayerModel(ps('playing', { episode: { ...EPISODE, cover: 'javascript:1' } })).cover, null);
   assert.equal(mini.podcastMiniPlayerModel(ps('playing', { position: 9999 })).seekValue, 3725);
   assert.equal(mini.rateLabel(1.25), '1,25×');
   assert.equal(mini.formatClock(NaN), '0:00');
+});
+
+test('Sequenz: Podcast beendet, Radio startet, Podcast zurückgesetzt, Leiste zeigt Radio', () => {
+  const { EventEmitter } = require('node:events');
+  const { attachExclusivity } = require('../lib/playback-exclusivity.js');
+  const { reduce } = require('../lib/podcast/podcast-playback-state.js');
+  const radio = Object.assign(new EventEmitter(), { st: { status: 'idle' }, stop() {}, isActive: () => false, getState() { return this.st; } });
+  let pst = ps('ended');
+  const podcast = Object.assign(new EventEmitter(), {
+    isActive: () => false,
+    getState: () => pst,
+    stop() { pst = reduce(pst, { type: 'stop' }); this.emit('state', pst); },
+  });
+  attachExclusivity({ radio, podcast });
+  assert.equal(mini.podcastMiniPlayerModel(pst).visible, true, 'beendeter Podcast zeigt die Leiste');
+  radio.st = { status: 'loading', station: { name: 'Sender', genre: 'x' }, volume: 1 };
+  radio.emit('state', radio.st);
+  assert.equal(pst.status, 'idle');
+  assert.equal(mini.podcastMiniPlayerModel(pst).visible, false);
+  assert.equal(mini.miniPlayerModel(radio.st).visible, true);
+  assert.equal(mini.miniPlayerModel(radio.st).name, 'Sender');
 });
 
 test('Radio-Modell bleibt unverändert (keine Podcast-Felder)', () => {
@@ -136,6 +159,22 @@ test('Ansicht: Bedienung ruft die Podcast-Schnittstelle (Pause, Sprünge, Tempo,
   await tick();
   assert.deepEqual(calls, [['pause'], ['skip', -15], ['skip', 30], ['stop'], ['setRate', 1.5], ['setVolume', 0.3], ['seek', 600]]);
   assert.equal(el.byId('radioMiniVolume').getAttribute('aria-label'), 'Podcast-Lautstärke');
+});
+
+test('Ansicht: seekDragging endet bei pointercancel, lostpointercapture und Loslassen außerhalb', () => {
+  const { el, player } = setup();
+  player.emit(ps('playing', { position: 10 }));
+  const seek = el.byId('radioMiniSeek');
+  const doc = el.ownerDocument;
+  for (const end of [() => seek.dispatch('pointercancel'), () => seek.dispatch('lostpointercapture'), () => doc.dispatch('pointerup')]) {
+    seek.dispatch('pointerdown');
+    player.emit(ps('playing', { position: 50 }));
+    assert.notEqual(seek.value, '50', 'während des Ziehens keine Nachführung');
+    end();
+    player.emit(ps('playing', { position: 50 }));
+    assert.equal(seek.value, '50', 'nach dem Ende wieder aktuell');
+    player.emit(ps('playing', { position: 10 }));
+  }
 });
 
 test('Ansicht: Play/Pause je Status (Fortsetzen, erneut abspielen, erneut versuchen)', async () => {

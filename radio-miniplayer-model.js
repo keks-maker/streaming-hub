@@ -126,12 +126,12 @@ const PODCAST_PLAY_PAUSE_LABEL = {
   retry: 'Erneut versuchen',
 };
 
-/** Covers nur über https ohne Zugangsdaten (Content-Security-Policy der Oberfläche). */
+/** Covers über http/https ohne Zugangsdaten (wie Controller/Player; die CSP bleibt unverändert). */
 function safeCoverUrl(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
   try {
     const parsed = new URL(value);
-    return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? parsed.toString() : null;
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && !parsed.username && !parsed.password ? parsed.toString() : null;
   } catch {
     return null;
   }

@@ -151,6 +151,7 @@ function fakePlayer(status = 'idle') {
     status,
     stops: 0,
     isActive: () => ['loading', 'playing', 'paused'].includes(player.status),
+    getState: () => ({ status: player.status }),
     stop: () => {
       player.stops += 1;
       player.set('idle');
@@ -187,6 +188,22 @@ test('Exklusivität: Podcast-Start stoppt Radio, Radio-Start stoppt Podcast (auc
   detach();
   podcast.set('playing');
   assert.equal(radio.status, 'loading', 'nach dem Lösen keine Wirkung');
+});
+
+test('Exklusivität: beendeter/fehlerhafter Podcast wird beim Radio-Start zurückgesetzt, Radio-Fehler beim Podcast-Start', () => {
+  for (const finished of ['ended', 'error']) {
+    const radio = fakePlayer();
+    const podcast = fakePlayer(finished);
+    const detach = attachExclusivity({ radio, podcast });
+    radio.set('loading');
+    assert.deepEqual([podcast.stops, podcast.status], [1, 'idle'], finished);
+    detach();
+  }
+  const radio = fakePlayer('error');
+  const podcast = fakePlayer();
+  attachExclusivity({ radio, podcast });
+  podcast.set('loading');
+  assert.deepEqual([radio.stops, radio.status], [1, 'idle']);
 });
 
 // ── Ton-Konflikt mit Bild ──

@@ -332,7 +332,13 @@ function createRadioMiniPlayer(root, options = {}) {
   seek.addEventListener('input', () => {
     positionText.textContent = lastModel.mode === 'podcast' ? formatSeekText(Number(seek.value)) : positionText.textContent;
   });
-  seek.addEventListener('pointerup', () => {
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    seek.addEventListener(type, () => {
+      seekDragging = false;
+    });
+  }
+  // Loslassen außerhalb des Reglers: pointerup landet am Dokument
+  doc.addEventListener('pointerup', () => {
     seekDragging = false;
   });
   seek.addEventListener('change', () => {
