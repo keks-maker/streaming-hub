@@ -47,6 +47,15 @@ function formatAgo(iso, now = Date.now()) {
   return `vor ${days} ${days === 1 ? 'Tag' : 'Tagen'}`;
 }
 
+/** Kapitelzeit: "3:05" bzw. "1:02:03"; ungültig → "0:00". */
+function formatChapterTime(seconds) {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = String(total % 60).padStart(2, '0');
+  return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
+}
+
 /** Anteil 0..1 (auf 1 % gerundet), ungültig → 0. */
 function clampFraction(position, duration) {
   if (!Number.isFinite(position) || !Number.isFinite(duration) || position <= 0 || duration <= 0) return 0;
@@ -78,4 +87,4 @@ function coverKind(value) {
   return null;
 }
 
-module.exports = { formatDuration, formatEpisodeDate, formatAgo, clampFraction, initialOf, plural, coverKind, DAY };
+module.exports = { formatChapterTime, formatDuration, formatEpisodeDate, formatAgo, clampFraction, initialOf, plural, coverKind, DAY };

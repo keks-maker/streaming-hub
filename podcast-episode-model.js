@@ -59,6 +59,9 @@ function episodeItem({ podcastId, show, episode, fallbackCover = null, player = 
   return {
     key: `${podcastId}\u0000${episode.id}`,
     podcastId,
+    time: Number.isFinite(Date.parse(episode.pubDate)) ? Date.parse(episode.pubDate) : 0,
+    hasNotes: Boolean(episode.hasNotes),
+    hasChapters: Boolean(episode.hasChapters),
     episodeId: episode.id,
     show: show || '',
     title,
@@ -75,8 +78,34 @@ function episodeItem({ podcastId, show, episode, fallbackCover = null, player = 
     actionLabel,
     markPlayed: status !== 'played',
     markLabel: status === 'played' ? 'Als ungehört markieren' : 'Als gehört markieren',
-    ariaLabel: [show, title, dateText, durationText, STATUS_TEXT[status]].filter(Boolean).join(', ') + ` – ${actionLabel}`,
+    ariaLabel: [show, title, dateText, durationText, STATUS_TEXT[status]].filter(Boolean).join(', ') + ' – Details öffnen',
+    playLabel: `${title}: ${actionLabel}`,
   };
 }
 
-module.exports = { NEW_WINDOW_DAYS, episodeStatus, isNewEpisode, episodeItem, isActive };
+const SORTS = [
+  { value: 'newest', label: 'Neueste zuerst' },
+  { value: 'oldest', label: 'Älteste zuerst' },
+  { value: 'title', label: 'Titel A–Z' },
+];
+const DEFAULT_SORT = 'newest';
+
+function normalizeSort(value) {
+  return SORTS.some(entry => entry.value === value) ? value : DEFAULT_SORT;
+}
+
+/** Sortiert Anzeigeeinträge (Kopie): neueste/älteste zuerst nach Datum, sonst nach Titel (A–Z, Zahlen natürlich); stabil. */
+function sortEpisodeItems(items, sort = DEFAULT_SORT) {
+  const mode = normalizeSort(sort);
+  const compare = {
+    newest: (a, b) => b.item.time - a.item.time,
+    oldest: (a, b) => (a.item.time || Infinity) - (b.item.time || Infinity),
+    title: (a, b) => a.item.title.localeCompare(b.item.title, 'de', { sensitivity: 'base', numeric: true }),
+  }[mode];
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => compare(a, b) || a.index - b.index)
+    .map(entry => entry.item);
+}
+
+module.exports = { SORTS, DEFAULT_SORT, normalizeSort, sortEpisodeItems, NEW_WINDOW_DAYS, episodeStatus, isNewEpisode, episodeItem, isActive };

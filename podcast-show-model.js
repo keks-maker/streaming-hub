@@ -4,7 +4,7 @@
 
 'use strict';
 
-const { episodeItem, episodeStatus } = require('./podcast-episode-model.js');
+const { episodeItem, episodeStatus, sortEpisodeItems } = require('./podcast-episode-model.js');
 const { formatAgo, initialOf, plural } = require('./podcast-format.js');
 
 const PAGE_SIZE = 50;
@@ -12,11 +12,11 @@ const VIRTUAL_THRESHOLD = 200; // ab hier wäre eine virtuelle Liste nötig; der
 
 /**
  * options: { id, subscription (Abo mit feed-Zustand) | null, feed ({ episodes, channel, fetchedAt }) | null,
- *            preview ({ title, author, cover, description, episodeCount }) | null, player, limit, now, loading }
+ *            preview ({ title, author, cover, description, episodeCount }) | null, player, limit, now, loading, sort ('newest'|'oldest'|'title') }
  * Ausgabe: { id, subscribed, title, author, description, cover, initial, errorText, checkedText, episodes, total,
  *            shown, hasMore, moreLabel, unheard, canMarkAll, emptyText, previewNote, subscribeLabel, subscribeAria }
  */
-function podcastShowModel({ id, subscription = null, feed = null, preview = null, player = null, limit = PAGE_SIZE, now = Date.now(), loading = false } = {}) {
+function podcastShowModel({ id, subscription = null, feed = null, preview = null, player = null, limit = PAGE_SIZE, now = Date.now(), loading = false, sort = 'newest' } = {}) {
   const subscribed = Boolean(subscription);
   const channel = (feed && feed.channel) || {};
   const title = (subscription && subscription.title) || (preview && preview.title) || channel.title || '';
@@ -24,7 +24,10 @@ function podcastShowModel({ id, subscription = null, feed = null, preview = null
   const description = channel.description || (preview && preview.description) || '';
   const cover = (subscription && subscription.cover) || (preview && preview.cover) || channel.cover || null;
   const list = subscribed && feed && Array.isArray(feed.episodes) ? feed.episodes : [];
-  const items = list.map(episode => episodeItem({ podcastId: id, show: title, episode, fallbackCover: cover, player, now }));
+  const items = sortEpisodeItems(
+    list.map(episode => episodeItem({ podcastId: id, show: title, episode, fallbackCover: cover, player, now })),
+    sort,
+  );
   const shown = Math.min(items.length, Math.max(PAGE_SIZE, limit));
   const unheard = list.filter(episode => episodeStatus(episode) !== 'played').length;
   const lastError = (subscription && subscription.feed && subscription.feed.lastError) || '';

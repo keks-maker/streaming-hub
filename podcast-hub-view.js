@@ -9,6 +9,9 @@ const { createPodcastData } = require('./podcast-data.js');
 const { createPodcastDashboard } = require('./podcast-dashboard-view.js');
 const { createPodcastShowView } = require('./podcast-show-view.js');
 const { createPodcastSearchView } = require('./podcast-search-view.js');
+const { createEpisodeOverlay } = require('./podcast-episode-overlay-view.js');
+const { createPodcastDetailsCache } = require('./podcast-details-cache.js');
+const { ALL_ID } = require('./podcast-dashboard-model.js');
 
 const HOME = { view: 'home' };
 const CLOCK_REFRESH_MS = 60 * 1000;
@@ -31,10 +34,11 @@ function normalizeRoute(route) {
 
 /**
  * options: { podcasts (window.podcasts), logger, notify(text), onBeforeNavigate() (vor jedem Routenwechsel: Verlauf sichern),
+ *            details (podcast-details-cache.js, optional; sonst eigener Zwischenspeicher),
  *            onBack() (Zurück-Aktion der Navigation; liefert true, wenn behandelt), onManage() („Podcasts verwalten“: Einstellungen öffnen), now, timers (Tests) }
  */
 function createPodcastHub(root, options = {}) {
-  const { podcasts, logger = null, notify = null, onBeforeNavigate = null, onBack = null, onManage = null, now = () => Date.now(), timers } = options;
+  const { podcasts, details = createPodcastDetailsCache({ podcasts: options.podcasts }), logger = null, notify = null, onBeforeNavigate = null, onBack = null, onManage = null, now = () => Date.now(), timers } = options;
   const doc = root.ownerDocument || document;
   const data = createPodcastData({ podcasts, logger });
 
@@ -67,9 +71,14 @@ function createPodcastHub(root, options = {}) {
     live.textContent = announceToggle ? text : text + String.fromCharCode(160); // gleicher Text wird erneut vorgelesen
   };
 
+  // Sitzungszustand des Dashboards (bleibt beim Wechsel zur Sendungsseite und zurück erhalten): Auswahl links, Filter, Sortierung
+  const view = { selection: ALL_ID, filter: 'all', sort: 'newest' };
+
   const ctx = {
     podcasts,
     data,
+    view,
+    openEpisode: (item, trigger) => overlay.open({ podcastId: item.podcastId, episodeId: item.episodeId }, trigger),
     logger,
     notify,
     timers,
@@ -81,6 +90,7 @@ function createPodcastHub(root, options = {}) {
     home: () => open(HOME, { silent: true }), // z. B. nach dem Abbestellen: die Sendungsseite gibt es nicht mehr
     manage: typeof onManage === 'function' ? () => onManage() : null, // „Podcasts verwalten“ → Einstellungen
   };
+  const overlay = createEpisodeOverlay(doc, { podcasts, data, details, getPlayer: () => playerState, now, announce, notify, logger, openShow: id => open({ view: 'show', id }) });
   const home = createPodcastDashboard(homePanel, ctx);
   const show = createPodcastShowView(showPanel, ctx);
   const search = createPodcastSearchView(searchPanel, ctx);
@@ -97,9 +107,11 @@ function createPodcastHub(root, options = {}) {
     if (route.view === 'home') home.render();
     else if (route.view === 'show') show.render();
     else search.render();
+    if (overlay.isOpen()) overlay.render();
   }
 
   function applyPanels() {
+    if (overlay.isOpen()) overlay.close({ restoreFocus: false }); // Routenwechsel: kein Dialog über der neuen Ansicht
     homePanel.hidden = route.view !== 'home';
     showPanel.hidden = route.view !== 'show';
     searchPanel.hidden = route.view !== 'search';
@@ -137,6 +149,7 @@ function createPodcastHub(root, options = {}) {
 
   function hideArea() {
     visible = false;
+    overlay.close({ restoreFocus: false });
     if (clockTimer) clearInterval(clockTimer);
     clockTimer = null;
   }

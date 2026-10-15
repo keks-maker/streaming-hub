@@ -47,6 +47,7 @@ const { createPodcastSettingsService } = require('./lib/podcast/podcast-settings
 const { createRefreshSchedule } = require('./lib/podcast/podcast-refresh-timer.js');
 const { createPodcastSearch } = require('./lib/podcast/podcast-search.js');
 const { createCoverLoader } = require('./lib/podcast/podcast-cover.js');
+const { createChaptersLoader } = require('./lib/podcast/podcast-chapters.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
 const { createRadioLogoCache } = require('./lib/radio/radio-logo-cache.js');
 const { createTrayTextRenderer } = require('./lib/radio/tray-text-renderer.js');
@@ -881,6 +882,7 @@ app.whenReady().then(() => {
       refresher: podcastRefresher,
       search: createPodcastSearch({ searchUrl: isIsolatedTestRun(process.env) ? process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL : undefined }),
       coverLoader: createCoverLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // Loopback nur im isolierten E2E-Lauf (lokaler Ersatzserver)
+      chaptersLoader: createChaptersLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // wie die Cover: Loopback nur im isolierten E2E-Lauf
       requireMainRenderer,
       sendToMain: (channel, payload) => {
         try {

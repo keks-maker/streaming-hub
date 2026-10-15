@@ -5,6 +5,7 @@
 'use strict';
 
 const { nowPlayingText, safeLogoUrl } = require('./radio-dashboard-model.js');
+const { currentChapter } = require('./lib/podcast/chapters.js');
 
 const STATUS_TEXT = {
   loading: 'Verbinde …',
@@ -191,15 +192,22 @@ function podcastLiveMessage(state) {
   }
 }
 
+/** Aktuelles Kapitel als Zusatztext („Kapitel 2/5: Titel“); ohne Kapitel oder im Fehlerzustand leer. */
+function chapterText(chapters, position, status) {
+  if (status === 'error') return '';
+  const current = currentChapter(chapters, position);
+  return current ? `Kapitel ${current.index + 1}/${chapters.length}: ${current.chapter.title}` : '';
+}
+
 /**
  * Modell der Leiste bei Podcast.
- * Ausgabe: { visible, mode:'podcast', name (Sendung), subtitle (Episode/Status), cover, initial, status, action, playPauseLabel,
+ * Ausgabe: { visible, mode:'podcast', name (Sendung), subtitle (Episode/Status), chapterText (aktuelles Kapitel, leer ohne Kapitel), cover, initial, status, action, playPauseLabel,
  *            position, duration, canSeek, seekMax, seekValue, valueText, positionText, durationText, rate, rates,
  *            skipBack, skipForward, volume, volumePercent, live }
  */
-function podcastMiniPlayerModel(state, { suppressed = false } = {}) {
+function podcastMiniPlayerModel(state, { suppressed = false, chapters = null } = {}) {
   if (!isPodcastMiniPlayerVisible(state, { suppressed })) {
-    return { visible: false, mode: 'podcast', status: 'idle', name: '', subtitle: '', cover: null, initial: '', action: 'retry', playPauseLabel: PODCAST_PLAY_PAUSE_LABEL.retry, position: 0, duration: 0, canSeek: false, seekMax: 0, seekValue: 0, valueText: '', positionText: '0:00', durationText: '0:00', rate: 1, rates: PODCAST_RATES, skipBack: SKIP_BACK_SECONDS, skipForward: SKIP_FORWARD_SECONDS, volume: 0, volumePercent: 0, live: '' };
+    return { visible: false, mode: 'podcast', status: 'idle', name: '', subtitle: '', chapterText: '', cover: null, initial: '', action: 'retry', playPauseLabel: PODCAST_PLAY_PAUSE_LABEL.retry, position: 0, duration: 0, canSeek: false, seekMax: 0, seekValue: 0, valueText: '', positionText: '0:00', durationText: '0:00', rate: 1, rates: PODCAST_RATES, skipBack: SKIP_BACK_SECONDS, skipForward: SKIP_FORWARD_SECONDS, volume: 0, volumePercent: 0, live: '' };
   }
   const duration = Number.isFinite(state.duration) && state.duration > 0 ? state.duration : 0;
   const rawPosition = Number.isFinite(state.position) && state.position > 0 ? state.position : 0;
@@ -212,6 +220,7 @@ function podcastMiniPlayerModel(state, { suppressed = false } = {}) {
     mode: 'podcast',
     name: show,
     subtitle: podcastSubtitle(state),
+    chapterText: chapterText(chapters, position, state.status),
     cover: safeCoverUrl(state.episode.cover),
     initial: show.trim().slice(0, 1).toUpperCase() || '?',
     status: state.status,

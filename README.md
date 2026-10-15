@@ -246,11 +246,15 @@ Favoriten, Reihenfolge, Anpassungen und eigene Sender bleiben bei Updates erhalt
 
 #### Podcast-Dashboard
 
-Wähle in der Navigationsleiste oder auf der Startseite **Podcasts** (nach Radio). Das Dashboard zeigt oben **Weiterhören** (angefangene Episoden mit Fortschritt) und **Neue Episoden** deiner Abos, darunter die abonnierten Sendungen als Kacheln in der gespeicherten Reihenfolge. Ein Klick auf eine Episode startet sie bzw. setzt sie an der gemerkten Stelle fort. Ohne Abos bietet das Dashboard Suche und die mitgelieferte Liste an.
+Wähle in der Navigationsleiste oder auf der Startseite **Podcasts** (nach Radio; grüne Akzentfarbe). Das Dashboard ist zweigeteilt: Links stehen die abonnierten Podcasts mit Cover, Name und Zahl der ungehörten Episoden, der erste Eintrag **Alle neuen Episoden** ist vorgewählt. Rechts steht die Episodenliste der Auswahl: bei „Alle neuen Episoden“ die gemeinsame Liste der neuen Episoden, bei einem Podcast alle seine zwischengespeicherten Episoden, umschaltbar auf **Nur ungehörte**. Die Sortierung (neueste, älteste zuerst, Titel A–Z) gilt auch auf der Sendungsseite; Auswahl und Sortierung bleiben beim Wechsel erhalten. Die Pfeiltasten wechseln in der Abo-Liste den Eintrag; **Sendung öffnen** (oder Doppelklick auf den Eintrag) zeigt die Sendungsseite. In schmalen Fenstern stehen beide Spalten untereinander. Ohne Abos bietet das Dashboard Suche und die mitgelieferte Liste an.
+
+#### Episoden, Shownotes und Kapitel
+
+Ein Klick auf eine Episode öffnet ein Fenster mit Cover, Titel, Sendung, Datum, Dauer, Fortschritt, **Abspielen/Pausieren**, **Als gehört markieren** und den **Shownotes** als reinem Text (Absätze bleiben erhalten, Links erscheinen als Text, Inhalte aus Feeds werden nie als Seite dargestellt). Esc schließt das Fenster. Die Wiedergabe startet über den Play-Knopf der Zeile oder des Fensters, nicht durch den bloßen Klick. Liefert der Feed **Kapitelmarken** (Podcasting-2.0-JSON `podcast:chapters` oder Podlove `psc:chapters`), zeigt das Fenster die Kapitelliste; ein Klick springt dorthin, und der Mini-Player nennt das aktuelle Kapitel. Ohne Kapitel im Feed bleibt alles wie bisher.
 
 #### Suchen, Abonnieren, Eigene Feeds
 
-Die **Suche** durchsucht das Verzeichnis iTunes Search; ein Klick auf ein Ergebnis öffnet die Sendungsseite mit **Abonnieren**. Die mitgelieferte Liste (rund 50 öffentlich-rechtliche Sendungen) lässt sich ebenfalls durchsuchen und abonnieren. Eigene Feeds fügst du unter **Einstellungen → Podcasts → Eigene Feeds** per RSS-Adresse hinzu; **Feed prüfen** zeigt vor dem Speichern Titel und Episodenzahl bzw. den Fehlergrund. Erlaubt sind http- und https-Adressen ohne Zugangsdaten.
+Die **Suche** durchsucht das Verzeichnis iTunes Search; ein Klick auf ein Ergebnis öffnet die Sendungsseite mit **Abonnieren**. Solange nichts gesucht wird, zeigt sie Vorschläge aus der mitgelieferten Liste (bereits abonnierte sind markiert; abonniert wird erst per Klick). Die mitgelieferte Liste (rund 50 öffentlich-rechtliche Sendungen) lässt sich ebenfalls durchsuchen und abonnieren. Eigene Feeds fügst du unter **Einstellungen → Podcasts → Eigene Feeds** per RSS-Adresse hinzu; **Feed prüfen** zeigt vor dem Speichern Titel und Episodenzahl bzw. den Fehlergrund. Erlaubt sind http- und https-Adressen ohne Zugangsdaten.
 
 #### Sendungsseite und Hörstatus
 

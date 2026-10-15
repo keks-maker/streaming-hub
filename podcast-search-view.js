@@ -8,7 +8,11 @@
 const { createSearchModel, SEARCH_LIMIT } = require('./podcast-search-model.js');
 const { createFeedAddModel } = require('./podcast-feed-add-model.js');
 const { createCover } = require('./podcast-cover-view.js');
+const { createSuggestionList } = require('./podcast-suggestions-view.js');
+const { popularCatalog } = require('./podcast-dashboard-model.js');
 const { initialOf, plural } = require('./podcast-format.js');
+
+const SUGGEST_COUNT = 8;
 
 const ICON_BACK =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5 8 12 15 19"/></svg>';
@@ -59,6 +63,22 @@ function createPodcastSearchView(root, ctx) {
   results.id = 'podcastSearchResults';
   results.setAttribute('aria-label', 'Suchergebnisse');
 
+  // Vorschläge aus dem mitgelieferten Katalog, solange keine Suche läuft und kein Suchbegriff vorliegt
+  const suggestSection = el(doc, 'section', 'podcast-section podcast-suggest');
+  suggestSection.id = 'podcastSuggestSection';
+  const suggestHeading = el(doc, 'h2', 'podcast-section-title', 'Beliebte öffentlich-rechtliche Sendungen');
+  suggestHeading.id = 'podcastSuggestHeading';
+  suggestSection.setAttribute('aria-labelledby', suggestHeading.id);
+  const suggestions = createSuggestionList(doc, {
+    podcasts,
+    data,
+    announce,
+    report: (text, error) => report(text, error),
+    id: 'podcastSuggestions',
+    label: 'Beliebte öffentlich-rechtliche Sendungen',
+  });
+  suggestSection.append(suggestHeading, suggestions.element);
+
   const feedSection = el(doc, 'section', 'podcast-section podcast-feed-add');
   const feedHeading = el(doc, 'h2', 'podcast-section-title', 'Eigenen Feed hinzufügen');
   feedHeading.id = 'podcastFeedHeading';
@@ -98,7 +118,7 @@ function createPodcastSearchView(root, ctx) {
   feedSection.append(feedHeading, feedForm, feedMessage, feedPreview);
 
   root.textContent = '';
-  root.append(toolbar, form, message, results, feedSection);
+  root.append(toolbar, form, message, results, suggestSection, feedSection);
 
   const report = (text, error) => {
     if (logger) logger.warn(`Podcast-Suche: ${text}`, error && error.message ? error.message : error || '');
@@ -160,6 +180,10 @@ function createPodcastSearchView(root, ctx) {
     message.textContent = state.status === 'done' || state.status === 'empty' ? state.countText + (state.status === 'empty' ? `: ${state.message}` : '') : state.message;
     message.classList.toggle('is-error', state.status === 'error' || state.status === 'rate-limited');
     results.hidden = state.results.length === 0;
+    const snap = data.snapshot();
+    const suggested = state.status === 'idle' ? popularCatalog(snap.catalog, snap.subscriptions, SUGGEST_COUNT, { includeSubscribed: true }) : [];
+    suggestSection.hidden = suggested.length === 0;
+    if (suggested.length) suggestions.render(suggested);
     const next = state.results.map(result => result.id).join('\n');
     if (next !== signature) {
       signature = next;

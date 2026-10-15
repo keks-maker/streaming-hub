@@ -46,11 +46,11 @@ function setIcon(button, icon) {
 }
 
 /**
- * options: { radio, podcasts (optional: window.podcasts.player), getFavoriteCount(), onOpenRadio(), onOpenPodcast(state) (optional), resolveCover(url) → Promise<ladbare URL|null> (optional; http-Cover über den Main), notify(message), logger }
+ * options: { radio, podcasts (optional: window.podcasts.player), getFavoriteCount(), onOpenRadio(), onOpenPodcast(state) (optional), loadChapters(podcastId, episodeId) → Promise<[{start,title}]> (optional), resolveCover(url) → Promise<ladbare URL|null> (optional; http-Cover über den Main), notify(message), logger }
  * Rückgabe: { render, setSuppressed(flag), dispose, getModel }
  */
 function createRadioMiniPlayer(root, options = {}) {
-  const { radio, podcasts = null, getFavoriteCount, onOpenRadio, onOpenPodcast, resolveCover = null, notify, logger } = options;
+  const { radio, podcasts = null, getFavoriteCount, onOpenRadio, onOpenPodcast, loadChapters = null, resolveCover = null, notify, logger } = options;
   const doc = root.ownerDocument || document;
 
   root.textContent = '';
@@ -71,7 +71,9 @@ function createRadioMiniPlayer(root, options = {}) {
   info.title = 'Radio öffnen';
   const name = el(doc, 'span', 'radio-mini-name');
   const subtitle = el(doc, 'span', 'radio-mini-subtitle');
-  info.append(name, subtitle);
+  const chapter = el(doc, 'span', 'radio-mini-chapter');
+  chapter.hidden = true;
+  info.append(name, subtitle, chapter);
   info.addEventListener('click', () => {
     if (root.dataset.mode === 'podcast') {
       if (onOpenPodcast) onOpenPodcast(podcastState);
@@ -147,6 +149,8 @@ function createRadioMiniPlayer(root, options = {}) {
 
   let state = null;
   let podcastState = null;
+  let chapters = [];
+  let chaptersKey = '';
   let suppressed = false;
   let volumeDragging = false;
   let seekDragging = false;
@@ -216,9 +220,11 @@ function createRadioMiniPlayer(root, options = {}) {
     root.setAttribute('aria-label', 'Podcast-Wiedergabe');
     name.textContent = model.name;
     subtitle.textContent = model.subtitle;
+    chapter.textContent = model.chapterText;
+    chapter.hidden = !model.chapterText;
     info.disabled = typeof onOpenPodcast !== 'function';
     info.title = info.disabled ? '' : 'Podcast öffnen';
-    info.setAttribute('aria-label', `${model.name}${model.subtitle ? `, ${model.subtitle}` : ''}${info.disabled ? '' : ' – Podcast öffnen'}`);
+    info.setAttribute('aria-label', `${model.name}${model.subtitle ? `, ${model.subtitle}` : ''}${model.chapterText ? `, ${model.chapterText}` : ''}${info.disabled ? '' : ' – Podcast öffnen'}`);
     setLogo({ logo: model.cover, initial: model.initial });
     setIcon(playPause, ACTION_ICON[model.action]);
     playPause.title = model.playPauseLabel;
@@ -273,8 +279,26 @@ function createRadioMiniPlayer(root, options = {}) {
     volume.setAttribute('aria-label', 'Radio-Lautstärke');
   }
 
+  // Kapitel der laufenden Episode (nur wenn der Feed welche liefert); beim Episodenwechsel neu laden, Antworten veralteter Episoden verwerfen
+  function syncChapters() {
+    const episode = podcastState && podcastState.episode;
+    const key = episode ? `${episode.podcastId}\u0000${episode.episodeId}` : '';
+    if (key === chaptersKey) return;
+    chaptersKey = key;
+    chapters = [];
+    if (!key || typeof loadChapters !== 'function') return;
+    Promise.resolve(loadChapters(episode.podcastId, episode.episodeId))
+      .then(list => {
+        if (chaptersKey !== key || !Array.isArray(list)) return;
+        chapters = list;
+        render();
+      })
+      .catch(() => {});
+  }
+
   function render() {
-    const podcastModel = podcastMiniPlayerModel(podcastState, { suppressed });
+    syncChapters();
+    const podcastModel = podcastMiniPlayerModel(podcastState, { suppressed, chapters });
     if (podcastModel.visible) {
       lastModel = podcastModel;
       renderPodcast(podcastModel);

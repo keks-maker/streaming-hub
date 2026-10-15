@@ -36,6 +36,7 @@ const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
 const { createPodcastHub } = require('./podcast-hub-view.js');
 const { resolveCoverSource } = require('./podcast-cover-view.js');
+const { createPodcastDetailsCache } = require('./podcast-details-cache.js');
 const { favoriteCountOf } = require('./radio-dashboard-model.js');
 const { radioActionForVideoStart, podcastActionForVideoStart } = require('./radio-tv-conflict-model.js');
 const { renderUpdateNotes } = require('./update-notes-model.js');
@@ -550,6 +551,8 @@ const radioDashboardView = createRadioDashboard(radioDashboardRoot, {
   notify: showTvToast,
   onOpenManagement: openRadioManagement,
 });
+const podcastDetails = createPodcastDetailsCache({ podcasts: window.podcasts });
+window.podcasts.onRefreshed?.(() => podcastDetails.clear());
 const radioMiniPlayerView = createRadioMiniPlayer(radioMiniPlayerRoot, {
   radio: window.radio,
   podcasts: window.podcasts.player,
@@ -562,12 +565,14 @@ const radioMiniPlayerView = createRadioMiniPlayer(radioMiniPlayerRoot, {
     const id = state && state.episode && state.episode.podcastId;
     showDashboard('podcasts', id ? { route: { view: 'show', id } } : {});
   },
+  loadChapters: (podcastId, episodeId) => podcastDetails.chapters(podcastId, episodeId),
   resolveCover: url => resolveCoverSource(window.podcasts, url),
 });
 
 // ── Podcasts (P3): Dashboard, Sendungsseite und Suche; Verlauf über den gemeinsamen Navigationsstapel ──
 const podcastHub = createPodcastHub(podcastDashboardRoot, {
   podcasts: window.podcasts,
+  details: podcastDetails,
   logger,
   notify: showTvToast,
   onBeforeNavigate: () => {
@@ -892,7 +897,7 @@ function renderStartDashboard() {
   const sections = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
     { key: 'radio', label: 'Radio', icon: 'radio-icon.png', color: '#f59e0b' },
-    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: '#8b5cf6' },
+    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: '#5af2a6' },
     { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
     { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
     // 3.6b: keine Kachel „Aufnahmen“ mehr (wie der NavBar-Eintrag, P21); der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.

@@ -26,10 +26,10 @@ function feedXml(base, title, items) {
   const entries = items
     .map(
       (item, index) =>
-        `<item><title>${item.title}</title><guid>${item.guid}</guid><pubDate>${new Date(Date.now() - (index + 1) * 3600 * 1000).toUTCString()}</pubDate><itunes:duration>00:00:03</itunes:duration><enclosure url="${base}/${item.file}" type="audio/aac" length="0"/></item>`,
+        `<item><title>${item.title}</title><guid>${item.guid}</guid><pubDate>${new Date(Date.now() - (index + 1) * 3600 * 1000).toUTCString()}</pubDate><itunes:duration>00:00:03</itunes:duration><enclosure url="${base}/${item.file}" type="audio/aac" length="0"/>${item.extra || ''}</item>`,
     )
     .join('');
-  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>${title}</title><itunes:author>Test Autor</itunes:author><description>Beschreibung &lt;b&gt;nur Text&lt;/b&gt;</description><itunes:image href="${base}/cover.png"/>${entries}</channel></rss>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>${title}</title><itunes:author>Test Autor</itunes:author><description>Beschreibung &lt;b&gt;nur Text&lt;/b&gt;</description><itunes:image href="${base}/cover.png"/>${entries}</channel></rss>`;
 }
 
 function startServer(tone) {
@@ -47,7 +47,17 @@ function startServer(tone) {
           : [{ collectionName: 'Testsendung fett', artistName: 'Test Autor', feedUrl: `${base}/feed.xml`, artworkUrl600: `${base}/cover.png`, primaryGenreName: 'Test' }];
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ resultCount: results.length, results }));
     } else if (url.pathname === '/feed.xml') {
-      res.writeHead(200, { 'Content-Type': 'application/rss+xml' }).end(feedXml(base, 'Testsendung fett', [{ title: 'Erste Folge', guid: 'g1', file: 'ep1.aac' }, { title: 'Zweite Folge', guid: 'g2', file: 'ep2.aac' }]));
+      res.writeHead(200, { 'Content-Type': 'application/rss+xml' }).end(feedXml(base, 'Testsendung fett', [
+          {
+            title: 'Erste Folge',
+            guid: 'g1',
+            file: 'ep1.aac',
+            extra: `<content:encoded><![CDATA[<p>Absatz eins mit <a href="https://example.org/x">Link</a></p><p>Absatz zwei <b>fett</b></p><script>window.__pwned = 1</script><img src="x" onerror="window.__pwned = 2">]]></content:encoded><podcast:chapters url="${base}/chapters.json" type="application/json+chapters"/>`,
+          },
+          { title: 'Zweite Folge', guid: 'g2', file: 'ep2.aac' },
+        ]));
+    } else if (url.pathname === '/chapters.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json+chapters' }).end(JSON.stringify({ version: '1.2.0', chapters: [{ startTime: 0, title: 'Anfang' }, { startTime: 2, title: 'Ende-Kapitel' }] }));
     } else if (url.pathname === '/feed2.xml') {
       res.writeHead(200, { 'Content-Type': 'application/rss+xml' }).end(feedXml(base, 'Eigener Feed', [{ title: 'Eigene Folge', guid: 'h1', file: 'ep1.aac' }]));
     } else if (url.pathname === '/broken.xml') {
@@ -113,6 +123,9 @@ test.describe('Podcast-Oberfläche', () => {
   test('Navigation: Kachel und Nav-Eintrag direkt nach Radio; Leerzustand mit Suchfeld und Kurzliste', async () => {
     const order = await page.locator('.dashboard-section-tile').evaluateAll(els => els.map(e => e.dataset.section));
     expect(order.slice(0, 3)).toEqual(['livetv', 'radio', 'podcasts']);
+    const colors = await page.locator('.dashboard-section-tile').evaluateAll(els => Object.fromEntries(els.map(e => [e.dataset.section, e.style.getPropertyValue('--tile-color').trim()])));
+    expect(colors.podcasts).not.toBe(colors.livetv);
+    expect(colors.podcasts).toBe('#5af2a6');
     await shot(page, 'startseite');
     await openPodcasts(page);
     await expect(page.locator('#overlayLocation')).toHaveText('Podcasts');
@@ -124,7 +137,7 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(page.locator('#podcastEmptySearch')).toBeVisible();
     await expect(page.locator('#podcastPopular .podcast-popular').first()).toBeVisible();
     expect(await page.locator('#podcastPopular .podcast-popular').count()).toBeLessThanOrEqual(8);
-    await expect(page.locator('#podcastNewSection')).toBeHidden();
+    await expect(page.locator('#podcastSplit')).toBeHidden();
     await expect(page.locator('#podcastRefresh')).toBeDisabled();
     expect(await page.evaluate(() => window.podcasts.list().then(list => list.length))).toBe(0); // kein Abo ohne Klick
     await shot(page, 'podcasts-leer');
@@ -133,7 +146,19 @@ test.describe('Podcast-Oberfläche', () => {
   test('Suche: Entprellung, Trefferzahl, Text ohne Markup, Abo; Leer- und Rate-Limit-Hinweis', async () => {
     await page.locator('#podcastSearchOpen').click();
     await expect(page.locator('#podcastSearchInput')).toBeFocused();
+    // ohne Suchbegriff: Vorschläge aus dem mitgelieferten Katalog (nichts wird automatisch abonniert)
+    await expect(page.locator('#podcastSuggestHeading')).toHaveText('Beliebte öffentlich-rechtliche Sendungen');
+    const suggestions = page.locator('#podcastSuggestions .podcast-popular');
+    await expect(suggestions.first()).toBeVisible();
+    expect(await suggestions.count()).toBeLessThanOrEqual(8);
+    expect(await suggestions.count()).toBeGreaterThan(0);
+    await expect(suggestions.first().getByRole('button')).toHaveText('Abonnieren');
+    expect(await page.evaluate(() => window.podcasts.list().then(list => list.length))).toBe(0);
+    await shot(page, 'podcasts-suche-vorschlaege');
+    await page.locator('#podcastSearchInput').fill('a');
+    await expect(page.locator('#podcastSuggestSection')).toBeVisible(); // zu kurz: noch keine Suche
     await page.locator('#podcastSearchInput').fill('limit');
+    await expect(page.locator('#podcastSuggestSection')).toBeHidden();
     await expect(page.locator('#podcastSearchCount')).toContainText('später erneut', { timeout: 10_000 });
     await page.locator('#podcastSearchInput').fill('nichts');
     await expect(page.locator('#podcastSearchCount')).toContainText('Keine Treffer', { timeout: 10_000 });
@@ -148,22 +173,68 @@ test.describe('Podcast-Oberfläche', () => {
     await expect.poll(() => page.evaluate(() => window.podcasts.list().then(list => list.length))).toBe(1);
     // Cover (http) kommt über den Main als data:-URL
     await expect(row.locator('.podcast-cover img')).toHaveAttribute('src', /^data:image\/png/);
+    await page.locator('#podcastSearchInput').fill('');
+    await expect(page.locator('#podcastSuggestSection')).toBeVisible(); // Suchfeld leer: Vorschläge wieder da
   });
 
-  test('Dashboard nach Abo: Statuszeile, Neue Episoden, Meine Abos mit Badge', async () => {
+  test('Dashboard nach Abo: zweigeteilt, Abo-Liste mit „Alle neuen Episoden“ zuerst, Statuszeile, Badge', async () => {
     await page.locator('#podcastSearchBack').click();
-    await expect(page.locator('#podcastNewSection')).toBeVisible();
+    await expect(page.locator('#podcastSplit')).toBeVisible();
     await expect(page.locator('#podcastStatus')).toContainText('1 Abo · 2 neue Episoden · geprüft');
+    const entries = page.locator('#podcastShowGrid .podcast-show');
+    await expect(entries).toHaveCount(2);
+    await expect(entries.first()).toContainText('Alle neuen Episoden');
+    await expect(entries.first().locator('.podcast-show-btn')).toHaveAttribute('aria-current', 'true');
+    await expect(entries.nth(1).locator('.podcast-badge')).toHaveText('2');
+    await expect(page.locator('#podcastNewHeading')).toHaveText('Alle neuen Episoden');
     await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(2);
-    await expect(page.locator('#podcastShowGrid .podcast-show')).toHaveCount(1);
-    await expect(page.locator('#podcastShowGrid .podcast-badge')).toHaveText('2');
+    await expect(page.locator('#podcastOpenShow')).toBeHidden();
     await expect(page.locator('#podcastEmpty')).toBeHidden();
     await expect(page.locator('#podcastRefresh')).toBeEnabled();
     await shot(page, 'podcasts-dashboard');
   });
 
-  test('Wiedergabe: Klick auf eine neue Episode spielt, aktive Zeile markiert, Mini-Player zeigt den Podcast', async () => {
-    const first = page.locator('#podcastNewList .podcast-episode-main').first();
+  test('Episoden-Overlay: Klick auf die Zeile öffnet Shownotes (nur Text), spielt nicht; Kapitel; Fokusfalle, Esc, Fokus zurück', async () => {
+    const row = page.locator('#podcastNewList .podcast-episode', { hasText: 'Erste Folge' });
+    const main = row.locator('.podcast-episode-main');
+    await main.click();
+    const dialog = page.locator('#podcastOverlay [role="dialog"]');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await expect(page.locator('#podcastOverlayTitle')).toHaveText('Erste Folge');
+    await expect(page.locator('#podcastOverlayShow')).toHaveText('Testsendung fett');
+    await expect(page.locator('#podcastOverlayMeta')).toContainText('Neu');
+    expect(await page.evaluate(() => window.podcasts.player.getState().then(s => s.status))).toBe('idle'); // bloßer Klick startet nichts
+    const paragraphs = page.locator('#podcastOverlayNotes .podcast-notes-paragraph');
+    await expect(paragraphs).toHaveText(['Absatz eins mit Link (https://example.org/x)', 'Absatz zwei fett']);
+    expect(await page.locator('#podcastOverlayNotes a, #podcastOverlayNotes script, #podcastOverlayNotes img, #podcastOverlayNotes b').count()).toBe(0);
+    expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
+    await expect(page.locator('#podcastOverlayChapters')).toBeVisible();
+    await expect(page.locator('#podcastOverlayChapters .podcast-chapter-btn')).toHaveCount(2);
+    await expect(page.locator('#podcastOverlayChapters .podcast-chapter-btn').nth(1)).toContainText('Ende-Kapitel');
+    await expect(page.locator('#podcastOverlayPlay')).toBeFocused();
+    await shot(page, 'podcasts-overlay');
+    // Fokusfalle: Tab wandert nie aus dem Dialog heraus
+    for (let i = 0; i < 12; i += 1) {
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => Boolean(document.activeElement && document.activeElement.closest('#podcastOverlay')))).toBe(true);
+    }
+    await page.keyboard.press('Shift+Tab');
+    expect(await page.evaluate(() => Boolean(document.activeElement && document.activeElement.closest('#podcastOverlay')))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#podcastOverlay')).toHaveCount(0);
+    await expect(main).toBeFocused();
+    // Episode ohne Shownotes/Kapitel: Hinweis, kein leerer Kapitelbereich
+    await page.locator('#podcastNewList .podcast-episode', { hasText: 'Zweite Folge' }).locator('.podcast-episode-main').click();
+    await expect(page.locator('#podcastOverlayTitle')).toHaveText('Zweite Folge');
+    await expect(page.locator('#podcastOverlayNotes')).toHaveText('Zu dieser Episode gibt es keine Shownotes.');
+    await expect(page.locator('#podcastOverlayChapters')).toBeHidden();
+    await page.locator('#podcastOverlayClose').click();
+    await expect(page.locator('#podcastOverlay')).toHaveCount(0);
+  });
+
+  test('Wiedergabe: Play-Knopf der Zeile spielt, aktive Zeile markiert, Mini-Player zeigt den Podcast', async () => {
+    const first = page.locator('#podcastNewList .podcast-episode-play').first();
     await first.click();
     await expect.poll(() => page.evaluate(() => window.podcasts.player.getState().then(s => s.status)), { timeout: 15_000 }).toMatch(/playing|loading|ended/);
     await expect(page.locator('#radioMiniPlayer')).toBeVisible();
@@ -171,6 +242,21 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(page.locator('#radioMiniPlayer .radio-mini-name')).toHaveText('Testsendung fett');
     await expect(page.locator('#podcastNewList .podcast-episode.is-active, #podcastNewList .podcast-episode[data-state="played"]').first()).toBeVisible();
     await shot(page, 'podcasts-spielt');
+  });
+
+  test('Kapitel: Mini-Player zeigt das aktuelle Kapitel; Klick auf ein Kapitel im Overlay springt dorthin', async () => {
+    const key = await page.evaluate(() => window.podcasts.player.getState().then(s => s.episode));
+    expect(key.title).toBe('Erste Folge');
+    await expect(page.locator('#radioMiniPlayer .radio-mini-chapter')).toContainText(/Kapitel \d\/2: /, { timeout: 10_000 });
+    await page.locator('#podcastNewList .podcast-episode', { hasText: 'Erste Folge' }).locator('.podcast-episode-main').click();
+    await page.locator('#podcastOverlayChapters .podcast-chapter-btn').nth(1).click();
+    await expect(page.locator('#radioMiniPlayer .radio-mini-chapter')).toHaveText('Kapitel 2/2: Ende-Kapitel', { timeout: 10_000 });
+    const state = await page.evaluate(() => window.podcasts.player.getState());
+    expect(state.position).toBeGreaterThanOrEqual(1.9);
+    await expect(page.locator('#podcastOverlayChapters .podcast-chapter.is-current')).toContainText('Ende-Kapitel');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#podcastOverlay')).toHaveCount(0);
+    await shot(page, 'podcasts-kapitel');
   });
 
   test('Mini-Player: Klick auf den Titel öffnet die Sendungsseite; Episodenliste, Markieren, Abo-Knopf', async () => {
@@ -196,7 +282,8 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(page.locator('#podcastPanel-home')).toBeVisible();
     await expect(page.locator('#podcastPanel-show')).toBeHidden();
     await expect(page.locator('#podcastNewEmpty')).toBeVisible(); // alles gehört
-    await page.locator('#podcastShowGrid .podcast-show-btn').first().click();
+    await page.locator('#podcastShowGrid .podcast-show-btn').nth(1).click();
+    await page.locator('#podcastOpenShow').click();
     await expect(page.locator('#podcastPanel-show')).toBeVisible();
     await page.evaluate(() => document.getElementById('backBtn').click()); // Navigationsleiste fängt Mausklicks ab, solange sie eingeblendet ist
     await expect(page.locator('#podcastPanel-home')).toBeVisible();
@@ -218,8 +305,76 @@ test.describe('Podcast-Oberfläche', () => {
     await expect(page.locator('#podcastPanel-show')).toBeVisible();
     await expect(page.locator('#podcastShowTitle')).toHaveText('Eigener Feed');
     expect(await page.evaluate(() => window.podcasts.list().then(list => list.length))).toBe(2);
-    await page.locator('#podcastSubscribe').click(); // abbestellen → zurück zur Übersicht
+  });
+
+  test('Zweispaltig: Auswahl filtert rechts, Filter „ungehört“, Sortierung, Sitzung bleibt über die Sendungsseite erhalten, Tastatur', async () => {
+    const viewOf = () => page.locator('#podcastDashboard').getAttribute('data-view');
+    for (let i = 0; i < 3 && (await viewOf()) !== 'home'; i += 1) {
+      const before = await viewOf();
+      await page.evaluate(() => document.getElementById('backBtn').click()); // zurück durch Sendungsseite und Suche
+      await expect.poll(viewOf).not.toBe(before);
+    }
     await expect(page.locator('#podcastPanel-home')).toBeVisible();
+    const entries = page.locator('#podcastShowGrid .podcast-show');
+    await expect(entries).toHaveCount(3);
+    const own = entries.filter({ hasText: 'Eigener Feed' });
+    await own.locator('.podcast-show-btn').click();
+    await expect(page.locator('#podcastNewHeading')).toHaveText('Eigener Feed');
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(1);
+    await expect(page.locator('#podcastNewList')).toContainText('Eigene Folge');
+    await expect(own.locator('.podcast-show-btn')).toHaveAttribute('aria-current', 'true');
+    await expect(entries.first().locator('.podcast-show-btn')).not.toHaveAttribute('aria-current', 'true');
+    await expect(page.locator('.podcast-filter')).toBeVisible();
+    await expect(page.locator('#podcastOpenShow')).toBeVisible();
+    // „Alle neuen Episoden“: wieder die gemeinsame Liste (Testsendung ist komplett gehört, Eigener Feed hat eine neue Folge)
+    await entries.first().locator('.podcast-show-btn').click();
+    await expect(page.locator('#podcastNewHeading')).toHaveText('Alle neuen Episoden');
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(1);
+    await expect(page.locator('.podcast-filter')).toBeHidden();
+    // Testsendung: alle Episoden (auch gehörte), dann nur ungehörte
+    const show = entries.filter({ hasText: 'Testsendung fett' });
+    await show.locator('.podcast-show-btn').click();
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(2);
+    await page.locator('#podcastNewList .podcast-episode', { hasText: 'Erste Folge' }).locator('.podcast-episode-mark').click(); // → ungehört
+    await page.getByRole('button', { name: 'Nur ungehörte' }).click();
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(1);
+    await expect(page.locator('#podcastNewList')).toContainText('Erste Folge');
+    await page.getByRole('button', { name: 'Alle', exact: true }).click();
+    await expect(page.locator('#podcastNewList .podcast-episode')).toHaveCount(2);
+    // Sortierung
+    const titles = () => page.locator('#podcastNewList .podcast-episode-title').allTextContents();
+    expect(await titles()).toEqual(['Erste Folge', 'Zweite Folge']);
+    await page.locator('#podcastSort').selectOption('oldest');
+    await expect.poll(titles).toEqual(['Zweite Folge', 'Erste Folge']);
+    await shot(page, 'podcasts-zweispaltig');
+    // Sitzung: Sendungsseite öffnen (Knopf), Sortierung gilt dort, zurück → Auswahl und Sortierung erhalten
+    await page.locator('#podcastOpenShow').click();
+    await expect(page.locator('#podcastPanel-show')).toBeVisible();
+    await expect(page.locator('#podcastShowSort')).toHaveValue('oldest');
+    await expect.poll(() => page.locator('#podcastEpisodeList .podcast-episode-title').allTextContents()).toEqual(['Zweite Folge', 'Erste Folge']);
+    await page.evaluate(() => document.getElementById('backBtn').click());
+    await expect(page.locator('#podcastPanel-home')).toBeVisible();
+    await expect(page.locator('#podcastNewHeading')).toHaveText('Testsendung fett');
+    await expect(page.locator('#podcastSort')).toHaveValue('oldest');
+    // Doppelklick auf einen Abo-Eintrag öffnet die Sendungsseite
+    await show.locator('.podcast-show-btn').dblclick();
+    await expect(page.locator('#podcastPanel-show')).toBeVisible();
+    await page.evaluate(() => document.getElementById('backBtn').click());
+    // Tastatur: Pfeil runter in der Abo-Liste wählt den nächsten Eintrag, Pfeil hoch den vorigen
+    await entries.first().locator('.podcast-show-btn').click();
+    await entries.first().locator('.podcast-show-btn').focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(entries.nth(1).locator('.podcast-show-btn')).toBeFocused();
+    await expect(entries.nth(1).locator('.podcast-show-btn')).toHaveAttribute('aria-current', 'true');
+    await page.keyboard.press('ArrowUp');
+    await expect(page.locator('#podcastNewHeading')).toHaveText('Alle neuen Episoden');
+    // Abbestellen der ausgewählten Sendung: Auswahl fällt auf „Alle neuen Episoden“ zurück
+    await own.locator('.podcast-show-btn').click();
+    await page.locator('#podcastOpenShow').click();
+    await page.locator('#podcastSubscribe').click();
+    await expect(page.locator('#podcastPanel-home')).toBeVisible();
+    await expect(entries).toHaveCount(2);
+    await expect(page.locator('#podcastNewHeading')).toHaveText('Alle neuen Episoden');
     expect(await page.evaluate(() => window.podcasts.list().then(list => list.length))).toBe(1);
   });
 

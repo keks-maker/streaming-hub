@@ -223,6 +223,7 @@ contextBridge.exposeInMainWorld('podcasts', {
   subscribe: input => ipcRenderer.invoke('podcast:subscribe', input),
   unsubscribe: id => ipcRenderer.invoke('podcast:unsubscribe', id),
   episodes: id => ipcRenderer.invoke('podcast:episodes', id),
+  episodeDetails: key => ipcRenderer.invoke('podcast:episode-details', key),
   refresh: options => ipcRenderer.invoke('podcast:refresh', options),
   probeFeed: url => ipcRenderer.invoke('podcast:probe-feed', url),
   setPlayed: input => ipcRenderer.invoke('podcast:set-played', input),

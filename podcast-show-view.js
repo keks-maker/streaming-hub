@@ -5,6 +5,7 @@
 'use strict';
 
 const { podcastShowModel, PAGE_SIZE } = require('./podcast-show-model.js');
+const { SORTS } = require('./podcast-episode-model.js');
 const { createEpisodeList, playEpisodeItem } = require('./podcast-episode-list-view.js');
 const { createCover } = require('./podcast-cover-view.js');
 
@@ -66,6 +67,7 @@ function createPodcastShowView(root, ctx) {
   const list = createEpisodeList(doc, {
     podcasts,
     label: 'Episoden',
+    onOpen: (item, trigger) => ctx.openEpisode(item, trigger),
     onPlay: item => run(() => playEpisodeItem(podcasts.player, item), 'Wiedergabe nicht möglich'),
     onMark: item => markEpisode(item),
   });
@@ -75,7 +77,24 @@ function createPodcastShowView(root, ctx) {
   const more = el(doc, 'button', 'podcast-btn');
   more.type = 'button';
   more.id = 'podcastMore';
-  listSection.append(listHeading, list.element, listEmpty, more);
+  const sortLabel = el(doc, 'label', 'podcast-sort');
+  const sortSelect = doc.createElement('select');
+  sortSelect.id = 'podcastShowSort';
+  sortSelect.className = 'podcast-select';
+  for (const entry of SORTS) {
+    const option = doc.createElement('option');
+    option.value = entry.value;
+    option.textContent = entry.label;
+    sortSelect.appendChild(option);
+  }
+  sortLabel.append(el(doc, 'span', 'sr-only', 'Sortierung'), sortSelect);
+  sortSelect.addEventListener('change', () => {
+    ctx.view.sort = sortSelect.value; // gleiche Sortierung wie im Dashboard (Sitzung)
+    render();
+  });
+  const listHead = el(doc, 'div', 'podcast-column-head');
+  listHead.append(listHeading, sortLabel);
+  listSection.append(listHead, list.element, listEmpty, more);
 
   root.textContent = '';
   root.append(toolbar, head, feedError, previewNote, listSection);
@@ -106,7 +125,7 @@ function createPodcastShowView(root, ctx) {
   function model() {
     const snap = data.snapshot();
     const subscription = snap.subscriptions.find(sub => sub.id === podcastId) || null;
-    return podcastShowModel({ id: podcastId, subscription, feed: snap.episodes[podcastId] || null, preview, player: getPlayer(), limit, now: now(), loading: !snap.loaded });
+    return podcastShowModel({ id: podcastId, subscription, feed: snap.episodes[podcastId] || null, preview, player: getPlayer(), limit, now: now(), loading: !snap.loaded, sort: ctx.view.sort });
   }
 
   function render() {
@@ -123,6 +142,7 @@ function createPodcastShowView(root, ctx) {
     subscribeBtn.disabled = busy;
     subscribeBtn.classList.toggle('podcast-btn-danger', m.subscribed);
     subscribeBtn.classList.toggle('podcast-btn-primary', !m.subscribed);
+    if (sortSelect.value !== ctx.view.sort) sortSelect.value = ctx.view.sort;
     markAll.hidden = !m.subscribed;
     markAll.disabled = !m.canMarkAll;
     checked.textContent = m.checkedText;
