@@ -3505,7 +3505,7 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
 .podcast-show-title-row.is-playing .podcast-eq span:nth-child(3) { animation-delay:-.6s; animation-duration:1.1s; }
 .podcast-show-title-row.is-active .podcast-show-heading,.podcast-show-now-state { color:var(--podcast-playing); }
 .podcast-show-now-state { font-size:13px; font-weight:600; }
-.podcast-show-now-episode { margin:0; color:var(--text-dim); font-size:13px; }
+.podcast-show-now-episode { margin:0; color:var(--text-dim); font-size:13px; overflow-wrap:anywhere; }
 .podcast-show-now-state[hidden],.podcast-show-now-episode[hidden] { display:none; }
 .podcast-show-head-author { margin:0; color:var(--podcast-accent-soft); font-weight:600; }
 .podcast-show-description { margin:0; max-width:760px; color:var(--text-dim); font-size:14px; line-height:1.5; white-space:pre-line; display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical; overflow:hidden; }
