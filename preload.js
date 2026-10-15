@@ -227,6 +227,15 @@ contextBridge.exposeInMainWorld('podcasts', {
   probeFeed: url => ipcRenderer.invoke('podcast:probe-feed', url),
   setPlayed: input => ipcRenderer.invoke('podcast:set-played', input),
   savePosition: input => ipcRenderer.invoke('podcast:save-position', input),
+  // Verwaltung (Einstellungen → Podcasts): Reihenfolge { order: [id] }, Anpassung { id, title?, cover? } (leer = zurücksetzen)
+  reorder: input => ipcRenderer.invoke('podcast:reorder', input),
+  setOverride: input => ipcRenderer.invoke('podcast:set-override', input),
+  // Podcast-Einstellungen: rate, skipBack, skipForward, autoPlayNext, refreshIntervalMinutes, autoMarkPlayed, volume
+  getSettings: () => ipcRenderer.invoke('podcast:get-settings'),
+  setSettings: patch => ipcRenderer.invoke('podcast:set-settings', patch),
+  onSettingsChanged: radioListener('podcast:settings-changed'),
+  // Tray „Podcasts öffnen“: Renderer zeigt das Podcast-Dashboard (bzw. die Sendung der laufenden Episode)
+  onOpen: radioListener('podcast:open'),
   onSubscriptionsChanged: radioListener('podcast:subscriptions-changed'),
   onRefreshed: radioListener('podcast:refreshed'),
   onStateChanged: radioListener('podcast:state-changed'),

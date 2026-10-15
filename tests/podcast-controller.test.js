@@ -236,8 +236,8 @@ test('Medientasten: seekto/seekbackward/seekforward/pause/play über action-Meld
   assert.equal(t.controller.getState().position, 300);
   t.controller.onPlayerReport({ t: 'action', action: 'seekbackward' });
   assert.equal(t.controller.getState().position, 285);
-  t.controller.onPlayerReport({ t: 'action', action: 'seekforward', offset: 10 });
-  assert.equal(t.controller.getState().position, 295);
+  t.controller.onPlayerReport({ t: 'action', action: 'seekforward', offset: 10 }); // Betriebssystem-Vorgabe 10 s: es gilt die eingestellte Sprungweite (30 s)
+  assert.equal(t.controller.getState().position, 315);
   t.controller.onPlayerReport({ t: 'action', action: 'pause' });
   assert.equal(t.controller.getState().status, 'paused');
   t.controller.onPlayerReport({ t: 'action', action: 'play' });

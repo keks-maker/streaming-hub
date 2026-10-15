@@ -126,6 +126,11 @@ const PODCAST_PLAY_PAUSE_LABEL = {
   retry: 'Erneut versuchen',
 };
 
+/** Sprungweite aus den Podcast-Einstellungen (state.skipBack/skipForward); ungültige Werte fallen auf den Standard zurück. */
+function skipSeconds(value, fallback) {
+  return Number.isFinite(value) && value > 0 && value <= 3600 ? Math.round(value) : fallback;
+}
+
 /** Covers über http/https ohne Zugangsdaten (wie Controller/Player; die CSP bleibt unverändert). */
 function safeCoverUrl(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -222,8 +227,8 @@ function podcastMiniPlayerModel(state, { suppressed = false } = {}) {
     durationText: duration > 0 ? formatClock(duration) : '–:–',
     rate: PODCAST_RATES.includes(state.rate) ? state.rate : 1,
     rates: PODCAST_RATES,
-    skipBack: SKIP_BACK_SECONDS,
-    skipForward: SKIP_FORWARD_SECONDS,
+    skipBack: skipSeconds(state.skipBack, SKIP_BACK_SECONDS),
+    skipForward: skipSeconds(state.skipForward, SKIP_FORWARD_SECONDS),
     volume,
     volumePercent: Math.round(volume * 100),
     live: podcastLiveMessage(state),

@@ -21,6 +21,9 @@ const { createTvChannelsView } = require('./settings-tv-channels.js');
 const { createRadioStationsView } = require('./settings-radio-stations.js');
 const { createRadioCustomView } = require('./settings-radio-custom.js');
 const { createRadioPlaybackView } = require('./settings-radio-playback.js');
+const { createPodcastSubsView } = require('./settings-podcast-subs.js');
+const { createPodcastFeedsView } = require('./settings-podcast-feeds.js');
+const { createPodcastPlaybackView } = require('./settings-podcast-playback.js');
 const { orderFavoriteChannels } = require('./lib/settings-channel-logic.js');
 const {
   formatDuration,
@@ -532,6 +535,7 @@ function scheduleDashboardHubRefresh() {
 }
 // ── Radio (R2): Dashboard, Mini-Player und Ton-Konflikt mit Bildwiedergabe ──
 const RADIO_MANAGEMENT_PAGE = 'radio-stations';
+const PODCAST_MANAGEMENT_PAGE = 'podcast-subs';
 let radioFavoriteCount = 0;
 let radioLatestState = null;
 let htmlFullscreenActive = false;
@@ -570,6 +574,7 @@ const podcastHub = createPodcastHub(podcastDashboardRoot, {
     if (!restoringNav) pushNavState();
   },
   onBack: () => handleBackNavigation(),
+  onManage: () => openSettingsPage(PODCAST_MANAGEMENT_PAGE),
 });
 
 function updateRadioFavoriteCount(sources) {
@@ -579,6 +584,8 @@ function updateRadioFavoriteCount(sources) {
 window.radio.getSources().then(updateRadioFavoriteCount).catch(() => {});
 window.radio.onSourcesChanged(updateRadioFavoriteCount);
 window.radio.onOpen?.(() => showDashboard('radio'));
+// Tray „Podcasts öffnen“: Sendungsseite der laufenden Episode, sonst das Podcast-Dashboard
+window.podcasts.onOpen?.(target => showDashboard('podcasts', target && target.podcastId ? { route: { view: 'show', id: target.podcastId } } : {}));
 window.radio.getState().then(initial => (radioLatestState = radioLatestState || initial)).catch(() => {});
 window.radio.onState(next => {
   radioLatestState = next;
@@ -3668,6 +3675,9 @@ const settingsView = createSettingsView(settingsPanel, {
     if (page === 'radio-stations') settingsRadioStationsView.refresh();
     if (page === 'radio-custom') settingsRadioCustomView.refresh();
     if (page === 'radio-playback') settingsRadioPlaybackView.refresh();
+    if (page === 'podcast-subs') settingsPodcastSubsView.refresh();
+    if (page === 'podcast-feeds') settingsPodcastFeedsView.refresh();
+    if (page === 'podcast-playback') settingsPodcastPlaybackView.refresh();
   },
 });
 const settingsRadioStationsView = createRadioStationsView(document.getElementById('settingsRadioStationsRoot'), {
@@ -3680,6 +3690,13 @@ const settingsRadioStationsView = createRadioStationsView(document.getElementByI
 });
 const settingsRadioCustomView = createRadioCustomView(document.getElementById('settingsRadioCustomRoot'), { radio: window.radio, logger });
 const settingsRadioPlaybackView = createRadioPlaybackView(document.getElementById('settingsRadioPlaybackRoot'), { radio: window.radio, logger });
+const settingsPodcastSubsView = createPodcastSubsView(document.getElementById('settingsPodcastSubsRoot'), { podcasts: window.podcasts, logger });
+const settingsPodcastFeedsView = createPodcastFeedsView(document.getElementById('settingsPodcastFeedsRoot'), { podcasts: window.podcasts, logger });
+const settingsPodcastPlaybackView = createPodcastPlaybackView(document.getElementById('settingsPodcastPlaybackRoot'), {
+  podcasts: window.podcasts,
+  logger,
+  onOpenRadioPlayback: () => settingsView.showPage('radio-playback'),
+});
 settingsTvChannelsView = createTvChannelsView({
   root: settingsPanel,
   api: window.electronAPI,

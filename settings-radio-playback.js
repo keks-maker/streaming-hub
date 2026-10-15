@@ -20,7 +20,7 @@ const OPTIONS = [
   {
     key: 'keepPlayingWhenClosed',
     label: 'Beim Schließen des Fensters weiterspielen',
-    hint: 'Die App läuft dann im Tray weiter und das Radio spielt weiter. Das setzt ein Tray-Symbol voraus – ohne Tray wird die App beim Schließen beendet.',
+    hint: 'Die App läuft dann im Tray weiter und das Radio spielt weiter. Das gilt auch für Podcasts. Das setzt ein Tray-Symbol voraus – ohne Tray wird die App beim Schließen beendet.',
   },
 ];
 

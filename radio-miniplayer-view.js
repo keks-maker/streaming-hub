@@ -1,7 +1,7 @@
 // Radio-Mini-Player (R2): Leiste unten im Hauptfenster, sichtbar auf allen Seiten, solange Radio nicht idle ist.
 // Logo, Sender, Titel/Interpret, Vorheriger/Play-Pause/Nächster Favorit, Lautstärke, Stopp.
 // Podcast (P2): läuft eine Episode (Option podcasts = window.podcasts.player), zeigt dieselbe Leiste Cover, Sendung – Episode,
-// Fortschrittsbalken mit Seek (Pfeiltasten ±5 s), −15/+30 s, Geschwindigkeit, Lautstärke und Stopp; Radio bleibt unverändert. Alle Stream- und
+// Fortschrittsbalken mit Seek (Pfeiltasten ±5 s), Sprünge (Standard −15/+30 s, einstellbar), Geschwindigkeit, Lautstärke und Stopp; Radio bleibt unverändert. Alle Stream- und
 // Nutzerdaten werden per textContent bzw. img.src gesetzt (kein innerHTML mit Daten); Statuswechsel gehen über
 // eine aria-live-Region. Die Verdrahtung (Vollbild-Ausblendung, Klick auf den Sendernamen) liegt in renderer.js.
 
@@ -204,6 +204,11 @@ function createRadioMiniPlayer(root, options = {}) {
     logo.classList.toggle('has-error', !model.logo || logoFailed);
   }
 
+  function setSkipLabel(button, label) {
+    button.title = label;
+    button.setAttribute('aria-label', label);
+  }
+
   function renderPodcast(model) {
     root.hidden = false;
     root.dataset.state = model.status;
@@ -230,6 +235,8 @@ function createRadioMiniPlayer(root, options = {}) {
     volume.setAttribute('aria-label', 'Podcast-Lautstärke');
     skipBack.disabled = !model.canSeek;
     skipForward.disabled = !model.canSeek;
+    setSkipLabel(skipBack, `${model.skipBack} Sekunden zurück`);
+    setSkipLabel(skipForward, `${model.skipForward} Sekunden vor`);
     seek.disabled = !model.canSeek;
     seek.max = String(model.seekMax);
     if (!seekDragging) {

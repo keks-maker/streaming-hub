@@ -20,6 +20,9 @@ function el(doc, tag, className, text) {
   return node;
 }
 
+const ICON_MANAGE =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="8" cy="17" r="2" fill="currentColor"/></svg>';
+
 function toolButton(doc, { id, label, title, icon }) {
   const button = el(doc, 'button', 'dashboard-hub-tool');
   button.type = 'button';
@@ -32,7 +35,7 @@ function toolButton(doc, { id, label, title, icon }) {
   return button;
 }
 
-/** ctx: { podcasts, data, getPlayer(), now(), open(route), announce(text), notify(text), logger } */
+/** ctx: { podcasts, data, getPlayer(), now(), open(route), announce(text), notify(text), logger, manage() (optional: Einstellungen → Podcasts) } */
 function createPodcastDashboard(root, ctx) {
   const { podcasts, data, getPlayer, now, open, announce, notify, logger } = ctx;
   const doc = root.ownerDocument || document;
@@ -42,10 +45,13 @@ function createPodcastDashboard(root, ctx) {
   toolbar.setAttribute('aria-label', 'Podcast-Werkzeuge');
   const searchOpen = toolButton(doc, { id: 'podcastSearchOpen', label: 'Podcasts suchen', title: 'Podcasts suchen und eigene Feeds hinzufügen', icon: ICON_SEARCH });
   const refresh = toolButton(doc, { id: 'podcastRefresh', label: 'Jetzt aktualisieren', title: 'Alle Abos auf neue Episoden prüfen', icon: ICON_REFRESH });
+  const manage = toolButton(doc, { id: 'podcastManage', label: 'Podcasts verwalten', title: 'Abos, eigene Feeds und Wiedergabe in den Einstellungen verwalten', icon: ICON_MANAGE });
+  manage.hidden = typeof ctx.manage !== 'function';
+  manage.addEventListener('click', () => ctx.manage());
   const status = el(doc, 'span', 'podcast-status');
   status.id = 'podcastStatus';
   status.setAttribute('aria-live', 'polite');
-  toolbar.append(searchOpen, refresh, status);
+  toolbar.append(searchOpen, refresh, manage, status);
 
   const loadError = el(doc, 'p', 'podcast-error');
   loadError.hidden = true;

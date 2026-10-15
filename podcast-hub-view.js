@@ -31,10 +31,10 @@ function normalizeRoute(route) {
 
 /**
  * options: { podcasts (window.podcasts), logger, notify(text), onBeforeNavigate() (vor jedem Routenwechsel: Verlauf sichern),
- *            onBack() (Zurück-Aktion der Navigation; liefert true, wenn behandelt), now, timers (Tests) }
+ *            onBack() (Zurück-Aktion der Navigation; liefert true, wenn behandelt), onManage() („Podcasts verwalten“: Einstellungen öffnen), now, timers (Tests) }
  */
 function createPodcastHub(root, options = {}) {
-  const { podcasts, logger = null, notify = null, onBeforeNavigate = null, onBack = null, now = () => Date.now(), timers } = options;
+  const { podcasts, logger = null, notify = null, onBeforeNavigate = null, onBack = null, onManage = null, now = () => Date.now(), timers } = options;
   const doc = root.ownerDocument || document;
   const data = createPodcastData({ podcasts, logger });
 
@@ -79,6 +79,7 @@ function createPodcastHub(root, options = {}) {
     open: next => open(next),
     back: () => back(),
     home: () => open(HOME, { silent: true }), // z. B. nach dem Abbestellen: die Sendungsseite gibt es nicht mehr
+    manage: typeof onManage === 'function' ? () => onManage() : null, // „Podcasts verwalten“ → Einstellungen
   };
   const home = createPodcastDashboard(homePanel, ctx);
   const show = createPodcastShowView(showPanel, ctx);

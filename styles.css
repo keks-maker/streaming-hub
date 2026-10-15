@@ -3128,6 +3128,18 @@ body.epg-open .overlay-bar { z-index: 105; }
 .settings-chan-drag { cursor: grab; color: var(--text-muted); padding: 0 4px; user-select: none; }
 .settings-chan-drag[draggable="false"] { opacity: .3; cursor: default; }
 .settings-chan-detail { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.settings-card-subtitle { margin: 14px 0 6px; font-size: 13px; font-weight: 600; color: var(--text-dim); }
+/* Einstellungen → Podcasts */
+.settings-podcast-cover { width: 40px; height: 40px; border-radius: 6px; }
+.settings-podcast-cover .podcast-cover-fallback { font-size: 18px; color: #c4b5fd; }
+.settings-podcast-name { overflow: hidden; text-overflow: ellipsis; }
+.settings-podcast-feedstatus.error { color: #ef4444; }
+.settings-podcast-feedstatus.ok { color: #22c55e; }
+.settings-podcast-feedform { align-items: flex-end; }
+.settings-podcast-feedfield { flex: 1; min-width: 220px; }
+.settings-podcast-feedmessage { margin: 6px 0; }
+.settings-podcast-feedmessage.error { color: #ef4444; }
+.settings-podcast-preview { margin: 8px 0; border-color: var(--accent); }
 .settings-chan-detail .modal-input { width: 100%; }
 .settings-chan-combo-wrap { position: relative; }
 .settings-chan-combo { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; max-height: 220px; overflow-y: auto; background: #1a1a2e; border: 1px solid var(--border); border-radius: 8px; margin-top: 2px; }

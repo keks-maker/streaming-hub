@@ -42,7 +42,9 @@ const { registerPodcastIpc } = require('./lib/podcast/ipc.js');
 const { PodcastController } = require('./lib/podcast/PodcastController.js');
 const { createPlaybackPowerGuard } = require('./lib/podcast/playback-power.js');
 const { attachExclusivity } = require('./lib/playback-exclusivity.js');
-const { createPodcastRefresher, NO_VALIDATOR_INTERVAL_MS } = require('./lib/podcast/podcast-refresh.js');
+const { createPodcastRefresher } = require('./lib/podcast/podcast-refresh.js');
+const { createPodcastSettingsService } = require('./lib/podcast/podcast-settings-service.js');
+const { createRefreshSchedule } = require('./lib/podcast/podcast-refresh-timer.js');
 const { createPodcastSearch } = require('./lib/podcast/podcast-search.js');
 const { createCoverLoader } = require('./lib/podcast/podcast-cover.js');
 const { createLogoFinder, createNet: createLogoNet } = require('./lib/radio/radio-logo-finder.js');
@@ -87,8 +89,8 @@ let radioLibrary = null;
 let podcastLibrary = null;
 let podcastController = null;
 let podcastPowerGuard = null;
-let podcastRefreshTimer = null;
-let podcastStartTimer = null;
+let podcastRefreshSchedule = null;
+let podcastSettingsService = null;
 // Geplante Aufnahmen (Etappe 2a, Konzept §3.4) — Takt im Main, unabhängig vom Fenster
 let scheduler = null;
 // Standby-Schutz (Etappe 2b): powerSaveBlocker bei Aufnahme/anstehendem Start
@@ -673,6 +675,12 @@ function openRadioDashboard() {
   showWindowAndSend('radio:open', null);
 }
 
+/** Podcast-Bereich im Renderer öffnen (Tray: „Podcasts öffnen“); mit laufender Episode deren Sendungsseite. */
+function openPodcastDashboard() {
+  const episode = podcastController ? podcastController.getState().episode : null;
+  showWindowAndSend('podcast:open', episode ? { podcastId: episode.podcastId } : null);
+}
+
 app.whenReady().then(() => {
   if (process.platform === 'darwin' && app.dock) {
     app.dock.setIcon(path.join(__dirname, 'assets/icon.png'));
@@ -828,24 +836,35 @@ app.whenReady().then(() => {
     logger.error('Radio konnte nicht eingerichtet werden:', e.message);
   }
 
-  // ── Podcasts (Konzept §2/§7): Abos, Hörzustand, Feed-Abruf und Suche im Main; noch ohne Wiedergabe/Oberfläche (P2/P3) ──
+  // ── Podcasts (Konzept §2/§7): Abos, Hörzustand, Feed-Abruf, Suche, Wiedergabe und Einstellungen im Main ──
   try {
     podcastLibrary = new PodcastLibrary({ userStorage, logger });
-    const podcastRefresher = createPodcastRefresher({ library: podcastLibrary, logger });
-    // Wiedergabe (P2): eigenes unsichtbares Player-Fenster (gleicher Host wie Radio), Lautstärke startet mit der Radio-Lautstärke
-    let startVolume;
-    try {
-      startVolume = radioLibrary ? radioLibrary.getSettings().volume : undefined;
-    } catch (_) {
-      startVolume = undefined;
-    }
+    // Einstellungen (podcast-settings.json): Prüfintervall bestimmt auch den Mindestabstand für Feeds ohne ETag/Last-Modified
+    const podcastSettings = podcastLibrary.getSettings();
+    const podcastRefresher = createPodcastRefresher({ library: podcastLibrary, logger, noValidatorIntervalMs: () => podcastSettingsService.get().refreshIntervalMinutes * 60 * 1000 });
+    // Wiedergabe (P2): eigenes unsichtbares Player-Fenster (gleicher Host wie Radio), eigene Lautstärke und Standardgeschwindigkeit
     podcastController = new PodcastController({
       BrowserWindow,
       playerHtml: path.join(__dirname, 'radio-player.html'),
       preloadPath: path.join(__dirname, 'preload-radio.js'),
       library: podcastLibrary,
-      volume: startVolume,
+      volume: podcastSettings.volume,
+      rate: podcastSettings.rate,
+      getSettings: () => (podcastSettingsService ? podcastSettingsService.get() : podcastSettings),
       logger,
+    });
+    podcastSettingsService = createPodcastSettingsService({
+      library: podcastLibrary,
+      controller: podcastController,
+      logger,
+      onChanged: next => {
+        if (podcastRefreshSchedule) podcastRefreshSchedule.reschedule();
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('podcast:settings-changed', next);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+      },
     });
     podcastPowerGuard = createPlaybackPowerGuard({ powerSaveBlocker, logger });
     if (radioController) attachExclusivity({ radio: radioController, podcast: podcastController, logger });
@@ -856,6 +875,7 @@ app.whenReady().then(() => {
     });
     registerPodcastIpc({
       controller: podcastController,
+      settings: podcastSettingsService,
       ipcMain,
       library: podcastLibrary,
       refresher: podcastRefresher,
@@ -871,20 +891,18 @@ app.whenReady().then(() => {
       },
       logger,
     });
-    // Aktualisierung nach dem Start (nicht blockierend) und stündlich; ohne Abos und in isolierten Testläufen kein Netzverkehr
+    // Aktualisierung nach dem Start (nicht blockierend) und im eingestellten Prüfintervall; ohne Abos und in isolierten Testläufen kein Netzverkehr
     if (!isIsolatedTestRun(process.env)) {
-      const refreshAll = () => {
-        podcastRefresher.refreshAll().catch(error => logger.warn('Podcast-Aktualisierung fehlgeschlagen:', error.message));
-      };
       try {
         podcastLibrary.prune();
       } catch (e) {
         logger.warn('Podcast-Aufräumen fehlgeschlagen:', e.message);
       }
-      podcastStartTimer = setTimeout(refreshAll, 20 * 1000);
-      podcastRefreshTimer = setInterval(refreshAll, NO_VALIDATOR_INTERVAL_MS);
-      if (podcastStartTimer.unref) podcastStartTimer.unref();
-      if (podcastRefreshTimer.unref) podcastRefreshTimer.unref();
+      podcastRefreshSchedule = createRefreshSchedule({
+        run: () => podcastRefresher.refreshAll().catch(error => logger.warn('Podcast-Aktualisierung fehlgeschlagen:', error.message)),
+        getIntervalMinutes: () => podcastSettingsService.get().refreshIntervalMinutes,
+      });
+      podcastRefreshSchedule.start();
     }
   } catch (e) {
     logger.error('Podcasts konnten nicht eingerichtet werden:', e.message);
@@ -1184,6 +1202,9 @@ app.whenReady().then(() => {
         confirmQuit: () => quitCoordinator.confirmQuit(),
         // Radio (R4): Steuerung, Favoriten (Dashboard-Reihenfolge) und Sprung ins Radio-Dashboard
         radio: radioController,
+        // Podcast: Steuerung der laufenden Episode im Menü, Text „Sendung – Episode“, Sprung in den Podcast-Bereich
+        podcast: podcastController,
+        openPodcasts: openPodcastDashboard,
         getRadioFavorites: () =>
           radioLibrary
             ? radioLibrary.getFavoriteKeys().map(key => {
@@ -1361,8 +1382,8 @@ app.on('before-quit', event => {
   if (radioController) radioController.dispose();
   if (podcastController) podcastController.dispose();
   if (podcastPowerGuard) podcastPowerGuard.release();
-  clearTimeout(podcastStartTimer);
-  clearInterval(podcastRefreshTimer);
+  if (podcastRefreshSchedule) podcastRefreshSchedule.stop();
+  if (podcastSettingsService) podcastSettingsService.flushVolume();
   if (standbyGuard) standbyGuard.release();
   // Wecktermine sind ohne laufende App sinnlos: löschen und Helfer beenden
   if (wakeScheduler) wakeScheduler.cancelAll();
@@ -1777,7 +1798,9 @@ ipcMain.handle('restore-settings', async event => {
       // Podcasts nur, wenn die Sicherung sie enthält (ältere Sicherungen lassen die Podcast-Daten unberührt)
       ...(data.podcasts !== undefined ? { podcasts: data.podcasts } : {}),
       ...(data.podcastState !== undefined ? { podcastState: data.podcastState } : {}),
+      ...(data.podcastSettings !== undefined ? { podcastSettings: data.podcastSettings } : {}),
     });
+    if (data.podcastSettings !== undefined && podcastSettingsService) podcastSettingsService.reload();
     broadcastServices();
     broadcastTvSources();
     mainWindow?.webContents.send('history-changed', data.history);
