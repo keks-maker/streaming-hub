@@ -20,7 +20,8 @@ function fakeNet(routes, calls = []) {
     async get(url) {
       calls.push(url);
       const hit = routes[url];
-      if (!hit) return { status: 404, contentType: 'text/html', buffer: Buffer.alloc(0), truncated: false, finalUrl: url };
+      if (!hit)
+        return { status: 404, contentType: 'text/html', buffer: Buffer.alloc(0), truncated: false, finalUrl: url };
       return { status: 200, finalUrl: url, truncated: false, ...hit };
     },
   };
@@ -54,7 +55,11 @@ test('privater Dienst: Plex-Fallback /web/favicon.ico', async () => {
 
 test('Fehlschlag liefert null (kein Fehler)', async () => {
   assert.equal(await resolveServiceIcon(PLEX, { net: fakeNet({}) }), null);
-  const broken = { get: async () => { throw new Error('ECONNREFUSED'); } };
+  const broken = {
+    get: async () => {
+      throw new Error('ECONNREFUSED');
+    },
+  };
   assert.equal(await resolveServiceIcon(PLEX, { net: broken }), null);
   assert.equal(await resolveServiceIcon('kein url', { net: fakeNet({}) }), null);
 });
@@ -63,7 +68,20 @@ test('applyServiceIcon: setzt nur bei Standard-Icon, manuelles Icon hat Vorrang'
   const resolve = async () => 'data:image/png;base64,AAAA';
   let stored = null;
   let notified = 0;
-  const run = list => applyServiceIcon({ id: 'a', url: 'http://x.test/', net: {}, resolve, load: () => list, save: s => { stored = s; }, notify: () => { notified += 1; } });
+  const run = list =>
+    applyServiceIcon({
+      id: 'a',
+      url: 'http://x.test/',
+      net: {},
+      resolve,
+      load: () => list,
+      save: s => {
+        stored = s;
+      },
+      notify: () => {
+        notified += 1;
+      },
+    });
   assert.equal(await run([{ id: 'a', url: 'http://x.test/', icon: DEFAULT_ICON }]), true);
   assert.equal(stored[0].icon, 'data:image/png;base64,AAAA');
   assert.equal(notified, 1);
@@ -76,6 +94,12 @@ test('applyServiceIcon: setzt nur bei Standard-Icon, manuelles Icon hat Vorrang'
 test('service(): data-Bild-Icon erlaubt, andere data-URIs abgelehnt', () => {
   const ok = 'data:image/png;base64,iVBORw0KGgo=';
   assert.equal(service({ name: 'P', url: 'http://192.168.1.2/', icon: ok }).icon, ok);
-  assert.throws(() => service({ name: 'P', url: 'http://192.168.1.2/', icon: 'data:text/html;base64,AAAA' }), /Dienst-Icon/);
-  assert.throws(() => service({ name: 'P', url: 'http://192.168.1.2/', icon: 'data:image/png;base64,' + 'A'.repeat(100000) }), /Dienst-Icon/);
+  assert.throws(
+    () => service({ name: 'P', url: 'http://192.168.1.2/', icon: 'data:text/html;base64,AAAA' }),
+    /Dienst-Icon/,
+  );
+  assert.throws(
+    () => service({ name: 'P', url: 'http://192.168.1.2/', icon: 'data:image/png;base64,' + 'A'.repeat(100000) }),
+    /Dienst-Icon/,
+  );
 });
