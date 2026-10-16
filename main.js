@@ -218,6 +218,7 @@ const {
   favoriteOrder: validateFavoriteOrder,
 } = require('./lib/input-validation.js');
 const { updateServiceInList } = require('./lib/service-update.js');
+const { applyServiceIcon } = require('./lib/service-icon.js');
 const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
@@ -1541,6 +1542,17 @@ ipcMain.handle('add-service', (event, input) => {
   services.push(service);
   saveServices(services);
   broadcastServices();
+  // Ohne Icon-Angabe: Logo im Hintergrund suchen; Fehlschlag lässt das Standard-Icon stehen.
+  if (!input.icon) {
+    applyServiceIcon({
+      id: service.id,
+      url: service.url,
+      net: createLogoNet({ timeoutMs: 8000 }),
+      load: loadServices,
+      save: saveServices,
+      notify: broadcastServices,
+    }).catch(error => logger.warn('Dienst-Logo konnte nicht ermittelt werden:', error.message));
+  }
   return service;
 });
 

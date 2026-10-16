@@ -47,6 +47,7 @@ function safeResourceUrl(value, { allowRelative = true } = {}) {
     const parsed = new URL(value, window.location.href);
     if (parsed.username || parsed.password) return '';
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
+    if (parsed.protocol === 'data:' && /^data:image\/(png|jpeg|gif|webp|x-icon|svg\+xml);base64,/.test(value)) return value;
     if (allowRelative && parsed.protocol === 'file:') return parsed.toString();
   } catch {}
   return '';
@@ -1048,7 +1049,7 @@ function showDashboard(groupKey, opts = {}) {
 
 function getIconSrc(svc) {
   if (svc.icon) {
-    if (svc.icon.startsWith('http://') || svc.icon.startsWith('https://')) return svc.icon;
+    if (/^(https?:\/\/|data:image\/)/.test(svc.icon)) return svc.icon;
     return `assets/icons/${svc.icon}`;
   }
   try {
