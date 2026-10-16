@@ -37,6 +37,16 @@ test('normalizes and validates service and TV source inputs', () => {
   assert.throws(() => tvSource({ name: 'TV', url: 'file:///etc/passwd' }), /M3U-URL/);
 });
 
+test('Dienst-URL darf privat/lokal sein, M3U/EPG nicht, Zugangsdaten nie', () => {
+  const plex = 'http://192.168.4.125:32400/web/index.html#!/';
+  assert.equal(service({ name: 'Plex', url: plex }).url, plex);
+  assert.equal(service({ name: 'NAS', url: 'http://localhost:8096/' }).url, 'http://localhost:8096/');
+  assert.throws(() => service({ name: 'X', url: 'http://user:pw@192.168.1.2/' }), /Dienst-URL/);
+  assert.throws(() => service({ name: 'X', url: 'ftp://192.168.1.2/' }), /Dienst-URL/);
+  assert.throws(() => tvSource({ name: 'TV', url: plex }), /lokales oder privates Ziel/);
+  assert.throws(() => tvSource({ name: 'TV', url: 'https://example.test/a.m3u', epgUrl: plex }), /lokales oder privates Ziel/);
+});
+
 test('backup parser remains available for boundary tests', () => {
   assert.throws(() => parseBackup('{}'), /services und tvsources/);
 });

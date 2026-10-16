@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Geändert: Dienst-URLs (Streamingdienst/Mediathek) dürfen lokale und private Hosts verwenden (z. B. Plex `http://192.168.4.125:32400/`); `service()` und die Backup-Prüfung nutzen `httpUrl` statt `remoteHttpUrl` (Protokoll- und Zugangsdaten-Prüfung bleiben). M3U-/EPG-/Stream-URLs bleiben auf öffentliche Ziele beschränkt.
+- Behoben: Fehler beim Hinzufügen/Ändern eines Dienstes werden im Formular angezeigt (`settingsServiceError`) statt still verworfen.
+
 ## 0.11.0 (2026-10-15) — Podcasts
 
 ### Podcasts (Feature)

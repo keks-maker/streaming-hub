@@ -1670,6 +1670,7 @@ const settingsInputIcon = document.getElementById('settingsInputIcon');
 const settingsInputColor = document.getElementById('settingsInputColor');
 const settingsInputGroup = document.getElementById('settingsInputGroup');
 const settingsAddSave = document.getElementById('settingsAddSave');
+const settingsServiceError = document.getElementById('settingsServiceError');
 
 let editingServiceId = null;
 
@@ -1681,6 +1682,7 @@ function resetSettingsAddForm() {
   settingsInputIcon.value = '';
   settingsInputColor.value = '#6c5ce7';
   settingsInputGroup.value = 'streaming';
+  settingsServiceError.style.display = 'none';
 }
 
 function startEditSettingsService(svc) {
@@ -1740,9 +1742,14 @@ function saveSettingsService() {
   const request = editingServiceId
     ? window.electronAPI.updateService(editingServiceId, svc)
     : window.electronAPI.addService(svc);
+  settingsServiceError.style.display = 'none';
   request.then(() => {
     resetSettingsAddForm();
     settingsAddForm.style.display = 'none';
+  }).catch(error => {
+    const reason = String(error?.message || error || '').replace(/^Error invoking remote method '[^']*': (Error: )?/, '');
+    settingsServiceError.textContent = '⚠ ' + (reason || 'Dienst konnte nicht gespeichert werden');
+    settingsServiceError.style.display = '';
   });
 }
 

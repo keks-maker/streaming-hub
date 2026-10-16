@@ -24,8 +24,11 @@ test('rejects malformed backup collections before writing', () => {
 test('rejects private and unsupported backup URLs', () => {
   assert.throws(
     () =>
-      parseBackup(JSON.stringify({ ...valid, services: [{ ...valid.services[0], url: 'http://127.0.0.1/admin' }] })),
+      parseBackup(JSON.stringify({ ...valid, services: [{ ...valid.services[0], url: 'file:///etc/passwd' }] })),
     /ungültige URL-Daten/,
+  );
+  assert.doesNotThrow(() =>
+    parseBackup(JSON.stringify({ ...valid, services: [{ ...valid.services[0], url: 'http://192.168.4.125:32400/web/' }] })),
   );
   assert.throws(
     () =>
