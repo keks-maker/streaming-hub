@@ -74,7 +74,10 @@
       ],
       "category": "public.app-category.video",
       "icon": "assets/icon.icns",
-      "identity": null
+      "identity": null,
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "Streaming Hub verbindet sich mit Diensten in deinem Heimnetz, zum Beispiel einem Plex-Server."
+      }
     },
     "win": {
       "target": [
