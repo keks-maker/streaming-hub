@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Behoben (macOS): Heimnetz-Dienste (Plex im LAN) luden in der gepackten App nicht, und macOS fragte nie nach „Lokales Netzwerk“. Ursache: Die Freigabe ist an die Mach-O-UUID der Executable gebunden; das gepackte Electron trug dieselbe UUID wie das Entwicklungs-Electron und wurde dessen Eintrag zugeordnet. `scripts/macho-uuid.js` setzt in `afterPack` (vor VMP-/Code-Signatur) für Hauptprogramm und Helper eine eigene, aus der App-ID abgeleitete (updatestabile) UUID.
 - Behoben (macOS): `NSLocalNetworkUsageDescription` in der Info.plist (`build.mac.extendInfo`), damit die installierte App unter Datenschutz → Lokales Netzwerk erscheint und Dienste im Heimnetz (z. B. Plex im LAN) laden kann.
 
 ## 0.11.1 (2026-10-16) — Dienste im lokalen Netz, automatische Logos

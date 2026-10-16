@@ -16,6 +16,14 @@ exports.default = function (context) {
   // Zielplattform des Pakets (nicht der Build-Host): Linux-/Windows-Cross-Builds vom Mac werden nicht VMP-signiert.
   if (context.electronPlatformName !== 'darwin') return;
   const { execFileSync } = require('child_process');
+  // Vor VMP-/Code-Signatur: eigene Mach-O-UUIDs, damit macOS die Freigabe "Lokales Netzwerk" abfragt.
+  const appBundle = path.join(context.appOutDir, context.packager.appInfo.productFilename + '.app');
+  const patched = require('./macho-uuid').applyUniqueUuids(
+    appBundle,
+    context.packager.appInfo.productFilename,
+    context.packager.appInfo.id
+  );
+  console.log('[uuid] eindeutige Mach-O-UUID:', patched.length, 'Executables');
   const py = process.env.EVS_PYTHON || 'python3';
   console.log('[EVS] VMP signing (macOS, before code-sign):', context.appOutDir);
   execFileSync(py, ['-m', 'castlabs_evs.vmp', 'sign-pkg', context.appOutDir], { stdio: 'inherit' });
