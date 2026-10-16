@@ -103,3 +103,64 @@ test('service(): data-Bild-Icon erlaubt, andere data-URIs abgelehnt', () => {
     /Dienst-Icon/,
   );
 });
+
+// ---- SSRF-Schutz: öffentliche Dienst-URL darf nicht auf private Ziele zeigen ----
+
+const { createNet } = require('../lib/radio/radio-logo-finder.js');
+const { assertPublicUrl } = require('../lib/net-safety.js');
+
+const PUBLIC = 'https://dienst.example.com/';
+const publicGuard = url => assertPublicUrl(url, { resolve: async () => [{ address: '93.184.216.34' }] });
+
+test('SSRF: Icon-Kandidat öffentlich->privat wird nicht abgerufen', async () => {
+  const calls = [];
+  const net = fakeNet(
+    {
+      [PUBLIC]: { contentType: 'text/html', buffer: Buffer.from('<link rel="icon" href="http://169.254.169.254/x.png">') },
+      'http://169.254.169.254/x.png': { contentType: 'image/png', buffer: png(64) },
+    },
+    calls,
+  );
+  const icon = await resolveServiceIcon(PUBLIC, { net, guard: publicGuard });
+  assert.equal(icon, null);
+  assert.ok(!calls.some(u => u.includes('169.254')));
+});
+
+test('SSRF: Redirect öffentlich->privat wird je Hop blockiert', async () => {
+  const seen = [];
+  const fetchImpl = async url => {
+    seen.push(url);
+    if (url.startsWith('https://dienst.example.com'))
+      return { status: 302, headers: { get: n => (n === 'location' ? 'http://127.0.0.1:8080/secret' : null) }, body: null };
+    return { status: 200, headers: { get: () => 'image/png' }, arrayBuffer: async () => png(64) };
+  };
+  const net = createNet({ fetchImpl });
+  const icon = await resolveServiceIcon(PUBLIC, { net, guard: publicGuard });
+  assert.equal(icon, null);
+  assert.ok(!seen.some(u => u.includes('127.0.0.1')));
+  assert.ok(seen.length > 0);
+});
+
+test('SSRF: privater Dienst-Origin bleibt erlaubt (Redirect auf privates Ziel)', async () => {
+  const seen = [];
+  const fetchImpl = async url => {
+    seen.push(url);
+    if (url === 'http://192.168.4.125:32400/web/favicon.ico')
+      return { status: 302, headers: { get: n => (n === 'location' ? 'http://192.168.4.126/i.png' : null) }, body: null };
+    if (url === 'http://192.168.4.126/i.png')
+      return { status: 200, headers: { get: () => 'image/png' }, arrayBuffer: async () => png(64) };
+    return { status: 404, headers: { get: () => '' }, arrayBuffer: async () => Buffer.alloc(0) };
+  };
+  const icon = await resolveServiceIcon(PLEX, { net: createNet({ fetchImpl }), guard: publicGuard });
+  assert.match(icon, /^data:image\/png;base64,/);
+  assert.ok(seen.includes('http://192.168.4.126/i.png'));
+});
+
+test('createNet ohne guardUrl: Redirect auf privates Ziel unverändert (Radio/Podcast)', async () => {
+  const fetchImpl = async url =>
+    url === 'http://a.example/'
+      ? { status: 302, headers: { get: () => 'http://127.0.0.1/x' }, body: null }
+      : { status: 200, headers: { get: () => 'image/png' }, arrayBuffer: async () => Buffer.from('ok') };
+  const reply = await createNet({ fetchImpl }).get('http://a.example/');
+  assert.equal(reply.finalUrl, 'http://127.0.0.1/x');
+});

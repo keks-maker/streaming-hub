@@ -4,6 +4,7 @@
 - Geändert: Dienst-URLs (Streamingdienst/Mediathek) dürfen lokale und private Hosts verwenden (z. B. Plex `http://192.168.4.125:32400/`); `service()` und die Backup-Prüfung nutzen `httpUrl` statt `remoteHttpUrl` (Protokoll- und Zugangsdaten-Prüfung bleiben). M3U-/EPG-/Stream-URLs bleiben auf öffentliche Ziele beschränkt.
 - Neu: Dienst ohne Icon-Angabe erhält automatisch ein Logo (`lib/service-icon.js`, Hintergrund nach dem Anlegen): Reihenfolge Seiten-Icon der Dienst-URL (rel=icon/apple-touch-icon, `/apple-touch-icon.png`, `/favicon.ico` über `radio-logo-finder.js`), `/web/favicon.ico` (Plex), nur bei öffentlichen Hosts Google-Favicon; private Hosts gehen nie an Google. Ablage als `data:image/...`-URI (<= 64 KB; CSP erlaubt kein http-img), von `service()` und `getIconSrc` akzeptiert. Manuelles Icon hat Vorrang, Fehlschlag lässt das Standard-Icon.
 - Behoben: Fehler beim Hinzufügen/Ändern eines Dienstes werden im Formular angezeigt (`settingsServiceError`) statt still verworfen.
+- Behoben (Sicherheit, SSRF): Der Auto-Logo-Abruf folgt bei öffentlicher Dienst-URL weder Redirects noch Icon-Kandidaten auf lokale/private Ziele (`guardUrl` je Hop mit `assertPublicUrl`, Verbindung per `createSafeLookup` an die geprüfte IP gebunden). Private Dienst-URLs (LAN) bleiben uneingeschränkt. `createNet().get` nimmt optional `guardUrl`/`lookup` (Radio/Podcast unverändert).
 
 ## 0.11.0 (2026-10-15) — Podcasts
 
