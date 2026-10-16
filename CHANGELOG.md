@@ -1,5 +1,11 @@
 # Changelog
 
+## Unveröffentlicht — Native arm64-ffmpeg (Rosetta-Ausstieg)
+- Behoben (macOS Apple Silicon): Das arm64-Paket bündelte x86_64-`ffmpeg`/`ffprobe` (evermeet 7.0.2, nur via Rosetta lauffähig); macOS 28 entfernt Rosetta und meldet beim Start „App-Update erforderlich“. Jetzt native arm64-Builds (ffmpeg/ffprobe 7.1, osxexperts.net, statisch, GPL: `--enable-gpl`; App startet sie nur als eigenen Prozess). Intel bleibt bei evermeet 7.0.2 (x86_64). Pins je Architektur getrennt (`FFMPEG_SHA256_DARWIN`, Marker-Tags `osxexperts-7.1-arm64` / `evermeet-7.0.2`).
+- Selbstheilung: Der Health-Check liest den Mach-O-Header (`machoArchs`); eine x86_64-Binary gilt auf arm64 nicht mehr als gesund (auch wenn Rosetta sie ausführen würde) und wird beim Start/Update durch die arm64-Binary ersetzt. Updater-Layout (`bin/ffmpeg`, `bin/ffprobe`, `.ffmpeg-release`, `.ffmpeg-sha256.json`) unverändert.
+- Build: `scripts/evs-afterPack.js` legt je Ziel-Architektur die passenden Binaries ins Paket (`scripts/stage-mac-ffmpeg.js`, Cache `~/.cache/streaming-hub/ffmpeg/<arch>`), statt das Entwickler-`bin/` zu kopieren. arm64-ZIP rund 10 MB kleiner.
+- Behoben: `parseVersion` erkannte bei Builds ohne Patchstufe („version 7.1“) die clang-Zeile als ffmpeg-Version; Zip-Entpacken ignoriert `__MACOSX`.
+
 ## 0.11.2 (2026-10-16) — Lokales Netzwerk: Freigabe-Abfrage
 - Behoben (macOS): Heimnetz-Dienste (Plex im LAN) luden in der gepackten App nicht, und macOS fragte nie nach „Lokales Netzwerk“. Ursache: Die Freigabe ist an die Mach-O-UUID der Executable gebunden; das gepackte Electron trug dieselbe UUID wie das Entwicklungs-Electron und wurde dessen Eintrag zugeordnet. `scripts/macho-uuid.js` setzt in `afterPack` (vor VMP-/Code-Signatur) für Hauptprogramm und Helper eine eigene, aus der App-ID abgeleitete (updatestabile) UUID.
 - Behoben (macOS): `NSLocalNetworkUsageDescription` in der Info.plist (`build.mac.extendInfo`), damit die installierte App unter Datenschutz → Lokales Netzwerk erscheint und Dienste im Heimnetz (z. B. Plex im LAN) laden kann.

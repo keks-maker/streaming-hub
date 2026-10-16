@@ -44,7 +44,7 @@ test('Prüfsummen-Manifest deckt die unterstützten Plattformen ab', () => {
     assert.match(FFMPEG_SHA256_GZ[key], /^[0-9a-f]{64}$/, `Checksummen-Format für ${key}`);
   }
   // darwin (arm64 + x64): gepinnte SHAs der ENTPACKTEN Binaries
-  // (evermeet.cx 7.0.2; arm64 läuft über Rosetta 2)
+  // (x64: evermeet.cx 7.0.2 / x86_64; arm64: osxexperts 7.1 / nativ arm64) — getrennte Hashes
   for (const key of [
     'ffmpeg-darwin-arm64',
     'ffprobe-darwin-arm64',
@@ -53,49 +53,87 @@ test('Prüfsummen-Manifest deckt die unterstützten Plattformen ab', () => {
   ]) {
     assert.match(FFMPEG_SHA256_DARWIN[key], /^[0-9a-f]{64}$/, `Checksummen-Format für ${key}`);
   }
-  assert.equal(ffmpegReleaseTag(), process.platform === 'darwin' ? 'evermeet-7.0.2' : 'b6.1.1');
+  assert.notEqual(FFMPEG_SHA256_DARWIN['ffmpeg-darwin-arm64'], FFMPEG_SHA256_DARWIN['ffmpeg-darwin-x64']);
+  assert.notEqual(FFMPEG_SHA256_DARWIN['ffprobe-darwin-arm64'], FFMPEG_SHA256_DARWIN['ffprobe-darwin-x64']);
+  if (process.platform === 'darwin') {
+    assert.equal(ffmpegReleaseTag('x64'), 'evermeet-7.0.2');
+    assert.equal(ffmpegReleaseTag('arm64'), 'osxexperts-7.1-arm64');
+  } else {
+    assert.equal(ffmpegReleaseTag(), 'b6.1.1');
+  }
 });
 
-test('checkHealth meldet Fehlschlag, wenn Binaries fehlen (leeres App-Root)', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-ffmpeg-empty-'));
-  const health = checkHealth(root);
-  assert.equal(health.ok, false);
-  assert.deepEqual(health.missing.sort(), ['ffmpeg', 'ffprobe']);
-  assert.equal(health.ffmpegPath, null);
-  assert.equal(health.ffprobePath, null);
+// ── Mach-O-Architektur (Rosetta-Ausstieg, macOS 28) ──
+
+function writeMachO(file, cpuType, { fat = false } = {}) {
+  const buf = Buffer.alloc(64);
+  if (fat) {
+    buf.writeUInt32BE(0xcafebabe, 0);
+    buf.writeUInt32BE(2, 4);
+    buf.writeUInt32BE(0x01000007, 8);
+    buf.writeUInt32BE(0x0100000c, 28);
+  } else {
+    buf.writeUInt32LE(0xfeedfacf, 0);
+    buf.writeUInt32LE(cpuType, 4);
+  }
+  fs.writeFileSync(file, buf, { mode: 0o755 });
+}
+
+test('machoArchs liest Thin-/Fat-Header und ignoriert Skripte', () => {
+  const { machoArchs } = require('../lib/ffmpeg.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-macho-'));
+  writeMachO(path.join(dir, 'x'), 0x01000007);
+  writeMachO(path.join(dir, 'a'), 0x0100000c);
+  writeMachO(path.join(dir, 'f'), 0, { fat: true });
+  fs.writeFileSync(path.join(dir, 's'), '#!/bin/sh\n');
+  assert.deepEqual(machoArchs(path.join(dir, 'x')), ['x64']);
+  assert.deepEqual(machoArchs(path.join(dir, 'a')), ['arm64']);
+  assert.deepEqual(machoArchs(path.join(dir, 'f')), ['x64', 'arm64']);
+  assert.equal(machoArchs(path.join(dir, 's')), null);
+  assert.equal(machoArchs(path.join(dir, 'fehlt')), null);
 });
 
-test('checkHealth ist ok, wenn beide Binaries vorhanden, ausführbar und aktuell sind', () => {
+test('Health-Check: x86_64-Mach-O gilt auf arm64-Zielarchitektur nicht als gesund (darwin)', { skip: process.platform !== 'darwin' }, () => {
   const fixture = makeFakeApp();
-  const health = checkHealth(fixture.root);
-  assert.equal(health.ok, true);
-  assert.deepEqual(health.missing, []);
-  assert.match(health.ffmpegPath, /bin\/ffmpeg$/);
-  assert.match(health.ffprobePath, /bin\/ffprobe$/);
+  writeMachO(path.join(fixture.binDir, 'ffmpeg'), 0x01000007);
+  assert.equal(isBinaryHealthy('ffmpeg', fixture.root, 'arm64'), false, 'x86_64 auf arm64 → ungesund');
+  // Cross-Prüfung ohne Ausführung: passende Architektur genügt.
+  assert.equal(isBinaryHealthy('ffmpeg', fixture.root, 'x64'), process.arch === 'x64' ? false : true);
+  writeMachO(path.join(fixture.binDir, 'ffmpeg'), 0x0100000c);
+  assert.equal(isBinaryHealthy('ffmpeg', fixture.root, 'x64'), false, 'arm64 auf x64-Ziel → ungesund');
+  assert.equal(isBinaryHealthy('ffmpeg', fixture.root, 'arm64'), process.arch === 'arm64' ? false : true);
 });
 
-test('isBinaryHealthy lehnt nicht ausführbare oder stumme Binaries ab', () => {
+test('ensureBinary (Cross-Ziel) ersetzt Altbestand anderer Architektur und setzt arch-eigenen Marker', { skip: process.platform !== 'darwin' }, async () => {
+  const lib = require('../lib/ffmpeg.js');
+  __clearUnpackedSha256CacheForTests();
+  // Zielarchitektur ≠ Host: kein -version-Smoke (nicht ausführbar), Header-Prüfung greift.
+  const target = process.arch === 'arm64' ? 'x64' : 'arm64';
+  const targetCpu = target === 'arm64' ? 0x0100000c : 0x01000007;
+  const otherCpu = target === 'arm64' ? 0x01000007 : 0x0100000c;
   const fixture = makeFakeApp();
-  assert.equal(isBinaryHealthy('ffmpeg', fixture.root), true);
-
-  // ausführbar weg → ungesund
-  fs.rmSync(path.join(fixture.binDir, 'ffmpeg'));
-  assert.equal(isBinaryHealthy('ffmpeg', fixture.root), false);
-
-  // Binary meldet keine Version → ungesund
-  const silent = makeFakeApp({ ffmpegOut: 'nichts Erkennbares' });
-  assert.equal(isBinaryHealthy('ffmpeg', silent.root), false);
-});
-
-test('isBinaryHealthy erzwingt die Mindestversion (>= 7.0.0)', () => {
-  const tooOld = makeFakeApp({ ffmpegOut: 'ffmpeg version 6.1.1-static' });
-  assert.equal(isBinaryHealthy('ffmpeg', tooOld.root), false);
-
-  const same = makeFakeApp({ ffmpegOut: 'ffmpeg version 7.0.2-static' });
-  assert.equal(isBinaryHealthy('ffmpeg', same.root), true);
-
-  const newer = makeFakeApp({ ffmpegOut: 'ffmpeg version 7.1.0-static' });
-  assert.equal(isBinaryHealthy('ffmpeg', newer.root), true);
+  writeMachO(path.join(fixture.binDir, 'ffmpeg'), otherCpu);
+  fs.writeFileSync(path.join(fixture.binDir, '.ffmpeg-release'), 'alt-tag\n');
+  const staged = path.join(fixture.root, 'staged-ffmpeg');
+  writeMachO(staged, targetCpu);
+  const copyStaged = (tool, tmpDir) => {
+    const dest = path.join(tmpDir, 'ffmpeg');
+    fs.copyFileSync(staged, dest);
+    return dest;
+  };
+  try {
+    lib.__setDownloadOverrideForTests(copyStaged);
+    const result = await lib.ensureBinary('ffmpeg', fixture.root, { arch: target });
+    assert.equal(result.action, 'downloaded');
+    assert.deepEqual(lib.machoArchs(path.join(fixture.binDir, 'ffmpeg')), [target]);
+    assert.equal(fs.readFileSync(path.join(fixture.binDir, '.ffmpeg-release'), 'utf-8').trim(), lib.ffmpegReleaseTag(target));
+    assert.ok(lib.readSha256References(fixture.root)[`ffmpeg-darwin-${target}`]);
+    // Falsche Architektur im Download wird verworfen.
+    writeMachO(staged, otherCpu);
+    await assert.rejects(lib.ensureBinary('ffmpeg', fixture.root, { arch: target, force: true }), /Architektur/);
+  } finally {
+    lib.__setDownloadOverrideForTests(null);
+  }
 });
 
 // ── Ensure-Schnellpfad (QA F-FB-03) ──
@@ -163,6 +201,11 @@ test('parseVersion versteht Bundle- und Distro-/Git-Tag-Versionen (n9.0.2)', () 
   const { parseVersion } = require('../lib/ffmpeg.js');
   assert.deepEqual(parseVersion('ffmpeg version 7.0.2-static https://johnvansickle.com'), [7, 0, 2]);
   assert.deepEqual(parseVersion('ffmpeg version n9.0.2 Copyright (c) 2000-2026'), [9, 0, 2]);
+  // osxexperts-Release ohne Patchstufe; die clang-Zeile darf nicht als ffmpeg-Version zählen.
+  assert.deepEqual(
+    parseVersion('ffmpeg version 7.1 Copyright (c) 2000-2024 the FFmpeg developers\nbuilt with Apple clang version 13.1.6 (clang-1316.0.21.2.5)'),
+    [7, 1, 0],
+  );
   assert.equal(parseVersion('kein Treffer'), null);
 });
 

@@ -396,3 +396,5 @@ E2E-Läufe (`npm run test:e2e`) setzen `STREAMING_HUB_E2E_BACKGROUND=1`: Fenster
 ## Lizenz
 
 MIT
+
+Die Aufnahme-Funktion nutzt gebündelte ffmpeg/ffprobe-Programme als eigene Prozesse: macOS Apple Silicon ffmpeg 7.1 (osxexperts.net, GPL-Build), macOS Intel ffmpeg 7.0.2 (evermeet.cx, GPL-Build), Linux ffmpeg 7.0.2 (johnvansickle.com, GPL). ffmpeg steht unter LGPL/GPL, Quellcode und Lizenztexte: ffmpeg.org.

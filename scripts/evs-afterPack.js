@@ -11,13 +11,17 @@ function stripMacFfmpeg(context) {
   }
 }
 
-exports.default = function (context) {
+exports.default = async function (context) {
   if (context.electronPlatformName === 'linux') stripMacFfmpeg(context);
   // Zielplattform des Pakets (nicht der Build-Host): Linux-/Windows-Cross-Builds vom Mac werden nicht VMP-signiert.
   if (context.electronPlatformName !== 'darwin') return;
   const { execFileSync } = require('child_process');
-  // Vor VMP-/Code-Signatur: eigene Mach-O-UUIDs, damit macOS die Freigabe "Lokales Netzwerk" abfragt.
   const appBundle = path.join(context.appOutDir, context.packager.appInfo.productFilename + '.app');
+  // Zur Ziel-Architektur passende ffmpeg/ffprobe ins Paket (nicht das Host-bin/ des Entwicklers); vor allen Signaturen.
+  const arch = require('builder-util').Arch[context.arch];
+  const stagedBin = await require('./stage-mac-ffmpeg').stageMacFfmpeg(path.join(appBundle, 'Contents', 'Resources', 'app'), arch);
+  console.log('[ffmpeg] ' + arch + '-Binaries im Paket:', stagedBin);
+  // Vor VMP-/Code-Signatur: eigene Mach-O-UUIDs, damit macOS die Freigabe "Lokales Netzwerk" abfragt.
   const patched = require('./macho-uuid').applyUniqueUuids(
     appBundle,
     context.packager.appInfo.productFilename,
