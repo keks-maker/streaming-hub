@@ -42,8 +42,10 @@ const { registerPodcastIpc } = require('./lib/podcast/ipc.js');
 const { registerMediathekIpc } = require('./lib/mediathek/ipc.js');
 const { createMediathekService } = require('./lib/mediathek/service.js');
 const { createMediathekHttp } = require('./lib/mediathek/http.js');
+const { createRoutedHttp } = require('./lib/mediathek/e2e-http.js');
 const { createMediathekFavorites } = require('./lib/mediathek/favorites.js');
 const { createWatchProgress } = require('./lib/mediathek/watch-progress.js');
+const { createMediathekSettings } = require('./lib/mediathek/settings.js');
 const { PodcastController } = require('./lib/podcast/PodcastController.js');
 const { createPlaybackPowerGuard } = require('./lib/podcast/playback-power.js');
 const { attachExclusivity } = require('./lib/playback-exclusivity.js');
@@ -915,9 +917,10 @@ app.whenReady().then(() => {
     });
     registerMediathekIpc({
       ipcMain,
-      service: createMediathekService({ http: createMediathekHttp() }),
+      service: createMediathekService({ http: isIsolatedTestRun(process.env) && process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES ? createRoutedHttp(process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES) : createMediathekHttp() }),
       favorites: createMediathekFavorites({ read: () => userStorage.readJson('mediathekFavorites', []), write: list => userStorage.writeJson('mediathekFavorites', list), logger }),
       watchProgress: createWatchProgress({ load: loadHistory, save: saveHistory }),
+      settings: createMediathekSettings({ read: () => userStorage.readJson('mediathekSettings', {}), write: value => userStorage.writeJson('mediathekSettings', value), logger }),
       requireMainRenderer,
       sendToMain: (channel, payload) => {
         try {

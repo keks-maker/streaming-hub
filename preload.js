@@ -228,6 +228,10 @@ contextBridge.exposeInMainWorld('mediathek', {
   onFavoritesChanged: radioListener('mediathek:favorites-changed'),
   saveWatchProgress: input => ipcRenderer.invoke('mediathek:watch-progress', input),
   getWatchProgress: input => ipcRenderer.invoke('mediathek:get-progress', input),
+  getResumeList: () => ipcRenderer.invoke('mediathek:resume-list'),
+  getSettings: () => ipcRenderer.invoke('mediathek:get-settings'),
+  setSettings: patch => ipcRenderer.invoke('mediathek:set-settings', patch),
+  onSettingsChanged: radioListener('mediathek:settings-changed'),
 });
 
 contextBridge.exposeInMainWorld('podcasts', {

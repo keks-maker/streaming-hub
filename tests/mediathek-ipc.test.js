@@ -45,7 +45,7 @@ function setup({ routes = {} } = {}) {
 
 test('Alle Kanäle sind registriert und verweigern fremde Absender', async () => {
   const { handlers } = setup();
-  const channels = ['home', 'search', 'series', 'genre', 'load-more', 'resolve-playback', 'favorites-get', 'favorites-toggle', 'watch-progress', 'get-progress'].map(name => `mediathek:${name}`);
+  const channels = ['home', 'search', 'series', 'genre', 'load-more', 'resolve-playback', 'favorites-get', 'favorites-toggle', 'watch-progress', 'get-progress', 'resume-list', 'get-settings', 'set-settings'].map(name => `mediathek:${name}`);
   assert.deepEqual([...handlers.keys()].sort(), channels.sort());
   for (const channel of channels) {
     assert.throws(() => handlers.get(channel)({ sender: 'webview' }, {}), /Hauptfenster/, channel);

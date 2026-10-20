@@ -217,7 +217,9 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await expect(page.locator('#settingsServiceListStreaming')).toBeVisible();
   await expect(page.locator('#settingsTab-streaming')).toHaveAttribute('aria-selected', 'true');
 
-  await page.locator('#settingsTab-mediathek').click();
+  const mediathekGroup = page.locator('#settingsNav .settings-nav-group', { hasText: 'Mediatheken' });
+  if ((await mediathekGroup.getAttribute('aria-expanded')) !== 'true') await mediathekGroup.click();
+  await page.locator('#settingsTab-mediathek-sources').click();
   await expect(page.locator('#settingsServiceListMediathek')).toBeVisible();
   await page.locator('#settingsAddMediathekBtn').click();
   await expect(page.locator('#settingsAddForm')).toBeVisible();
@@ -234,7 +236,7 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await expect(page.locator('#settingsInputName')).toHaveValue('');
 
   // Pfeiltasten wechseln die Seite (Mediatheken -> Allgemein per Home).
-  await page.locator('#settingsTab-mediathek').focus();
+  await page.locator('#settingsTab-mediathek-sources').focus();
   await page.keyboard.press('Home');
   await expect(page.locator('[data-settings-page="general"]')).toBeVisible();
 

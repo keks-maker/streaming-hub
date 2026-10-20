@@ -95,6 +95,7 @@
       <div class="dashboard-empty" id="dashboardEmpty" style="display:none"></div>
       <div class="radio-dashboard" id="radioDashboard" hidden></div>
       <div class="podcast-dashboard" id="podcastDashboard" hidden></div>
+      <div class="mediathek-dashboard" id="mediathekDashboard" hidden></div>
       <div class="settings-panel-host" id="settingsPanelHost" hidden></div>
     </div>
     <div class="dashboard-player" id="dashboardPlayer" style="display:none">
@@ -507,18 +508,33 @@
             </div>
           </section>
 
-          <section class="settings-page" data-settings-page="mediathek" role="tabpanel" hidden>
+          <section class="settings-page" data-settings-page="mediathek-sources" role="tabpanel" hidden>
             <header class="settings-page-head">
-              <h3 class="settings-page-title">Mediatheken</h3>
-              <p class="settings-page-desc">Mediatheken verwalten.</p>
+              <h3 class="settings-page-title">Mediatheken: Quellen</h3>
+              <p class="settings-page-desc">ARD, ZDF und arte spielst du direkt in der App ab. Weitere Mediatheken öffnen als Webseite.</p>
             </header>
             <div class="settings-card">
+              <h4 class="settings-card-title">Direkt in der App</h4>
+              <div id="settingsMediathekSourcesRoot"></div>
+            </div>
+            <div class="settings-card">
               <div class="settings-section-header">
-                <h4 class="settings-card-title">Mediatheken</h4>
+                <h4 class="settings-card-title">Weitere Mediatheken</h4>
                 <button class="settings-add-dienst-btn" id="settingsAddMediathekBtn" title="Mediathek hinzufügen" aria-label="Mediathek hinzufügen">+</button>
               </div>
               <div class="service-list" id="settingsServiceListMediathek"></div>
               <div data-add-form-slot></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="mediathek-playback" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Mediatheken: Wiedergabe</h3>
+              <p class="settings-page-desc">Qualität, Sprache und Untertitel für ARD, ZDF und arte.</p>
+            </header>
+            <div class="settings-card">
+              <h4 class="settings-card-title">Wiedergabe</h4>
+              <div id="settingsMediathekPlaybackRoot"></div>
             </div>
           </section>
 

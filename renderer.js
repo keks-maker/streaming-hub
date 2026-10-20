@@ -35,6 +35,9 @@ const { createDashboardHub } = require('./dashboard-hub-view.js');
 const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
 const { createPodcastHub } = require('./podcast-hub-view.js');
+const { createMediathekHub } = require('./mediathek-hub-view.js');
+const { createMediathekSourcesView } = require('./settings-mediathek-sources.js');
+const { createMediathekPlaybackView } = require('./settings-mediathek-playback.js');
 const { resolveCoverSource } = require('./podcast-cover-view.js');
 const { createPodcastDetailsCache } = require('./podcast-details-cache.js');
 const { favoriteCountOf } = require('./radio-dashboard-model.js');
@@ -473,6 +476,7 @@ const dashboardHubCards = document.getElementById('dashboardHubCards');
 const radioDashboardRoot = document.getElementById('radioDashboard');
 const radioMiniPlayerRoot = document.getElementById('radioMiniPlayer');
 const podcastDashboardRoot = document.getElementById('podcastDashboard');
+const mediathekDashboardRoot = document.getElementById('mediathekDashboard');
 const dashboardTvStatus = document.getElementById('dashboardTvStatus');
 const dashboardTvStatusBtn = document.getElementById('dashboardTvStatusBtn');
 const dashboardTvRefresh = document.getElementById('dashboardTvRefresh');
@@ -581,6 +585,23 @@ const podcastHub = createPodcastHub(podcastDashboardRoot, {
   },
   onBack: () => handleBackNavigation(),
   onManage: () => openSettingsPage(PODCAST_MANAGEMENT_PAGE),
+});
+
+// ── Mediatheken (nativ): Hub, Serie, Genre, Detail und Player; „Weitere Mediatheken“ sind die Weblink-Dienste der Gruppe mediathek ──
+const mediathekHub = createMediathekHub(mediathekDashboardRoot, {
+  mediathek: window.mediathek,
+  logger,
+  notify: showTvToast,
+  services: () => services.filter(svc => svc.group === 'mediathek'),
+  iconSrc: svc => safeResourceUrl(getIconSrc(svc)),
+  openService: svc => navigateTo(svc),
+  openWeb: (url, title) => navigateTo({ id: 'mediathek-web', name: title || 'Mediathek', url, group: 'mediathek' }),
+  onBeforeNavigate: () => {
+    if (!restoringNav) pushNavState();
+  },
+  onBack: () => handleBackNavigation(),
+  onOpenSettings: () => openSettingsPage('mediathek-sources'),
+  onPlaybackStart: () => pauseRadioForVideo(),
 });
 
 function updateRadioFavoriteCount(sources) {
@@ -894,6 +915,8 @@ function renderStartDashboard() {
   radioDashboardRoot.hidden = true;
   podcastDashboardRoot.hidden = true;
   podcastHub.hideArea();
+  mediathekDashboardRoot.hidden = true;
+  mediathekHub.hideArea();
   dashboardEmpty.style.display = 'none';
   const sections = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
@@ -940,9 +963,10 @@ function renderDashboard(groupKey, opts = {}) {
   const isTv = groupKey === 'livetv';
   const isRadio = groupKey === 'radio';
   const isPodcasts = groupKey === 'podcasts';
+  const isMediathek = groupKey === 'mediathek';
   const isSettings = groupKey === 'settings';
   const isRecording = groupKey === 'recording';
-  const items = isTv || isRadio || isPodcasts || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
+  const items = isTv || isRadio || isPodcasts || isMediathek || isSettings ? [] : services.filter(s => (s.group || 'streaming') === groupKey);
   const title = isSettings ? 'Einstellungen' : isTv ? 'LiveTV' : isRadio ? 'Radio' : isPodcasts ? 'Podcasts' : isRecording ? 'Aufnahmen' : groupKey === 'mediathek' ? 'Mediatheken' : 'Streaming';
   dashboardEyebrow.textContent = isSettings
     ? 'Streaming Hub'
@@ -962,7 +986,10 @@ function renderDashboard(groupKey, opts = {}) {
   radioDashboardRoot.hidden = !isRadio;
   podcastDashboardRoot.hidden = !isPodcasts;
   if (!isPodcasts) podcastHub.hideArea();
-  dashboardCount.textContent = isTv || isRadio || isPodcasts || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
+  dashboardView.classList.toggle('mediathek-active', isMediathek);
+  mediathekDashboardRoot.hidden = !isMediathek;
+  if (!isMediathek) mediathekHub.hideArea();
+  dashboardCount.textContent = isTv || isRadio || isPodcasts || isMediathek || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
   dashboardGrid.setAttribute('aria-label', title);
   settingsPanelHost.hidden = groupKey !== 'settings';
   dashboardGrid.innerHTML = '';
@@ -985,6 +1012,8 @@ function renderDashboard(groupKey, opts = {}) {
     radioDashboardView.render();
   } else if (isPodcasts) {
     podcastHub.showArea(opts.route);
+  } else if (isMediathek) {
+    mediathekHub.showArea(opts.route);
   } else if (isRecording) {
     // Aufnahmen-Dashboard (Fix-Set 4): reguläre View, kein Overlay
     renderRecordingDashboard();
@@ -1153,7 +1182,7 @@ function currentNavState() {
   }
   if (!currentProvider) {
     if (!currentDashboardGroup) return { kind: 'start' };
-    const route = currentDashboardGroup === 'podcasts' ? podcastHub.getRoute() : null;
+    const route = currentDashboardGroup === 'podcasts' ? podcastHub.getRoute() : currentDashboardGroup === 'mediathek' ? mediathekHub.getRoute() : null;
     return route ? { kind: 'dashboard', group: currentDashboardGroup, route } : { kind: 'dashboard', group: currentDashboardGroup };
   }
   return { kind: 'service', id: currentProvider, url: lastUrlByService[currentProvider] || null };
@@ -1254,6 +1283,7 @@ function navigateTo(svc) {
   if (dashboardView) {
     dashboardView.style.display = 'none';
     podcastHub.hideArea();
+    mediathekHub.hideArea();
     dashboardView.classList.remove('settings-dashboard');
     dashboardView.classList.remove('recordings-dashboard');
   }
@@ -2022,6 +2052,7 @@ async function selectTvChannel(ch, options = {}) {
   welcomeScreen.style.display = 'none';
   if (dashboardView) dashboardView.style.display = 'none';
   podcastHub.hideArea();
+  mediathekHub.hideArea();
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
   // Jetzt/Nächste des Kanals frisch aus dem Main holen (Cache kann bis zu einer Minute alt sein)
@@ -3706,6 +3737,8 @@ const settingsView = createSettingsView(settingsPanel, {
     if (page === 'podcast-subs') settingsPodcastSubsView.refresh();
     if (page === 'podcast-feeds') settingsPodcastFeedsView.refresh();
     if (page === 'podcast-playback') settingsPodcastPlaybackView.refresh();
+    if (page === 'mediathek-sources') settingsMediathekSourcesView.refresh();
+    if (page === 'mediathek-playback') settingsMediathekPlaybackView.refresh();
   },
 });
 const settingsRadioStationsView = createRadioStationsView(document.getElementById('settingsRadioStationsRoot'), {
@@ -3725,6 +3758,8 @@ const settingsPodcastPlaybackView = createPodcastPlaybackView(document.getElemen
   logger,
   onOpenRadioPlayback: () => settingsView.showPage('radio-playback'),
 });
+const settingsMediathekSourcesView = createMediathekSourcesView(document.getElementById('settingsMediathekSourcesRoot'), { mediathek: window.mediathek, logger });
+const settingsMediathekPlaybackView = createMediathekPlaybackView(document.getElementById('settingsMediathekPlaybackRoot'), { mediathek: window.mediathek, logger });
 settingsTvChannelsView = createTvChannelsView({
   root: settingsPanel,
   api: window.electronAPI,

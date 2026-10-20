@@ -7,8 +7,8 @@ const { SETTINGS_NAV, DEFAULT_PAGE, isValidPage, resolvePage } = require('../set
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 test('resolvePage: gewünscht > gemerkt > Allgemein', () => {
-  assert.equal(resolvePage('streaming', 'mediathek'), 'streaming');
-  assert.equal(resolvePage(undefined, 'mediathek'), 'mediathek');
+  assert.equal(resolvePage('streaming', 'mediathek-sources'), 'streaming');
+  assert.equal(resolvePage(undefined, 'mediathek-sources'), 'mediathek-sources');
   assert.equal(resolvePage('unbekannt', 'unsinn'), DEFAULT_PAGE);
   assert.equal(resolvePage(), 'general');
 });

@@ -38,7 +38,14 @@ const SETTINGS_NAV = [
     ],
   },
   { page: 'streaming', label: 'Streaming' },
-  { page: 'mediathek', label: 'Mediatheken' },
+  {
+    key: 'mediathek',
+    label: 'Mediatheken',
+    children: [
+      { page: 'mediathek-sources', label: 'Quellen' },
+      { page: 'mediathek-playback', label: 'Wiedergabe' },
+    ],
+  },
 ];
 
 function allPages(nav = SETTINGS_NAV) {
@@ -157,7 +164,7 @@ function createSettingsView(panel, options = {}) {
     if (!slot) return;
     if (addForm.parentNode !== slot) slot.appendChild(addForm);
     resetAddForm();
-    if (addGroupSelect) addGroupSelect.value = page === 'mediathek' ? 'mediathek' : 'streaming';
+    if (addGroupSelect) addGroupSelect.value = page === 'mediathek-sources' ? 'mediathek' : 'streaming';
   }
 
   function visibleTabs() {

@@ -3686,3 +3686,166 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
 @media (prefers-reduced-motion: reduce) {
   .overlay-bar .nav-section-item::after, .overlay-bar .nav-settings-item::after { transition: none; }
 }
+
+/* ═══ Mediatheken (nativ): Hub, Serie, Genre, Detail, Player ═══
+   Bereichsfarbe Mediatheken (#1AB8E0 dunkel / #0A86A8 hell wie in der Navigationsleiste), adaptiv Hell/Dunkel. */
+.mediathek-dashboard {
+  --md-accent:#1AB8E0; --md-btn-bg:#1AB8E0; --md-btn-ink:#04222b; --md-bg:#090b10;
+  --md-surface:rgba(255,255,255,.05); --md-surface2:rgba(255,255,255,.09); --md-line:rgba(255,255,255,.16);
+  --md-text:#f0f0f5; --md-dim:rgba(240,240,245,.62); --md-amber:#f5b642; --md-amber-ink:#1a1200; --md-danger:#ff8a8a; --md-pill:rgba(10,10,15,.78);
+  max-width:1480px; margin:0 auto 24px; color:var(--md-text);
+}
+@media (prefers-color-scheme: light) {
+  .dashboard-view.mediathek-active { background:#f3f5f8; --text:#14161c; --text-dim:rgba(20,22,28,.62); }
+  .mediathek-dashboard {
+    --md-accent:#0A86A8; --md-btn-bg:#076f8c; --md-btn-ink:#fff; --md-bg:#f3f5f8;
+    --md-surface:#fff; --md-surface2:#e8ecf2; --md-line:rgba(0,0,0,.16);
+    --md-text:#14161c; --md-dim:rgba(20,22,28,.66); --md-amber:#b45f06; --md-amber-ink:#fff; --md-danger:#b3261e;
+  }
+}
+.mediathek-dashboard[hidden],.mediathek-panel[hidden],.mediathek-dashboard [hidden] { display:none !important; }
+.mediathek-dashboard button, .mediathek-dashboard input, .mediathek-dashboard select { font:inherit; }
+.mediathek-dashboard :focus-visible { outline:2px solid var(--md-accent); outline-offset:2px; }
+.mediathek-dashboard.is-busy { cursor:progress; }
+.mediathek-dashboard.is-busy .mediathek-content { opacity:.6; }
+
+.mediathek-searchrow { display:flex; gap:10px; align-items:center; margin:0 0 12px; }
+.mediathek-search { flex:1; max-width:640px; display:flex; align-items:center; gap:8px; min-height:42px; padding:0 8px 0 12px; background:var(--md-surface2); border:1px solid var(--md-line); border-radius:12px; color:var(--md-dim); }
+.mediathek-search:focus-within { border-color:var(--md-accent); }
+.mediathek-search-input { flex:1; min-width:0; background:none; border:0; outline:0; color:var(--md-text); font-size:15px; user-select:text; }
+.mediathek-search-input::-webkit-search-cancel-button { display:none; }
+.mediathek-search-clear,.mediathek-tool-btn { width:32px; height:32px; display:grid; place-items:center; background:none; border:0; border-radius:50%; color:var(--md-dim); font-size:20px; line-height:1; cursor:pointer; }
+.mediathek-tool-btn { width:42px; height:42px; background:var(--md-surface2); border:1px solid var(--md-line); border-radius:12px; }
+.mediathek-search-clear:hover,.mediathek-tool-btn:hover { color:var(--md-text); }
+
+.mediathek-chips { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 6px; align-items:center; }
+.mediathek-chip { padding:8px 16px; min-height:36px; background:var(--md-surface2); border:1px solid var(--md-line); border-radius:999px; color:var(--md-text); font-size:14px; cursor:pointer; transition:background .15s, border-color .15s; }
+.mediathek-chip:hover { border-color:var(--md-accent); }
+.mediathek-chip.is-on { background:var(--md-btn-bg); border-color:var(--md-btn-bg); color:var(--md-btn-ink); font-weight:600; }
+.mediathek-chip.is-external { border-style:dashed; margin-left:8px; color:var(--md-accent); }
+.mediathek-chip.is-external.is-on { color:var(--md-btn-ink); border-style:solid; }
+
+.mediathek-content { padding-bottom:28px; transition:opacity .15s; }
+.mediathek-row { margin-top:22px; }
+.mediathek-row-title,.mediathek-group-title { display:flex; align-items:baseline; gap:10px; margin:0 0 10px; font-size:20px; font-weight:700; color:var(--md-text); }
+.mediathek-row-badge,.mediathek-group-count { font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--md-dim); }
+.mediathek-row-scroll { overflow-x:auto; padding:2px 2px 10px; scrollbar-width:thin; }
+.mediathek-row-list { list-style:none; display:flex; gap:14px; margin:0; padding:0; }
+.mediathek-row-list > li { flex:none; }
+.mediathek-row .mediathek-card { width:230px; }
+.mediathek-group { margin-top:22px; }
+.mediathek-grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:18px 14px; }
+
+.mediathek-card { position:relative; min-width:0; }
+.mediathek-card-main { display:flex; flex-direction:column; gap:6px; width:100%; padding:0; background:none; border:0; text-align:left; color:var(--md-text); cursor:pointer; border-radius:12px; }
+.mediathek-card-main:hover .mediathek-thumb { filter:brightness(1.08); }
+.mediathek-card-title { font-size:14px; font-weight:600; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mediathek-card-sub { font-size:12.5px; color:var(--md-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mediathek-card.is-blocked .mediathek-thumb { filter:grayscale(1) brightness(.5); }
+.mediathek-card.is-blocked .mediathek-card-title,.mediathek-card.is-blocked .mediathek-card-sub { opacity:.6; }
+.mediathek-thumb { position:relative; display:block; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:12px; background:var(--md-surface2); transition:filter .15s; }
+.mediathek-thumb-placeholder { position:absolute; inset:0; display:grid; place-items:center; font-size:26px; font-weight:800; color:#fff; background:linear-gradient(135deg,hsl(var(--ph-hue,200) 45% 32%),hsl(calc(var(--ph-hue,200) + 40) 50% 46%)); }
+.mediathek-thumb-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.mediathek-pill { position:absolute; padding:2px 7px; border-radius:6px; background:var(--md-pill); color:#fff; font-size:11px; font-weight:700; letter-spacing:.03em; }
+.mediathek-pill-source { top:8px; left:8px; color:var(--src-c,#fff); background:rgba(10,10,15,.82); }
+.mediathek-pill-geo { left:8px; bottom:8px; background:var(--md-amber); color:var(--md-amber-ink); }
+.mediathek-pill-duration { right:8px; bottom:8px; }
+.mediathek-progress { position:absolute; left:0; right:0; bottom:0; height:5px; background:rgba(0,0,0,.55); }
+.mediathek-progress i { display:block; height:100%; background:var(--md-accent); }
+.mediathek-lock { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.mediathek-info-btn,.mediathek-star-btn,.mediathek-remove-btn { position:absolute; top:6px; right:6px; width:30px; height:30px; display:grid; place-items:center; border:0; border-radius:50%; background:rgba(10,10,15,.78); color:#fff; font:italic 700 15px Georgia,serif; cursor:pointer; opacity:.92; }
+.mediathek-star-btn { color:#cfd4dd; }
+.mediathek-star-btn.is-on { color:#f5b642; }
+.mediathek-remove-btn { right:42px; font:700 16px system-ui,sans-serif; }
+.mediathek-info-btn:hover,.mediathek-star-btn:hover { opacity:1; background:rgba(10,10,15,.95); }
+.mediathek-info-btn.is-inline { position:static; flex:none; width:36px; height:36px; background:var(--md-surface2); color:var(--md-text); border:1px solid var(--md-line); }
+.mediathek-row-more { display:grid; align-content:start; padding-top:30px; }
+.mediathek-more-btn,.mediathek-btn { padding:9px 16px; min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:var(--md-surface2); border:1px solid var(--md-line); border-radius:12px; color:var(--md-text); font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.mediathek-more-btn:hover,.mediathek-btn:hover:not(:disabled) { border-color:var(--md-accent); }
+.mediathek-btn:disabled,.mediathek-more-btn:disabled { opacity:.55; cursor:default; }
+.mediathek-btn-primary { background:var(--md-btn-bg); border-color:var(--md-btn-bg); color:var(--md-btn-ink); }
+.mediathek-btn-primary:hover:not(:disabled) { filter:brightness(1.1); }
+.mediathek-fav-btn.is-on { color:var(--md-amber); border-color:var(--md-amber); }
+
+.mediathek-block { display:flex; align-items:center; gap:12px; margin:18px 0 0; padding:12px 14px; background:var(--md-surface); border:1px solid var(--md-line); border-radius:12px; color:var(--md-dim); font-size:14px; }
+.mediathek-error { color:var(--md-danger); justify-content:space-between; }
+.mediathek-more { justify-content:center; background:none; border:0; }
+.mediathek-hint { margin:18px 0 0; color:var(--md-dim); font-size:14px; }
+.mediathek-empty-state { flex-direction:column; align-items:flex-start; }
+.mediathek-spinner { width:14px; height:14px; flex:none; border:2px solid var(--md-line); border-top-color:var(--md-accent); border-radius:50%; animation:mediathek-spin 1s linear infinite; }
+@keyframes mediathek-spin { to { transform:rotate(360deg); } }
+
+.mediathek-service-grid { margin-top:12px; }
+.mediathek-service-btn { display:flex; flex-direction:column; gap:6px; width:100%; padding:14px; text-align:left; background:var(--md-surface); border:1px solid var(--md-line); border-radius:14px; color:var(--md-text); cursor:pointer; }
+.mediathek-service-btn:hover { border-color:var(--md-accent); }
+.mediathek-service-icon { position:relative; width:48px; height:48px; display:grid; place-items:center; overflow:hidden; border-radius:12px; background:color-mix(in srgb,var(--svc-c,#1ab8e0) 30%,var(--md-surface2)); }
+.mediathek-service-icon img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#fff; padding:6px; }
+.mediathek-service-fallback { font-size:20px; font-weight:800; }
+
+/* Seitenkopf: Serie und Genre */
+.mediathek-back { align-self:flex-start; display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 14px; background:var(--md-pill); border:0; border-radius:999px; color:#fff; font-size:14px; font-weight:500; cursor:pointer; }
+.mediathek-back:hover { background:rgba(10,10,15,.95); }
+.mediathek-hero { position:relative; display:flex; flex-direction:column; justify-content:space-between; gap:60px; min-height:300px; margin:0 0 6px; padding:16px 22px 20px; overflow:hidden; border-radius:18px; background:var(--md-surface2); }
+.mediathek-hero::after { content:''; position:absolute; inset:0; background:linear-gradient(to top,var(--md-bg) 6%,transparent 80%); pointer-events:none; }
+.mediathek-hero > * { position:relative; z-index:1; }
+.mediathek-hero-img { position:absolute !important; inset:0; width:100%; height:100%; object-fit:cover; z-index:0 !important; }
+.mediathek-hero-text { display:flex; flex-direction:column; gap:8px; z-index:2; }
+.mediathek-eyebrow { margin:0; font-size:12px; font-weight:600; letter-spacing:.14em; color:var(--md-dim); }
+.mediathek-hero-title { margin:0; font-size:clamp(28px,3.4vw,40px); font-weight:800; letter-spacing:-.02em; color:var(--md-text); }
+.mediathek-hero-desc { max-width:640px; margin:0; font-size:14.5px; line-height:1.45; color:var(--md-text); opacity:.88; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.mediathek-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
+.mediathek-page-head { display:flex; flex-direction:column; gap:14px; margin:0 0 6px; }
+.mediathek-page-head-text { display:flex; flex-direction:column; gap:6px; }
+.mediathek-episodes-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-top:20px; }
+.mediathek-sort { display:inline-flex; }
+.mediathek-seg { padding:7px 14px; min-height:36px; background:var(--md-surface2); border:1px solid var(--md-line); color:var(--md-text); font-size:13.5px; cursor:pointer; }
+.mediathek-seg:first-child { border-radius:10px 0 0 10px; }
+.mediathek-seg:last-child { border-radius:0 10px 10px 0; border-left:0; }
+.mediathek-seg.is-on { background:var(--md-btn-bg); border-color:var(--md-btn-bg); color:var(--md-btn-ink); font-weight:600; }
+.mediathek-season-chips { margin-top:10px; }
+.mediathek-season-title { margin:20px 0 4px; font-size:17px; font-weight:700; color:var(--md-accent); }
+.mediathek-episode-list { list-style:none; margin:0; padding:0; }
+.mediathek-episode { display:flex; align-items:center; gap:12px; border-top:1px solid var(--md-line); }
+.mediathek-episode-main { flex:1; min-width:0; display:flex; align-items:center; gap:14px; padding:10px 4px; background:none; border:0; text-align:left; color:var(--md-text); cursor:pointer; border-radius:10px; }
+.mediathek-episode-main .mediathek-thumb { width:170px; flex:none; }
+.mediathek-episode-text { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.mediathek-episode-text .mediathek-card-title { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.mediathek-episode.is-blocked .mediathek-thumb { filter:grayscale(1) brightness(.5); }
+.mediathek-episode.is-blocked .mediathek-episode-text { opacity:.6; }
+
+/* Detail-Fenster */
+.mediathek-modal { position:fixed; inset:0; z-index:95; display:grid; place-items:center; padding:20px; background:rgba(0,0,0,.55); }
+.mediathek-dialog { position:relative; width:min(640px,100%); max-height:calc(100vh - 40px); overflow:auto; padding:26px 28px 28px; background:var(--md-bg); color:var(--md-text); border:1px solid var(--md-line); border-radius:22px; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+@media (prefers-color-scheme: light) { .mediathek-dialog { background:#fff; } }
+.mediathek-dialog-close { position:absolute; top:12px; right:14px; width:36px; height:36px; display:grid; place-items:center; background:var(--md-surface2); border:0; border-radius:50%; color:var(--md-text); font-size:22px; line-height:1; cursor:pointer; }
+.mediathek-dialog-title { margin:4px 40px 0 0; font-size:26px; font-weight:800; line-height:1.2; }
+.mediathek-dialog-meta,.mediathek-dialog-until { margin:8px 0 0; color:var(--md-dim); font-size:14px; }
+.mediathek-dialog-desc { margin:14px 0 0; font-size:15px; line-height:1.5; user-select:text; }
+.mediathek-dialog-hint { margin:14px 0 0; padding:10px 12px; border-radius:10px; font-size:14px; background:color-mix(in srgb,var(--md-amber) 16%,transparent); color:var(--md-text); border:1px solid color-mix(in srgb,var(--md-amber) 55%,transparent); }
+.mediathek-dialog .mediathek-actions { margin-top:20px; }
+
+/* Player */
+.mediathek-player { position:fixed; inset:0; z-index:120; background:#000; color:#fff; }
+.mediathek-player-video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#000; }
+.mediathek-player-bar { position:absolute; top:0; left:0; right:0; z-index:2; display:flex; align-items:center; gap:14px; padding:14px 18px 34px; background:linear-gradient(to bottom,rgba(0,0,0,.78),transparent); transition:opacity .25s; }
+.mediathek-player.is-idle .mediathek-player-bar:not(:focus-within) { opacity:0; pointer-events:none; }
+.mediathek-player.is-idle { cursor:none; }
+.mediathek-player-close { width:40px; height:40px; flex:none; display:grid; place-items:center; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.25); border-radius:50%; color:#fff; font-size:26px; line-height:1; cursor:pointer; }
+.mediathek-player-close:hover { background:#076f8c; }
+.mediathek-player-title { flex:1; min-width:0; font-size:16px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mediathek-player-menus { display:flex; gap:10px; flex-wrap:wrap; }
+.mediathek-player-menu { display:flex; align-items:center; gap:6px; font-size:12.5px; color:rgba(255,255,255,.8); }
+.mediathek-player-select { max-width:200px; padding:5px 8px; background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.3); border-radius:8px; color:#fff; font-size:13px; }
+.mediathek-player-loading { position:absolute; left:50%; top:50%; z-index:1; transform:translate(-50%,-50%); padding:8px 16px; background:rgba(0,0,0,.6); border-radius:999px; font-size:14px; pointer-events:none; }
+.mediathek-player-error { position:absolute; top:84px; left:50%; z-index:3; transform:translateX(-50%); max-width:min(640px,88%); padding:12px 18px; background:rgba(30,10,10,.95); border:1px solid rgba(239,68,68,.55); border-radius:10px; color:#fecaca; font-size:14px; line-height:1.45; text-align:center; }
+.mediathek-player :focus-visible { outline:2px solid #1ab8e0; outline-offset:2px; }
+
+@media (max-width:760px) {
+  .mediathek-episode-main .mediathek-thumb { width:120px; }
+  .mediathek-hero { min-height:240px; }
+  .mediathek-chip.is-external { margin-left:0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mediathek-spinner { animation:none; border-top-color:var(--md-line); }
+  .mediathek-chip,.mediathek-thumb,.mediathek-content,.mediathek-player-bar { transition:none; }
+}
