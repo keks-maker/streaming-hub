@@ -103,7 +103,7 @@ function createSelection({ seasons, stateOf, maxHeight = '1080' }) {
       });
     },
     setMaxHeight(value) {
-      maxHeight = value; // eslint-disable-line no-param-reassign
+      maxHeight = value;
     },
     /** Zahl, geschätzte Gesamtgröße und Reichweite des freien Platzes. */
     totals(freeBytes) {

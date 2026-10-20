@@ -93,7 +93,7 @@ Die Startseite bündelt die Bereiche Live-TV, Radio, Streaming, Mediatheken und 
 
 ### Navigationsleiste
 
-In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Radio, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
+In den Bereichen erscheint die Navigationsleiste am oberen Bildschirmrand. Sie wechselt zwischen Live-TV, Radio, Streaming, Mediatheken und Einstellungen. Läuft eine Aufnahme, zeigt der Live-TV-Eintrag einen kleinen roten Punkt, laufende Downloads einen Ring am Mediatheken-Eintrag; den Aufnahmen-Bereich öffnest du über die Karte **Aufnahmen** im Live-TV-Dashboard.
 
 ![Navigationsleiste (LiveTV, Radio, Streaming, Mediatheken, Einstellungen) und Streaming-Dashboard](assets/screenshots/navbar.png)
 
@@ -280,6 +280,14 @@ Abos, Hörstatus und Einstellungen bleiben bei Updates erhalten und sind Teil vo
 > **Datenschutz:** Dein Suchbegriff geht an Apple (iTunes Search). Feeds, Cover und Audio lädt die App direkt von den Anbietern der jeweiligen Sendung. Cover werden nur über den Hauptprozess mit Adressprüfung geladen.
 >
 > **Nicht in dieser Version:** Episoden-Downloads, Benachrichtigungen über neue Episoden und OPML-Import/-Export.
+
+### Mediatheken und Downloads
+
+ARD, ZDF und arte spielst du direkt in der App ab: Quellenleiste, Reihen, Suche, Serienseiten mit Staffeln, Fortsetzen und **Meine Serien**. Weitere Mediatheken öffnen als Webseite unter **Weitere Mediatheken**.
+
+**Downloads (nur privater Gebrauch):** Bei einer Folge öffnet **Herunterladen** die Download-Optionen (Qualität, Tonspuren, Untertitel, Container) mit Vorschau von Größe und freiem Platz. Auf der Serienseite lädt **Laden ▾** alle Folgen, eine Staffel, eine Auswahl oder nur neue Folgen; bald ablaufende Folgen kommen zuerst. Das Symbol an jeder Folge zeigt den Zustand (nicht geladen, wartet, lädt, fertig, Fehler). Unter **Downloads** siehst du die Warteschlange (Fortschritt, Tempo, Pause, Fortsetzen, Abbrechen, Wiederholen) und die Bibliothek: fertige Folgen spielst du ohne Internet ab, zeigst sie im Finder oder löschst sie (auf Wunsch samt Datei). Altersgesperrte Folgen werden zurückgestellt und starten automatisch zur Freigabezeit. Ein Ring am Mediatheken-Eintrag der Navigationsleiste zeigt laufende Downloads, bei Fertigstellung kommt eine Benachrichtigung.
+
+Die Mediatheken-Nutzungsbedingungen sind auf Streaming ausgelegt: Downloads sind nur für den privaten Gebrauch, du bist für die rechtmäßige Nutzung selbst verantwortlich. Einstellungen findest du unter **Einstellungen ▸ Mediatheken ▸ Downloads** (Ablage, Qualität, Ton & Untertitel, Steuerung, Hinweise); dort lässt sich die Download-Funktion auch ausblenden.
 
 ### EPG – Programmführer
 

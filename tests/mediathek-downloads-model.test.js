@@ -58,7 +58,7 @@ test('Zeile der Warteschlange: Fortschritt, Tempo, Restzeit; Fehler und Freigabe
   assert.equal(failed.tone, 'error');
   assert.deepEqual(failed.actions, ['retry', 'remove']);
   const scheduled = m.describeQueueItem(view({ status: 'scheduled', error: 'Altersfreigabe ab 22 Uhr.', retryAt: '2026-10-20T20:00:00Z' }));
-  assert.equal(scheduled.message, 'Altersfreigabe ab 22 Uhr Start automatisch ab 20.10.2026, 22:00 Uhr.');
+  assert.equal(scheduled.message, 'Altersfreigabe ab 22 Uhr. Start automatisch ab 20.10.2026, 22:00 Uhr.');
   assert.equal(scheduled.tone, 'warn');
   assert.deepEqual(m.describeQueueItem(view({ status: 'paused', progress: { percent: 10 } })).actions, ['resume', 'cancel']);
   assert.equal(m.describeQueueItem(view({ status: 'queued', estimatedBytes: 5e8 })).detail, 'ca. 500 MB');

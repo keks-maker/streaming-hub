@@ -1186,8 +1186,8 @@ function renderNav() {
   settingsItem.addEventListener('click', () => showDashboard('settings'));
   nav.appendChild(settingsItem);
   nav.appendChild(overlayUpdateSlot);
-  updateNavRecordingIndicator();
   updateNavDownloadIndicator();
+  updateNavRecordingIndicator();
 }
 
 function createDivider() {

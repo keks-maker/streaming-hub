@@ -73,13 +73,13 @@ test.afterAll(async () => {
 
 const chip = label => page.locator('#mediathekPanel-home .mediathek-chip', { hasText: label });
 
-test('Navigation: Kachel öffnet den nativen Bereich; Quellenleiste ohne Downloads-Chip', async () => {
+test('Navigation: Kachel öffnet den nativen Bereich; Quellenleiste mit Downloads-Chip', async () => {
   await page.locator('.dashboard-section-tile[data-section="mediathek"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Mediatheken');
   await expect(page.locator('#mediathekDashboard')).toBeVisible();
   await expect(page.locator('#dashboardGrid .dashboard-tile')).toHaveCount(0); // alte Kachel-Ansicht entfällt
   const chips = await page.locator('#mediathekDashboard .mediathek-chips .mediathek-chip').allTextContents();
-  expect(chips).toEqual(['Alle', 'ARD', 'ZDF', 'arte', 'Meine Serien', 'Weiterschauen', 'Weitere Mediatheken']);
+  expect(chips).toEqual(['Alle', 'ARD', 'ZDF', 'arte', 'Meine Serien', 'Weiterschauen', 'Downloads', 'Weitere Mediatheken']);
   await expect(page.locator('#mediathekDashboard .mediathek-chip[aria-pressed="true"]')).toHaveText('Alle');
   await expect(page.locator('#mediathekDashboard .mediathek-search-input')).toBeVisible();
 });

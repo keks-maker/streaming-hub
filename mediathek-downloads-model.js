@@ -124,7 +124,7 @@ function describeQueueItem(view) {
   if (view.status === 'scheduled') {
     const when = formatDateTime(view.retryAt);
     message = view.error || 'Die Folge ist noch altersgesperrt.';
-    if (when) message = `${message.replace(/\.$/, '')} Start automatisch ab ${when}.`;
+    if (when) message = `${message.replace(/\.$/, '')}. Start automatisch ab ${when}.`;
   } else if (view.status === 'failed') {
     message = view.error || 'Der Download ist fehlgeschlagen.';
   } else if (view.status === 'canceled') {

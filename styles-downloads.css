@@ -112,3 +112,5 @@
   .mediathek-dl-bar.is-indeterminate i { animation:none; width:100%; opacity:.5; }
   .mediathek-dl-ring.is-spinning { animation:none; }
 }
+[id^="settingsMediathekDl-"] .tv-mode-label { margin-top:12px; }
+[id^="settingsMediathekDl-"] .tv-mode-label:first-child { margin-top:0; }
