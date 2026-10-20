@@ -49,6 +49,9 @@ const { createMediathekSettings } = require('./lib/mediathek/settings.js');
 const { createDownloadStore } = require('./lib/download/DownloadStore.js');
 const { DownloadService } = require('./lib/download/DownloadService.js');
 const { registerDownloadIpc } = require('./lib/download/ipc.js');
+const { SubscriptionService } = require('./lib/download/subscriptions/SubscriptionService.js');
+const { createSubscriptionStore } = require('./lib/download/subscriptions/SubscriptionStore.js');
+const { registerSubscriptionIpc } = require('./lib/download/subscriptions/ipc.js');
 const { DL_SCHEME, DL_PRIVILEGES, createDownloadProtocolHandler } = require('./lib/download/protocol.js');
 const { createSettingsHolder: createDownloadSettingsHolder } = require('./lib/download/settings-holder.js');
 const { createCoverFetcher } = require('./lib/download/cover.js');
@@ -99,6 +102,7 @@ const recordingSettingsResponse = recordingSettingsLib.buildSettingsResponse;
 let recorder = null;
 // Mediathek-Downloads (Konzept §3/§4): Dienst nach dem Recorder-Setup erzeugt
 let downloadService = null;
+let subscriptionService = null; // Serien-Abos „Neue Folgen automatisch laden“
 let mediathekService = null;
 let mediathekHttp = null;
 // Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
@@ -1448,6 +1452,7 @@ app.whenReady().then(() => {
           if (isIsolatedTestRun(process.env)) return; // E2E öffnet keinen Dateimanager
           shell.showItemInFolder(file);
         },
+        onSettingsChanged: () => subscriptionService && subscriptionService.reschedule(),
         getProgress: record => downloadWatch.progress(record.entry.sourceId, record.entry.title),
         // Wiedergabe eines Downloads: Eintrag im Verlauf anlegen, damit Fortschritt (watch-progress) und "Gesehen" gespeichert werden
         onPlay: record => downloadWatch.record({ entry: { sourceId: record.entry.sourceId, title: record.entry.title, imageUrl: record.entry.imageUrl }, series: record.series }),
@@ -1459,6 +1464,29 @@ app.whenReady().then(() => {
         if (reason === 'state' && downloadService.activeCount() === 0 && BrowserWindow.getAllWindows().length === 0) quitUnlessKeptAlive();
       });
       downloadService.start();
+      // Serien-Abos: Prüfung läuft nur, solange die App läuft (Fenster-zu-Verhalten unverändert: Tray-Betrieb zählt als laufend)
+      subscriptionService = new SubscriptionService({
+        store: createSubscriptionStore({ file: path.join(app.getPath('userData'), 'subscriptions.json'), logger }),
+        mediathek: mediathekService,
+        downloads: downloadService,
+        getSettings: downloadSettings.get,
+        notifier: createNotifier({ NotificationClass: Notification, logger }),
+        autoSchedule: !isIsolatedTestRun(process.env), // E2E-Läufe prüfen nur auf Knopfdruck
+        logger,
+      });
+      registerSubscriptionIpc({
+        ipcMain,
+        service: subscriptionService,
+        requireMainRenderer,
+        sendToMain: (channel, payload) => {
+          try {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+          } catch (_) {
+            // Fenster zwischendurch geschlossen: die Prüfung läuft im Main weiter
+          }
+        },
+      });
+      subscriptionService.start();
     } catch (e) {
       logger.error('Downloads konnten nicht eingerichtet werden:', e.message);
       downloadService = null;
@@ -1522,6 +1550,7 @@ app.on('before-quit', event => {
   if (wakeHelper) wakeHelper.quit();
   if (epgService) epgService.stop();
   if (scheduler) scheduler.stop();
+  if (subscriptionService) subscriptionService.stop();
   if (downloadService) {
     try {
       downloadService.quitSweep();

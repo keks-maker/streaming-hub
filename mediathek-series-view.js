@@ -6,7 +6,7 @@
 const { createSeriesPage } = require('./mediathek-series-model.js');
 const { sourceBadge, imageSrc, subtitleText, minutesText } = require('./mediathek-format.js');
 const { el, button, createThumb, setIcon, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG } = require('./mediathek-cards.js');
-const { downloadIcon } = require('./mediathek-download-icons.js');
+const { downloadIcon, AUTO_SVG } = require('./mediathek-download-icons.js');
 const { stateLabel } = require('./mediathek-downloads-model.js');
 const { menuItems } = require('./mediathek-download-select-model.js');
 
@@ -17,7 +17,8 @@ const BACK_SVG =
  * ctx: { api, back(), play(entry, series, trigger), openDetail(entry, series, trigger), isBlocked(id), toggleFavorite(series) -> Promise<bool|null>,
  *        onFavoritesChanged(listener) -> unsubscribe, announce(text),
  *        downloads?: { enabled(), stateOf(entry) -> { state, percent }, count(series), start(entry, series, trigger), openSelection({ series, seasons, mode, trigger }),
- *                      openArea(tab), subscribe(listener) -> unsubscribe } }
+ *                      openArea(tab), subscribe(listener) -> unsubscribe,
+ *                      auto?: { isOn(series), toggle(series, { seasons, trigger }) -> Promise } } }
  */
 function createMediathekSeriesView(root, ctx) {
   const doc = root.ownerDocument || document;
@@ -75,6 +76,32 @@ function createMediathekSeriesView(root, ctx) {
     }
     const count = root.querySelector('.mediathek-dl-count');
     if (count) paintCount(count);
+    const auto = root.querySelector('[data-action="auto"]');
+    if (auto) paintAuto(auto);
+  }
+
+  /** Schalter „Neue Folgen automatisch laden“ (Abo) im Serienkopf. */
+  function paintAuto(btn) {
+    const on = ctx.downloads.auto.isOn(current);
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.setAttribute('aria-label', on ? 'Neue Folgen automatisch laden: an. Zum Ausschalten drücken' : 'Neue Folgen automatisch laden: aus. Zum Einschalten drücken');
+    btn.title = on ? 'Neue Folgen werden automatisch geladen' : 'Neue Folgen automatisch laden';
+    btn.querySelector('.mediathek-auto-label').textContent = on ? 'Auto-Laden an' : 'Auto-Laden';
+  }
+
+  function autoButton(series) {
+    const btn = el(doc, 'button', 'mediathek-btn mediathek-auto-btn');
+    btn.type = 'button';
+    btn.id = 'mediathekSeriesAuto';
+    btn.dataset.action = 'auto';
+    const icon = el(doc, 'span');
+    icon.setAttribute('aria-hidden', 'true');
+    setIcon(icon, AUTO_SVG);
+    btn.append(icon, el(doc, 'span', 'mediathek-auto-label'));
+    paintAuto(btn);
+    btn.addEventListener('click', () => ctx.downloads.auto.toggle(series, { seasons: page.snapshot().seasons, trigger: btn }));
+    return btn;
   }
 
   function findEntry(id) {
@@ -222,6 +249,7 @@ function createMediathekSeriesView(root, ctx) {
     actions.append(play, fav);
     if (dl() && state.status === 'loaded') {
       actions.appendChild(downloadMenu(series));
+      if (ctx.downloads.auto) actions.appendChild(autoButton(series));
       const count = el(doc, 'span', 'mediathek-dl-count mediathek-pill-inline');
       paintCount(count);
       actions.appendChild(count);

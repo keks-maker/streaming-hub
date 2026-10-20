@@ -40,6 +40,7 @@ const { createMediathekSourcesView } = require('./settings-mediathek-sources.js'
 const { createMediathekPlaybackView } = require('./settings-mediathek-playback.js');
 const { createMediathekDownloadsSettings } = require('./settings-mediathek-downloads.js');
 const { createDownloadsStore, indicatorLabel } = require('./mediathek-downloads-model.js');
+const { createSubscriptionsStore } = require('./mediathek-subscriptions-model.js');
 const { resolveCoverSource } = require('./podcast-cover-view.js');
 const { createPodcastDetailsCache } = require('./podcast-details-cache.js');
 const { favoriteCountOf } = require('./radio-dashboard-model.js');
@@ -610,11 +611,15 @@ const downloadsStore = createDownloadsStore({ api: window.downloads });
 window.downloads.onChanged(payload => downloadsStore.applyEvent(payload));
 downloadsStore.load();
 downloadsStore.subscribe(() => updateNavDownloadIndicator());
+// Serien-Abos „Neue Folgen automatisch laden“ (Ansicht „Abos“, Schalter im Serienkopf, Symbol in Meine Serien)
+const subscriptionsStore = createSubscriptionsStore({ api: window.downloads.subscriptions });
+window.downloads.subscriptions.onChanged(payload => subscriptionsStore.applyEvent(payload));
+subscriptionsStore.load();
 
 // ── Mediatheken (nativ): Hub, Serie, Genre, Detail und Player; „Weitere Mediatheken“ sind die Weblink-Dienste der Gruppe mediathek ──
 const mediathekHub = createMediathekHub(mediathekDashboardRoot, {
   mediathek: window.mediathek,
-  downloads: { api: window.downloads, store: downloadsStore },
+  downloads: { api: window.downloads, store: downloadsStore, subs: subscriptionsStore },
   fileManager: /Mac/i.test(navigator.platform || '') ? 'Finder' : /Win/i.test(navigator.platform || '') ? 'Explorer' : 'Dateimanager',
   logger,
   notify: showTvToast,

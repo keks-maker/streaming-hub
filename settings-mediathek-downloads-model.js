@@ -50,12 +50,15 @@ const PAGES = {
   },
   control: {
     title: 'Mediatheken: Downloads – Steuerung',
-    desc: 'Wie viele Downloads gleichzeitig laufen und was nach dem Laden passiert.',
+    desc: 'Wie viele Downloads gleichzeitig laufen, was nach dem Laden passiert und wie Serien-Abos neue Folgen laden.',
     fields: [
       { type: 'number', key: 'maxParallel', label: 'Parallele Downloads', min: 1, max: 5, unit: '', hint: 'Von 1 bis 5. Läuft eine Aufnahme, hat sie Vorrang und es läuft nur ein Download.' },
       { type: 'number', key: 'bandwidthKBps', label: 'Bandbreitenlimit', min: 0, max: 1000000, unit: 'kB/s', hint: '0 bedeutet unbegrenzt. 1 000 kB/s sind etwa 8 Mbit/s.' },
       { type: 'info', label: 'Reserve-Platz', text: 'Die Reserve für freien Speicherplatz gilt gemeinsam mit den Aufnahmen und steht unter Einstellungen ▸ LiveTV ▸ Aufnahmen.' },
-      { type: 'toggle', key: 'notifyOnDone', label: 'Benachrichtigung bei Fertigstellung', hint: 'Eine Meldung, wenn die Warteschlange abgearbeitet ist.' },
+      { type: 'toggle', key: 'notifyOnDone', label: 'Benachrichtigung bei Fertigstellung', hint: 'Eine Meldung, wenn die Warteschlange abgearbeitet ist, und eine gebündelte Meldung, wenn ein Abo neue Folgen findet.' },
+      { type: 'toggle', key: 'autoDownloadEnabled', label: 'Neue Folgen von Serien-Abos automatisch laden', hint: 'Gilt für alle Abos (Downloads ▸ Abos). Geprüft wird kurz nach dem Start der App und danach im eingestellten Abstand, nur solange die App läuft.' },
+      { type: 'number', key: 'autoCheckIntervalHours', label: 'Abos prüfen alle', min: 1, max: 24, unit: 'Stunden', hint: 'Von 1 bis 24 Stunden. Die Prüfung nacheinander und mit Pausen schont die Server der Mediatheken.' },
+      { type: 'number', key: 'maxPerCheck', label: 'Höchstens je Prüfung und Abo', min: 1, max: 100, unit: 'Folgen', hint: 'Schutz vor Massen-Downloads: Was darüber hinausgeht, folgt bei der nächsten Prüfung.' },
       { type: 'number', key: 'cleanupWatchedDays', label: 'Gesehene Downloads aufräumen nach', min: 0, max: 3650, unit: 'Tagen', hint: '0 bedeutet aus. Gelöscht werden nur Folgen, die du bis zum Ende angesehen hast.' },
       { type: 'toggle', key: 'skipOptionsDialog', label: 'Dialog „Download-Optionen“ überspringen', hint: 'Ein Klick auf „Herunterladen“ startet sofort mit den Einstellungen dieser Seiten.' },
     ],
@@ -106,6 +109,8 @@ function clampMessages(response) {
   if (clamped.maxParallel) messages.maxParallel = `Auf ${response.maxParallel} begrenzt (erlaubt: 1 bis 5).`;
   if (clamped.bandwidthKBps) messages.bandwidthKBps = response.bandwidthKBps === 0 ? 'Ungültiger Wert, das Limit ist aus.' : `Auf ${response.bandwidthKBps} kB/s begrenzt.`;
   if (clamped.cleanupWatchedDays) messages.cleanupWatchedDays = response.cleanupWatchedDays === 0 ? 'Ungültiger Wert, das Aufräumen ist aus.' : `Auf ${response.cleanupWatchedDays} Tage begrenzt (höchstens 3650).`;
+  if (clamped.autoCheckIntervalHours) messages.autoCheckIntervalHours = `Auf ${response.autoCheckIntervalHours} ${response.autoCheckIntervalHours === 1 ? 'Stunde' : 'Stunden'} begrenzt (erlaubt: 1 bis 24).`;
+  if (clamped.maxPerCheck) messages.maxPerCheck = `Auf ${response.maxPerCheck} begrenzt (erlaubt: 1 bis 100).`;
   return messages;
 }
 

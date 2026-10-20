@@ -14,6 +14,8 @@ const { createMediathekDetail } = require('./mediathek-detail-view.js');
 const { createMediathekPlayer } = require('./mediathek-player-view.js');
 const { createMediathekDownloadsView } = require('./mediathek-downloads-view.js');
 const { createMediathekDownloadDialogs } = require('./mediathek-download-dialogs-view.js');
+const { createSubscriptionDialogs } = require('./mediathek-subscription-dialogs-view.js');
+const { updateSubscriptionBadge } = require('./mediathek-cards.js');
 
 const HOME = { view: 'home' };
 const DEFAULT_SETTINGS = { sources: { ard: true, zdf: true, arte: true }, quality: 'auto', audioLanguage: 'de', subtitles: 'off' };
@@ -43,7 +45,7 @@ function persistableRoute(route) {
 /**
  * options: { mediathek (window.mediathek), logger, notify(text), services() (Weblink-Dienste der Gruppe mediathek),
  *            iconSrc(svc), openService(svc), openWeb(url, title), onBeforeNavigate(), onBack() -> bool, onOpenSettings(),
- *            onPlaybackStart(), timers, downloads ({ api: window.downloads, store: createDownloadsStore }, optional),
+ *            onPlaybackStart(), timers, downloads ({ api: window.downloads, store: createDownloadsStore, subs: createSubscriptionsStore (Serien-Abos) }, optional),
  *            fileManager (Anzeigename des Dateimanagers) }
  */
 function createMediathekHub(root, options = {}) {
@@ -165,13 +167,16 @@ function createMediathekHub(root, options = {}) {
   // ── Downloads (optional): Zustand liegt im Store des Renderers (auch für den Navbar-Indikator) ──
   const dlApi = downloadOptions && downloadOptions.api;
   const dlStore = downloadOptions && downloadOptions.store;
+  const subsStore = (dlStore && downloadOptions.subs) || null;
   let dlSettings = { showDownloads: true, skipOptionsDialog: false };
+  let dlFullSettings = {}; // alle Download-Einstellungen (Vorbelegung der Abo-Optionen)
   const dlEnabled = () => Boolean(dlStore) && dlSettings.showDownloads !== false;
   const dlRoot = doc.createElement('div');
   dlRoot.className = 'mediathek-downloads';
   dlRoot.id = 'mediathekDownloads';
   let dialogs = null;
   let dlView = null;
+  let subDialogs = null;
   if (dlStore) {
     dialogs = createMediathekDownloadDialogs({
       api: dlApi,
@@ -182,8 +187,19 @@ function createMediathekHub(root, options = {}) {
       onChanged: () => dlStore.load(),
       getFreeBytes: () => dlStore.snapshot().freeBytes,
     });
+    if (subsStore) {
+      subDialogs = createSubscriptionDialogs({
+        host: root,
+        store: subsStore,
+        getSettings: () => dlFullSettings,
+        announce: text => announce(text),
+        say: text => say(text),
+        selection: args => dialogs.openSelection({ ...args, stateOf: entry => dlStore.stateOf(entry) }),
+      });
+    }
     dlView = createMediathekDownloadsView(dlRoot, {
       store: dlStore,
+      subs: subsStore ? { store: subsStore, openOptions: (sub, trigger) => subDialogs.openOptions({ sub, trigger }) } : null,
       announce: text => announce(text),
       fileManager,
       confirmDelete: item => dialogs.confirmDelete(item),
@@ -207,6 +223,7 @@ function createMediathekHub(root, options = {}) {
     return dlApi
       .getSettings()
       .then(result => {
+        if (result && typeof result === 'object') dlFullSettings = result;
         if (result && typeof result === 'object') dlSettings = { showDownloads: result.showDownloads !== false, skipOptionsDialog: result.skipOptionsDialog === true };
       })
       .catch(error => {
@@ -232,11 +249,43 @@ function createMediathekHub(root, options = {}) {
         start: (entry, series, trigger) => dialogs.startEpisode({ entry, series, trigger }),
         openSelection: args => dialogs.openSelection({ ...args, stateOf: entry => dlStore.stateOf(entry) }),
         openArea: tab => openDownloads(tab),
-        subscribe: listener => dlStore.subscribe(listener),
+        subscribe: listener => {
+          const stopDownloads = dlStore.subscribe(listener);
+          const stopSubs = subsStore ? subsStore.subscribe(listener) : null;
+          return () => {
+            stopDownloads();
+            if (stopSubs) stopSubs();
+          };
+        },
+        auto: subsStore ? { isOn: series => subsStore.isSubscribed(series), toggle: toggleAutoDownload } : null,
       }
     : null;
 
+  /** Schalter „Neue Folgen automatisch laden“ im Serienkopf: ein = Dialog (Auswahl der Folgen), aus = Abo entfernen. */
+  async function toggleAutoDownload(series, { seasons = [], trigger = null } = {}) {
+    const sub = subsStore.find(series);
+    if (!sub) {
+      subDialogs.openEnable({ series, seasons, stateOf: entry => dlStore.stateOf(entry), trigger });
+      return;
+    }
+    const result = await subsStore.remove(sub.id);
+    const text = result && result.ok ? `Neue Folgen von ${series.title} werden nicht mehr automatisch geladen` : `Das Abo konnte nicht entfernt werden: ${(result && (result.message || result.error)) || 'Unbekannter Fehler'}`;
+    announce(text);
+    if (!result || !result.ok) say(text);
+  }
+
+  /** Abo-Symbole der Serienkarten in Meine Serien nachziehen (ohne Neuaufbau). */
+  function patchSubscriptionBadges() {
+    for (const card of homePanel.querySelectorAll('.mediathek-series-card[data-series-id]')) {
+      const titleNode = card.querySelector('.mediathek-card-title');
+      const series = { id: card.dataset.seriesId, sourceId: card.dataset.sourceId, title: titleNode ? titleNode.textContent : '' };
+      updateSubscriptionBadge(card, series, subsStore.isSubscribed(series));
+    }
+  }
+  if (subsStore) subsStore.subscribe(patchSubscriptionBadges);
+
   const cardCtx = {
+    isSubscribed: series => (subsStore ? subsStore.isSubscribed(series) : false),
     isBlocked: id => blocked.get(id) || null,
     isFavorite: series => store.isFavorite(series),
     play,
@@ -261,6 +310,7 @@ function createMediathekHub(root, options = {}) {
     downloads: dlStore ? { enabled: dlEnabled, activeCount: () => dlStore.activeCount(), root: dlRoot, view: dlView } : null,
     reload: () => {
       if (dlStore) dlStore.load();
+      if (subsStore) subsStore.load();
       store.reloadAll(enabledSources());
       store.loadResume();
       store.loadFavorites();
@@ -361,6 +411,7 @@ function createMediathekHub(root, options = {}) {
     await loadDownloadSettings();
     if (!visible) return;
     if (dlStore) dlStore.load();
+    if (subsStore) subsStore.load();
     store.loadAll(enabledSources());
     store.loadFavorites();
     if (route.view === 'home') home.render();

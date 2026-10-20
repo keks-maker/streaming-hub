@@ -252,6 +252,15 @@ contextBridge.exposeInMainWorld('downloads', {
   reveal: id => ipcRenderer.invoke('downloads:reveal', { id }),
   playInfo: id => ipcRenderer.invoke('downloads:play-info', { id }),
   onChanged: radioListener('downloads:changed'),
+  // Serien-Abos „Neue Folgen automatisch laden“
+  subscriptions: {
+    list: () => ipcRenderer.invoke('subscriptions:list'),
+    add: input => ipcRenderer.invoke('subscriptions:add', input),
+    update: input => ipcRenderer.invoke('subscriptions:update', input),
+    remove: id => ipcRenderer.invoke('subscriptions:remove', { id }),
+    checkNow: id => ipcRenderer.invoke('subscriptions:check-now', id ? { id } : {}),
+    onChanged: radioListener('subscriptions:changed'),
+  },
 });
 
 // Podcasts (Konzept §7): Abos, Feeds, Suche und Hörzustand im Main; Änderungen kommen als Events.

@@ -148,7 +148,7 @@ test('Einstellungs-Seiten: fünf Unterseiten mit den Feldern aus dem Konzept', (
   assert.deepEqual(keys('storage'), ['storageRoot', 'fileNameScheme', 'seriesFolders', 'writeNfoCover']);
   assert.deepEqual(keys('quality'), ['maxHeight', 'container']);
   assert.deepEqual(keys('audio'), ['audioMode', 'audioLanguages', 'audioDescription', 'subtitleMode', 'subtitleLanguage', 'subtitleDelivery']);
-  assert.deepEqual(keys('control'), ['maxParallel', 'bandwidthKBps', 'notifyOnDone', 'cleanupWatchedDays', 'skipOptionsDialog']);
+  assert.deepEqual(keys('control'), ['maxParallel', 'bandwidthKBps', 'notifyOnDone', 'autoDownloadEnabled', 'autoCheckIntervalHours', 'maxPerCheck', 'cleanupWatchedDays', 'skipOptionsDialog']);
   assert.deepEqual(keys('notes'), ['showDownloads']);
   assert.ok(settings.PAGES.notes.fields.some(field => field.type === 'notice'));
   assert.match(settings.NOTICE_TEXT.join(' '), /privaten Gebrauch/);

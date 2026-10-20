@@ -4,6 +4,7 @@
 // Texte der Sender kommen ausschließlich per textContent in den DOM. Funktionen nehmen das Dokument entgegen (testbar).
 
 const { sourceBadge, sourceColor, subtitleText, minutesText, imageSrc, initials, placeholderHue } = require('./mediathek-format.js');
+const { AUTO_SVG } = require('./mediathek-download-icons.js');
 
 function el(doc, tag, className, text) {
   const node = doc.createElement(tag);
@@ -109,10 +110,11 @@ function createEntryCard(doc, entry, options = {}) {
   return card;
 }
 
-/** Serienkarte mit Stern (Meine Serien). options: { favorite, onOpen(), onToggleFavorite() } */
+/** Serienkarte mit Stern (Meine Serien). options: { favorite, subscribed (Abo „Neue Folgen automatisch laden“), onOpen(), onToggleFavorite() } */
 function createSeriesCard(doc, series, options = {}) {
   const card = el(doc, 'li', 'mediathek-card mediathek-series-card');
   card.dataset.seriesId = series.id;
+  card.dataset.sourceId = series.sourceId;
   const main = el(doc, 'button', 'mediathek-card-main');
   main.type = 'button';
   main.setAttribute('aria-label', `${series.title}, Serie`);
@@ -124,7 +126,25 @@ function createSeriesCard(doc, series, options = {}) {
     updateStar(star, series, Boolean(options.favorite));
     card.appendChild(star);
   }
+  updateSubscriptionBadge(card, series, Boolean(options.subscribed));
   return card;
+}
+
+/** Abo-Symbol auf der Serienkarte (Meine Serien) ein- oder ausblenden; Screenreader-Text nennt die Serie. */
+function updateSubscriptionBadge(card, series, subscribed) {
+  const existing = card.querySelector('.mediathek-sub-badge');
+  if (!subscribed) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
+  const doc = card.ownerDocument;
+  const badge = el(doc, 'span', 'mediathek-sub-badge');
+  badge.setAttribute('role', 'img');
+  badge.setAttribute('aria-label', `${series.title}: Neue Folgen werden automatisch geladen`);
+  badge.title = 'Neue Folgen werden automatisch geladen';
+  setIcon(badge, AUTO_SVG);
+  card.appendChild(badge);
 }
 
 function updateStar(star, series, favorite) {
@@ -190,7 +210,7 @@ function createCardFactory(doc, ctx) {
         onInfo: trigger => ctx.openDetail(entry, series, trigger),
         ...extra,
       }),
-    series: series => createSeriesCard(doc, series, { favorite: ctx.isFavorite(series), onOpen: trigger => ctx.openSeries(series, trigger), onToggleFavorite: item => ctx.toggleFavorite(item) }),
+    series: series => createSeriesCard(doc, series, { favorite: ctx.isFavorite(series), subscribed: ctx.isSubscribed ? ctx.isSubscribed(series) : false, onOpen: trigger => ctx.openSeries(series, trigger), onToggleFavorite: item => ctx.toggleFavorite(item) }),
     genre: genre => createGenreCard(doc, genre, { onOpen: trigger => ctx.openGenre(genre, trigger) }),
   };
 }
@@ -201,4 +221,4 @@ function appendToRow(list, card) {
   else list.appendChild(card);
 }
 
-module.exports = { el, button, setIcon, pill, createThumb, createEntryCard, createSeriesCard, createGenreCard, createRow, appendToRow, createCardFactory, updateStar, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG };
+module.exports = { el, button, setIcon, pill, createThumb, createEntryCard, createSeriesCard, createGenreCard, createRow, appendToRow, createCardFactory, updateStar, updateSubscriptionBadge, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG };

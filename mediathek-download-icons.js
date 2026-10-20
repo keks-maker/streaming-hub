@@ -15,6 +15,9 @@ const ICONS = {
   failed: `<svg ${ATTRS}><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16.2v.1"/></svg>`,
 };
 
+/** Abo „Neue Folgen automatisch laden“: kreisende Pfeile mit Download-Pfeil. */
+const AUTO_SVG = `<svg ${ATTRS}><path d="M20 12a8 8 0 0 1-13.7 5.6"/><path d="M4 12a8 8 0 0 1 13.7-5.6"/><path d="M18 3v4h-4"/><path d="M6 21v-4h4"/><path d="M12 9v5"/><path d="M10 12.5l2 2 2-2"/></svg>`;
+
 /** SVG für einen Zustand; percent nur für „running“ (null = unbestimmt, der Ring dreht sich per CSS). */
 function downloadIcon(state, percent = null) {
   if (state === 'running') {
@@ -26,4 +29,4 @@ function downloadIcon(state, percent = null) {
   return ICONS[state] || ICONS.none;
 }
 
-module.exports = { downloadIcon, RING_LENGTH };
+module.exports = { downloadIcon, AUTO_SVG, RING_LENGTH };

@@ -280,7 +280,7 @@ function createMediathekDownloadDialogs(ctx) {
   }
 
   // ── Serien-Auswahl ──
-  function openSelection({ series, seasons, stateOf, mode = 'all', trigger = null }) {
+  function openSelection({ series, seasons, stateOf, mode = 'all', trigger = null, onSubmitted = null }) {
     closeCurrent();
     const settings = ctx.getSettings() || {};
     const form = options.initialOverrides(settings);
@@ -312,6 +312,7 @@ function createMediathekDownloadDialogs(ctx) {
         current = null;
         ctx.announce(text);
         ctx.onChanged();
+        if (onSubmitted) onSubmitted(result);
       } else {
         message = text;
         render();
@@ -431,4 +432,4 @@ function createMediathekDownloadDialogs(ctx) {
   return { confirmDelete, openOptions, openSelection, quickDownload, startEpisode, close: closeCurrent, isOpen: () => Boolean(current && current.isOpen()) };
 }
 
-module.exports = { createMediathekDownloadDialogs, openModal };
+module.exports = { createMediathekDownloadDialogs, openModal, field, titleBlock };

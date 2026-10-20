@@ -116,3 +116,13 @@
 }
 [id^="settingsMediathekDl-"] .tv-mode-label { margin-top:12px; }
 [id^="settingsMediathekDl-"] .tv-mode-label:first-child { margin-top:0; }
+
+/* Serien-Abos „Neue Folgen automatisch laden“ */
+.mediathek-sub-badge { position:absolute; top:6px; left:6px; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:rgba(10,10,15,.78); color:var(--md-accent); pointer-events:none; }
+.mediathek-auto-btn.is-on { color:var(--md-accent); border-color:var(--md-accent); }
+.mediathek-switch.is-on { color:var(--md-accent); border-color:var(--md-accent); background:color-mix(in srgb,var(--md-accent) 16%,transparent); }
+.mediathek-sub-item.is-paused .mediathek-thumb { filter:grayscale(1) brightness(.7); }
+.mediathek-sub-head { margin-bottom:4px; }
+.mediathek-radio-group { margin:16px 0 0; padding:0; border:0; }
+.mediathek-radio-group .mediathek-check-row { align-items:flex-start; }
+.mediathek-radio-group legend { padding:0; }
