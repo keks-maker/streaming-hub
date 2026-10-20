@@ -16,7 +16,8 @@ const REFRESH_SVG =
 /**
  * ctx: { store, search, view ({ filter, text }), settings(), services(), iconSrc(svc), openService(svc), openSeries(series),
  *        openGenre(genre), openDetail(entry, series, trigger), play(entry, series, trigger), toggleFavorite(series),
- *        isBlocked(entryId), openSettings(), announce(text), timers }
+ *        isBlocked(entryId), openSettings(), announce(text), timers,
+ *        downloads?: { enabled(), activeCount(), root (Element), view ({ enter(), leave(), focusFirst() }) } }
  */
 function createMediathekHome(root, ctx) {
   const doc = root.ownerDocument || document;
@@ -117,7 +118,9 @@ function createMediathekHome(root, ctx) {
 
   function items() {
     const searching = isSearching();
-    return filterItems({ enabledSources: enabled(), searching, counts: searching ? search.counts() : {}, hasOthers: ctx.services().length > 0 });
+    const list = filterItems({ enabledSources: enabled(), searching, counts: searching ? search.counts() : {}, hasOthers: ctx.services().length > 0, downloads: Boolean(ctx.downloads && ctx.downloads.enabled()) });
+    const active = ctx.downloads ? ctx.downloads.activeCount() : 0;
+    return list.map(item => (item.id === 'downloads' && active > 0 ? { ...item, count: active } : item));
   }
 
   function renderChips(list) {
@@ -364,7 +367,12 @@ function createMediathekHome(root, ctx) {
     else if (filter === 'favorites') nodes = renderFavorites();
     else if (filter === 'resume') nodes = renderResume();
     else if (filter === 'others') nodes = renderOthers();
+    else if (filter === 'downloads' && ctx.downloads && ctx.downloads.enabled()) nodes = [ctx.downloads.root];
     else nodes = renderHub(filter);
+    if (ctx.downloads) {
+      if (nodes.length === 1 && nodes[0] === ctx.downloads.root) ctx.downloads.view.enter();
+      else ctx.downloads.view.leave();
+    }
     nodes.forEach(node => content.appendChild(node));
     restoreFocus(key);
     observeSentinel();
@@ -372,6 +380,14 @@ function createMediathekHome(root, ctx) {
 
   return {
     render,
+    /** Nur die Quellenleiste neu zeichnen (z. B. Zähler am Downloads-Chip). */
+    refreshChips() {
+      const focused = chips.contains(doc.activeElement) ? doc.activeElement.dataset.filter : null;
+      renderChips(items());
+      const again = focused && chips.querySelector(`[data-filter="${focused}"]`);
+      if (again) again.focus({ preventScroll: true });
+    },
+    isDownloadsShown: () => currentFilter(items()) === 'downloads' && !isSearching(),
     setQuery,
     /** Wiederherstellen der Suche beim Zurückkehren: Feldinhalt setzen, ohne neue Anfrage. */
     syncInput() {

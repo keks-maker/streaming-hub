@@ -1,0 +1,114 @@
+/* Mediathek-Downloads: Bereich, Symbole, Dialoge, Einstellungen, Navbar-Indikator.
+   Nutzt die Variablen von .mediathek-dashboard (--md-*, Hell/Dunkel über prefers-color-scheme in styles.css). */
+
+/* Navbar-Indikator am Mediatheken-Eintrag: Ring in Bereichsfarbe (die Leiste ist immer dunkel) */
+.nav-dl-ring { position:absolute; top:-3px; right:-4px; width:10px; height:10px; box-sizing:border-box; border-radius:50%; border:2px solid var(--nav-c); border-top-color:transparent; background:var(--nav-bg-solid); pointer-events:none; animation:mediathek-spin 1.1s linear infinite; }
+.nav-dl-ring[hidden] { display:none; }
+
+.mediathek-banner { position:sticky; top:0; z-index:30; display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 12px; padding:10px 14px; background:var(--md-bg); border:1px solid var(--md-danger); border-radius:12px; color:var(--md-text); font-size:14px; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+.mediathek-banner[hidden] { display:none; }
+.mediathek-banner-close { width:30px; height:30px; flex:none; display:grid; place-items:center; background:var(--md-surface2); border:0; border-radius:50%; color:var(--md-text); font-size:18px; line-height:1; cursor:pointer; }
+.mediathek-btn-danger { background:#b3261e; border-color:#b3261e; color:#fff; }
+.mediathek-btn-danger:hover:not(:disabled) { filter:brightness(1.12); border-color:#b3261e; }
+
+/* Downloads-Bereich */
+.mediathek-downloads { margin-top:14px; }
+.mediathek-dl-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+.mediathek-dl-summary { margin:0; font-size:13.5px; color:var(--md-dim); }
+.mediathek-dl-list { list-style:none; margin:12px 0 0; padding:0; }
+.mediathek-dl-item { display:flex; align-items:center; gap:14px; padding:12px 4px; border-top:1px solid var(--md-line); }
+.mediathek-dl-item .mediathek-thumb { width:150px; flex:none; }
+.mediathek-dl-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+.mediathek-dl-titlerow { display:flex; align-items:center; gap:8px; min-width:0; }
+.mediathek-dl-title { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.mediathek-dl-pill { flex:none; padding:1px 8px; border-radius:999px; background:var(--md-surface2); color:var(--md-dim); font-size:11.5px; font-weight:600; }
+.mediathek-dl-state { font-size:13px; color:var(--md-dim); }
+.mediathek-dl-state.is-expired { color:var(--md-amber); }
+.mediathek-dl-msg { margin:2px 0 0; font-size:13px; color:var(--md-text); }
+.mediathek-dl-msg.is-error { color:var(--md-danger); }
+.mediathek-dl-msg.is-warn { color:var(--md-amber); }
+.mediathek-dl-bar { position:relative; height:6px; overflow:hidden; border-radius:999px; background:var(--md-surface2); }
+.mediathek-dl-bar i { display:block; height:100%; border-radius:999px; background:var(--md-accent); transition:width .25s linear; }
+.mediathek-dl-bar.is-indeterminate i { width:35%; animation:mediathek-dl-slide 1.4s ease-in-out infinite; }
+@keyframes mediathek-dl-slide { 0% { transform:translateX(-100%); } 100% { transform:translateX(300%); } }
+.mediathek-dl-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; flex:none; max-width:260px; }
+.mediathek-dl-btn { min-height:36px; padding:6px 12px; font-size:13px; }
+.mediathek-dl-item.is-failed .mediathek-dl-state { color:var(--md-danger); }
+.mediathek-dl-item.is-missing .mediathek-thumb { filter:grayscale(1) brightness(.6); }
+.mediathek-dl-list li:last-child { border-bottom:1px solid var(--md-line); }
+
+/* Download-Symbol je Folge und „Laden“-Menü */
+.mediathek-dl-btn-inline { flex:none; width:36px; height:36px; display:grid; place-items:center; background:var(--md-surface2); color:var(--md-text); border:1px solid var(--md-line); border-radius:50%; cursor:pointer; }
+.mediathek-dl-btn-inline:hover { border-color:var(--md-accent); }
+.mediathek-dl-btn-inline.is-running,.mediathek-dl-btn-inline.is-queued,.mediathek-dl-btn-inline.is-paused,.mediathek-dl-btn-inline.is-scheduled { color:var(--md-accent); }
+.mediathek-dl-btn-inline.is-done { color:var(--md-accent); background:color-mix(in srgb,var(--md-accent) 16%,transparent); border-color:var(--md-accent); }
+.mediathek-dl-btn-inline.is-failed { color:var(--md-danger); border-color:var(--md-danger); }
+.mediathek-dl-ring { transition:stroke-dasharray .3s linear; }
+.mediathek-dl-ring.is-spinning { transform-origin:12px 12px; animation:mediathek-spin 1.1s linear infinite; }
+.mediathek-dl-icon { display:grid; place-items:center; }
+.mediathek-menu-wrap { position:relative; display:inline-block; }
+.mediathek-menu { position:absolute; z-index:40; top:calc(100% + 6px); left:0; min-width:200px; margin:0; padding:6px; list-style:none; background:var(--md-bg); border:1px solid var(--md-line); border-radius:14px; box-shadow:0 12px 32px rgba(0,0,0,.4); }
+.mediathek-menu[hidden] { display:none; }
+.mediathek-menu-item { display:block; width:100%; padding:9px 12px; text-align:left; background:none; border:0; border-radius:9px; color:var(--md-text); font-size:14px; cursor:pointer; }
+.mediathek-menu-item:hover,.mediathek-menu-item:focus-visible { background:var(--md-surface2); }
+.mediathek-caret { font-size:11px; }
+.mediathek-pill-inline { align-self:center; padding:3px 10px; border-radius:999px; background:var(--md-pill); color:#fff; font-size:12.5px; font-weight:600; }
+.mediathek-pill-inline[hidden] { display:none; }
+
+/* Dialoge: Optionen, Auswahl, Rückfrage */
+.mediathek-dialog-small { width:min(460px,100%); }
+.mediathek-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px; margin-top:18px; }
+.mediathek-form-row { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.mediathek-form-label { font-size:12.5px; font-weight:600; color:var(--md-dim); }
+.mediathek-form-select { max-width:none; width:100%; min-height:36px; padding:6px 8px; background:var(--md-surface2); border:1px solid var(--md-line); border-radius:8px; color:var(--md-text); }
+.mediathek-form-note { margin:10px 0 0; font-size:12.5px; color:var(--md-dim); }
+.mediathek-preview { display:flex; align-items:center; gap:10px; min-height:44px; margin-top:16px; padding:12px 14px; background:var(--md-surface); border:1px solid var(--md-line); border-radius:12px; color:var(--md-dim); font-size:14px; }
+.mediathek-preview-list { display:grid; grid-template-columns:auto 1fr; gap:4px 16px; margin:0; width:100%; color:var(--md-text); }
+.mediathek-preview-list dt { color:var(--md-dim); }
+.mediathek-preview-list dd { margin:0; }
+.mediathek-preview .mediathek-dialog-hint { margin:0; width:100%; }
+.mediathek-dialog-hint.is-unavailable { background:color-mix(in srgb,var(--md-danger) 14%,transparent); border-color:color-mix(in srgb,var(--md-danger) 55%,transparent); }
+.mediathek-check-row { display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14px; cursor:pointer; }
+.mediathek-check-row input { width:18px; height:18px; flex:none; accent-color:var(--md-accent); }
+.mediathek-dialog-select { width:min(720px,100%); }
+.mediathek-select-tools { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; margin-top:16px; }
+.mediathek-select-tools .mediathek-form-row { margin-left:auto; min-width:200px; }
+.mediathek-select-scroll { max-height:min(46vh,420px); overflow:auto; margin-top:12px; padding-right:4px; border-top:1px solid var(--md-line); }
+.mediathek-select-list { list-style:none; margin:0; padding:0; }
+.mediathek-select-row { border-top:1px solid var(--md-line); }
+.mediathek-select-row .mediathek-check-row { margin:0; padding:9px 4px; }
+.mediathek-select-row.is-disabled { opacity:.55; }
+.mediathek-select-row.is-disabled .mediathek-check-row { cursor:default; }
+.mediathek-select-text { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.mediathek-select-text .mediathek-card-title,.mediathek-select-text .mediathek-card-sub { white-space:normal; }
+.mediathek-select-season-head { margin-top:10px; }
+.mediathek-select-season-head .mediathek-season-title { margin:0; }
+.mediathek-select-totals { margin:14px 0 0; font-size:14px; font-weight:600; }
+
+/* Einstellungen ▸ Mediatheken ▸ Downloads */
+.settings-field-note { margin:2px 0 6px; font-size:12px; color:var(--text-dim); }
+.settings-field-note:empty { display:none; }
+.settings-field-note.error { color:#ff8a8a; }
+.settings-root-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:4px; }
+.settings-root-row .settings-wide-input { flex:1 1 320px; min-width:0; }
+.settings-wide-input,.settings-number-input { padding:7px 10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16); border-radius:8px; color:var(--text); font:inherit; }
+.settings-number-input { text-align:right; }
+.settings-check-row { display:flex; align-items:center; gap:10px; }
+.settings-notice { margin:0 0 14px; padding:12px 14px; border-radius:10px; background:rgba(245,182,66,.1); border:1px solid rgba(245,182,66,.45); }
+.settings-notice-title { margin:0 0 6px; font-size:14px; font-weight:700; color:var(--text); }
+.settings-notice-text { margin:0 0 6px; font-size:13px; line-height:1.45; color:var(--text); }
+.settings-notice-text:last-child { margin-bottom:0; }
+.settings-language-slots { display:flex; flex-direction:column; gap:6px; }
+
+@media (max-width:760px) {
+  .mediathek-form { grid-template-columns:1fr; }
+  .mediathek-dl-item { flex-wrap:wrap; }
+  .mediathek-dl-item .mediathek-thumb { width:110px; }
+  .mediathek-dl-actions { max-width:none; justify-content:flex-start; width:100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-dl-ring { animation:none; border-top-color:var(--nav-c); }
+  .mediathek-dl-bar i,.mediathek-dl-ring { transition:none; }
+  .mediathek-dl-bar.is-indeterminate i { animation:none; width:100%; opacity:.5; }
+  .mediathek-dl-ring.is-spinning { animation:none; }
+}

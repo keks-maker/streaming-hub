@@ -239,6 +239,7 @@ contextBridge.exposeInMainWorld('downloads', {
   setSettings: patch => ipcRenderer.invoke('downloads:settings-set', patch),
   getDefaults: () => ipcRenderer.invoke('downloads:settings-defaults'),
   validateRoot: root => ipcRenderer.invoke('downloads:validate-root', { root }),
+  pickFolder: () => ipcRenderer.invoke('downloads:pick-folder'),
   plan: (entry, overrides, series) => ipcRenderer.invoke('downloads:plan', { entry, overrides, series }),
   enqueue: input => ipcRenderer.invoke('downloads:enqueue', input),
   enqueueMany: input => ipcRenderer.invoke('downloads:enqueue-many', input),

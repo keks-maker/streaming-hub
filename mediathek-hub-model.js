@@ -6,8 +6,8 @@
 
 const { sourceLabel } = require('./mediathek-format.js');
 
-/** Der „Downloads“-Chip ist vorgesehen, aber noch ohne Funktion (Etappe 4): ausgeblendet. */
-const DOWNLOADS_CHIP_ENABLED = false;
+/** Der „Downloads“-Chip ist aktiv; sichtbar ist er nur bei eingeschalteter Einstellung „Download-Funktion anzeigen“ (showDownloads). */
+const DOWNLOADS_CHIP_ENABLED = true;
 const ROW_LIMIT = 40;
 const GENRES_TITLE = 'Genres';
 const SPECIAL_FILTERS = ['favorites', 'resume', 'downloads', 'others'];
@@ -42,7 +42,7 @@ function createEmitter() {
  * Chips der Quellenleiste. Während einer Suche nur „Alle“ und die Quellen (mit Trefferzahl); sonst zusätzlich
  * Meine Serien, Weiterschauen, (Downloads), Weitere Mediatheken.
  */
-function filterItems({ enabledSources, searching = false, counts = {}, downloads = DOWNLOADS_CHIP_ENABLED, hasOthers = true }) {
+function filterItems({ enabledSources, searching = false, counts = {}, downloads = false, hasOthers = true }) {
   const items = [{ id: 'all', label: 'Alle', count: searching ? counts.all ?? 0 : null }];
   for (const id of enabledSources) items.push({ id, label: sourceLabel(id), count: searching ? counts[id] ?? 0 : null, source: true });
   if (!searching) {

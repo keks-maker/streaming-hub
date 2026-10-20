@@ -31,9 +31,9 @@ test('Dashboard und Einstellungen: Container und Unterseiten sind vorhanden', ()
   assert.match(html, /id="settingsAddMediathekBtn"/);
 });
 
-test('Downloads-Chip ist vorgesehen, aber ausgeblendet', () => {
+test('Downloads-Chip ist aktiviert (Sichtbarkeit über die Einstellung showDownloads)', () => {
   const { DOWNLOADS_CHIP_ENABLED } = require('../mediathek-hub-model.js');
-  assert.equal(DOWNLOADS_CHIP_ENABLED, false);
+  assert.equal(DOWNLOADS_CHIP_ENABLED, true);
 });
 
 test('Route: Serie und Genre überstehen die Wiederherstellung, Unbekanntes führt zur Startansicht', () => {

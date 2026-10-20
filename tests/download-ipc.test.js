@@ -69,7 +69,7 @@ function setup(over = {}) {
 
 test('Alle Kanäle registriert und nur für das Hauptfenster', async () => {
   const env = setup();
-  const channels = ['settings-get', 'settings-set', 'settings-defaults', 'validate-root', 'plan', 'enqueue', 'enqueue-many', 'list', 'pause', 'resume', 'cancel', 'retry', 'remove', 'reveal', 'play-info'].map(name => `downloads:${name}`);
+  const channels = ['settings-get', 'settings-set', 'settings-defaults', 'validate-root', 'pick-folder', 'plan', 'enqueue', 'enqueue-many', 'list', 'pause', 'resume', 'cancel', 'retry', 'remove', 'reveal', 'play-info'].map(name => `downloads:${name}`);
   assert.deepEqual([...env.handlers.keys()].sort(), channels.sort());
   for (const channel of channels) assert.throws(() => env.handlers.get(channel)({}, {}), /nicht autorisiert/, channel);
 });
@@ -158,7 +158,7 @@ test('reveal/play-info: nur Dateien aus dem eigenen Index', () => {
   assert.deepEqual(env.calls.find(call => call[0] === 'reveal'), ['reveal', '/root/Mediathek/ARD/Serie/S01E01.mp4']);
   assert.equal(env.invoke('downloads:reveal', { id: 'dl_unknown99' }).code, 'missing');
   const info = env.invoke('downloads:play-info', { id: ID });
-  assert.deepEqual(info, { ok: true, path: '/root/Mediathek/ARD/Serie/S01E01.mp4', title: 'Folge', historyTitle: 'Folge 1', seriesTitle: 'Serie', sourceId: 'ard', entryId: 'E1', durationSec: 1800, start: 42 });
+  assert.deepEqual(info, { ok: true, url: `dl://local/${ID}.mp4`, container: 'mp4', title: 'Folge', historyTitle: 'Folge 1', seriesTitle: 'Serie', sourceId: 'ard', entryId: 'E1', durationSec: 1800, start: 42 });
   assert.equal(env.invoke('downloads:play-info', { id: 'dl_unknown99' }).ok, false);
 });
 

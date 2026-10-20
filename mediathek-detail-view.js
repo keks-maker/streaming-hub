@@ -5,12 +5,13 @@
 
 const { detailInfo } = require('./mediathek-detail-model.js');
 const { el, button, setIcon, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG } = require('./mediathek-cards.js');
+const { downloadIcon } = require('./mediathek-download-icons.js');
 
 const FOCUSABLE = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
 /**
  * ctx: { play(entry, series, trigger), isBlocked(id) -> { reason, message, webUrl }|null, isFavorite(series), toggleFavorite(series) -> Promise<bool|null>,
- *        openWeb(url, title) }
+ *        openWeb(url, title), canDownload() -> bool, download(entry, series, trigger), downloadState(entry) -> { state, percent } }
  */
 function createMediathekDetail(host, ctx) {
   const doc = host.ownerDocument || document;
@@ -92,6 +93,26 @@ function createMediathekDetail(host, ctx) {
         ctx.play(current.entry, current.series, current.trigger);
       });
       actions.appendChild(play);
+    }
+    if (!blocked && ctx.canDownload && ctx.canDownload()) {
+      const st = ctx.downloadState ? ctx.downloadState(entry) : { state: 'none', percent: null };
+      const busy = st.state !== 'none' && st.state !== 'failed';
+      const dl = el(doc, 'button', 'mediathek-btn');
+      dl.type = 'button';
+      dl.id = 'mediathekDetailDownload';
+      dl.dataset.action = 'download';
+      const icon = el(doc, 'span');
+      icon.setAttribute('aria-hidden', 'true');
+      setIcon(icon, downloadIcon(st.state === 'none' ? 'none' : st.state, st.percent));
+      const text = { done: 'Heruntergeladen', running: 'Wird geladen', queued: 'In der Warteschlange', paused: 'Angehalten', scheduled: 'Zurückgestellt', failed: 'Erneut herunterladen' }[st.state] || 'Herunterladen';
+      dl.append(icon, el(doc, 'span', '', text));
+      dl.disabled = busy;
+      dl.addEventListener('click', () => {
+        const current = state;
+        close({ restoreFocus: false });
+        ctx.download(current.entry, current.series, current.trigger);
+      });
+      actions.appendChild(dl);
     }
     if (info.canFavorite) {
       const star = el(doc, 'button', 'mediathek-btn mediathek-fav-btn');

@@ -44,6 +44,11 @@ const SETTINGS_NAV = [
     children: [
       { page: 'mediathek-sources', label: 'Quellen' },
       { page: 'mediathek-playback', label: 'Wiedergabe' },
+      { page: 'mediathek-dl-storage', label: 'Downloads: Ablage' },
+      { page: 'mediathek-dl-quality', label: 'Downloads: Qualität' },
+      { page: 'mediathek-dl-audio', label: 'Downloads: Ton & Untertitel' },
+      { page: 'mediathek-dl-control', label: 'Downloads: Steuerung' },
+      { page: 'mediathek-dl-notes', label: 'Downloads: Hinweise' },
     ],
   },
 ];

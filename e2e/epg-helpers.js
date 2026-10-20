@@ -33,7 +33,7 @@ function xmltvTime(ms) {
 }
 
 /** Startet die App mit lokaler Quelle (M3U), EPG-Fixture und Favoriten. */
-async function launchApp({ prefix, epgXml, channels, favorites, env: extraEnv = {} }) {
+async function launchApp({ prefix, epgXml, channels, favorites, env: extraEnv = {}, seed = null }) {
   const tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   const userData = path.join(tmpRoot, 'userData');
   const home = path.join(tmpRoot, 'home');
@@ -75,6 +75,7 @@ async function launchApp({ prefix, epgXml, channels, favorites, env: extraEnv = 
       },
     ]),
   );
+  if (seed) seed({ userData, tmpRoot, home });
   const env = {
     ...process.env,
     HOME: home,

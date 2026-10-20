@@ -12,6 +12,8 @@ const { createMediathekSeriesView } = require('./mediathek-series-view.js');
 const { createMediathekGenreView } = require('./mediathek-genre-view.js');
 const { createMediathekDetail } = require('./mediathek-detail-view.js');
 const { createMediathekPlayer } = require('./mediathek-player-view.js');
+const { createMediathekDownloadsView } = require('./mediathek-downloads-view.js');
+const { createMediathekDownloadDialogs } = require('./mediathek-download-dialogs-view.js');
 
 const HOME = { view: 'home' };
 const DEFAULT_SETTINGS = { sources: { ard: true, zdf: true, arte: true }, quality: 'auto', audioLanguage: 'de', subtitles: 'off' };
@@ -41,10 +43,11 @@ function persistableRoute(route) {
 /**
  * options: { mediathek (window.mediathek), logger, notify(text), services() (Weblink-Dienste der Gruppe mediathek),
  *            iconSrc(svc), openService(svc), openWeb(url, title), onBeforeNavigate(), onBack() -> bool, onOpenSettings(),
- *            onPlaybackStart(), timers }
+ *            onPlaybackStart(), timers, downloads ({ api: window.downloads, store: createDownloadsStore }, optional),
+ *            fileManager (Anzeigename des Dateimanagers) }
  */
 function createMediathekHub(root, options = {}) {
-  const { mediathek, logger = null, notify = null, services = () => [], iconSrc = () => null, openService = () => {}, openWeb = () => {}, onBeforeNavigate = null, onBack = null, onOpenSettings = null, onPlaybackStart = null, timers } = options;
+  const { mediathek, logger = null, notify = null, services = () => [], iconSrc = () => null, openService = () => {}, openWeb = () => {}, onBeforeNavigate = null, onBack = null, onOpenSettings = null, onPlaybackStart = null, timers, downloads: downloadOptions = null, fileManager = 'Dateimanager' } = options;
   const doc = root.ownerDocument || document;
 
   const live = doc.createElement('span');
@@ -61,8 +64,37 @@ function createMediathekHub(root, options = {}) {
   const homePanel = panel('home');
   const seriesPanel = panel('series');
   const genrePanel = panel('genre');
+  const clock = timers || { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: id => clearTimeout(id) };
+
+  // Sichtbare Meldung (zusätzlich zur Ansage für Screenreader): Fehler beim Abspielen, Download-Hinweise
+  const banner = doc.createElement('div');
+  banner.className = 'mediathek-banner';
+  banner.hidden = true;
+  banner.setAttribute('role', 'alert');
+  const bannerText = doc.createElement('span');
+  bannerText.className = 'mediathek-banner-text';
+  const bannerClose = doc.createElement('button');
+  bannerClose.type = 'button';
+  bannerClose.className = 'mediathek-banner-close';
+  bannerClose.textContent = '×';
+  bannerClose.setAttribute('aria-label', 'Meldung schließen');
+  banner.append(bannerText, bannerClose);
+  let bannerTimer = null;
+  const hideBanner = () => {
+    if (bannerTimer) clock.clearTimeout(bannerTimer);
+    bannerTimer = null;
+    banner.hidden = true;
+  };
+  bannerClose.addEventListener('click', hideBanner);
+  const showBanner = text => {
+    bannerText.textContent = text;
+    banner.hidden = false;
+    if (bannerTimer) clock.clearTimeout(bannerTimer);
+    bannerTimer = clock.setTimeout(hideBanner, 9000);
+  };
+
   root.textContent = '';
-  root.append(live, homePanel, seriesPanel, genrePanel);
+  root.append(live, banner, homePanel, seriesPanel, genrePanel);
 
   let route = HOME;
   let visible = false;
@@ -81,6 +113,7 @@ function createMediathekHub(root, options = {}) {
   };
   const say = text => {
     announce(text);
+    showBanner(text);
     if (notify) notify(text);
   };
   const enabledSources = () => enabledSourceIds(settings);
@@ -129,6 +162,80 @@ function createMediathekHub(root, options = {}) {
     player.open({ entry, series: series || null, url: result.resolution.url, startPosition: startPosition(result), trigger });
   }
 
+  // ── Downloads (optional): Zustand liegt im Store des Renderers (auch für den Navbar-Indikator) ──
+  const dlApi = downloadOptions && downloadOptions.api;
+  const dlStore = downloadOptions && downloadOptions.store;
+  let dlSettings = { showDownloads: true, skipOptionsDialog: false };
+  const dlEnabled = () => Boolean(dlStore) && dlSettings.showDownloads !== false;
+  const dlRoot = doc.createElement('div');
+  dlRoot.className = 'mediathek-downloads';
+  dlRoot.id = 'mediathekDownloads';
+  let dialogs = null;
+  let dlView = null;
+  if (dlStore) {
+    dialogs = createMediathekDownloadDialogs({
+      api: dlApi,
+      host: root,
+      getSettings: () => dlSettings,
+      announce: text => announce(text),
+      say: text => say(text),
+      onChanged: () => dlStore.load(),
+      getFreeBytes: () => dlStore.snapshot().freeBytes,
+    });
+    dlView = createMediathekDownloadsView(dlRoot, {
+      store: dlStore,
+      announce: text => announce(text),
+      fileManager,
+      confirmDelete: item => dialogs.confirmDelete(item),
+      playLocal: (info, item) => playLocal(info, item),
+    });
+  }
+
+  /** Offline-Wiedergabe eines fertigen Downloads im Mediathek-Player (dl://-Adresse aus dem Main, Fortsetzen, Verlauf). */
+  function playLocal(info, item) {
+    player.open({
+      entry: { id: info.entryId, title: info.historyTitle, sourceId: info.sourceId, imageUrl: item.imageUrl || null },
+      series: null,
+      url: info.url,
+      startPosition: typeof info.start === 'number' && info.start > 0 ? info.start : 0,
+      trigger: doc.activeElement,
+    });
+  }
+
+  function loadDownloadSettings() {
+    if (!dlApi || !dlApi.getSettings) return Promise.resolve();
+    return dlApi
+      .getSettings()
+      .then(result => {
+        if (result && typeof result === 'object') dlSettings = { showDownloads: result.showDownloads !== false, skipOptionsDialog: result.skipOptionsDialog === true };
+      })
+      .catch(error => {
+        if (logger) logger.warn('Download-Einstellungen konnten nicht geladen werden:', error && error.message ? error.message : error);
+      });
+  }
+
+  /** Öffnet den Downloads-Bereich (Chip „Downloads“) mit der gewünschten Ansicht. */
+  function openDownloads(tab = 'queue') {
+    if (!dlEnabled()) return;
+    view.filter = 'downloads';
+    view.text = '';
+    home.setQuery('');
+    dlView.showTab(tab);
+    open(HOME);
+  }
+
+  const seriesDownloads = dlStore
+    ? {
+        enabled: dlEnabled,
+        stateOf: entry => dlStore.stateOf(entry),
+        count: series => dlStore.downloadedCount(series),
+        start: (entry, series, trigger) => dialogs.startEpisode({ entry, series, trigger }),
+        openSelection: args => dialogs.openSelection({ ...args, stateOf: entry => dlStore.stateOf(entry) }),
+        openArea: tab => openDownloads(tab),
+        subscribe: listener => dlStore.subscribe(listener),
+      }
+    : null;
+
   const cardCtx = {
     isBlocked: id => blocked.get(id) || null,
     isFavorite: series => store.isFavorite(series),
@@ -151,7 +258,9 @@ function createMediathekHub(root, options = {}) {
     iconSrc,
     openService,
     openSettings: () => onOpenSettings && onOpenSettings(),
+    downloads: dlStore ? { enabled: dlEnabled, activeCount: () => dlStore.activeCount(), root: dlRoot, view: dlView } : null,
     reload: () => {
+      if (dlStore) dlStore.load();
       store.reloadAll(enabledSources());
       store.loadResume();
       store.loadFavorites();
@@ -164,7 +273,7 @@ function createMediathekHub(root, options = {}) {
   };
 
   const home = createMediathekHome(homePanel, homeCtx);
-  const seriesView = createMediathekSeriesView(seriesPanel, { ...cardCtx, api: mediathek, back: () => back(), announce });
+  const seriesView = createMediathekSeriesView(seriesPanel, { ...cardCtx, api: mediathek, back: () => back(), announce, downloads: seriesDownloads });
   const genreView = createMediathekGenreView(genrePanel, { ...cardCtx, api: mediathek, back: () => back() });
   const detail = createMediathekDetail(root, {
     play,
@@ -172,6 +281,9 @@ function createMediathekHub(root, options = {}) {
     isFavorite: series => store.isFavorite(series),
     toggleFavorite,
     openWeb: (url, title) => openWeb(url, title),
+    canDownload: dlEnabled,
+    download: (entry, series, trigger) => dialogs.startEpisode({ entry, series, trigger }),
+    downloadState: entry => (dlStore ? dlStore.stateOf(entry) : { state: 'none', percent: null }),
   });
   const player = createMediathekPlayer(root, {
     getSettings: () => settings,
@@ -180,6 +292,7 @@ function createMediathekHub(root, options = {}) {
     onClose: () => {
       if (!visible) return;
       store.loadResume();
+      if (dlStore) dlStore.load(); // "Gesehen" nach der Wiedergabe
       if (route.view === 'series') seriesView.reload();
     },
     logger,
@@ -245,7 +358,9 @@ function createMediathekHub(root, options = {}) {
     route = normalizeRoute(next);
     applyPanels();
     if (!settingsLoaded) await loadSettings();
+    await loadDownloadSettings();
     if (!visible) return;
+    if (dlStore) dlStore.load();
     store.loadAll(enabledSources());
     store.loadFavorites();
     if (route.view === 'home') home.render();
@@ -260,6 +375,9 @@ function createMediathekHub(root, options = {}) {
     root.hidden = true;
     if (player.isOpen()) player.close({ restoreFocus: false });
     if (detail.isOpen()) detail.close({ restoreFocus: false });
+    if (dialogs) dialogs.close();
+    if (dlView) dlView.leave();
+    hideBanner();
   }
 
   store.subscribe(() => {
@@ -268,6 +386,13 @@ function createMediathekHub(root, options = {}) {
   search.subscribe(() => {
     if (visible && route.view === 'home') home.render();
   });
+  if (dlStore) {
+    dlStore.subscribe(() => {
+      if (!visible) return;
+      if (route.view === 'home') home.refreshChips();
+      if (detail.isOpen()) detail.render();
+    });
+  }
   if (mediathek.onFavoritesChanged) mediathek.onFavoritesChanged(list => store.setFavorites(list));
   if (mediathek.onSettingsChanged) {
     mediathek.onSettingsChanged(next => {
@@ -286,6 +411,13 @@ function createMediathekHub(root, options = {}) {
     open,
     getRoute: () => persistableRoute(route),
     isVisible: () => visible,
+    /** Download-Einstellungen wurden geändert (Einstellungen ▸ Downloads): Chip und Schaltflächen anpassen. */
+    refreshDownloadSettings: async () => {
+      await loadDownloadSettings();
+      if (visible) renderCurrent();
+    },
+    openDownloads,
+    showMessage: showBanner,
     refresh: () => {
       if (!visible) return;
       store.loadResume();

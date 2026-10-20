@@ -18,10 +18,10 @@ function deferred() {
   return { promise, resolve };
 }
 
-test('Filterleiste: Quellen, Meine Serien, Weiterschauen, Weitere Mediatheken; Downloads-Chip bleibt ausgeblendet', () => {
+test('Filterleiste: Quellen, Meine Serien, Weiterschauen, Weitere Mediatheken; Downloads-Chip nur auf Anforderung', () => {
   const items = m.filterItems({ enabledSources: ['ard', 'zdf', 'arte'] });
   assert.deepEqual(items.map(item => item.id), ['all', 'ard', 'zdf', 'arte', 'favorites', 'resume', 'others']);
-  assert.equal(m.DOWNLOADS_CHIP_ENABLED, false);
+  assert.equal(m.DOWNLOADS_CHIP_ENABLED, true);
   assert.ok(!items.some(item => item.id === 'downloads'));
   assert.deepEqual(m.filterItems({ enabledSources: ['zdf'], downloads: true }).map(item => item.id), ['all', 'zdf', 'favorites', 'resume', 'downloads', 'others']);
 });

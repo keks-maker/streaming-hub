@@ -6,27 +6,157 @@
 const { createSeriesPage } = require('./mediathek-series-model.js');
 const { sourceBadge, imageSrc, subtitleText, minutesText } = require('./mediathek-format.js');
 const { el, button, createThumb, setIcon, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG } = require('./mediathek-cards.js');
+const { downloadIcon } = require('./mediathek-download-icons.js');
+const { stateLabel } = require('./mediathek-downloads-model.js');
+const { menuItems } = require('./mediathek-download-select-model.js');
 
 const BACK_SVG =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5 8 12 15 19"/></svg>';
 
 /**
  * ctx: { api, back(), play(entry, series, trigger), openDetail(entry, series, trigger), isBlocked(id), toggleFavorite(series) -> Promise<bool|null>,
- *        onFavoritesChanged(listener) -> unsubscribe, announce(text) }
+ *        onFavoritesChanged(listener) -> unsubscribe, announce(text),
+ *        downloads?: { enabled(), stateOf(entry) -> { state, percent }, count(series), start(entry, series, trigger), openSelection({ series, seasons, mode, trigger }),
+ *                      openArea(tab), subscribe(listener) -> unsubscribe } }
  */
 function createMediathekSeriesView(root, ctx) {
   const doc = root.ownerDocument || document;
   let page = null;
   let unsubscribe = null;
+  let unsubscribeDownloads = null;
   let current = null;
+  let menuOpen = false;
 
   function enter(series) {
     if (unsubscribe) unsubscribe();
     current = series;
     page = createSeriesPage({ api: ctx.api, series });
     unsubscribe = page.subscribe(render);
+    if (unsubscribeDownloads) unsubscribeDownloads();
+    unsubscribeDownloads = dl() ? ctx.downloads.subscribe(patchDownloads) : null;
+    menuOpen = false;
     render();
     page.load();
+  }
+
+  const dl = () => Boolean(ctx.downloads && ctx.downloads.enabled());
+
+  function paintDownloadButton(btn, entry) {
+    const st = ctx.downloads.stateOf(entry);
+    const label = stateLabel(st);
+    btn.className = `mediathek-dl-btn-inline is-${st.state}`;
+    setIcon(btn.querySelector('.mediathek-dl-icon'), downloadIcon(st.state, st.percent));
+    btn.setAttribute('aria-label', `${label}: ${entry.title}`);
+    btn.title = label;
+    btn.dataset.dlState = st.state;
+  }
+
+  function downloadButton(entry, series) {
+    const btn = el(doc, 'button');
+    btn.type = 'button';
+    btn.dataset.action = 'download';
+    btn.appendChild(el(doc, 'span', 'mediathek-dl-icon'));
+    paintDownloadButton(btn, entry);
+    btn.addEventListener('click', () => {
+      const state = btn.dataset.dlState;
+      if (state === 'none' || state === 'failed') ctx.downloads.start(entry, series, btn);
+      else ctx.downloads.openArea(state === 'done' ? 'library' : 'queue');
+    });
+    return btn;
+  }
+
+  /** Zustände ohne Neuaufbau nachziehen (Fokus und Scrollposition bleiben). */
+  function patchDownloads() {
+    if (!page || !dl()) return;
+    for (const row of root.querySelectorAll('.mediathek-episode')) {
+      const btn = row.querySelector('[data-action="download"]');
+      const entry = findEntry(row.dataset.entryId);
+      if (btn && entry) paintDownloadButton(btn, entry);
+    }
+    const count = root.querySelector('.mediathek-dl-count');
+    if (count) paintCount(count);
+  }
+
+  function findEntry(id) {
+    for (const season of page.snapshot().seasons) for (const entry of season.entries) if (entry.id === id) return entry;
+    return null;
+  }
+
+  function paintCount(node) {
+    const n = ctx.downloads.count(current);
+    node.hidden = n === 0;
+    node.textContent = n === 1 ? '1 Folge geladen' : `${n} Folgen geladen`;
+  }
+
+  function downloadMenu(series) {
+    const wrap = el(doc, 'div', 'mediathek-menu-wrap');
+    const toggle = el(doc, 'button', 'mediathek-btn mediathek-dl-menu-btn');
+    toggle.type = 'button';
+    toggle.id = 'mediathekSeriesLoad';
+    toggle.setAttribute('aria-haspopup', 'menu');
+    toggle.setAttribute('aria-expanded', String(menuOpen));
+    toggle.setAttribute('aria-label', 'Folgen herunterladen');
+    const icon = el(doc, 'span');
+    icon.setAttribute('aria-hidden', 'true');
+    setIcon(icon, downloadIcon('none'));
+    toggle.append(icon, el(doc, 'span', '', 'Laden'), el(doc, 'span', 'mediathek-caret', '▾'));
+    toggle.lastChild.setAttribute('aria-hidden', 'true');
+    toggle.addEventListener('click', () => {
+      menuOpen = !menuOpen;
+      toggle.setAttribute('aria-expanded', String(menuOpen));
+      renderMenu();
+      if (menuOpen) {
+        const first = wrap.querySelector('[role="menuitem"]');
+        if (first) first.focus();
+      }
+    });
+    const list = el(doc, 'ul', 'mediathek-menu');
+    list.setAttribute('role', 'menu');
+    list.setAttribute('aria-label', 'Folgen laden');
+    list.hidden = !menuOpen;
+    wrap.append(toggle, list);
+    function renderMenu() {
+      list.hidden = !menuOpen;
+      list.textContent = '';
+      if (!menuOpen) return;
+      for (const item of menuItems(page.snapshot().seasonNumbers)) {
+        const li = el(doc, 'li');
+        li.setAttribute('role', 'none');
+        const entry = button(doc, 'mediathek-menu-item', item.label, () => {
+          menuOpen = false;
+          renderMenu();
+          toggle.setAttribute('aria-expanded', 'false');
+          ctx.downloads.openSelection({ series, seasons: page.snapshot().seasons, mode: item.id, trigger: toggle });
+        });
+        entry.setAttribute('role', 'menuitem');
+        entry.dataset.mode = item.id;
+        li.appendChild(entry);
+        list.appendChild(li);
+      }
+    }
+    wrap.addEventListener('keydown', event => {
+      if (!menuOpen) return;
+      const items = [...list.querySelectorAll('[role="menuitem"]')];
+      const index = items.indexOf(doc.activeElement);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        menuOpen = false;
+        renderMenu();
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.focus();
+      } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const next = event.key === 'ArrowDown' ? (index + 1) % items.length : (index - 1 + items.length) % items.length;
+        items[next].focus();
+      } else if (event.key === 'Tab') {
+        menuOpen = false;
+        renderMenu();
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    renderMenu();
+    return wrap;
   }
 
   function reload() {
@@ -90,6 +220,12 @@ function createMediathekSeriesView(root, ctx) {
       if (typeof result === 'boolean') page.setFavorite(result);
     });
     actions.append(play, fav);
+    if (dl() && state.status === 'loaded') {
+      actions.appendChild(downloadMenu(series));
+      const count = el(doc, 'span', 'mediathek-dl-count mediathek-pill-inline');
+      paintCount(count);
+      actions.appendChild(count);
+    }
     text.appendChild(actions);
     box.append(back, text);
     return box;
@@ -147,7 +283,8 @@ function createMediathekSeriesView(root, ctx) {
     main.append(createThumb(doc, { imageUrl: entry.imageUrl, title: entry.title, duration: entry.duration, geo: entry.regionRestricted, width: 480 }), text);
     main.addEventListener('click', () => ctx.play(entry, series, main));
     const info = button(doc, 'mediathek-info-btn is-inline', 'i', () => ctx.openDetail(entry, series, info), `Details zu ${entry.title}`);
-    item.append(main, info);
+    if (dl() && !blocked) item.append(main, downloadButton(entry, series), info);
+    else item.append(main, info);
     return item;
   }
 
@@ -228,6 +365,8 @@ function createMediathekSeriesView(root, ctx) {
     dispose() {
       if (unsubscribe) unsubscribe();
       unsubscribe = null;
+      if (unsubscribeDownloads) unsubscribeDownloads();
+      unsubscribeDownloads = null;
     },
     /** Favorit extern geändert (z. B. aus dem Detail-Fenster). */
     setFavorite(value) {

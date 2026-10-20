@@ -38,6 +38,8 @@ const { createPodcastHub } = require('./podcast-hub-view.js');
 const { createMediathekHub } = require('./mediathek-hub-view.js');
 const { createMediathekSourcesView } = require('./settings-mediathek-sources.js');
 const { createMediathekPlaybackView } = require('./settings-mediathek-playback.js');
+const { createMediathekDownloadsSettings } = require('./settings-mediathek-downloads.js');
+const { createDownloadsStore, indicatorLabel } = require('./mediathek-downloads-model.js');
 const { resolveCoverSource } = require('./podcast-cover-view.js');
 const { createPodcastDetailsCache } = require('./podcast-details-cache.js');
 const { favoriteCountOf } = require('./radio-dashboard-model.js');
@@ -114,6 +116,22 @@ function recordingActive() {
 }
 
 // NavBar-Indikator (P21): Punkt am LiveTV-Eintrag, solange eine Aufnahme läuft (Punkt ohne Zahl, Screenreader-Text)
+/** Download-Indikator am Mediatheken-Eintrag: Ring in Bereichsfarbe, solange Downloads laufen oder warten. */
+function updateNavDownloadIndicator() {
+  const btn = nav.querySelector('.nav-section-item[data-section="mediathek"]');
+  if (!btn) return;
+  const label = indicatorLabel(downloadsStore.activeCount(), downloadsStore.runningCount());
+  const ring = btn.querySelector('.nav-dl-ring');
+  const sr = btn.querySelector('.nav-dl-sr');
+  if (ring) ring.hidden = !label;
+  if (sr) {
+    sr.hidden = !label;
+    sr.textContent = label || '';
+  }
+  if (label) btn.setAttribute('aria-label', `Mediatheken, ${label}`);
+  else btn.removeAttribute('aria-label');
+}
+
 function updateNavRecordingIndicator() {
   const running = recordingActive();
   const dot = nav.querySelector('.nav-live-dot');
@@ -587,9 +605,17 @@ const podcastHub = createPodcastHub(podcastDashboardRoot, {
   onManage: () => openSettingsPage(PODCAST_MANAGEMENT_PAGE),
 });
 
+// ── Downloads der Mediathek: gemeinsamer Zustand (Bereich Downloads, Serienliste, Navbar-Indikator) ──
+const downloadsStore = createDownloadsStore({ api: window.downloads });
+window.downloads.onChanged(payload => downloadsStore.applyEvent(payload));
+downloadsStore.load();
+downloadsStore.subscribe(() => updateNavDownloadIndicator());
+
 // ── Mediatheken (nativ): Hub, Serie, Genre, Detail und Player; „Weitere Mediatheken“ sind die Weblink-Dienste der Gruppe mediathek ──
 const mediathekHub = createMediathekHub(mediathekDashboardRoot, {
   mediathek: window.mediathek,
+  downloads: { api: window.downloads, store: downloadsStore },
+  fileManager: /Mac/i.test(navigator.platform || '') ? 'Finder' : /Win/i.test(navigator.platform || '') ? 'Explorer' : 'Dateimanager',
   logger,
   notify: showTvToast,
   services: () => services.filter(svc => svc.group === 'mediathek'),
@@ -1136,6 +1162,18 @@ function renderNav() {
       sr.textContent = 'Aufnahme läuft';
       icon.append(dot, sr);
     }
+    if (group.key === 'mediathek') {
+      // Download-Indikator: Ring ohne Zahl; Screenreader-Text und aria-label am Eintrag
+      const icon = btn.querySelector('.nav-section-icon');
+      const ring = document.createElement('span');
+      ring.className = 'nav-dl-ring';
+      ring.hidden = true;
+      ring.setAttribute('aria-hidden', 'true');
+      const sr = document.createElement('span');
+      sr.className = 'sr-only nav-dl-sr';
+      sr.hidden = true;
+      icon.append(ring, sr);
+    }
     nav.appendChild(btn);
   });
 
@@ -1149,6 +1187,7 @@ function renderNav() {
   nav.appendChild(settingsItem);
   nav.appendChild(overlayUpdateSlot);
   updateNavRecordingIndicator();
+  updateNavDownloadIndicator();
 }
 
 function createDivider() {
@@ -3739,6 +3778,7 @@ const settingsView = createSettingsView(settingsPanel, {
     if (page === 'podcast-playback') settingsPodcastPlaybackView.refresh();
     if (page === 'mediathek-sources') settingsMediathekSourcesView.refresh();
     if (page === 'mediathek-playback') settingsMediathekPlaybackView.refresh();
+    if (page && page.startsWith('mediathek-dl-')) settingsMediathekDownloadsView.refresh();
   },
 });
 const settingsRadioStationsView = createRadioStationsView(document.getElementById('settingsRadioStationsRoot'), {
@@ -3760,6 +3800,16 @@ const settingsPodcastPlaybackView = createPodcastPlaybackView(document.getElemen
 });
 const settingsMediathekSourcesView = createMediathekSourcesView(document.getElementById('settingsMediathekSourcesRoot'), { mediathek: window.mediathek, logger });
 const settingsMediathekPlaybackView = createMediathekPlaybackView(document.getElementById('settingsMediathekPlaybackRoot'), { mediathek: window.mediathek, logger });
+const settingsMediathekDownloadsView = createMediathekDownloadsSettings(
+  {
+    storage: document.getElementById('settingsMediathekDl-storageRoot'),
+    quality: document.getElementById('settingsMediathekDl-qualityRoot'),
+    audio: document.getElementById('settingsMediathekDl-audioRoot'),
+    control: document.getElementById('settingsMediathekDl-controlRoot'),
+    notes: document.getElementById('settingsMediathekDl-notesRoot'),
+  },
+  { downloads: window.downloads, logger, onSaved: () => mediathekHub.refreshDownloadSettings() },
+);
 settingsTvChannelsView = createTvChannelsView({
   root: settingsPanel,
   api: window.electronAPI,

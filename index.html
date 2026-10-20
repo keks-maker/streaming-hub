@@ -3,9 +3,10 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: http: https: rec:; connect-src 'self' http: https: rec:; frame-src https:; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: http: https: rec: dl:; connect-src 'self' http: https: rec: dl:; frame-src https:; object-src 'none'; base-uri 'self';">
   <title>Streaming Hub</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles-downloads.css">
 </head>
 <body>
   <div class="overlay-bar always-visible" id="overlayBar">
@@ -535,6 +536,56 @@
             <div class="settings-card">
               <h4 class="settings-card-title">Wiedergabe</h4>
               <div id="settingsMediathekPlaybackRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="mediathek-dl-storage" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Mediatheken: Downloads – Ablage</h3>
+              <p class="settings-page-desc">Speicherort, Dateiname, Ordner je Serie und Metadaten.</p>
+            </header>
+            <div class="settings-card">
+              <div id="settingsMediathekDl-storageRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="mediathek-dl-quality" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Mediatheken: Downloads – Qualität</h3>
+              <p class="settings-page-desc">Auflösung und Dateiformat.</p>
+            </header>
+            <div class="settings-card">
+              <div id="settingsMediathekDl-qualityRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="mediathek-dl-audio" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Mediatheken: Downloads – Ton &amp; Untertitel</h3>
+              <p class="settings-page-desc">Tonspuren, Audiodeskription und Untertitel.</p>
+            </header>
+            <div class="settings-card">
+              <div id="settingsMediathekDl-audioRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="mediathek-dl-control" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Mediatheken: Downloads – Steuerung</h3>
+              <p class="settings-page-desc">Parallelität, Bandbreite, Benachrichtigung und Aufräumen.</p>
+            </header>
+            <div class="settings-card">
+              <div id="settingsMediathekDl-controlRoot"></div>
+            </div>
+          </section>
+
+          <section class="settings-page" data-settings-page="mediathek-dl-notes" role="tabpanel" hidden>
+            <header class="settings-page-head">
+              <h3 class="settings-page-title">Mediatheken: Downloads – Hinweise</h3>
+              <p class="settings-page-desc">Nutzungshinweis und Sichtbarkeit der Download-Funktion.</p>
+            </header>
+            <div class="settings-card">
+              <div id="settingsMediathekDl-notesRoot"></div>
             </div>
           </section>
 

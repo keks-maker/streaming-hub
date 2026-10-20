@@ -49,6 +49,7 @@ const { createMediathekSettings } = require('./lib/mediathek/settings.js');
 const { createDownloadStore } = require('./lib/download/DownloadStore.js');
 const { DownloadService } = require('./lib/download/DownloadService.js');
 const { registerDownloadIpc } = require('./lib/download/ipc.js');
+const { DL_SCHEME, DL_PRIVILEGES, createDownloadProtocolHandler } = require('./lib/download/protocol.js');
 const { createSettingsHolder: createDownloadSettingsHolder } = require('./lib/download/settings-holder.js');
 const { createCoverFetcher } = require('./lib/download/cover.js');
 const { createNotifier } = require('./lib/recorder/Notifier.js');
@@ -168,6 +169,9 @@ function registerRecordingProtocol({ protocol, getRoot }) {
         corsEnabled: true,
       },
     },
+    // dl://local/<id>.mp4: Offline-Wiedergabe der Mediathek-Downloads (nur Dateien aus dem Download-Index, Range-fähig).
+    // Beide Schemas in einem Aufruf registrieren (Privilegien gelten nur für den Aufruf vor app.ready).
+    { scheme: DL_SCHEME, privileges: { ...DL_PRIVILEGES } },
   ]);
   // Electron-42 protocol.handle-Konvention: der Handler liefert ein
   // Response-Objekt (oder Promise<Response>) — das alte
@@ -1419,6 +1423,7 @@ app.whenReady().then(() => {
         userAgent: 'StreamingHub/1.0',
         logger,
       });
+      protocol.handle(DL_SCHEME, createDownloadProtocolHandler({ getFileInfo: id => (downloadService ? downloadService.fileInfo(id) : null), logger }));
       registerDownloadIpc({
         ipcMain,
         service: downloadService,
@@ -1433,12 +1438,19 @@ app.whenReady().then(() => {
           }
         },
         validateRoot: paths.validateStorageRoot,
+        pickFolder: async defaultPath => {
+          if (!mainWindow || mainWindow.isDestroyed()) return null;
+          const result = await dialog.showOpenDialog(mainWindow, { title: 'Download-Speicherort wählen', defaultPath, properties: ['openDirectory', 'createDirectory'] });
+          return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+        },
         isNetworkPath: isNetworkishPath,
         showItemInFolder: file => {
           if (isIsolatedTestRun(process.env)) return; // E2E öffnet keinen Dateimanager
           shell.showItemInFolder(file);
         },
         getProgress: record => downloadWatch.progress(record.entry.sourceId, record.entry.title),
+        // Wiedergabe eines Downloads: Eintrag im Verlauf anlegen, damit Fortschritt (watch-progress) und "Gesehen" gespeichert werden
+        onPlay: record => downloadWatch.record({ entry: { sourceId: record.entry.sourceId, title: record.entry.title, imageUrl: record.entry.imageUrl }, series: record.series }),
         logger,
       });
       if (recorder) recorder.on('recording:changed', () => downloadService.onRecordingActivity());
