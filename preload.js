@@ -215,6 +215,21 @@ contextBridge.exposeInMainWorld('radio', {
 });
 
 // Podcasts (Konzept §7): Abos, Feeds, Suche und Hörzustand im Main; Änderungen kommen als Events.
+// Mediathek (nativ, Core ohne UI): alle Kanäle laufen im Main; Ergebnisse { ok, ... } bzw. { ok: false, error, code }
+contextBridge.exposeInMainWorld('mediathek', {
+  home: source => ipcRenderer.invoke('mediathek:home', { source }),
+  search: (query, source, page) => ipcRenderer.invoke('mediathek:search', { query, source, page }),
+  series: series => ipcRenderer.invoke('mediathek:series', { series }),
+  genre: genre => ipcRenderer.invoke('mediathek:genre', { genre }),
+  loadMore: section => ipcRenderer.invoke('mediathek:load-more', { section }),
+  resolvePlayback: (entry, series) => ipcRenderer.invoke('mediathek:resolve-playback', { entry, series }),
+  getFavorites: () => ipcRenderer.invoke('mediathek:favorites-get'),
+  toggleFavorite: series => ipcRenderer.invoke('mediathek:favorites-toggle', { series }),
+  onFavoritesChanged: radioListener('mediathek:favorites-changed'),
+  saveWatchProgress: input => ipcRenderer.invoke('mediathek:watch-progress', input),
+  getWatchProgress: input => ipcRenderer.invoke('mediathek:get-progress', input),
+});
+
 contextBridge.exposeInMainWorld('podcasts', {
   search: query => ipcRenderer.invoke('podcast:search', query),
   getCatalog: () => ipcRenderer.invoke('podcast:catalog'),

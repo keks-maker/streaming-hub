@@ -1,0 +1,16 @@
+{"widgets":[{"type":"player_ondemand","title":"Die Entführung (S01/E02)","broadcastedOn":"2026-03-19T23:30:00Z","availableTo":"2027-03-19T22:59:00Z","meta":{"seriesTitle":"Das Institut","durationSeconds":2040},"mediaCollection":{"embedded":{"isGeoBlocked":true,"streams":[
+{"kind":"main","media":[
+{"mimeType":"video/mp4","url":"https://cdn.example.invalid/_audiodeskription_1080.mp4","maxHResolutionPx":1920,"maxVResolutionPx":1080,"forcedLabel":"HD 1080p","videoCodec":"H.264","audios":[{"kind":"audio-description","languageCode":"deu"}]},
+{"mimeType":"application/vnd.apple.mpegurl","url":"https://cdn.example.invalid/ad/master.m3u8","audios":[{"kind":"audio-description","languageCode":"deu"}]},
+{"mimeType":"video/mp4","url":"https://cdn.example.invalid/_sendeton_360.mp4","maxHResolutionPx":640,"maxVResolutionPx":360,"forcedLabel":"SD 360p","videoCodec":"H.264","audios":[{"kind":"standard","languageCode":"deu"}]},
+{"mimeType":"video/mp4","url":"https://cdn.example.invalid/_sendeton_1080.mp4","maxHResolutionPx":1920,"maxVResolutionPx":1080,"forcedLabel":"HD 1080p","videoCodec":"H.264","audios":[{"kind":"standard","languageCode":"deu"}]},
+{"mimeType":"video/mp4","url":"//cdn.example.invalid/_sendeton_720.mp4","maxHResolutionPx":1280,"maxVResolutionPx":720,"forcedLabel":"HD 720p","videoCodec":"H.264","audios":[{"kind":"standard","languageCode":"deu"}]},
+{"mimeType":"application/vnd.apple.mpegurl","url":"https://cdn.example.invalid/standard/master.m3u8","forcedLabel":"Auto","audios":[{"kind":"standard","languageCode":"deu"}]},
+{"mimeType":"video/mp4","url":"https://cdn.example.invalid/_klaresprache_720.mp4","maxHResolutionPx":1280,"maxVResolutionPx":720,"audios":[{"kind":"speech-optimized","languageCode":"deu"}]}
+]},
+{"kind":"sign-language","media":[{"mimeType":"video/mp4","url":"https://cdn.example.invalid/sign.mp4","maxVResolutionPx":720,"audios":[{"kind":"standard","languageCode":"deu"}]}]}
+],"subtitles":[
+{"kind":"normal","languageCode":"deu","sources":[{"kind":"ebutt","url":"https://api.ardmediathek.de/player-service/subtitle/ebutt/a.xml"},{"kind":"webvtt","url":"https://api.ardmediathek.de/player-service/subtitle/webvtt/urn:ard:subtitle:a.vtt"}]},
+{"kind":"closed-captions","languageCode":"deu","sources":[{"kind":"webvtt","url":"https://api.ardmediathek.de/player-service/subtitle/webvtt/urn:ard:subtitle:b.vtt"}]},
+{"kind":"normal","languageCode":"deu","sources":[{"kind":"ebutt","url":"https://api.ardmediathek.de/player-service/subtitle/ebutt/c.xml"}]}
+]}}}]}

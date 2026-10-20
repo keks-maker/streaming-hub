@@ -39,6 +39,11 @@ const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
 const { registerRadioIpc } = require('./lib/radio/ipc.js');
 const { PodcastLibrary } = require('./lib/podcast/PodcastLibrary.js');
 const { registerPodcastIpc } = require('./lib/podcast/ipc.js');
+const { registerMediathekIpc } = require('./lib/mediathek/ipc.js');
+const { createMediathekService } = require('./lib/mediathek/service.js');
+const { createMediathekHttp } = require('./lib/mediathek/http.js');
+const { createMediathekFavorites } = require('./lib/mediathek/favorites.js');
+const { createWatchProgress } = require('./lib/mediathek/watch-progress.js');
 const { PodcastController } = require('./lib/podcast/PodcastController.js');
 const { createPlaybackPowerGuard } = require('./lib/podcast/playback-power.js');
 const { attachExclusivity } = require('./lib/playback-exclusivity.js');
@@ -898,6 +903,21 @@ app.whenReady().then(() => {
       shownoteImageLoader: createCoverLoader({ maxBytes: SHOWNOTE_IMAGE_MAX_BYTES, maxEntries: SHOWNOTE_IMAGE_CACHE_ENTRIES, allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // Bilder der Shownotes: 2 MB, kleiner LRU-Cache
       openExternal: openShownoteLink,
       chaptersLoader: createChaptersLoader({ allowLoopback: isIsolatedTestRun(process.env) && Boolean(process.env.STREAMING_HUB_E2E_PODCAST_SEARCH_URL) }), // wie die Cover: Loopback nur im isolierten E2E-Lauf
+      requireMainRenderer,
+      sendToMain: (channel, payload) => {
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+      },
+      logger,
+    });
+    registerMediathekIpc({
+      ipcMain,
+      service: createMediathekService({ http: createMediathekHttp() }),
+      favorites: createMediathekFavorites({ read: () => userStorage.readJson('mediathekFavorites', []), write: list => userStorage.writeJson('mediathekFavorites', list), logger }),
+      watchProgress: createWatchProgress({ load: loadHistory, save: saveHistory }),
       requireMainRenderer,
       sendToMain: (channel, payload) => {
         try {

@@ -1,0 +1,1 @@
+{"data":{"attributes":{"streams":[{"protocol":"API_HLS_NG_MA","url":"https://example.invalid/vo.m3u8","versions":[{"shortLabel":"OV"}]},{"protocol":"API_HLS_NG_MA","url":"https://example.invalid/de.m3u8","versions":[{"shortLabel":"DE"}]}]}}}
