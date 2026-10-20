@@ -74,7 +74,7 @@ function createMediathekDownloadsSettings(roots, { downloads, logger = null, onS
   function buildSelect(doc, page, field, root) {
     const id = `settingsDl-${field.key}`;
     const row = el(doc, 'label', 'tv-mode-label');
-    const select = el(doc, 'select');
+    const select = el(doc, 'select', 'settings-group-select settings-dl-select');
     select.id = id;
     select.dataset.field = field.key;
     for (const option of field.options) {
@@ -173,7 +173,7 @@ function createMediathekDownloadsSettings(roots, { downloads, logger = null, onS
     const selects = [];
     for (let index = 0; index < model.SLOT_COUNT; index += 1) {
       const row = el(doc, 'label', 'tv-mode-label');
-      const select = el(doc, 'select');
+      const select = el(doc, 'select', 'settings-group-select settings-dl-select');
       select.id = `settingsDl-${field.key}-${index}`;
       select.dataset.field = `${field.key}-${index}`;
       for (const option of model.languageOptions(index > 0)) {

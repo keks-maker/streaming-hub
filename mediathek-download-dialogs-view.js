@@ -52,7 +52,7 @@ function openModal(host, { labelledBy, className = '', trigger = null, onClose =
       first.focus();
     }
   });
-  host.appendChild(backdrop);
+  (doc.body || host).appendChild(backdrop); // außerhalb der Ansicht, damit der Hintergrund auch die Navigationsleiste abdunkelt
   return { dialog, close, backdrop, isOpen: () => !closed };
 }
 

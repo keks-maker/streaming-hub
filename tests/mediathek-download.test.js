@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { fixture } = require('./fixtures/mediathek/index.js');
 const { createMediathekService } = require('../lib/mediathek/service.js');
-const { germanDateTime } = require('../lib/mediathek/download-info.js');
+const { germanDateTime, broadcastDateFromTitle } = require('../lib/mediathek/download-info.js');
 
 const ARTE_MASTER_URL = 'https://manifest-arte.akamaized.net/api/manifest/v1/Generate/abc/de/026377-000-A.m3u8';
 
@@ -182,4 +182,20 @@ test('Deutsches Datum: Sommer-/Winterzeit', () => {
   assert.deepEqual(germanDateTime('19.03.2026 01:00'), { iso: '2026-03-19T00:00:00.000Z', day: '2026-03-19' });
   assert.deepEqual(germanDateTime('15.07.2026 10:00'), { iso: '2026-07-15T08:00:00.000Z', day: '2026-07-15' });
   assert.equal(germanDateTime('morgen'), null);
+});
+
+test('ARD: Sendedatum aus dem Titel hat Vorrang vor broadcastedOn (Bereitstellungszeitpunkt bei ZDF-Produktionen)', async () => {
+  const item = JSON.parse(fixture('dl-ard-item'));
+  item.widgets[0].title = 'logo! vom Freitag, 17. Juli 2026';
+  item.widgets[0].broadcastedOn = '2026-10-20T12:29:51.686Z';
+  const http = fakeHttp({ '/pages/ard/item/ARDITEM': JSON.stringify(item) });
+  const info = await createMediathekService({ http }).resolveForDownload({ id: 'ARDITEM', title: 'logo! vom Freitag, 17. Juli 2026', sourceId: 'ard' });
+  assert.equal(info.broadcastDate, '2026-07-17');
+});
+
+test('broadcastDateFromTitle: deutsche Datumsangabe im Titel, sonst null', () => {
+  assert.equal(broadcastDateFromTitle('logo! vom Montag, 19. Oktober 2026'), '2026-10-19');
+  assert.equal(broadcastDateFromTitle('Heute vom 3. März 2026'), '2026-03-03');
+  assert.equal(broadcastDateFromTitle('logo! extra zur Bundestagswahl'), null);
+  assert.equal(broadcastDateFromTitle(null), null);
 });

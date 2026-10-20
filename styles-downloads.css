@@ -98,7 +98,9 @@
 .settings-notice-title { margin:0 0 6px; font-size:14px; font-weight:700; color:var(--text); }
 .settings-notice-text { margin:0 0 6px; font-size:13px; line-height:1.45; color:var(--text); }
 .settings-notice-text:last-child { margin-bottom:0; }
-.settings-language-slots { display:flex; flex-direction:column; gap:6px; }
+.settings-language-slots { display:flex; flex-direction:column; gap:12px; margin:6px 0 10px; }
+.settings-language-slots .tv-mode-label { margin-top:0 !important; padding:0; }
+.settings-dl-select { min-width:200px; }
 
 @media (max-width:760px) {
   .mediathek-form { grid-template-columns:1fr; }

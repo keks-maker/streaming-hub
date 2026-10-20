@@ -163,7 +163,7 @@ function createMediathekDetail(host, ctx) {
     dialog.setAttribute('aria-modal', 'true');
     dialog.setAttribute('aria-labelledby', 'mediathekDetailTitle');
     backdrop.appendChild(dialog);
-    host.appendChild(backdrop);
+    (doc.body || host).appendChild(backdrop); // außerhalb der Ansicht, damit der Hintergrund auch die Navigationsleiste abdunkelt
     render();
     const target = dialog.querySelector('#mediathekDetailPlay') || dialog.querySelector('[data-action="close"]');
     if (target) target.focus();
