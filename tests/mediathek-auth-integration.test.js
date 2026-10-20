@@ -15,10 +15,11 @@ const { createMediathekService } = require('../lib/mediathek/service.js');
 const { registerMediathekIpc } = require('../lib/mediathek/ipc.js');
 const { createMediathekFavorites } = require('../lib/mediathek/favorites.js');
 const { createWatchProgress } = require('../lib/mediathek/watch-progress.js');
+const { accountNote } = require('../lib/mediathek/restrictions.js');
 const { createMediathekAuth } = require('../lib/mediathek/auth/index.js');
 const { createAuthStore } = require('../lib/mediathek/auth/store.js');
 
-function createAuth(initial = {}) {
+function createAuth(initial = {}, refresh = null) {
   const store = createAuthStore({ file: null, safeStorage: null });
   const record = sender => ({ accessToken: `${sender}-TOKEN`, refreshToken: `${sender}-REFRESH`, expiresAt: Date.now() + 3600000, since: Date.now(), state: 'ok', clientId: 'web' });
   const providers = {};
@@ -29,7 +30,7 @@ function createAuth(initial = {}) {
       partition: `persist:mediathek-${sender}`,
       tokenHosts: [sender === 'ard' ? 'api.ardmediathek.de' : 'api.arte.tv'],
       headers: r => (sender === 'ard' ? { 'X-Authorization': `Bearer ${r.accessToken}` } : { Authorization: `Bearer ${r.accessToken}` }),
-      refresh: async r => ({ ...r, accessToken: `${sender}-REFRESHED`, expiresAt: Date.now() + 3600000 }),
+      refresh: refresh || (async r => ({ ...r, accessToken: `${sender}-REFRESHED`, expiresAt: Date.now() + 3600000 })),
       login: {},
       pinBinding: null,
     };
@@ -194,6 +195,27 @@ test('IPC resolve-playback: Meldungen je Konto-Zustand', async () => {
   const unlocked = await run({ ard: {} }, { [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: fixture('ardItem') } });
   assert.equal(unlocked.resolution.kind, 'playable');
   assert.equal(unlocked.message, null);
+});
+
+test('Wiedergabe ARD: Token abgelaufen und Auffrischung scheitert am Netz -> eigener Hinweis, kein Abruf ohne Kopfzeile, Status ohne Fehlalarm', async () => {
+  const { auth } = createAuth({ ard: { expiresAt: Date.now() - 1000 } }, async () => { throw Object.assign(new Error('x'), { code: 'network' }); });
+  const http = routedHttp({ [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: fixture('ardItem') } });
+  const detail = await createMediathekService({ http, auth }).resolveStreamDetail(ARD_ENTRY);
+  assert.equal(detail.resolution.kind, 'ageRestricted');
+  assert.equal(detail.resolution.account, 'network');
+  assert.equal(http.calls.length, 1, 'nur der anonyme Abruf, kein Retry ohne Header');
+  assert.equal(auth.accountState('ard'), 'signedIn');
+  assert.equal(auth.status().accounts.find(a => a.sender === 'ard').refreshFailed, true);
+  assert.match(accountNote('Gesperrt.', 'network'), /^Konto konnte nicht aktualisiert werden \(Netzwerk\) – später erneut versuchen\./);
+  assert.ok(!/Auch mit Konto gesperrt/.test(accountNote('Gesperrt.', 'network')));
+});
+
+test('Wiedergabe ARD: Token abgelaufen und Refresh abgelehnt -> "Anmeldung abgelaufen"', async () => {
+  const { auth } = createAuth({ ard: { expiresAt: Date.now() - 1000 } }, async () => { throw Object.assign(new Error('x'), { code: 'rejected' }); });
+  const http = routedHttp({ [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: fixture('ardItem') } });
+  const detail = await createMediathekService({ http, auth }).resolveStreamDetail(ARD_ENTRY);
+  assert.equal(detail.resolution.account, 'expired');
+  assert.equal(http.calls.length, 1);
 });
 
 // ── service.js: Download-Auflösung ──

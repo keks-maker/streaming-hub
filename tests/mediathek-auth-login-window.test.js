@@ -55,6 +55,21 @@ const nav = (win, url) => {
   return event.prevented;
 };
 
+test('Subframes: Navigation nur auf https-Hosts des Anbieters, Fremdhosts blockiert', async () => {
+  const { runner, windows } = setup();
+  const pending = runner.run(provider);
+  const win = windows[0];
+  const frameNav = url => {
+    const details = { url, prevented: false, preventDefault() { this.prevented = true; } };
+    win.contentsEvents.emit('will-frame-navigate', details);
+    return details.prevented;
+  };
+  assert.equal(frameNav('https://www.arte.tv/de/'), false);
+  for (const url of ['https://evil.example/frame', 'http://www.arte.tv/', 'https://arte.tv.evil.example/', 'javascript:alert(1)', 'data:text/html,x']) assert.equal(frameNav(url), true, url);
+  win.destroy();
+  await pending;
+});
+
 test('Fenster: Sandbox, Context Isolation, kein Node, kein Preload, eigene persistente Partition, Berechtigungen abgelehnt', async () => {
   const { runner, windows, handlers } = setup();
   const pending = runner.run(provider);

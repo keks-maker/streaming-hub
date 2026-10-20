@@ -118,3 +118,20 @@ test('Schreibfehler: kein Absturz, Temp-Datei aufgeräumt, Warnung ohne Token', 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('Verschlüsselungsfehler beim Speichern: kein Absturz, nichts auf der Platte, Warnung ohne Werte, Werte bleiben im Speicher', () => {
+  const { dir, file } = tmpFile();
+  try {
+    const warnings = [];
+    const storage = { ...fakeSafeStorage(), encryptString: () => { throw new Error('keychain locked ACCESS-SECRET'); } };
+    const store = createAuthStore({ file, safeStorage: storage, logger: { warn: m => warnings.push(m) } });
+    assert.doesNotThrow(() => store.set('arte', RECORD));
+    assert.doesNotThrow(() => store.setPin('1234'));
+    assert.deepEqual(fs.readdirSync(dir), []);
+    assert.equal(warnings.length, 2);
+    assert.ok(warnings.every(m => !m.includes('SECRET') && !m.includes('1234')));
+    assert.equal(store.get('arte').accessToken, 'ACCESS-SECRET');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
