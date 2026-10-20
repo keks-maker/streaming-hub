@@ -214,7 +214,6 @@ contextBridge.exposeInMainWorld('radio', {
   onOpen: radioListener('radio:open'),
 });
 
-// Podcasts (Konzept §7): Abos, Feeds, Suche und Hörzustand im Main; Änderungen kommen als Events.
 // Mediathek (nativ, Core ohne UI): alle Kanäle laufen im Main; Ergebnisse { ok, ... } bzw. { ok: false, error, code }
 contextBridge.exposeInMainWorld('mediathek', {
   home: source => ipcRenderer.invoke('mediathek:home', { source }),
@@ -230,6 +229,27 @@ contextBridge.exposeInMainWorld('mediathek', {
   getWatchProgress: input => ipcRenderer.invoke('mediathek:get-progress', input),
 });
 
+// Mediathek-Downloads (Konzept §3/§4): Queue, Bibliothek, Einstellungen; Fortschritt kommt gedrosselt als Event.
+contextBridge.exposeInMainWorld('downloads', {
+  getSettings: () => ipcRenderer.invoke('downloads:settings-get'),
+  setSettings: patch => ipcRenderer.invoke('downloads:settings-set', patch),
+  getDefaults: () => ipcRenderer.invoke('downloads:settings-defaults'),
+  validateRoot: root => ipcRenderer.invoke('downloads:validate-root', { root }),
+  plan: (entry, overrides, series) => ipcRenderer.invoke('downloads:plan', { entry, overrides, series }),
+  enqueue: input => ipcRenderer.invoke('downloads:enqueue', input),
+  enqueueMany: input => ipcRenderer.invoke('downloads:enqueue-many', input),
+  list: () => ipcRenderer.invoke('downloads:list'),
+  pause: id => ipcRenderer.invoke('downloads:pause', { id }),
+  resume: id => ipcRenderer.invoke('downloads:resume', { id }),
+  cancel: id => ipcRenderer.invoke('downloads:cancel', { id }),
+  retry: id => ipcRenderer.invoke('downloads:retry', { id }),
+  remove: (id, options) => ipcRenderer.invoke('downloads:remove', { id, deleteFile: Boolean(options && options.deleteFile) }),
+  reveal: id => ipcRenderer.invoke('downloads:reveal', { id }),
+  playInfo: id => ipcRenderer.invoke('downloads:play-info', { id }),
+  onChanged: radioListener('downloads:changed'),
+});
+
+// Podcasts (Konzept §7): Abos, Feeds, Suche und Hörzustand im Main; Änderungen kommen als Events.
 contextBridge.exposeInMainWorld('podcasts', {
   search: query => ipcRenderer.invoke('podcast:search', query),
   getCatalog: () => ipcRenderer.invoke('podcast:catalog'),
