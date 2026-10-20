@@ -231,6 +231,16 @@ contextBridge.exposeInMainWorld('mediathek', {
   getSettings: () => ipcRenderer.invoke('mediathek:get-settings'),
   setSettings: patch => ipcRenderer.invoke('mediathek:set-settings', patch),
   onSettingsChanged: radioListener('mediathek:settings-changed'),
+  // Konten (experimentell): nur Zustände, nie Token oder PIN
+  accounts: {
+    status: () => ipcRenderer.invoke('mediathek:accounts-status'),
+    login: sender => ipcRenderer.invoke('mediathek:accounts-login', { sender }),
+    logout: sender => ipcRenderer.invoke('mediathek:accounts-logout', { sender }),
+    test: sender => ipcRenderer.invoke('mediathek:accounts-test', { sender }),
+    setPin: pin => ipcRenderer.invoke('mediathek:accounts-set-pin', { pin }),
+    setPinEnabled: enabled => ipcRenderer.invoke('mediathek:accounts-set-pin-enabled', { enabled }),
+    onChanged: radioListener('mediathek:accounts-changed'),
+  },
 });
 
 // Mediathek-Downloads (Konzept §3/§4): Queue, Bibliothek, Einstellungen; Fortschritt kommt gedrosselt als Event.

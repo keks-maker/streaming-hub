@@ -2982,6 +2982,17 @@ body.epg-open .overlay-bar { z-index: 105; }
   border-radius: 12px;
 }
 .settings-card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.settings-account-card { width: 100%; padding: 12px 14px; margin: 6px 0; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; gap: 4px; }
+.settings-account-title { display: inline-block; margin-right: 8px; }
+.settings-badge { display: inline-block; align-self: flex-start; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 1px 8px; }
+.settings-badge[hidden] { display: none; }
+.settings-account-card [data-kind="ok"] { color: var(--text); }
+.settings-account-card [data-kind="warn"] { color: var(--warn); }
+.settings-account-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.settings-account-btn { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--glass); color: var(--text); cursor: pointer; font: inherit; }
+.settings-account-btn:hover:not(:disabled), .settings-account-btn:focus-visible { border-color: var(--accent); }
+.settings-account-btn:disabled { opacity: 0.45; cursor: default; }
+.settings-account-btn[hidden] { display: none; }
 .settings-card-desc { font-size: 12px; color: var(--text-dim); margin-top: -6px; }
 .settings-row {
   display: flex;

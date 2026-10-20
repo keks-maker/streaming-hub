@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -42,6 +42,14 @@ const { registerPodcastIpc } = require('./lib/podcast/ipc.js');
 const { registerMediathekIpc } = require('./lib/mediathek/ipc.js');
 const { createMediathekService } = require('./lib/mediathek/service.js');
 const { createMediathekHttp } = require('./lib/mediathek/http.js');
+const { createMediathekAuth } = require('./lib/mediathek/auth/index.js');
+const { createAuthStore } = require('./lib/mediathek/auth/store.js');
+const { createAuthNet } = require('./lib/mediathek/auth/net.js');
+const { createArteProvider } = require('./lib/mediathek/auth/arte.js');
+const { createArdProvider } = require('./lib/mediathek/auth/ard.js');
+const { createLoginRunner } = require('./lib/mediathek/auth/login-window.js');
+const { createE2eLoginRunner, createE2eAuthNet } = require('./lib/mediathek/auth/e2e-login.js');
+const { registerAccountsIpc } = require('./lib/mediathek/auth/ipc.js');
 const { createRoutedHttp } = require('./lib/mediathek/e2e-http.js');
 const { createMediathekFavorites } = require('./lib/mediathek/favorites.js');
 const { createWatchProgress } = require('./lib/mediathek/watch-progress.js');
@@ -105,6 +113,7 @@ let downloadService = null;
 let subscriptionService = null; // Serien-Abos „Neue Folgen automatisch laden“
 let mediathekService = null;
 let mediathekHttp = null;
+let mediathekAuth = null; // Konten (experimentell): Anmeldung beim Anbieter, Token nur verschlüsselt
 // Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
 let epgService = null;
 let trayController = null;
@@ -935,8 +944,35 @@ app.whenReady().then(() => {
       },
       logger,
     });
-    mediathekHttp = isIsolatedTestRun(process.env) && process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES ? createRoutedHttp(process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES) : createMediathekHttp();
-    mediathekService = createMediathekService({ http: mediathekHttp });
+    // Konten: in isolierten Testläufen weder safeStorage (Schlüsselbund) noch echtes Anmeldefenster
+    const e2eRun = isIsolatedTestRun(process.env);
+    const authNet = e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eAuthNet() : createAuthNet();
+    mediathekAuth = createMediathekAuth({
+      providers: { arte: createArteProvider({ net: authNet }), ard: createArdProvider({ net: authNet }) },
+      store: createAuthStore({ file: path.join(app.getPath('userData'), 'mediathek-auth.bin'), safeStorage: e2eRun ? null : safeStorage, logger }),
+      loginRunner: e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eLoginRunner(process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN) : createLoginRunner({ BrowserWindow, session, getParent: () => mainWindow, logger }),
+      clearPartition: async partition => {
+        const ses = session.fromPartition(partition);
+        await ses.clearStorageData();
+        await ses.clearCache();
+      },
+      logger,
+    });
+    mediathekHttp = e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES ? createRoutedHttp(process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES) : createMediathekHttp({ auth: mediathekAuth });
+    mediathekAuth.setHttp(mediathekHttp);
+    mediathekService = createMediathekService({ http: mediathekHttp, auth: mediathekAuth });
+    registerAccountsIpc({
+      ipcMain,
+      auth: mediathekAuth,
+      requireMainRenderer,
+      sendToMain: (channel, payload) => {
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+        } catch (_) {
+          // Fenster zwischendurch geschlossen
+        }
+      },
+    });
     registerMediathekIpc({
       ipcMain,
       service: mediathekService,
@@ -1464,6 +1500,8 @@ app.whenReady().then(() => {
         if (reason === 'state' && downloadService.activeCount() === 0 && BrowserWindow.getAllWindows().length === 0) quitUnlessKeptAlive();
       });
       downloadService.start();
+      // Neu angemeldet: wegen Jugendschutz zurückgestellte Downloads dieses Senders sofort neu auflösen
+      mediathekAuth.on('signedIn', sender => downloadService && downloadService.retryAgeScheduledNow([sender]));
       // Serien-Abos: Prüfung läuft nur, solange die App läuft (Fenster-zu-Verhalten unverändert: Tray-Betrieb zählt als laufend)
       subscriptionService = new SubscriptionService({
         store: createSubscriptionStore({ file: path.join(app.getPath('userData'), 'subscriptions.json'), logger }),

@@ -38,6 +38,7 @@ const { createPodcastHub } = require('./podcast-hub-view.js');
 const { createMediathekHub } = require('./mediathek-hub-view.js');
 const { createMediathekSourcesView } = require('./settings-mediathek-sources.js');
 const { createMediathekPlaybackView } = require('./settings-mediathek-playback.js');
+const { createMediathekAccountsView } = require('./settings-mediathek-accounts.js');
 const { createMediathekDownloadsSettings } = require('./settings-mediathek-downloads.js');
 const { createDownloadsStore, indicatorLabel } = require('./mediathek-downloads-model.js');
 const { createSubscriptionsStore } = require('./mediathek-subscriptions-model.js');
@@ -3783,6 +3784,7 @@ const settingsView = createSettingsView(settingsPanel, {
     if (page === 'podcast-playback') settingsPodcastPlaybackView.refresh();
     if (page === 'mediathek-sources') settingsMediathekSourcesView.refresh();
     if (page === 'mediathek-playback') settingsMediathekPlaybackView.refresh();
+    if (page === 'mediathek-accounts') settingsMediathekAccountsView.refresh();
     if (page && page.startsWith('mediathek-dl-')) settingsMediathekDownloadsView.refresh();
   },
 });
@@ -3805,6 +3807,7 @@ const settingsPodcastPlaybackView = createPodcastPlaybackView(document.getElemen
 });
 const settingsMediathekSourcesView = createMediathekSourcesView(document.getElementById('settingsMediathekSourcesRoot'), { mediathek: window.mediathek, logger });
 const settingsMediathekPlaybackView = createMediathekPlaybackView(document.getElementById('settingsMediathekPlaybackRoot'), { mediathek: window.mediathek, logger });
+const settingsMediathekAccountsView = createMediathekAccountsView(document.getElementById('settingsMediathekAccountsRoot'), { mediathek: window.mediathek, logger });
 const settingsMediathekDownloadsView = createMediathekDownloadsSettings(
   {
     storage: document.getElementById('settingsMediathekDl-storageRoot'),
