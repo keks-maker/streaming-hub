@@ -46,6 +46,13 @@ const { createRoutedHttp } = require('./lib/mediathek/e2e-http.js');
 const { createMediathekFavorites } = require('./lib/mediathek/favorites.js');
 const { createWatchProgress } = require('./lib/mediathek/watch-progress.js');
 const { createMediathekSettings } = require('./lib/mediathek/settings.js');
+const { createDownloadStore } = require('./lib/download/DownloadStore.js');
+const { DownloadService } = require('./lib/download/DownloadService.js');
+const { registerDownloadIpc } = require('./lib/download/ipc.js');
+const { createSettingsHolder: createDownloadSettingsHolder } = require('./lib/download/settings-holder.js');
+const { createCoverFetcher } = require('./lib/download/cover.js');
+const { createNotifier } = require('./lib/recorder/Notifier.js');
+const { createSafeLookup } = require('./lib/net-safety.js');
 const { PodcastController } = require('./lib/podcast/PodcastController.js');
 const { createPlaybackPowerGuard } = require('./lib/podcast/playback-power.js');
 const { attachExclusivity } = require('./lib/playback-exclusivity.js');
@@ -89,6 +96,10 @@ const recordingSettingsResponse = recordingSettingsLib.buildSettingsResponse;
 
 // Aufnahme-Engine (Konzept §2.5) — storageRoot nach app.whenReady gesetzt
 let recorder = null;
+// Mediathek-Downloads (Konzept §3/§4): Dienst nach dem Recorder-Setup erzeugt
+let downloadService = null;
+let mediathekService = null;
+let mediathekHttp = null;
 // Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
 let epgService = null;
 let trayController = null;
@@ -303,6 +314,7 @@ const quitCoordinator = new QuitCoordinator({
   },
   getEntries: () => (scheduler ? scheduler.list() : []),
   getActiveCount: () => (recorder ? recorder.activeJobs().length : 0),
+  getActiveDownloads: () => (downloadService ? downloadService.activeCount() : 0),
   getWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
   logger,
 });
@@ -915,9 +927,11 @@ app.whenReady().then(() => {
       },
       logger,
     });
+    mediathekHttp = isIsolatedTestRun(process.env) && process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES ? createRoutedHttp(process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES) : createMediathekHttp();
+    mediathekService = createMediathekService({ http: mediathekHttp });
     registerMediathekIpc({
       ipcMain,
-      service: createMediathekService({ http: isIsolatedTestRun(process.env) && process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES ? createRoutedHttp(process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES) : createMediathekHttp() }),
+      service: mediathekService,
       favorites: createMediathekFavorites({ read: () => userStorage.readJson('mediathekFavorites', []), write: list => userStorage.writeJson('mediathekFavorites', list), logger }),
       watchProgress: createWatchProgress({ load: loadHistory, save: saveHistory }),
       settings: createMediathekSettings({ read: () => userStorage.readJson('mediathekSettings', {}), write: value => userStorage.writeJson('mediathekSettings', value), logger }),
@@ -1372,6 +1386,72 @@ app.whenReady().then(() => {
       logger.error('Aufnahme-Engine konnte nicht gestartet werden:', e.message);
     }
   }
+
+  // ── Mediathek-Downloads (Konzept §3/§4) ──
+  // Queue, Persistenz (downloads.json), Wiederaufnahme beim Start. Aufnahmen haben Vorrang (Parallelität, Platzreserve); der
+  // Speicherort liegt standardmäßig im Unterordner "Mediathek" des Aufnahme-Speicherorts. Läuft auch ohne ffmpeg-Binaries
+  // (progressive MP4-Dateien), nur das Muxen braucht sie.
+  if (mediathekService) {
+    try {
+      const { Notification } = require('electron');
+      const ffmpegLib = require('./lib/ffmpeg.js');
+      const recordingRoot = () => (recorder ? recorder.storageRoot : paths.defaultRecordingsRoot());
+      const downloadSettings = createDownloadSettingsHolder({
+        read: () => userStorage.readJson('downloadSettings', {}),
+        write: value => userStorage.writeJson('downloadSettings', value),
+        getRecordingRoot: recordingRoot,
+      });
+      const downloadWatch = createWatchProgress({ load: loadHistory, save: saveHistory });
+      downloadService = new DownloadService({
+        store: createDownloadStore({ file: path.join(app.getPath('userData'), 'downloads.json'), logger }),
+        resolver: mediathekService,
+        getSettings: downloadSettings.get,
+        getRecordingRoot: recordingRoot,
+        getReserveBytes: () => recordingSettingsLib.normalizeRecordingSettings(readRecordingSettingsRaw()).settings.reserveMB * recordingSettingsLib.MB,
+        getRecordingActive: () => (recorder ? recorder.activeJobs().length : 0),
+        notifier: createNotifier({ NotificationClass: Notification, logger }),
+        getWatchState: record => ({ watched: downloadWatch.isWatched(record.entry.sourceId, record.entry.title) }),
+        coverFetcher: createCoverFetcher(),
+        ffmpegPath: ffmpegLib.resolveBinaryPath('ffmpeg', __dirname),
+        ffprobePath: ffmpegLib.resolveBinaryPath('ffprobe', __dirname),
+        mediaHttp: mediathekHttp,
+        httpOptions: { lookup: createSafeLookup() }, // Verbindung an die geprüfte (öffentliche) IP gebunden
+        userAgent: 'StreamingHub/1.0',
+        logger,
+      });
+      registerDownloadIpc({
+        ipcMain,
+        service: downloadService,
+        settings: downloadSettings,
+        mediathek: mediathekService,
+        requireMainRenderer,
+        sendToMain: (channel, payload) => {
+          try {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+          } catch (_) {
+            // Fenster zwischendurch geschlossen: Downloads laufen im Main weiter
+          }
+        },
+        validateRoot: paths.validateStorageRoot,
+        isNetworkPath: isNetworkishPath,
+        showItemInFolder: file => {
+          if (isIsolatedTestRun(process.env)) return; // E2E öffnet keinen Dateimanager
+          shell.showItemInFolder(file);
+        },
+        getProgress: record => downloadWatch.progress(record.entry.sourceId, record.entry.title),
+        logger,
+      });
+      if (recorder) recorder.on('recording:changed', () => downloadService.onRecordingActivity());
+      // Letzter Download fertig oder angehalten, während kein Fenster mehr offen ist: kein Grund mehr, im Tray zu bleiben
+      downloadService.on('changed', ({ reason }) => {
+        if (reason === 'state' && downloadService.activeCount() === 0 && BrowserWindow.getAllWindows().length === 0) quitUnlessKeptAlive();
+      });
+      downloadService.start();
+    } catch (e) {
+      logger.error('Downloads konnten nicht eingerichtet werden:', e.message);
+      downloadService = null;
+    }
+  }
 });
 
 // Podcast-Wiedergabe: gleiche Regel und Option ("weiterspielen") wie beim Radio.
@@ -1394,9 +1474,9 @@ function quitUnlessKeptAlive() {
   // Konzept §3.2: Fenster schließen ≠ App beenden, solange ≥ 1 Aufnahme
   // läuft — die App geht in den Tray (TrayController übernimmt). Ohne
   // aktive Aufnahmen gilt das normale Quit-Verhalten.
-  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext(), podcast: podcastKeepAliveContext() });
+  const decision = decideWindowAllClosed({ recorder, scheduler, radio: radioKeepAliveContext(), podcast: podcastKeepAliveContext(), downloads: { active: downloadService ? downloadService.activeCount() : 0, hasTray: Boolean(trayController) } });
   if (!decision.quit) {
-    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio', podcast: 'Podcast' }[decision.reason];
+    const why = { recording: 'laufender Aufnahme(n)', schedule: 'geplanter Aufnahme(n)', radio: 'Radio', podcast: 'Podcast', downloads: 'laufender Downloads' }[decision.reason];
     logger.info(`Fenster geschlossen — App bleibt wegen ${why} im Tray aktiv`);
     return;
   }
@@ -1430,6 +1510,13 @@ app.on('before-quit', event => {
   if (wakeHelper) wakeHelper.quit();
   if (epgService) epgService.stop();
   if (scheduler) scheduler.stop();
+  if (downloadService) {
+    try {
+      downloadService.quitSweep();
+    } catch (e) {
+      logger.error('Download-Cleanup fehlgeschlagen (Beenden läuft weiter):', e.message);
+    }
+  }
   if (!recorder) return;
   try {
     recorder.quitSweep();
