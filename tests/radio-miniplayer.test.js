@@ -205,9 +205,9 @@ test('Ansicht: Pfeiltasten in der Leiste erreichen keine Seitenkürzel; Stream-D
 
 test('Verdrahtung: Navigation, Startkachel, Ort, Konflikt-Hooks und Vollbild-Ausblendung', () => {
   const renderer = read('renderer.js');
-  assert.match(renderer, /\{ key: 'radio', label: 'Radio', icon: 'radio-icon\.png' \}/);
+  assert.match(renderer, /\{ key: 'radio', label: 'Radio', icon: NAV_ICONS\.radio \}/);
   assert.match(renderer, /\{ key: 'radio', label: 'Radio', icon: 'radio-icon\.png', color: '#f59e0b' \}/);
-  assert.ok(renderer.indexOf("key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png' }") < renderer.indexOf("key: 'radio', label: 'Radio', icon: 'radio-icon.png' }"));
+  assert.ok(renderer.indexOf("key: 'livetv', label: 'LiveTV', icon: NAV_ICONS.livetv }") < renderer.indexOf("key: 'radio', label: 'Radio', icon: NAV_ICONS.radio }"));
   assert.match(renderer, /groupKey === 'radio'\s*\? 'Radio'/);
   assert.match(renderer, /if \(groupKey === 'radio'\) radioDashboardView\.refresh\(\)/);
   // Konflikt-Hooks: TV-Kanal, Streamingdienst, Aufnahme-Wiedergabe, Dashboard-Vollbildplayer

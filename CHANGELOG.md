@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unveröffentlicht — Native arm64-ffmpeg (Rosetta-Ausstieg)
+- Geändert (UI): Navigationsleiste im Apple-Design (angeglichen an die iPad-/tvOS-Navbar): Kapsel oben, adaptiv Hell/Dunkel (`prefers-color-scheme`), gestapelte Einträge (Icon über Label) mit Bereichsfarbe je Bereich (LiveTV, Radio, Podcasts, Streaming, Mediatheken, Einstellungen; Hell-/Dunkel-Variante wie `navbarAccent`) und Unterstrich am aktiven Eintrag, runde Zurück- und Verlauf-Knöpfe. Bereichs-Icons jetzt Inline-SVG (`NAV_ICONS`), `aria-current="page"` am aktiven Eintrag. Aufnahme-Punkt, Status-Icon, Selektoren (`data-section`, `.nav-section-item`) und Tastatur unverändert; keine Datenformat-Änderung.
+
 - Behoben (macOS Apple Silicon): Das arm64-Paket bündelte x86_64-`ffmpeg`/`ffprobe` (evermeet 7.0.2, nur via Rosetta lauffähig); macOS 28 entfernt Rosetta und meldet beim Start „App-Update erforderlich“. Jetzt native arm64-Builds (ffmpeg/ffprobe 7.1, osxexperts.net, statisch, GPL: `--enable-gpl`; App startet sie nur als eigenen Prozess). Intel bleibt bei evermeet 7.0.2 (x86_64). Pins je Architektur getrennt (`FFMPEG_SHA256_DARWIN`, Marker-Tags `osxexperts-7.1-arm64` / `evermeet-7.0.2`).
 - Selbstheilung: Der Health-Check liest den Mach-O-Header (`machoArchs`); eine x86_64-Binary gilt auf arm64 nicht mehr als gesund (auch wenn Rosetta sie ausführen würde) und wird beim Start/Update durch die arm64-Binary ersetzt. Updater-Layout (`bin/ffmpeg`, `bin/ffprobe`, `.ffmpeg-release`, `.ffmpeg-sha256.json`) unverändert.
 - Build: `scripts/evs-afterPack.js` legt je Ziel-Architektur die passenden Binaries ins Paket (`scripts/stage-mac-ffmpeg.js`, Cache `~/.cache/streaming-hub/ffmpeg/<arch>`), statt das Entwickler-`bin/` zu kopieren. arm64-ZIP rund 10 MB kleiner.

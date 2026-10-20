@@ -1012,8 +1012,12 @@ function showDashboard(groupKey, opts = {}) {
   currentDashboardGroup = groupKey;
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  nav.querySelectorAll('[aria-current]').forEach(n => n.removeAttribute('aria-current'));
   const activeSection = nav.querySelector(`[data-section="${groupKey}"]`);
-  if (activeSection) activeSection.classList.add('active');
+  if (activeSection) {
+    activeSection.classList.add('active');
+    activeSection.setAttribute('aria-current', 'page');
+  }
   switchWebview(false);
   contentView.style.opacity = '0';
   contentView.style.pointerEvents = 'none';
@@ -1060,15 +1064,26 @@ function getIconSrc(svc) {
   }
 }
 
+const NAV_SVG_ATTRS = 'viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"';
+const NAV_ICONS = {
+  livetv: `<svg ${NAV_SVG_ATTRS}><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+  radio: `<svg ${NAV_SVG_ATTRS}><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>`,
+  podcasts: `<svg ${NAV_SVG_ATTRS}><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`,
+  streaming: `<svg ${NAV_SVG_ATTRS}><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5v4l3.5-2z" fill="currentColor"/><path d="M8 21h8"/></svg>`,
+  mediathek: `<svg ${NAV_SVG_ATTRS}><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 9.5v5l4.5-2.5z"/></svg>`,
+  settings: `<svg ${NAV_SVG_ATTRS}><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>`,
+};
+
 function renderNav() {
   nav.innerHTML = '';
 
+  // Bereichs-Icons als Inline-SVG (currentColor), damit die Bereichsfarbe (CSS) sie einfärbt
   const groups = [
-    { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png' },
-    { key: 'radio', label: 'Radio', icon: 'radio-icon.png' },
-    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png' },
-    { key: 'streaming', label: 'Streaming', icon: 'netflix.png' },
-    { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png' },
+    { key: 'livetv', label: 'LiveTV', icon: NAV_ICONS.livetv },
+    { key: 'radio', label: 'Radio', icon: NAV_ICONS.radio },
+    { key: 'podcasts', label: 'Podcasts', icon: NAV_ICONS.podcasts },
+    { key: 'streaming', label: 'Streaming', icon: NAV_ICONS.streaming },
+    { key: 'mediathek', label: 'Mediatheken', icon: NAV_ICONS.mediathek },
     // 3.6b (P21): kein Aufnahmen-Eintrag mehr; der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
   ];
 
@@ -1077,7 +1092,7 @@ function renderNav() {
     btn.className = 'nav-item nav-section-item';
     btn.type = 'button';
     btn.dataset.section = group.key;
-    btn.innerHTML = `<span class="nav-section-icon"><img src="assets/icons/${group.icon}" alt=""></span><span class="nav-section-label">${group.label}</span>`;
+    btn.innerHTML = `<span class="nav-section-icon" aria-hidden="true">${group.icon}</span><span class="nav-section-label">${group.label}</span>`;
     btn.addEventListener('click', () => showDashboard(group.key));
     if (group.key === 'livetv') {
       // Aufnahme-Indikator (P21): Punkt ohne Zahl, solange eine Aufnahme läuft; Screenreader-Text statt Farbe allein
@@ -1099,7 +1114,7 @@ function renderNav() {
   settingsItem.className = 'nav-item nav-settings-item';
   settingsItem.type = 'button';
   settingsItem.title = 'Einstellungen';
-  settingsItem.innerHTML = `<span class="nav-section-icon">⚙</span><span class="nav-section-label">Einstellungen</span>`;
+  settingsItem.innerHTML = `<span class="nav-section-icon" aria-hidden="true">${NAV_ICONS.settings}</span><span class="nav-section-label">Einstellungen</span>`;
   settingsItem.dataset.section = 'settings';
   settingsItem.addEventListener('click', () => showDashboard('settings'));
   nav.appendChild(settingsItem);
