@@ -3619,7 +3619,7 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
   .nav-section-item,.nav-settings-item { padding:0 9px; gap:6px; }
 }
 
-/* Navigationsleiste im Apple-Design (Etappe 0, angeglichen an iPadNavigation.swift): Kapsel, adaptiv Hell/Dunkel,
+/* Navigationsleiste im Apple-Design (Etappe 0, angeglichen an iPadNavigation.swift): Kapsel, immer dunkel (die App hat kein Hell-Theme),
    gestapelte Einträge (Icon über Label) mit Bereichsfarbe und Unterstrich am aktiven Eintrag. */
 .overlay-bar {
   --nav-bg: #171717;
@@ -3631,25 +3631,13 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
   --nav-btn-fg: rgba(255,255,255,.8);
 }
 .overlay-bar [data-section] { --nav-c: var(--nav-c-dark); }
-@media (prefers-color-scheme: light) {
-  .overlay-bar {
-    --nav-bg: #fff;
-    --nav-bg-solid: #fff;
-    --nav-border: rgba(0,0,0,.12);
-    --nav-shadow: 0 3px 8px rgba(0,0,0,.10);
-    --nav-text: rgba(0,0,0,.6);
-    --nav-btn-bg: rgba(0,0,0,.06);
-    --nav-btn-fg: rgba(0,0,0,.7);
-  }
-  .overlay-bar [data-section] { --nav-c: var(--nav-c-light); }
-}
 .overlay-bar { backdrop-filter: none; }
-.overlay-bar [data-section="livetv"] { --nav-c-dark:#9B80E8; --nav-c-light:#6A47C7; }
-.overlay-bar [data-section="radio"] { --nav-c-dark:#F5940F; --nav-c-light:#C96A00; }
-.overlay-bar [data-section="podcasts"] { --nav-c-dark:#5AF2A6; --nav-c-light:#0A8F5C; }
-.overlay-bar [data-section="streaming"] { --nav-c-dark:#FF5C66; --nav-c-light:#C8101C; }
-.overlay-bar [data-section="mediathek"] { --nav-c-dark:#1AB8E0; --nav-c-light:#0A86A8; }
-.overlay-bar [data-section="settings"] { --nav-c-dark:#8C9EB8; --nav-c-light:#5A6678; }
+.overlay-bar [data-section="livetv"] { --nav-c-dark:#9B80E8; }
+.overlay-bar [data-section="radio"] { --nav-c-dark:#F5940F; }
+.overlay-bar [data-section="podcasts"] { --nav-c-dark:#5AF2A6; }
+.overlay-bar [data-section="streaming"] { --nav-c-dark:#FF5C66; }
+.overlay-bar [data-section="mediathek"] { --nav-c-dark:#1AB8E0; }
+.overlay-bar [data-section="settings"] { --nav-c-dark:#8C9EB8; }
 .overlay-bar .nav-section-item[data-section], .overlay-bar .nav-settings-item {
   position: relative; flex-direction: column !important; justify-content: center; gap: 3px !important;
   min-width: 64px; height: 52px !important; padding: 0 12px; margin-left: 0;
@@ -3688,7 +3676,7 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
 }
 
 /* ═══ Mediatheken (nativ): Hub, Serie, Genre, Detail, Player ═══
-   Bereichsfarbe Mediatheken (#1AB8E0 dunkel / #0A86A8 hell wie in der Navigationsleiste), adaptiv Hell/Dunkel. */
+   Bereichsfarbe Mediatheken (#1AB8E0, wie in der Navigationsleiste), adaptiv Hell/Dunkel. */
 .mediathek-dashboard {
   --md-accent:#1AB8E0; --md-btn-bg:#1AB8E0; --md-btn-ink:#04222b; --md-bg:#090b10;
   --md-surface:rgba(255,255,255,.05); --md-surface2:rgba(255,255,255,.09); --md-line:rgba(255,255,255,.16);
