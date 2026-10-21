@@ -8,7 +8,7 @@ const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
 const { reconcilePostUpdate, reconcileRadioSources, reconcilePodcastSources } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
-const { revealWindow, isBackgroundE2E, hiddenInHook, showInactiveInHook } = require('./lib/e2e-background.js');
+const { revealWindow, prepareWindowOptions, showInactiveInHook, applyBackgroundApp } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
@@ -49,7 +49,6 @@ const { createArteProvider } = require('./lib/mediathek/auth/arte.js');
 const { createArdProvider } = require('./lib/mediathek/auth/ard.js');
 const { createLoginRunner } = require('./lib/mediathek/auth/login-window.js');
 const { createE2eLoginRunner, createE2eAuthNet } = require('./lib/mediathek/auth/e2e-login.js');
-const { createDiagnoseRecorder } = require('./lib/mediathek/auth/diagnose.js');
 const { registerAccountsIpc } = require('./lib/mediathek/auth/ipc.js');
 const { createRoutedHttp } = require('./lib/mediathek/e2e-http.js');
 const { createMediathekFavorites } = require('./lib/mediathek/favorites.js');
@@ -286,9 +285,7 @@ if (process.env.STREAMING_HUB_USER_DATA) {
 
 // macOS: Ein regulärer Prozess aktiviert sich beim Start selbst (Fokusklau); als
 // „accessory“ (kein Dock-Icon) bleibt die vordere App unverändert.
-if (process.platform === 'darwin' && isBackgroundE2E(process.env)) {
-  app.setActivationPolicy('accessory');
-}
+applyBackgroundApp(app, process.env);
 
 let mainWindow;
 
@@ -626,8 +623,7 @@ function windowBackground() {
 }
 
 function createWindow() {
-  mainWindow = new BrowserWindow({
-    ...hiddenInHook(process.env), // Hook-Fall: nicht sofort aktivieren, ready-to-show zeigt per showInactive()
+  mainWindow = new BrowserWindow(prepareWindowOptions({
     width: 1280,
     height: 850,
     minWidth: 900,
@@ -641,7 +637,7 @@ function createWindow() {
     },
     backgroundColor: windowBackground(),
     title: 'Streaming Hub',
-  });
+  }, process.env));
 
   const createdWindow = mainWindow;
   createdWindow.once('ready-to-show', () => {
@@ -959,7 +955,6 @@ app.whenReady().then(() => {
       providers: { arte: createArteProvider({ net: authNet }), ard: createArdProvider({ net: authNet }) },
       store: createAuthStore({ file: path.join(app.getPath('userData'), 'mediathek-auth.bin'), safeStorage: e2eRun ? null : safeStorage, logger }),
       loginRunner: e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eLoginRunner(process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN) : accountLoginRunner,
-      diagnoseRunner: e2eRun ? null : createDiagnoseRecorder({ openProviderWindow: accountLoginRunner.openProviderWindow, file: path.join(app.getPath('userData'), 'diagnose-ard.json'), logger }),
       clearPartition: async partition => {
         const ses = session.fromPartition(partition);
         await ses.clearStorageData();
@@ -1632,8 +1627,7 @@ ipcMain.on('toggle-pip', (event, url) => {
   const pipH = Math.min(320, Math.round((pipW * 9) / 16) + 32);
 
   const pipUrl = remoteHttpUrl(url, 'PiP-URL');
-  pipWindow = new BrowserWindow({
-    ...hiddenInHook(process.env),
+  pipWindow = new BrowserWindow(prepareWindowOptions({
     width: pipW,
     height: pipH,
     alwaysOnTop: true,
@@ -1646,7 +1640,7 @@ ipcMain.on('toggle-pip', (event, url) => {
       webviewTag: true,
       preload: path.join(__dirname, 'preload.js'),
     },
-  });
+  }, process.env));
 
   showInactiveInHook(pipWindow, process.env);
   pipWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

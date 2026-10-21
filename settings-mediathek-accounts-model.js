@@ -1,7 +1,7 @@
 'use strict';
 
 // Einstellungen ▸ Mediatheken ▸ Konten: Darstellung der Konten (rein, ohne DOM). Der Zustand kommt aus
-// window.mediathek.accounts.status() (nie Token oder PIN): { sender, name, state, since, experimental }.
+// window.mediathek.accounts.status() (nie Token): { sender, name, state, since, experimental }.
 
 const SENDER_HINTS = {
   arte: 'Anmeldung mit deinem MeinARTE-Konto. Die Altersbestätigung (FSK 16 und 18) führst du einmalig bei arte durch.',
@@ -37,7 +37,6 @@ function describeAccount(account, { busy = false } = {}) {
     canLogin: supported && state !== 'signedIn' && !busy,
     loginLabel: state === 'expired' ? 'Erneut anmelden' : 'Anmelden',
     canLogout: supported && state !== 'signedOut' && !busy,
-    canDiagnose: supported && account.canDiagnose === true && !busy,
     canTest: supported && state === 'signedIn' && !busy,
     supported,
   };

@@ -1,7 +1,7 @@
 'use strict';
 
 // Tests: Konten-Module (arte, ard) mit Fake-Netz und Fixtures, Konten-Dienst (Status, Auffrischung, Hostbindung der Kopfzeilen,
-// Anmelden/Abmelden/Testen, PIN-Regeln). Kein Netz, kein Electron, kein echter Login.
+// Anmelden/Abmelden/Testen). Kein Netz, kein Electron, kein echter Login.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -120,7 +120,6 @@ test('ARD: Auffrischung über securetoken, Kopfzeile X-Authorization', async () 
   assert.equal(next.since, 7);
   assert.deepEqual(provider.headers(next), { 'X-Authorization': 'Bearer ID2' });
   assert.deepEqual(provider.tokenHosts, ['api.ardmediathek.de']);
-  assert.equal(provider.pinBinding, null, 'PIN-Aufruf unbelegt: wird nie gesendet');
 });
 
 // ── Auth-Netz ──
@@ -180,19 +179,18 @@ function setup(over = {}) {
   return { auth, store, net, clock, runs, cleared, events };
 }
 
-test('Status: Zustände je Sender, ZDF nicht unterstützt, nie Token oder PIN im Status', async () => {
-  const { auth, store } = setup();
+test('Status: Zustände je Sender, ZDF nicht unterstützt, nie Token im Status', async () => {
+  const { auth } = setup();
   let status = auth.status();
   assert.deepEqual(status.accounts.map(a => [a.sender, a.state]), [['arte', 'signedOut'], ['ard', 'signedOut'], ['zdf', 'unsupported']]);
   assert.equal(status.accounts[0].experimental, true);
   await auth.login('arte');
-  store.setPin('1234');
   status = auth.status();
   assert.equal(status.accounts[0].state, 'signedIn');
   assert.equal(status.accounts[0].since, NOW);
-  assert.deepEqual(status.pin, { supported: true, set: true, enabled: false });
+  assert.equal('pin' in status, false);
   const dump = JSON.stringify(status);
-  for (const secret of ['arte-tok', 'arte-ref', '1234']) assert.ok(!dump.includes(secret), secret);
+  for (const secret of ['arte-tok', 'arte-ref']) assert.ok(!dump.includes(secret), secret);
 });
 
 test('Anmelden: Ergebnis des Fensters wird gespeichert, Events changed/signedIn; Abbruch und ZDF melden sauber', async () => {
@@ -317,27 +315,3 @@ test('Freischaltung testen: gültig, abgemeldet, abgelaufen, Netzfehler; ARD zus
   assert.equal((await auth.test('arte')).code, 'expired');
 });
 
-test('PIN: nie ohne belegten Aufruf (pinBinding), nur mit Schalter, nur angemeldet', async () => {
-  const { auth, store } = setup();
-  await auth.login('ard');
-  auth.setPin('4321');
-  auth.setPinEnabled(true);
-  assert.equal(auth.getPinFor('ard', 'https://api.ardmediathek.de/anything'), null, 'ARD-Mechanik ungeklärt: keine Bindung, keine PIN');
-  assert.equal(store.getPin(), '4321');
-  assert.ok(!JSON.stringify(auth.status()).includes('4321'));
-  // Mit (hypothetisch) belegtem Aufruf: nur bei Schalter, Treffer und Anmeldung
-  const net = fakeNet();
-  const bound = createArdProvider({ net });
-  bound.pinBinding = { matches: url => url.startsWith('https://api.ardmediathek.de/pin') };
-  const store2 = createAuthStore({ file: null, safeStorage: null });
-  const auth2 = createMediathekAuth({ providers: { ard: bound }, store: store2, loginRunner: { run: async () => ({ ok: true, record: { accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600000, since: 1, state: 'ok' } }) } });
-  await auth2.login('ard');
-  auth2.setPin('4321');
-  assert.equal(auth2.getPinFor('ard', 'https://api.ardmediathek.de/pin/x'), null, 'Schalter aus');
-  auth2.setPinEnabled(true);
-  assert.equal(auth2.getPinFor('ard', 'https://api.ardmediathek.de/pin/x'), '4321');
-  assert.equal(auth2.getPinFor('ard', 'https://api.ardmediathek.de/andere'), null);
-  assert.equal(auth2.getPinFor('arte', 'https://api.ardmediathek.de/pin/x'), null);
-  auth2.clearPin();
-  assert.equal(auth2.getPinFor('ard', 'https://api.ardmediathek.de/pin/x'), null);
-});
