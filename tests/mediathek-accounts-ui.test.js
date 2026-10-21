@@ -22,7 +22,7 @@ function status(over = {}) {
     accounts: [
       { sender: 'arte', name: 'arte', experimental: true, state: 'signedOut', since: null },
       { sender: 'ard', name: 'ARD', experimental: true, state: 'signedOut', since: null },
-      { sender: 'zdf', name: 'ZDF', experimental: true, state: 'unsupported', since: null },
+      { sender: 'zdf', name: 'ZDF', experimental: true, state: 'signedOut', since: null },
     ],
     ...over,
   };
@@ -39,9 +39,13 @@ test('Modell: Status, Knöpfe und Texte je Zustand', () => {
   assert.deepEqual([inn.canLogin, inn.canLogout, inn.canTest, inn.statusKind], [false, true, true, 'ok']);
   const expired = describeAccount({ sender: 'ard', name: 'ARD', experimental: true, state: 'expired' });
   assert.deepEqual([expired.statusText, expired.loginLabel, expired.canLogin, expired.canLogout, expired.canTest, expired.statusKind], ['Anmeldung abgelaufen', 'Erneut anmelden', true, true, false, 'warn']);
-  const zdf = describeAccount({ sender: 'zdf', name: 'ZDF', experimental: true, state: 'unsupported' });
-  assert.equal(zdf.hint, 'ZDF: noch nicht unterstützt (folgt).');
-  assert.deepEqual([zdf.canLogin, zdf.canLogout, zdf.canTest, zdf.supported], [false, false, false, false]);
+  const zdf = describeAccount({ sender: 'zdf', name: 'ZDF', experimental: true, state: 'signedOut' });
+  assert.match(zdf.hint, /Altersverifikation/);
+  assert.match(zdf.hint, /PIN/);
+  assert.match(zdf.hint, /FSK 18 bleibt/);
+  assert.deepEqual([zdf.canLogin, zdf.canLogout, zdf.canTest, zdf.supported], [true, false, false, true]);
+  const none = describeAccount({ sender: 'zdf', name: 'ZDF', experimental: true, state: 'unsupported' });
+  assert.deepEqual([none.canLogin, none.canLogout, none.canTest, none.supported], [false, false, false, false], 'ohne Anbieter-Modul keine Knöpfe');
   assert.equal(describeAccount({ sender: 'arte', name: 'arte', state: 'signedIn', since }, { busy: true }).canLogout, false, 'während eines Vorgangs gesperrt');
   assert.equal(sinceText(0), 'Angemeldet');
   assert.match(GENERAL_HINT, /Passwort[^.]*nie/);
@@ -76,7 +80,7 @@ function mount(accounts) {
 const button = (root, sender, action) => root.byId(`settingsMediathekAccount-${sender}-${action}`);
 const statusText = root => root.byId('settingsMediathekAccountsStatus').textContent;
 
-test('Ansicht: Karte je Sender mit Status, Knöpfen, experimentell-Kennzeichnung; ZDF ohne Knöpfe', async () => {
+test('Ansicht: Karte je Sender mit Status, Knöpfen, experimentell-Kennzeichnung; ZDF mit Knöpfen und PIN-Hinweis', async () => {
   const accounts = makeAccounts();
   const { root, view } = mount(accounts);
   await view.refresh();
@@ -87,9 +91,10 @@ test('Ansicht: Karte je Sender mit Status, Knöpfen, experimentell-Kennzeichnung
   assert.equal(button(root, 'arte', 'logout').disabled, true);
   assert.equal(button(root, 'arte', 'test').disabled, true);
   assert.equal(root.byClass('settings-badge')[0].hidden, false);
-  assert.equal(button(root, 'zdf', 'login').hidden, true);
-  assert.equal(root.byId('settingsMediathekAccount-zdf-state').textContent, 'Noch nicht unterstützt (folgt)');
-  assert.ok(cards[2].textContent.includes('ZDF: noch nicht unterstützt (folgt).'));
+  assert.equal(button(root, 'zdf', 'login').hidden, false);
+  assert.equal(button(root, 'zdf', 'login').disabled, false);
+  assert.equal(root.byId('settingsMediathekAccount-zdf-state').textContent, 'Nicht angemeldet');
+  assert.ok(cards[2].textContent.includes('ZDF-Jugendschutz-PIN'));
   assert.ok(root.textContent.includes('verschlüsselt gespeichert'));
   assert.equal(button(root, 'arte', 'login').getAttribute('aria-describedby'), 'settingsMediathekAccount-arte-state', 'a11y: Status beschreibt den Knopf');
   assert.equal(root.byId('settingsMediathekAccountsStatus').getAttribute('role'), 'status');

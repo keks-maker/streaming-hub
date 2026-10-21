@@ -106,11 +106,11 @@ test('ZDF: Staffelnummer > 1900 ist ein Jahr -> keine Staffel/Folge; timetolive 
   assert.equal(info.availableUntil, '2027-03-15T09:00:00.000Z');
 });
 
-test('ZDF: FSK -> restriction unsupported mit Meldung', async () => {
+test('ZDF: FSK -> restriction age mit Meldung und Abrufzeitraum (ohne Konto-Modul)', async () => {
   const http = fakeHttp({ '/document/fsk': fixture('zdfDocumentFskBlocked') });
   const info = await createMediathekService({ http }).resolveForDownload({ id: 'fsk', title: 'x', sourceId: 'zdf' });
-  assert.equal(info.restriction.code, 'unsupported');
-  assert.match(info.restriction.message, /FSK/);
+  assert.equal(info.restriction.code, 'age');
+  assert.match(info.restriction.message, /FSK 16/);
   assert.equal(info.restriction.window, '22 bis 6 Uhr');
   assert.deepEqual(info.variants, []);
   const none = await createMediathekService({ http: fakeHttp({ '/document/x': fixture('zdfDocumentNoFormats') }) }).resolveForDownload({ id: 'x', title: 'x', sourceId: 'zdf' });

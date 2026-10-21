@@ -47,6 +47,9 @@ const { createAuthStore } = require('./lib/mediathek/auth/store.js');
 const { createAuthNet } = require('./lib/mediathek/auth/net.js');
 const { createArteProvider } = require('./lib/mediathek/auth/arte.js');
 const { createArdProvider } = require('./lib/mediathek/auth/ard.js');
+const { createZdfProvider } = require('./lib/mediathek/auth/zdf.js');
+const { createPinPrompt } = require('./lib/mediathek/auth/pin-prompt.js');
+const { createZdfFsk } = require('./lib/mediathek/zdf-fsk.js');
 const { createLoginRunner } = require('./lib/mediathek/auth/login-window.js');
 const { createE2eLoginRunner, createE2eAuthNet } = require('./lib/mediathek/auth/e2e-login.js');
 const { registerAccountsIpc } = require('./lib/mediathek/auth/ipc.js');
@@ -952,7 +955,7 @@ app.whenReady().then(() => {
     const authNet = e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eAuthNet() : createAuthNet();
     const accountLoginRunner = createLoginRunner({ BrowserWindow, session, getParent: () => mainWindow, logger });
     mediathekAuth = createMediathekAuth({
-      providers: { arte: createArteProvider({ net: authNet }), ard: createArdProvider({ net: authNet }) },
+      providers: { arte: createArteProvider({ net: authNet }), ard: createArdProvider({ net: authNet }), zdf: createZdfProvider({ net: authNet }) },
       store: createAuthStore({ file: path.join(app.getPath('userData'), 'mediathek-auth.bin'), safeStorage: e2eRun ? null : safeStorage, logger }),
       loginRunner: e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eLoginRunner(process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN) : accountLoginRunner,
       clearPartition: async partition => {
@@ -964,7 +967,11 @@ app.whenReady().then(() => {
     });
     mediathekHttp = e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES ? createRoutedHttp(process.env.STREAMING_HUB_E2E_MEDIATHEK_ROUTES) : createMediathekHttp({ auth: mediathekAuth });
     mediathekAuth.setHttp(mediathekHttp);
-    mediathekService = createMediathekService({ http: mediathekHttp, auth: mediathekAuth });
+    // ZDF-Jugendschutz: Altersfreigabe + PIN wie auf der Website, PIN-Abfrage im eigenen Fenster (im Testlauf fest vorgegeben)
+    const pinPrompt = createPinPrompt({ BrowserWindow, ipcMain, getParent: () => mainWindow, logger });
+    const e2ePin = e2eRun && /^\d{4}$/.test(process.env.STREAMING_HUB_E2E_ZDF_PIN || '') ? process.env.STREAMING_HUB_E2E_ZDF_PIN : null;
+    const zdfFsk = createZdfFsk({ http: mediathekHttp, auth: mediathekAuth, net: authNet, askPin: e2ePin ? async () => ({ pin: e2ePin, remember: false }) : options => pinPrompt.ask(options), logger });
+    mediathekService = createMediathekService({ http: mediathekHttp, auth: mediathekAuth, zdfFsk });
     registerAccountsIpc({
       ipcMain,
       auth: mediathekAuth,

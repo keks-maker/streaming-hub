@@ -6,7 +6,7 @@
 const SENDER_HINTS = {
   arte: 'Anmeldung mit deinem MeinARTE-Konto. Die Altersbestätigung (FSK 16 und 18) führst du einmalig bei arte durch.',
   ard: 'Anmeldung mit deinem ARD-Konto. Die Altersbestätigung führst du einmalig bei der ARD durch.',
-  zdf: 'ZDF: noch nicht unterstützt (folgt).',
+  zdf: 'Anmeldung mit deinem Mein-ZDF-Konto (auch ARD-Konto). Die Altersfreigabe (nur FSK 16) führst du einmalig bei ZDF auf der Website durch (Mein ZDF ▸ Altersverifikation). Beim Abspielen fragt die App deine ZDF-Jugendschutz-PIN ab; FSK 18 bleibt beim ZDF nur nachts von 23 bis 6 Uhr abrufbar.',
 };
 
 const STATE_TEXT = {
@@ -44,7 +44,7 @@ function describeAccount(account, { busy = false } = {}) {
 
 const GENERAL_HINT =
   'Das Konto und der Altersnachweis liegen beim Anbieter. Die Anmeldung läuft in einem eigenen Fenster direkt beim Sender; ' +
-  'diese App sieht dein Passwort nie. Mit Konto werden Beiträge abrufbar, die der Anbieter für dich freigibt (zum Beispiel FSK 16 oder 18 außerhalb der Sendezeit). ' +
+  'diese App sieht dein Passwort nie. Mit Konto werden Beiträge abrufbar, die der Anbieter für dich freigibt (zum Beispiel FSK 16 oder 18 außerhalb der Sendezeit; beim ZDF nur bis FSK 16). ' +
   'Funktion experimentell: nur mit eigenem Konto testbar.';
 
 const STORAGE_NOTE = {

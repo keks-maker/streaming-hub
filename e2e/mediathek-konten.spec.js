@@ -11,6 +11,7 @@ const path = require('path');
 const { MIN, xmltvTime, launchApp } = require('./epg-helpers');
 const { fixture } = require('../tests/fixtures/mediathek/index.js');
 const parser = require('../lib/mediathek/parser.js');
+const { windowOpen } = require('../lib/mediathek/zdf-fsk.js');
 
 const NO_STREAM = 'https://127.0.0.1:9/e2e.mp4';
 const episodes = parser.parseArdGrouping(fixture('ardGroupingMurdoch'));
@@ -23,6 +24,12 @@ function buildRoutes() {
     'pages/HOME/': fixture('arteHomeGenres'),
     [`/item/${fskEntry.id}`]: fixture('ardItemInstitutFskBlocked'),
     [`auth:/item/${fskEntry.id}`]: noNet(fixture('ardItem')),
+    // ZDF: Dokument mit FSK-Sperre, Startseite mit Api-Auth-Token der Web-App, Altersfreigabe des Kontos, Stream-Daten (PTMD)
+    '/document/ZDFFSK': JSON.stringify({ document: { id: 'ZDFFSK', titel: 'Nachtkrimi', fsk: 'fsk16', fskCheck: true, streamApiUrlFsk: 'https://api.zdf.de/tmd/2/ios_native_4/vod/ptmd/mediathek/e2e/4' } }),
+    'www.zdf.de/': '<html>{\\"videoToken\\":{\\"apiToken\\":\\"e2eVideoToken0123456789abcdef\\"}}</html>',
+    '/identity/userinfo': JSON.stringify({ id: 'e2e' }),
+    '/identity/fsk/verification': JSON.stringify({ verified: true }),
+    'tmd/2/ios_native_4/vod/ptmd/mediathek/e2e/4': JSON.stringify({ priorityList: [{ formitaeten: [{ type: 'h264_aac_mp4_http_na_na', qualities: [{ quality: 'high', audio: { tracks: [{ class: 'main', language: 'deu', uri: NO_STREAM }] } }] }] }] }),
   };
 }
 
@@ -42,7 +49,7 @@ test.beforeAll(async () => {
     epgXml: `<?xml version="1.0" encoding="UTF-8"?><tv><channel id="E2E.de"><display-name>E2E Kanal</display-name></channel><programme start="${xmltvTime(base - 30 * MIN)}" stop="${xmltvTime(base + 30 * MIN)}" channel="E2E.de"><title>Sendung</title></programme></tv>`,
     channels: [{ id: 'E2E.de', name: 'E2E Kanal' }],
     favorites: [],
-    env: { STREAMING_HUB_E2E_MEDIATHEK_ROUTES: routes, STREAMING_HUB_E2E_MEDIATHEK_LOGIN: 'ok' },
+    env: { STREAMING_HUB_E2E_MEDIATHEK_ROUTES: routes, STREAMING_HUB_E2E_MEDIATHEK_LOGIN: 'ok', STREAMING_HUB_E2E_ZDF_PIN: '1234' },
   });
   page = ctx.page;
   await page.setViewportSize({ width: 1280, height: 860 });
@@ -55,7 +62,7 @@ test.afterAll(async () => {
 
 const resolveFsk = () => page.evaluate(entry => window.mediathek.resolvePlayback(entry, null), { id: fskEntry.id, title: fskEntry.title, sourceId: 'ard', partner: 'ard' });
 
-test('Konten-Seite: Karten, experimentell, ZDF nicht unterstützt, Hinweis zum Passwort', async () => {
+test('Konten-Seite: Karten, experimentell, ZDF mit Anmeldung und PIN-Hinweis, Hinweis zum Passwort', async () => {
   await page.locator('.dashboard-section-tile[data-section="settings"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
   const group = page.locator('#settingsNav .settings-nav-group', { hasText: 'Mediatheken' });
@@ -65,8 +72,10 @@ test('Konten-Seite: Karten, experimentell, ZDF nicht unterstützt, Hinweis zum P
   await expect(page.locator('.settings-account-card')).toHaveCount(3);
   await expect(page.locator('#settingsMediathekAccountsIntro')).toContainText('Passwort nie');
   await expect(page.locator('#settingsMediathekAccount-arte-state')).toHaveText('Nicht angemeldet');
-  await expect(page.locator('#settingsMediathekAccount-zdf-state')).toContainText('Noch nicht unterstützt');
-  await expect(page.locator('#settingsMediathekAccount-zdf-login')).toBeHidden();
+  await expect(page.locator('#settingsMediathekAccount-zdf-state')).toHaveText('Nicht angemeldet');
+  await expect(page.locator('#settingsMediathekAccount-zdf-login')).toBeEnabled();
+  await expect(page.locator('.settings-account-card[data-sender="zdf"]')).toContainText('Altersverifikation');
+  await expect(page.locator('.settings-account-card[data-sender="zdf"]')).toContainText('FSK 18 bleibt');
   await expect(page.locator('.settings-account-card[data-sender="arte"] .settings-badge')).toBeVisible();
   await expect(page.locator('#settingsMediathekAccount-ard-logout')).toBeDisabled();
 });
@@ -98,10 +107,30 @@ test('Anmelden (Fenster-Ergebnis gemockt): Status, Testen, Freischaltung des Bei
   expect(ctx.problems.filter(problem => !/127\.0\.0\.1:9|ERR_CONNECTION_REFUSED|Failed to load resource/.test(problem))).toEqual([]);
 });
 
-test('Renderer kennt nur Zustände: keine Token-API, ZDF-Anmeldung wird abgelehnt', async () => {
+test('Renderer kennt nur Zustände: keine Token-API', async () => {
   const api = await page.evaluate(() => Object.keys(window.mediathek.accounts).sort());
   expect(api).toEqual(['login', 'logout', 'onChanged', 'status', 'test']);
-  const zdf = await page.evaluate(() => window.mediathek.accounts.login('zdf'));
-  expect(zdf.ok).toBe(false);
-  expect(zdf.code).toBe('unsupported');
+});
+
+test('ZDF: FSK-Beitrag nur mit Konto (Altersfreigabe + PIN) abspielbar; Abmelden sperrt wieder; kein Token im Status', async () => {
+  const resolveZdf = () => page.evaluate(entry => window.mediathek.resolvePlayback(entry, null), { id: 'ZDFFSK', title: 'Nachtkrimi', sourceId: 'zdf' });
+  const open = windowOpen('fsk16', Date.now()); // im Abrufzeitraum (22-6 Uhr) braucht auch die Website kein Konto
+  const before = await resolveZdf();
+  if (open) expect(before.resolution.kind).toBe('playable');
+  else {
+    expect(before.resolution.kind).toBe('ageRestricted');
+    expect(before.message).toContain('Mit ZDF-Konto freischaltbar');
+  }
+  await page.locator('#settingsMediathekAccount-zdf-login').click();
+  await expect(page.locator('#settingsMediathekAccount-zdf-state')).toContainText('Angemeldet seit');
+  await page.locator('#settingsMediathekAccount-zdf-test').click();
+  await expect(page.locator('#settingsMediathekAccountsStatus')).toContainText('Anmeldung gültig');
+  const unlocked = await resolveZdf();
+  expect(unlocked.resolution.kind).toBe('playable');
+  expect(unlocked.resolution.url).toBe(NO_STREAM);
+  const dump = await page.evaluate(async () => JSON.stringify(await window.mediathek.accounts.status()));
+  expect(dump).not.toMatch(/e2e-access|1234|pin/i);
+  await page.locator('#settingsMediathekAccount-zdf-logout').click();
+  await expect(page.locator('#settingsMediathekAccount-zdf-state')).toHaveText('Nicht angemeldet');
+  expect((await resolveZdf()).resolution.kind).toBe(open ? 'playable' : 'ageRestricted');
 });

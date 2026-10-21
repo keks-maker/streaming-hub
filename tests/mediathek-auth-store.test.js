@@ -93,7 +93,7 @@ test('Beschädigte oder fremd verschlüsselte Datei: abgemeldet, kein Absturz, L
 
 test('Validierung: unbekannter Sender, ungültiger Datensatz', () => {
   const store = createAuthStore({ file: null, safeStorage: null });
-  assert.throws(() => store.set('zdf', RECORD), /Unbekannter Sender/);
+  assert.throws(() => store.set('sat1', RECORD), /Unbekannter Sender/);
   assert.throws(() => store.set('arte', { accessToken: '' }), /Ungültig/);
 });
 
