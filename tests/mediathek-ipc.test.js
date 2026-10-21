@@ -160,6 +160,7 @@ test('Leere Folgenliste (FSK tagsüber): Erklärung statt leerer Meldung; Konto 
   assert.deepEqual(empty.seasons, []);
   assert.match(empty.emptyNote, /ab 22 Uhr \(FSK 16\) bzw\. 23 Uhr \(FSK 18\)/);
   assert.ok(!/Konto/.test(empty.emptyNote)); // ohne Konto-Unterstützung kein Hinweis
+  assert.equal(empty.emptyConnect, false, 'ohne Konto-Unterstützung kein Knopf "Konto verbinden"');
 
   const urls = [];
   const http = { getText: async (url) => { urls.push(url); return url.includes('userId=u1') ? fixture('ardGroupingMurdoch') : '{"widgets":[]}'; } };

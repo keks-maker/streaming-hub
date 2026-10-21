@@ -638,6 +638,7 @@ const mediathekHub = createMediathekHub(mediathekDashboardRoot, {
   },
   onBack: () => handleBackNavigation(),
   onOpenSettings: () => openSettingsPage('mediathek-sources'),
+  onOpenAccounts: () => openSettingsPage('mediathek-accounts'),
   onPlaybackStart: () => pauseRadioForVideo(),
 });
 

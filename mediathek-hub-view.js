@@ -49,7 +49,7 @@ function persistableRoute(route) {
  *            fileManager (Anzeigename des Dateimanagers) }
  */
 function createMediathekHub(root, options = {}) {
-  const { mediathek, logger = null, notify = null, services = () => [], iconSrc = () => null, openService = () => {}, openWeb = () => {}, onBeforeNavigate = null, onBack = null, onOpenSettings = null, onPlaybackStart = null, timers, downloads: downloadOptions = null, fileManager = 'Dateimanager' } = options;
+  const { mediathek, logger = null, notify = null, services = () => [], iconSrc = () => null, openService = () => {}, openWeb = () => {}, onBeforeNavigate = null, onBack = null, onOpenSettings = null, onOpenAccounts = null, onPlaybackStart = null, timers, downloads: downloadOptions = null, fileManager = 'Dateimanager' } = options;
   const doc = root.ownerDocument || document;
 
   const live = doc.createElement('span');
@@ -307,6 +307,7 @@ function createMediathekHub(root, options = {}) {
     iconSrc,
     openService,
     openSettings: () => onOpenSettings && onOpenSettings(),
+    openAccounts: () => onOpenAccounts && onOpenAccounts(),
     downloads: dlStore ? { enabled: dlEnabled, activeCount: () => dlStore.activeCount(), root: dlRoot, view: dlView } : null,
     reload: () => {
       if (dlStore) dlStore.load();

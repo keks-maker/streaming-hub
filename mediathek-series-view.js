@@ -374,6 +374,12 @@ function createMediathekSeriesView(root, ctx) {
     if (page.showSeasonPicker()) root.appendChild(seasonChips(state));
     if (total === 0) {
       root.appendChild(el(doc, 'p', 'mediathek-hint mediathek-empty', state.emptyNote || 'Keine Folgen verfügbar.'));
+      if (state.emptyConnect && typeof ctx.openAccounts === 'function') {
+        const connect = el(doc, 'button', 'mediathek-btn mediathek-connect', 'Konto verbinden');
+        connect.type = 'button';
+        connect.addEventListener('click', () => ctx.openAccounts());
+        root.appendChild(connect);
+      }
       return;
     }
     for (const season of page.visibleSeasons()) {
