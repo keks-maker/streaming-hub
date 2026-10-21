@@ -419,7 +419,7 @@ const overlayBar = document.getElementById('overlayBar');
 
 // Nativ unterstützte Mediathek-Quellen (ids wie Weblink-Standarddienste); der EPG-Link öffnet dort die native Suche.
 const NATIVE_MEDIATHEK_SOURCES = new Set(['ard', 'zdf', 'arte']);
-const NATIVE_MEDIATHEK_LABELS = { ard: 'ARD Mediathek', zdf: 'ZDF Mediathek', arte: 'ARTE' };
+const NATIVE_MEDIATHEK_LABELS = { ard: 'ARD Mediathek', zdf: 'ZDF Mediathek', arte: 'ARTE Mediathek' };
 const nav = document.getElementById('overlayNav');
 const updateBtn = document.getElementById('updateBtn');
 const dashboardUpdateSlot = document.getElementById('dashboardUpdateSlot');
@@ -2217,7 +2217,7 @@ const epgView = createEpgView(epgOverlay, {
     const svc = services.find(s => s.id === mediathek.serviceId);
     if (!svc && !NATIVE_MEDIATHEK_SOURCES.has(mediathek.serviceId)) return null;
     return {
-      label: `In ${svc ? svc.name : NATIVE_MEDIATHEK_LABELS[mediathek.serviceId] || 'Mediathek'} ansehen`,
+      label: `In ${NATIVE_MEDIATHEK_LABELS[mediathek.serviceId] || (svc ? svc.name : 'Mediathek')} ansehen`,
       open: () => {
         // ARD/ZDF/arte: native Mediathek-Suche mit vorgewählter Quelle; andere Dienste wie bisher als Webseite
         if (NATIVE_MEDIATHEK_SOURCES.has(mediathek.serviceId)) {

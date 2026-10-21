@@ -184,6 +184,7 @@ test('Bibliothek: Größe, Datum, „Quelle läuft ab am“; Abspielen über dl:
   await row.locator('[data-action="play"]').click();
   const player = page.locator('.mediathek-player');
   await expect(player).toBeVisible();
+  await expect(page.locator('#overlayBar')).toBeHidden(); // Offline-Wiedergabe: Navigationsleiste liegt nicht über dem Player
   const video = player.locator('video');
   await expect(video).toHaveAttribute('src', /^dl:\/\/local\/dl_done_0001\.mp4$/);
   if (hasVideo) {

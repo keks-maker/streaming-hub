@@ -152,3 +152,25 @@ test('Wiedergabe: Sperren liefern Meldung, schreiben keinen Verlauf', async () =
   assert.match((await call('mediathek:resolve-playback', { entry: { ...entry, id: 'none' } })).message, /nicht verfügbar/);
   assert.deepEqual(stored.history, []);
 });
+
+test('Leere Folgenliste (FSK tagsüber): Erklärung statt leerer Meldung; Konto liefert die Liste', async () => {
+  const { call } = setup({ routes: { '/grouping/a': '{"widgets":[]}' } });
+  const empty = await call('mediathek:series', { series });
+  assert.equal(empty.ok, true);
+  assert.deepEqual(empty.seasons, []);
+  assert.match(empty.emptyNote, /ab 22 Uhr \(FSK 16\) bzw\. 23 Uhr \(FSK 18\)/);
+  assert.ok(!/Konto/.test(empty.emptyNote)); // ohne Konto-Unterstützung kein Hinweis
+
+  const urls = [];
+  const http = { getText: async (url) => { urls.push(url); return url.includes('userId=u1') ? fixture('ardGroupingMurdoch') : '{"widgets":[]}'; } };
+  const auth = { accountState: () => 'signedIn', ensureFresh: async () => {}, tokenUsable: () => true, personalizeUrl: (sender, url) => `${url}&userId=u1` };
+  const service = createMediathekService({ http, auth });
+  const retried = await service.retryEmptySeries(series);
+  assert.equal(retried.account, 'unlocked');
+  assert.equal(retried.entries.length, 3);
+  assert.ok(urls[0].includes('userId=u1'));
+  const signedOut = createMediathekService({ http, auth: { ...auth, accountState: () => 'signedOut' } });
+  assert.deepEqual(await signedOut.retryEmptySeries(series), { entries: [], account: 'signedOut' });
+  const other = await signedOut.retryEmptySeries({ ...series, sourceId: 'arte' });
+  assert.equal(other.account, 'signedOut');
+});

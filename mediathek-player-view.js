@@ -6,6 +6,7 @@
 
 const model = require('./mediathek-player-model.js');
 const { el, button } = require('./mediathek-cards.js');
+const { fskText } = require('./mediathek-format.js');
 
 const MEDIA_ERRORS = {
   1: 'Die Wiedergabe wurde abgebrochen.',
@@ -242,7 +243,9 @@ function createMediathekPlayer(host, ctx) {
     const audio = select(doc, 'mediathekPlayerAudio', 'Ton');
     const subtitles = select(doc, 'mediathekPlayerSubtitles', 'Untertitel');
     menus.append(quality.wrap, audio.wrap, subtitles.wrap);
-    bar.append(closeBtn, title, menus);
+    const fsk = fskText(play.entry.fsk);
+    if (fsk) bar.append(closeBtn, title, el(doc, 'span', 'mediathek-fsk-badge mediathek-player-fsk', fsk), menus);
+    else bar.append(closeBtn, title, menus);
 
     const error = el(doc, 'div', 'mediathek-player-error');
     error.hidden = true;

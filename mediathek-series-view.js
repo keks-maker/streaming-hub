@@ -4,7 +4,7 @@
 // Dünne Ansicht über mediathek-series-model.js.
 
 const { createSeriesPage } = require('./mediathek-series-model.js');
-const { sourceBadge, imageSrc, subtitleText, minutesText } = require('./mediathek-format.js');
+const { sourceBadge, imageSrc, subtitleText, minutesText, fskText, seriesFsk } = require('./mediathek-format.js');
 const { el, button, createThumb, setIcon, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG } = require('./mediathek-cards.js');
 const { downloadIcon, AUTO_SVG } = require('./mediathek-download-icons.js');
 const { stateLabel } = require('./mediathek-downloads-model.js');
@@ -216,6 +216,12 @@ function createMediathekSeriesView(root, ctx) {
     const title = el(doc, 'h2', 'mediathek-hero-title', series.title);
     title.id = 'mediathekSeriesTitle';
     text.appendChild(title);
+    const fsk = fskText(seriesFsk(state.seasons));
+    if (fsk) {
+      const badges = el(doc, 'p', 'mediathek-dialog-badges');
+      badges.appendChild(el(doc, 'span', 'mediathek-fsk-badge', fsk));
+      text.appendChild(badges);
+    }
     if (series.description) text.appendChild(el(doc, 'p', 'mediathek-hero-desc', series.description));
 
     const actions = el(doc, 'div', 'mediathek-actions');
@@ -367,7 +373,7 @@ function createMediathekSeriesView(root, ctx) {
     root.appendChild(head);
     if (page.showSeasonPicker()) root.appendChild(seasonChips(state));
     if (total === 0) {
-      root.appendChild(el(doc, 'p', 'mediathek-hint mediathek-empty', 'Keine Folgen verfügbar.'));
+      root.appendChild(el(doc, 'p', 'mediathek-hint mediathek-empty', state.emptyNote || 'Keine Folgen verfügbar.'));
       return;
     }
     for (const season of page.visibleSeasons()) {

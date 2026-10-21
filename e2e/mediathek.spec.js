@@ -29,7 +29,7 @@ function buildRoutes() {
     'pages/HOME/': fixture('arteHomeGenres'),
     'pages/DOR/': fixture('arteGenrePage'),
     MANUAL_TEASERS: fixture('arteMore'),
-    '/grouping/': fixture('ardGroupingMurdoch').replaceAll('S10/E01', 'S9/E01'),
+    '/grouping/': fixture('ardGroupingMurdoch').replaceAll('S10/E01', 'S9/E01').replaceAll('"longTitle"', '"maturityContentRating":"FSK12","longTitle"'),
     [`/item/${episodes[0].id}`]: noNet(fixture('ardItem')),
     [`/item/${episodes[1].id}`]: fixture('ardItemInstitutFskBlocked'),
     [`/item/${episodes[2].id}`]: noNet(fixture('ardItemGeoBlocked')),
@@ -108,6 +108,7 @@ test('Serie: Kopf, Staffelauswahl, Sortierung, Merken, Zurück', async () => {
   await expect(page.locator('#mediathekSeriesPlay')).toHaveText('Abspielen');
   const items = page.locator('#mediathekDashboard .mediathek-episode');
   await expect(items).toHaveCount(3);
+  await expect(page.locator('#mediathekDashboard .mediathek-hero .mediathek-fsk-badge')).toHaveText('FSK 12');
   // zwei Staffeln (S9 / S10) -> Auswahl
   const seasons = page.locator('#mediathekDashboard .mediathek-season-chips .mediathek-chip');
   await expect(seasons).toHaveText(['Alle', 'Staffel 9', 'Staffel 10']);
@@ -148,6 +149,7 @@ test('Detail und Wiedergabe: Hinweise (FSK/Geo), Abspielen öffnet den Player, E
   await expect(dialog.locator('.mediathek-dialog-title')).toContainText('Folge 8');
   await expect(page.locator('#mediathekDetailPlay')).toBeFocused();
   await expect(page.locator('#mediathekDetailFav')).toHaveAttribute('aria-pressed', 'true');
+  await expect(dialog.locator('.mediathek-fsk-badge')).toHaveText('FSK 12');
   await shot(page, 'detail');
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
@@ -167,9 +169,26 @@ test('Detail und Wiedergabe: Hinweise (FSK/Geo), Abspielen öffnet den Player, E
   await expect(player).toHaveAttribute('role', 'dialog');
   await expect(player.locator('.mediathek-player-title')).toContainText('Folge 8');
   await expect(player.locator('video')).toBeAttached();
+  await expect(player.locator('.mediathek-player-fsk')).toHaveText('FSK 12');
+  // Die Navigationsleiste darf Titelzeile und Tonwahl nicht überdecken; der Schließen-Knopf bleibt bedienbar
+  await expect(page.locator('#overlayBar')).toBeHidden();
+  const close = player.locator('#mediathekPlayerClose');
+  const box = await close.boundingBox();
+  const topmost = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y).closest('.mediathek-player') !== null, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  expect(topmost).toBe(true);
   await shot(page, 'player');
-  await page.keyboard.press('Escape');
+  await close.click();
   await expect(player).toHaveCount(0);
+  await expect(page.locator('#overlayBar')).toBeVisible();
+  // Detail-Fenster: Navigationsleiste liegt darunter
+  await items.filter({ hasText: 'Folge 8' }).locator('.mediathek-info-btn').click();
+  const overDialog = await page.evaluate(() => {
+    const bar = document.getElementById('overlayBar').getBoundingClientRect();
+    const hit = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
+    return Boolean(hit && hit.closest('.mediathek-modal'));
+  });
+  expect(overDialog).toBe(true);
+  await page.keyboard.press('Escape');
   // Zurück zur Serie; Abspielen-Knopf wählt nun passend
   await expect(page.locator('#mediathekSeriesPlay')).toBeVisible();
   await page.locator('#mediathekSeriesBack').click();
