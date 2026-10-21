@@ -117,7 +117,7 @@ let downloadService = null;
 let subscriptionService = null; // Serien-Abos „Neue Folgen automatisch laden“
 let mediathekService = null;
 let mediathekHttp = null;
-let mediathekAuth = null; // Konten (experimentell): Anmeldung beim Anbieter, Token nur verschlüsselt
+let mediathekAuth = null; // Konten: Anmeldung beim Anbieter, Token nur verschlüsselt
 // Wochen-EPG im Main (Etappe 1, Konzept §3.2) — lebt unabhängig vom Fenster
 let epgService = null;
 let trayController = null;

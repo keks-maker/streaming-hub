@@ -20,9 +20,9 @@ function status(over = {}) {
   return {
     persistent: true,
     accounts: [
-      { sender: 'arte', name: 'arte', experimental: true, state: 'signedOut', since: null },
-      { sender: 'ard', name: 'ARD', experimental: true, state: 'signedOut', since: null },
-      { sender: 'zdf', name: 'ZDF', experimental: true, state: 'signedOut', since: null },
+      { sender: 'arte', name: 'arte', state: 'signedOut', since: null },
+      { sender: 'ard', name: 'ARD', state: 'signedOut', since: null },
+      { sender: 'zdf', name: 'ZDF', state: 'signedOut', since: null },
     ],
     ...over,
   };
@@ -31,25 +31,25 @@ function status(over = {}) {
 // ── Modell ──
 
 test('Modell: Status, Knöpfe und Texte je Zustand', () => {
-  const out = describeAccount({ sender: 'arte', name: 'arte', experimental: true, state: 'signedOut' });
-  assert.deepEqual([out.statusText, out.canLogin, out.canLogout, out.canTest, out.loginLabel, out.badge], ['Nicht angemeldet', true, false, false, 'Anmelden', 'experimentell']);
+  const out = describeAccount({ sender: 'arte', name: 'arte', state: 'signedOut' });
+  assert.deepEqual([out.statusText, out.canLogin, out.canLogout, out.canTest, out.loginLabel], ['Nicht angemeldet', true, false, false, 'Anmelden']);
   const since = Date.parse('2026-10-20T10:05:00');
-  const inn = describeAccount({ sender: 'ard', name: 'ARD', experimental: true, state: 'signedIn', since });
+  const inn = describeAccount({ sender: 'ard', name: 'ARD', state: 'signedIn', since });
   assert.match(inn.statusText, /^Angemeldet seit 20\.10\.2026, 10:05 Uhr$/);
   assert.deepEqual([inn.canLogin, inn.canLogout, inn.canTest, inn.statusKind], [false, true, true, 'ok']);
-  const expired = describeAccount({ sender: 'ard', name: 'ARD', experimental: true, state: 'expired' });
+  const expired = describeAccount({ sender: 'ard', name: 'ARD', state: 'expired' });
   assert.deepEqual([expired.statusText, expired.loginLabel, expired.canLogin, expired.canLogout, expired.canTest, expired.statusKind], ['Anmeldung abgelaufen', 'Erneut anmelden', true, true, false, 'warn']);
-  const zdf = describeAccount({ sender: 'zdf', name: 'ZDF', experimental: true, state: 'signedOut' });
+  const zdf = describeAccount({ sender: 'zdf', name: 'ZDF', state: 'signedOut' });
   assert.match(zdf.hint, /Altersverifikation/);
   assert.match(zdf.hint, /PIN/);
   assert.match(zdf.hint, /FSK 18 bleibt/);
   assert.deepEqual([zdf.canLogin, zdf.canLogout, zdf.canTest, zdf.supported], [true, false, false, true]);
-  const none = describeAccount({ sender: 'zdf', name: 'ZDF', experimental: true, state: 'unsupported' });
+  const none = describeAccount({ sender: 'zdf', name: 'ZDF', state: 'unsupported' });
   assert.deepEqual([none.canLogin, none.canLogout, none.canTest, none.supported], [false, false, false, false], 'ohne Anbieter-Modul keine Knöpfe');
   assert.equal(describeAccount({ sender: 'arte', name: 'arte', state: 'signedIn', since }, { busy: true }).canLogout, false, 'während eines Vorgangs gesperrt');
   assert.equal(sinceText(0), 'Angemeldet');
   assert.match(GENERAL_HINT, /Passwort[^.]*nie/);
-  assert.match(GENERAL_HINT, /experimentell/);
+  assert.doesNotMatch(GENERAL_HINT, /experimentell/);
 });
 
 // ── Ansicht ──
@@ -80,7 +80,7 @@ function mount(accounts) {
 const button = (root, sender, action) => root.byId(`settingsMediathekAccount-${sender}-${action}`);
 const statusText = root => root.byId('settingsMediathekAccountsStatus').textContent;
 
-test('Ansicht: Karte je Sender mit Status, Knöpfen, experimentell-Kennzeichnung; ZDF mit Knöpfen und PIN-Hinweis', async () => {
+test('Ansicht: Karte je Sender mit Status, Knöpfen, ZDF mit Knöpfen und PIN-Hinweis', async () => {
   const accounts = makeAccounts();
   const { root, view } = mount(accounts);
   await view.refresh();
@@ -90,7 +90,7 @@ test('Ansicht: Karte je Sender mit Status, Knöpfen, experimentell-Kennzeichnung
   assert.equal(button(root, 'arte', 'login').disabled, false);
   assert.equal(button(root, 'arte', 'logout').disabled, true);
   assert.equal(button(root, 'arte', 'test').disabled, true);
-  assert.equal(root.byClass('settings-badge')[0].hidden, false);
+  assert.equal(root.byClass('settings-badge').length, 0);
   assert.equal(button(root, 'zdf', 'login').hidden, false);
   assert.equal(button(root, 'zdf', 'login').disabled, false);
   assert.equal(root.byId('settingsMediathekAccount-zdf-state').textContent, 'Nicht angemeldet');

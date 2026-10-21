@@ -1,6 +1,6 @@
 'use strict';
 
-// Einstellungen ▸ Mediatheken ▸ Konten (experimentell): je Sender eine Karte mit Status, Anmelden/Abmelden und
+// Einstellungen ▸ Mediatheken ▸ Konten: je Sender eine Karte mit Status, Anmelden/Abmelden und
 // "Freischaltung testen". Die Anmeldung läuft im Anbieter-Fenster des Main-Prozesses; hier gibt es nie Passwörter.
 
 const { el, statusLine, setStatus, formatIpcError } = require('./settings-radio-dom.js');
@@ -35,7 +35,6 @@ function createMediathekAccountsView(root, { mediathek, logger = null } = {}) {
     card.setAttribute('role', 'listitem');
     card.dataset.sender = sender;
     const title = el(doc, 'h5', 'settings-card-title settings-account-title');
-    const badge = el(doc, 'span', 'settings-badge', 'experimentell');
     const state = el(doc, 'p', 'settings-field-hint');
     state.id = `settingsMediathekAccount-${sender}-state`;
     const hint = el(doc, 'p', 'settings-field-hint');
@@ -45,8 +44,8 @@ function createMediathekAccountsView(root, { mediathek, logger = null } = {}) {
     for (const node of [login, logout, test]) node.setAttribute('aria-describedby', state.id);
     const actions = el(doc, 'div', 'settings-account-actions');
     actions.append(login, logout, test);
-    card.append(title, badge, state, hint, actions);
-    cards.set(sender, { card, title, badge, state, hint, login, logout, test, actions });
+    card.append(title, state, hint, actions);
+    cards.set(sender, { card, title, state, hint, login, logout, test, actions });
     return card;
   }
 
@@ -56,7 +55,6 @@ function createMediathekAccountsView(root, { mediathek, logger = null } = {}) {
       const parts = cards.get(account.sender);
       const info = describeAccount(account, { busy: busy.has(account.sender) });
       parts.title.textContent = info.title;
-      parts.badge.hidden = !info.badge;
       parts.state.textContent = info.statusText;
       parts.state.dataset.kind = info.statusKind;
       parts.hint.textContent = info.hint;

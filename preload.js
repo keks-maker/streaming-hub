@@ -233,7 +233,7 @@ contextBridge.exposeInMainWorld('mediathek', {
   getSettings: () => ipcRenderer.invoke('mediathek:get-settings'),
   setSettings: patch => ipcRenderer.invoke('mediathek:set-settings', patch),
   onSettingsChanged: radioListener('mediathek:settings-changed'),
-  // Konten (experimentell): nur Zustände, nie Token
+  // Konten: nur Zustände, nie Token
   accounts: {
     status: () => ipcRenderer.invoke('mediathek:accounts-status'),
     login: sender => ipcRenderer.invoke('mediathek:accounts-login', { sender }),

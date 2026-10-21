@@ -1,7 +1,7 @@
 'use strict';
 
 // Einstellungen ▸ Mediatheken ▸ Konten: Darstellung der Konten (rein, ohne DOM). Der Zustand kommt aus
-// window.mediathek.accounts.status() (nie Token): { sender, name, state, since, experimental }.
+// window.mediathek.accounts.status() (nie Token): { sender, name, state, since }.
 
 const SENDER_HINTS = {
   arte: 'Anmeldung mit deinem MeinARTE-Konto. Die Altersbestätigung (FSK 16 und 18) führst du einmalig bei arte durch.',
@@ -30,7 +30,6 @@ function describeAccount(account, { busy = false } = {}) {
   return {
     sender: account.sender,
     title: account.name,
-    badge: account.experimental ? 'experimentell' : null,
     statusKind: state === 'signedIn' ? 'ok' : state === 'expired' ? 'warn' : 'none',
     statusText: state === 'signedIn' ? sinceText(account.since) + (account.ardAccount ? ' (ARD-Konto)' : '') : STATE_TEXT[state] || STATE_TEXT.signedOut,
     hint: SENDER_HINTS[account.sender] || '',
@@ -44,8 +43,7 @@ function describeAccount(account, { busy = false } = {}) {
 
 const GENERAL_HINT =
   'Das Konto und der Altersnachweis liegen beim Anbieter. Die Anmeldung läuft in einem eigenen Fenster direkt beim Sender; ' +
-  'diese App sieht dein Passwort nie. Mit Konto werden Beiträge abrufbar, die der Anbieter für dich freigibt (zum Beispiel FSK 16 oder 18 außerhalb der Sendezeit; beim ZDF nur bis FSK 16). ' +
-  'Funktion experimentell: nur mit eigenem Konto testbar.';
+  'diese App sieht dein Passwort nie. Mit Konto werden Beiträge abrufbar, die der Anbieter für dich freigibt (zum Beispiel FSK 16 oder 18 außerhalb der Sendezeit; beim ZDF nur bis FSK 16). ';
 
 const STORAGE_NOTE = {
   persistent: 'Die Anmeldung wird verschlüsselt gespeichert (Schlüsselbund des Systems).',

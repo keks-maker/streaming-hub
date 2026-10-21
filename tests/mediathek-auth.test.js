@@ -183,7 +183,6 @@ test('Status: Zustände je Sender, ZDF nicht unterstützt, nie Token im Status',
   const { auth } = setup();
   let status = auth.status();
   assert.deepEqual(status.accounts.map(a => [a.sender, a.state]), [['arte', 'signedOut'], ['ard', 'signedOut'], ['zdf', 'unsupported']]);
-  assert.equal(status.accounts[0].experimental, true);
   await auth.login('arte');
   status = auth.status();
   assert.equal(status.accounts[0].state, 'signedIn');

@@ -62,7 +62,7 @@ test.afterAll(async () => {
 
 const resolveFsk = () => page.evaluate(entry => window.mediathek.resolvePlayback(entry, null), { id: fskEntry.id, title: fskEntry.title, sourceId: 'ard', partner: 'ard' });
 
-test('Konten-Seite: Karten, experimentell, ZDF mit Anmeldung und PIN-Hinweis, Hinweis zum Passwort', async () => {
+test('Konten-Seite: Karten, ZDF mit Anmeldung und PIN-Hinweis, Hinweis zum Passwort', async () => {
   await page.locator('.dashboard-section-tile[data-section="settings"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
   const group = page.locator('#settingsNav .settings-nav-group', { hasText: 'Mediatheken' });
@@ -76,7 +76,7 @@ test('Konten-Seite: Karten, experimentell, ZDF mit Anmeldung und PIN-Hinweis, Hi
   await expect(page.locator('#settingsMediathekAccount-zdf-login')).toBeEnabled();
   await expect(page.locator('.settings-account-card[data-sender="zdf"]')).toContainText('Altersverifikation');
   await expect(page.locator('.settings-account-card[data-sender="zdf"]')).toContainText('FSK 18 bleibt');
-  await expect(page.locator('.settings-account-card[data-sender="arte"] .settings-badge')).toBeVisible();
+  await expect(page.locator('.settings-badge')).toHaveCount(0);
   await expect(page.locator('#settingsMediathekAccount-ard-logout')).toBeDisabled();
 });
 
