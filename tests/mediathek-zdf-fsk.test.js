@@ -373,15 +373,23 @@ test('PIN merken: Häkchen speichert nach erfolgreicher Prüfung; gemerkte PIN f
 });
 
 test('Falsche PIN: klare Meldung, keine Wiederholung, gemerkte falsche PIN wird verworfen, kein Stream; gesperrt bei 429', async () => {
-  const wrong = makeFsk({ pinStatus: 403 });
+  const wrong = makeFsk({ pinStatus: 422 });
   assert.deepEqual(await wrong.fsk.unlock(fskRoot()), { ok: false, account: 'wrongPin' });
   assert.equal(wrong.posts.length, 1, 'keine automatische Wiederholung');
   assert.equal(wrong.auth.state.remembered, null);
   assert.ok(!wrong.http.calls.some(call => call.url === PTMD_URL), 'ohne gültige PIN kein Stream-Abruf');
-  const savedWrong = makeFsk({ auth: fakeAuth({ pin: '0000' }), pinStatus: 401 });
+  const savedWrong = makeFsk({ auth: fakeAuth({ pin: '0000' }), pinStatus: 400 });
   assert.deepEqual(await savedWrong.fsk.unlock(fskRoot()), { ok: false, account: 'wrongPin' });
   assert.equal(savedWrong.auth.state.cleared, 1);
   assert.equal(savedWrong.posts.length, 1);
+  for (const status of [401, 403]) {
+    const expired = makeFsk({ auth: fakeAuth({ pin: '1234' }), pinStatus: status });
+    assert.deepEqual(await expired.fsk.unlock(fskRoot()), { ok: false, account: 'expired' });
+    assert.equal(expired.auth.state.cleared, 0, 'gemerkte PIN bleibt bei abgelaufener Sitzung erhalten');
+  }
+  const parallel = makeFsk({ auth: fakeAuth({ pin: '1234' }) });
+  await Promise.all([parallel.fsk.unlock(fskRoot()), parallel.fsk.unlock(fskRoot())]);
+  assert.equal(parallel.posts.length, 1, 'gleichzeitige Aufrufe: eine PIN-Anfrage');
   const locked = makeFsk({ pinStatus: 429 });
   assert.deepEqual(await locked.fsk.unlock(fskRoot()), { ok: false, account: 'pinLocked' });
   const server = makeFsk({ pinStatus: 500 });
