@@ -294,7 +294,7 @@ function createSearchStore({ api }) {
   };
 }
 
-const ENTRY_FIELDS = ['id', 'title', 'subtitle', 'description', 'imageUrl', 'duration', 'sourceId', 'airedAt', 'partner', 'season', 'episode', 'regionRestricted', 'originalVersionId', 'audioDescriptionId', 'availableUntil'];
+const ENTRY_FIELDS = ['id', 'title', 'subtitle', 'description', 'imageUrl', 'duration', 'sourceId', 'airedAt', 'partner', 'season', 'episode', 'regionRestricted', 'originalVersionId', 'audioDescriptionId', 'availableUntil', 'fsk'];
 
 /** Folge für den IPC-Aufruf: nur die erlaubten Felder (der Main lehnt andere, z. B. streamUrl, ab und löst Adressen selbst auf). */
 function entryForIpc(entry) {

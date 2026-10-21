@@ -158,7 +158,7 @@ test('reveal/play-info: nur Dateien aus dem eigenen Index', () => {
   assert.deepEqual(env.calls.find(call => call[0] === 'reveal'), ['reveal', '/root/Mediathek/ARD/Serie/S01E01.mp4']);
   assert.equal(env.invoke('downloads:reveal', { id: 'dl_unknown99' }).code, 'missing');
   const info = env.invoke('downloads:play-info', { id: ID });
-  assert.deepEqual(info, { ok: true, url: `dl://local/${ID}.mp4`, container: 'mp4', title: 'Folge', historyTitle: 'Folge 1', seriesTitle: 'Serie', sourceId: 'ard', entryId: 'E1', durationSec: 1800, start: 42 });
+  assert.deepEqual(info, { ok: true, url: `dl://local/${ID}.mp4`, container: 'mp4', title: 'Folge', historyTitle: 'Folge 1', seriesTitle: 'Serie', sourceId: 'ard', entryId: 'E1', fsk: null, durationSec: 1800, start: 42 });
   assert.equal(env.invoke('downloads:play-info', { id: 'dl_unknown99' }).ok, false);
 });
 

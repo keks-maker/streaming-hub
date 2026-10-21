@@ -133,6 +133,31 @@ function createMediathekHub(root, options = {}) {
     return result.favorite;
   }
 
+  const fskKnown = new Map(); // "<quelle>:<id>" -> nachgeladene Altersfreigabe (ZDF-Teaser nennen sie oft nicht)
+
+  /** Eintrag mit Altersfreigabe: ZDF ohne Angabe fragt einmal das Dokument ab (Main cached); Fehler lassen den Eintrag unverändert. */
+  async function withFsk(entry) {
+    if (!entry || typeof entry.fsk === 'number' || entry.sourceId !== 'zdf' || typeof mediathek.entryFsk !== 'function') return entry;
+    const key = `${entry.sourceId}:${entry.id}`;
+    if (!fskKnown.has(key)) {
+      try {
+        const result = await mediathek.entryFsk(entryForIpc(entry));
+        if (result && result.ok) fskKnown.set(key, typeof result.fsk === 'number' ? result.fsk : null);
+      } catch {
+        return entry;
+      }
+    }
+    const fsk = fskKnown.get(key);
+    return typeof fsk === 'number' ? { ...entry, fsk } : entry;
+  }
+
+  function openDetail(entry, series, trigger) {
+    detail.open({ entry, series, trigger });
+    withFsk(entry).then(full => {
+      if (full !== entry) detail.refreshEntry(full);
+    });
+  }
+
   async function play(entry, series, trigger) {
     if (resolving) return;
     resolving = true;
@@ -156,12 +181,12 @@ function createMediathekHub(root, options = {}) {
       blocked.set(entry.id, { ...(problem || { reason: 'unavailable', message: 'Stream nicht verfügbar.' }), webUrl: result.webUrl || null });
       announce((problem && problem.message) || 'Stream nicht verfügbar.');
       renderCurrent();
-      detail.open({ entry, series: series || null, trigger });
+      openDetail(entry, series || null, trigger);
       return;
     }
     blocked.delete(entry.id);
     detail.close({ restoreFocus: false });
-    player.open({ entry, series: series || null, url: result.resolution.url, startPosition: startPosition(result), trigger });
+    player.open({ entry: await withFsk(entry), series: series || null, url: result.resolution.url, startPosition: startPosition(result), trigger });
   }
 
   // ── Downloads (optional): Zustand liegt im Store des Renderers (auch für den Navbar-Indikator) ──
@@ -210,7 +235,7 @@ function createMediathekHub(root, options = {}) {
   /** Offline-Wiedergabe eines fertigen Downloads im Mediathek-Player (dl://-Adresse aus dem Main, Fortsetzen, Verlauf). */
   function playLocal(info, item) {
     player.open({
-      entry: { id: info.entryId, title: info.historyTitle, sourceId: info.sourceId, imageUrl: item.imageUrl || null },
+      entry: { id: info.entryId, title: info.historyTitle, sourceId: info.sourceId, imageUrl: item.imageUrl || null, fsk: typeof info.fsk === 'number' ? info.fsk : null },
       series: null,
       url: info.url,
       startPosition: typeof info.start === 'number' && info.start > 0 ? info.start : 0,
@@ -289,7 +314,7 @@ function createMediathekHub(root, options = {}) {
     isBlocked: id => blocked.get(id) || null,
     isFavorite: series => store.isFavorite(series),
     play,
-    openDetail: (entry, series, trigger) => detail.open({ entry, series, trigger }),
+    openDetail,
     openSeries: series => open({ view: 'series', series }),
     openGenre: genre => open({ view: 'genre', genre }),
     toggleFavorite,

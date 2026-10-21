@@ -219,6 +219,7 @@ contextBridge.exposeInMainWorld('mediathek', {
   home: source => ipcRenderer.invoke('mediathek:home', { source }),
   search: (query, source, page) => ipcRenderer.invoke('mediathek:search', { query, source, page }),
   series: series => ipcRenderer.invoke('mediathek:series', { series }),
+  entryFsk: entry => ipcRenderer.invoke('mediathek:entry-fsk', { entry }),
   genre: genre => ipcRenderer.invoke('mediathek:genre', { genre }),
   loadMore: section => ipcRenderer.invoke('mediathek:load-more', { section }),
   resolvePlayback: (entry, series) => ipcRenderer.invoke('mediathek:resolve-playback', { entry, series }),
