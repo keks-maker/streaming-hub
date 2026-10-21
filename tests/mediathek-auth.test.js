@@ -6,7 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createAuthStore } = require('../lib/mediathek/auth/store.js');
-const { createArteProvider, parseOidcEntries, REALM, TOKEN_ENDPOINT } = require('../lib/mediathek/auth/arte.js');
+const { createArteProvider, parseOidcEntries, REALM, TOKEN_ENDPOINT, REDIRECT_URI } = require('../lib/mediathek/auth/arte.js');
 const { createArdProvider, FIREBASE_API_KEY } = require('../lib/mediathek/auth/ard.js');
 const { createMediathekAuth } = require('../lib/mediathek/auth/index.js');
 const { createAuthNet } = require('../lib/mediathek/auth/net.js');
@@ -72,7 +72,7 @@ test('arte: Auffrischung am Token-Endpunkt mit refresh_token und client_id, Rota
   const net = fakeNet({ postForm: () => ({ access_token: 'neu', refresh_token: 'neu-r', expires_in: 600 }) });
   const provider = createArteProvider({ net, now: () => NOW });
   const next = await provider.refresh({ accessToken: 'alt', refreshToken: 'alt-r', expiresAt: 1, since: 5, state: 'ok', clientId: 'web-client' });
-  assert.deepEqual(net.calls[0], { kind: 'form', url: TOKEN_ENDPOINT, fields: { grant_type: 'refresh_token', client_id: 'web-client', refresh_token: 'alt-r' } });
+  assert.deepEqual(net.calls[0], { kind: 'form', url: TOKEN_ENDPOINT, fields: { grant_type: 'refresh_token', refresh_token: 'alt-r', scope: 'openid', redirect_uri: REDIRECT_URI, client_id: 'web-client' } });
   assert.equal(next.accessToken, 'neu');
   assert.equal(next.refreshToken, 'neu-r');
   assert.equal(next.expiresAt, NOW + 600000);
@@ -312,6 +312,6 @@ test('Freischaltung testen: gültig, abgemeldet, abgelaufen, Netzfehler; ARD zus
   httpOutcome = 'net';
   assert.equal((await auth.test('ard')).code, 'network');
   auth.reportUnauthorized('arte');
-  assert.equal((await auth.test('arte')).code, 'expired');
+  assert.equal((await auth.test('arte')).code, 'valid', 'arte: 401 erzwingt nur eine Auffrischung');
 });
 

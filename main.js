@@ -51,6 +51,7 @@ const { createZdfProvider } = require('./lib/mediathek/auth/zdf.js');
 const { createPinPrompt } = require('./lib/mediathek/auth/pin-prompt.js');
 const { createZdfFsk } = require('./lib/mediathek/zdf-fsk.js');
 const { createLoginRunner } = require('./lib/mediathek/auth/login-window.js');
+const { createSilentSessionRunner } = require('./lib/mediathek/auth/silent-session.js');
 const { createE2eLoginRunner, createE2eAuthNet } = require('./lib/mediathek/auth/e2e-login.js');
 const { registerAccountsIpc } = require('./lib/mediathek/auth/ipc.js');
 const { createRoutedHttp } = require('./lib/mediathek/e2e-http.js');
@@ -958,6 +959,7 @@ app.whenReady().then(() => {
       providers: { arte: createArteProvider({ net: authNet }), ard: createArdProvider({ net: authNet }), zdf: createZdfProvider({ net: authNet }) },
       store: createAuthStore({ file: path.join(app.getPath('userData'), 'mediathek-auth.bin'), safeStorage: e2eRun ? null : safeStorage, logger }),
       loginRunner: e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eLoginRunner(process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN) : accountLoginRunner,
+      silentRunner: e2eRun ? null : createSilentSessionRunner({ openProviderWindow: accountLoginRunner.openProviderWindow, logger }), // unsichtbare Sitzungswiederherstellung, nie im Testlauf
       clearPartition: async partition => {
         const ses = session.fromPartition(partition);
         await ses.clearStorageData();

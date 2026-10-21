@@ -32,6 +32,7 @@ function createAuth(initial = {}, refresh = null) {
       headers: r => (sender === 'ard' ? { 'X-Authorization': `Bearer ${r.accessToken}` } : { Authorization: `Bearer ${r.accessToken}` }),
       refresh: refresh || (async r => ({ ...r, accessToken: `${sender}-REFRESHED`, expiresAt: Date.now() + 3600000 })),
       login: {},
+      softUnauthorized: sender === 'arte',
       personalizeUrl: sender === 'ard' ? (url, r) => `${url}${url.includes('?') ? '&' : '?'}userId=uid-of-${r.accessToken.length}` : undefined,
     };
     if (initial[sender]) store.set(sender, { ...record(sender), ...initial[sender] });
@@ -92,7 +93,7 @@ test('HTTP: ohne auth-Option keine Konto-Kopfzeilen, auch wenn angemeldet; User-
   assert.deepEqual(Object.keys(seen[0]).sort(), ['Accept', 'User-Agent']);
 });
 
-test('HTTP: Token wird vor dem Abruf aufgefrischt; 401 setzt das Konto auf "abgelaufen"', async () => {
+test('HTTP: Token wird vor dem Abruf aufgefrischt; 401 bei arte erzwingt Auffrischung statt sofort "abgelaufen"', async () => {
   const { auth, store } = createAuth({ arte: { expiresAt: Date.now() + 30000 } });
   const seen = [];
   let status = 200;
@@ -102,9 +103,11 @@ test('HTTP: Token wird vor dem Abruf aufgefrischt; 401 setzt das Konto auf "abge
   assert.equal(store.get('arte').accessToken, 'arte-REFRESHED');
   status = 401;
   await assert.rejects(http.getText('https://api.arte.tv/x', { auth: 'arte' }), { code: 'http', status: 401 });
-  assert.equal(auth.accountState('arte'), 'expired');
-  await http.getText('https://api.arte.tv/y').catch(() => {});
-  assert.equal(seen.at(-1), undefined, 'danach keine Kopfzeile mehr');
+  assert.equal(auth.accountState('arte'), 'signedIn', 'Anmeldung bleibt, Token gilt lokal als abgelaufen');
+  assert.equal(auth.tokenUsable('arte'), false);
+  status = 200;
+  await http.getText('https://api.arte.tv/y', { auth: 'arte' });
+  assert.equal(seen.at(-1), 'Bearer arte-REFRESHED', 'beim nächsten Abruf wird aufgefrischt');
 });
 
 // ── service.js: Wiedergabe ──
@@ -145,14 +148,14 @@ test('Wiedergabe ARD: angemeldet und vom Anbieter freigegeben -> abspielbar (zwe
   assert.deepEqual(http.calls.map(call => call.auth), [null, 'ard']);
 });
 
-test('Wiedergabe ARD: angemeldet, aber weiter gesperrt -> "Auch mit Konto gesperrt"; 401 -> abgelaufen', async () => {
+test('Wiedergabe ARD: angemeldet, aber weiter gesperrt -> "Auch mit Konto gesperrt"; 401 trotz Auffrischung -> abgelehnt (HTTP 401)', async () => {
   const { auth } = createAuth({ ard: {} });
   const blocked = routedHttp({ [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: fixture('ardItemInstitutFskBlocked') } });
   const still = await createMediathekService({ http: blocked, auth }).resolveStreamDetail(ARD_ENTRY);
   assert.deepEqual([still.resolution.kind, still.resolution.account], ['ageRestricted', 'blocked']);
   const unauthorized = routedHttp({ [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: Object.assign(new Error('x'), { code: 'http', status: 401 }) } });
   const expired = await createMediathekService({ http: unauthorized, auth }).resolveStreamDetail(ARD_ENTRY);
-  assert.deepEqual([expired.resolution.kind, expired.resolution.account], ['ageRestricted', 'expired']);
+  assert.deepEqual([expired.resolution.kind, expired.resolution.account, expired.resolution.accountStatus], ['ageRestricted', 'rejected', 401]); // Token trotz Auffrischung abgelehnt (Fake-HTTP meldet nicht an das Konto)
   const offline = routedHttp({ [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: Object.assign(new Error('x'), { code: 'network' }) } });
   assert.equal((await createMediathekService({ http: offline, auth }).resolveStreamDetail(ARD_ENTRY)).resolution.account, 'error');
 });
@@ -263,6 +266,39 @@ test('resolveForDownload arte: Sperre mit Konto freigeschaltet, Token geht nur a
   const masterCalls = http.calls.filter(call => call.url === masterUrl);
   assert.ok(masterCalls.length > 0);
   assert.ok(masterCalls.every(call => call.auth === null), 'Playlist-Abruf ohne Konto');
+});
+
+test('resolveForDownload arte: abgelaufener Token + Auffrischung per Server-/Netzfehler -> "network" ohne "abgelaufen"; Sperrhinweis nur weil nicht freigeschaltet', async () => {
+  const refresh = async () => { throw Object.assign(new Error('x'), { code: 'http', status: 503 }); };
+  const { auth } = createAuth({ arte: { expiresAt: Date.now() - 1000 } }, refresh);
+  const http = routedHttp({ '/config/de/AGE': { anon: fixture('dl-arte-age'), auth: fixture('dl-arte-player') } });
+  const info = await createMediathekService({ http, auth }).resolveForDownload({ id: 'AGE', title: 'Nachtfilm', sourceId: 'arte' });
+  assert.equal(info.restriction.account, 'network');
+  assert.doesNotMatch(info.restriction.message, /Anmeldung abgelaufen/);
+  assert.match(info.restriction.message, /HTTP 503/);
+  assert.equal(auth.accountState('arte'), 'signedIn');
+});
+
+test('resolveForDownload arte: 401 trotz Token -> eine Auffrischung, Wiederholung gelingt (freigeschaltet)', async () => {
+  let refreshed = 0;
+  const { auth } = createAuth({ arte: {} }, async r => { refreshed += 1; return { ...r, accessToken: 'arte-NEU', expiresAt: Date.now() + 3600000 }; });
+  const masterUrl = JSON.parse(fixture('dl-arte-player')).data.attributes.streams[0].url;
+  let tries = 0;
+  const base = routedHttp({ '/config/de/AGE': { anon: fixture('dl-arte-age'), auth: fixture('dl-arte-player') }, [masterUrl]: { anon: fixture('dl-arte-master.m3u8') } });
+  const http = { calls: base.calls, getText: async (url, options) => { if (options && options.auth === 'arte' && tries++ === 0) { auth.reportUnauthorized('arte'); throw Object.assign(new Error('x'), { code: 'http', status: 401 }); } return base.getText(url, options); } };
+  const info = await createMediathekService({ http, auth }).resolveForDownload({ id: 'AGE', title: 'Nachtfilm', sourceId: 'arte' });
+  assert.equal(info.restriction, null);
+  assert.equal(refreshed, 1);
+});
+
+test('resolveForDownload arte: 401 auch nach Auffrischung -> "arte akzeptiert die Anmeldung nicht (HTTP 401)", nicht "abgelaufen"', async () => {
+  const { auth } = createAuth({ arte: {} });
+  const base = routedHttp({ '/config/de/AGE': { anon: fixture('dl-arte-age'), auth: fixture('dl-arte-player') } });
+  const http = { calls: base.calls, getText: async (url, options) => { if (options && options.auth === 'arte') { auth.reportUnauthorized('arte'); throw Object.assign(new Error('x'), { code: 'http', status: 401 }); } return base.getText(url, options); } };
+  const info = await createMediathekService({ http, auth }).resolveForDownload({ id: 'AGE', title: 'Nachtfilm', sourceId: 'arte' });
+  assert.equal(info.restriction.account, 'rejected');
+  assert.match(info.restriction.message, /^arte akzeptiert die Anmeldung nicht \(HTTP 401\)/);
+  assert.equal(auth.accountState('arte'), 'signedIn');
 });
 
 // ── DownloadService ──
