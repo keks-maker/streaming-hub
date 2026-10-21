@@ -220,7 +220,8 @@ test('Wiedergabe und Auswahl sind getrennte Merkmale: spielt A, ist B gewählt �
 
 test('Wiedergabe-Stil: eigene Farbe, Equalizer in Abo-Liste und Zeilen, Auswahl getrennt, Bewegung reduzierbar', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
-  assert.match(css, /--podcast-playing:#ff9f1c/);
+  assert.match(css, /--podcast-playing:var\(--orange-play\)/);
+  assert.match(css, /--orange-play: light-dark\(#[0-9a-f]{6}, #ff9f1c\)/); // Dunkel: eigene Farbe der Wiedergabe, Hell: abgedunkelte Variante
   assert.match(css, /\.podcast-show\.is-active \.podcast-eq/);
   assert.match(css, /\.podcast-show\.is-playing \.podcast-eq span \{ animation/);
   assert.doesNotMatch(css, /\.podcast-show\.is-active \.podcast-show-btn \{/, 'Wiedergabe färbt nicht mehr den Rahmen wie die Auswahl');

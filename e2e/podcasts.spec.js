@@ -4,6 +4,7 @@
 // STREAMING_HUB_E2E_PODCAST_SEARCH_URL, lokaler Feed), Abo, Sendungsseite, Wiedergabe (stumm, kurze Testdatei) und Mini-Player.
 // Kein Netz außer localhost. Screenshots (optional): PODCAST_E2E_SHOTS=<Verzeichnis>.
 const { test, expect } = require('@playwright/test');
+const { shotBoth } = require('./theme-audit');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const http = require('http');
@@ -17,9 +18,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 
 const shot = async (page, name) => {
   if (!SHOTS) return;
-  fs.mkdirSync(SHOTS, { recursive: true });
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
+  await shotBoth(page, SHOTS, name);
 };
 
 function feedXml(base, title, items) {

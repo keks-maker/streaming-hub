@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: http: https: rec: dl:; connect-src 'self' http: https: rec: dl:; frame-src https:; object-src 'none'; base-uri 'self';">
+  <meta name="color-scheme" content="light dark">
   <title>Streaming Hub</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="styles-downloads.css">
@@ -111,20 +112,20 @@
         <svg class="welcome-arrow" viewBox="0 0 40 260" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="ag" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0%" stop-color="#fff" stop-opacity=".08"/>
-              <stop offset="50%" stop-color="#fff" stop-opacity=".3"/>
-              <stop offset="100%" stop-color="#fff" stop-opacity=".7"/>
+              <stop offset="0%" stop-color="currentColor" stop-opacity=".08"/>
+              <stop offset="50%" stop-color="currentColor" stop-opacity=".3"/>
+              <stop offset="100%" stop-color="currentColor" stop-opacity=".7"/>
             </linearGradient>
             <linearGradient id="ag2" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0%" stop-color="#a78bfa" stop-opacity="0"/>
-              <stop offset="70%" stop-color="#a78bfa" stop-opacity=".5"/>
-              <stop offset="100%" stop-color="#a78bfa" stop-opacity=".9"/>
+              <stop offset="0%" class="arrow-violet" stop-opacity="0"/>
+              <stop offset="70%" class="arrow-violet" stop-opacity=".5"/>
+              <stop offset="100%" class="arrow-violet" stop-opacity=".9"/>
             </linearGradient>
           </defs>
           <line x1="20" y1="50" x2="20" y2="240" stroke="url(#ag)" stroke-width="4" stroke-dasharray="6 5"/>
           <line x1="20" y1="50" x2="20" y2="240" stroke="url(#ag2)" stroke-width="2" stroke-dasharray="6 5"/>
-          <polyline points="4,70 20,45 36,70" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
-          <polyline points="10,59 20,45 30,59" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+          <polyline points="4,70 20,45 36,70" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+          <polyline points="10,59 20,45 30,59" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
         </svg>
       </div>
 

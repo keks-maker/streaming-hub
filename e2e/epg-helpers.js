@@ -112,6 +112,8 @@ async function startSession(env) {
     if (msg.type() === 'error' && !isHarmless(msg.text())) problems.push(`[renderer console] ${msg.text()}`);
   });
   await page.waitForLoadState('domcontentloaded');
+  // Farbdesign fest vorgeben (Standard dunkel), damit die Läufe nicht vom Systemdesign des Rechners abhängen; E2E_COLOR_SCHEME=light zum Nachprüfen
+  await page.emulateMedia({ colorScheme: process.env.E2E_COLOR_SCHEME === 'light' ? 'light' : 'dark' });
   await page.locator('#dashboardView').waitFor();
   return { electronApp, page, problems };
 }

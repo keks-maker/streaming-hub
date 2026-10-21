@@ -24,6 +24,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 ## Funktionen
 
 - **Start-Dashboard** – Schnellzugriff auf Live-TV, Radio, Streaming-Dienste, Mediatheken und Einstellungen
+- **Hell und Dunkel** – die App folgt dem Hell-/Dunkel-Design von macOS (Systemeinstellungen ▸ Erscheinungsbild) in allen Bereichen und wechselt sofort mit, ohne Neustart; Video- und Player-Flächen bleiben zum Bild dunkel
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
 - **Radio** – Online-Radio mit mitgelieferter Senderliste (rund 250 deutsche Sender), eigenen Sendern per Stream-URL, Favoriten, Mini-Player und Steuerung aus dem Menüzeilensymbol; spielt auch bei geschlossenem Fenster weiter
 - **Podcasts** – Sendungen über die iTunes-Suche finden, abonnieren oder per Feed-Adresse hinzufügen, mitgelieferte öffentlich-rechtliche Liste, neue Episoden, Hörstatus und Fortsetzen, Player mit Tempo und Sprüngen, Mini-Player und Steuerung aus dem Menüzeilensymbol

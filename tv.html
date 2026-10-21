@@ -5,8 +5,11 @@
   <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: http: https: rec:; connect-src 'self' http: https: rec:; frame-src https:; object-src 'none'; base-uri 'self';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
   <title>TV Player</title>
   <style>
+    /* theme-literal:start — Player-Fenster über Video: bleibt in beiden Systemdesigns dunkel (Kontrast zum Bild) */
+    :root { color-scheme: dark; --tv-dim: rgba(255,255,255,0.5); --tv-live: #10b981; }
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
       background:#000; overflow:hidden; height:100vh;
@@ -334,6 +337,7 @@
     .tv-rec-menu-note {
       font-size: 12px; color: #64748b; padding: 6px 12px 4px;
     }
+    /* theme-literal:end */
   </style>
 </head>
 <body>
@@ -377,7 +381,7 @@
       </button>
       <span class="tv-time" id="tvTime">00:00 / 00:00</span>
       <div class="tv-spacer"></div>
-      <span class="tv-top-name" style="font-size:18px;color:rgba(255,255,255,0.5)" id="tvChannelName"></span>
+      <span class="tv-top-name" style="font-size:18px;color:var(--tv-dim)" id="tvChannelName"></span>
       <div class="tv-spacer"></div>
       <div class="tv-volume-wrap">
         <button class="tv-btn" id="tvMuteBtn" title="Stumm (M)">
@@ -397,7 +401,7 @@
       <button class="tv-btn" id="tvLiveBtn" title="Zur Live-Kante (L)" style="display:none">
         <svg viewBox="0 0 24 24" id="tvLiveIcon"><line x1="2" y1="12" x2="11" y2="12"/><polyline points="7,6 13,12 7,18"/><circle cx="18.5" cy="12" r="4" fill="currentColor" stroke="none"/></svg>
       </button>
-      <span class="tv-live-badge" id="tvLiveBadge" style="display:none;color:#10b981;font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #10b981;border-radius:6px;">LIVE</span>
+      <span class="tv-live-badge" id="tvLiveBadge" style="display:none;color:var(--tv-live);font-size:13px;font-weight:700;padding:2px 8px;border:1px solid var(--tv-live);border-radius:6px;">LIVE</span>
       <!-- Aufnahme (Phase 1c / Fix-Set 3 Punkt 2): Record-Button im
            Schulter-Chrome. WEISSer Kreis-im-Kreis = startbereit (Klick öffnet
            den EINZIGEN Start-Dialog mit DREI Optionen: „Ab Bildposition“,

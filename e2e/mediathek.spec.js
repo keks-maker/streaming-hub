@@ -5,6 +5,7 @@
 // (STREAMING_HUB_E2E_MEDIATHEK_ROUTES, nur im isolierten Testlauf). ZDF ist absichtlich nicht erreichbar (Fehlerzustand).
 // Screenshots (optional): MEDIATHEK_E2E_SHOTS=<Verzeichnis> (je Hell/Dunkel).
 const { test, expect } = require('@playwright/test');
+const { shotBoth } = require('./theme-audit');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -15,13 +16,7 @@ const parser = require('../lib/mediathek/parser.js');
 const SHOTS = process.env.MEDIATHEK_E2E_SHOTS || '';
 const shot = async (page, name) => {
   if (!SHOTS) return;
-  fs.mkdirSync(SHOTS, { recursive: true });
-  for (const scheme of ['dark', 'light']) {
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: path.join(SHOTS, `${name}-${scheme}.png`) });
-  }
-  await page.emulateMedia({ colorScheme: 'dark' });
+  await shotBoth(page, SHOTS, name);
 };
 
 const NO_STREAM = 'https://127.0.0.1:9/e2e.mp4'; // Verbindung wird sofort abgelehnt: kein Netzzugriff

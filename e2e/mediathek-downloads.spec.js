@@ -6,6 +6,7 @@
 // downloads:changed aus dem Main, die Quellen-Antworten aus festen Fixtures (STREAMING_HUB_E2E_MEDIATHEK_ROUTES).
 // Screenshots (optional): MEDIATHEK_E2E_SHOTS=<Verzeichnis> (je Hell/Dunkel).
 const { test, expect } = require('@playwright/test');
+const { shotBoth } = require('./theme-audit');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -17,13 +18,7 @@ const parser = require('../lib/mediathek/parser.js');
 const SHOTS = process.env.MEDIATHEK_E2E_SHOTS || '';
 const shot = async (page, name) => {
   if (!SHOTS) return;
-  fs.mkdirSync(SHOTS, { recursive: true });
-  for (const scheme of ['dark', 'light']) {
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: path.join(SHOTS, `${name}-${scheme}.png`) });
-  }
-  await page.emulateMedia({ colorScheme: 'dark' });
+  await shotBoth(page, SHOTS, name);
 };
 
 const NO_STREAM = 'https://127.0.0.1:9/e2e.mp4'; // Verbindung wird sofort abgelehnt: kein Netzzugriff
@@ -403,13 +398,13 @@ test('Einstellungen: Seiten, Begrenzung, Speicherort prüfen, Hinweise, „Downl
   await page.evaluate(() => window.downloads.setSettings({ showDownloads: true }));
 });
 
-test('Navigationsleiste folgt dem Theme der Seite: Mediathek hell bei hellem System, LiveTV/Einstellungen immer dunkel', async () => {
+test('Navigationsleiste folgt dem Systemdesign auf jeder Seite (Mediathek, LiveTV, Einstellungen)', async () => {
   const barBg = () => page.locator('#overlayNav').evaluate(node => getComputedStyle(node.closest('.overlay-bar') || node).backgroundColor);
   const dark = 'rgb(23, 23, 23)';
   const white = 'rgb(255, 255, 255)';
   for (const [scheme, section, expected] of [
     ['dark', 'mediathek', dark], ['light', 'mediathek', white],
-    ['light', 'livetv', dark], ['light', 'settings', dark], ['dark', 'settings', dark],
+    ['dark', 'livetv', dark], ['light', 'livetv', white], ['light', 'settings', white], ['dark', 'settings', dark],
   ]) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.locator(`#overlayNav [data-section="${section}"]`).click();

@@ -196,7 +196,7 @@ function showTvToast(message) {
       toast.id = 'tvRecToast';
       toast.style.cssText =
         'position:absolute;left:50%;bottom:96px;transform:translateX(-50%);' +
-        'background:rgba(0,0,0,0.85);color:#fff;padding:10px 18px;border-radius:10px;' +
+        'background:var(--media-scrim-strong);color:var(--media-ink);padding:10px 18px;border-radius:10px;' +
         'font-size:14px;z-index:40;pointer-events:none;max-width:70%;text-align:center;';
       if (host && host.parentElement) host.parentElement.appendChild(toast);
       else document.body.appendChild(toast);
@@ -417,19 +417,9 @@ function updateRecordingsScreenIfVisible() {
 
 const overlayBar = document.getElementById('overlayBar');
 
-// Bereiche mit eigenem Hell-Theme (styles.css, prefers-color-scheme: light). Nur hier ergänzen, wenn ein weiterer Bereich ein Hell-Theme bekommt.
 // Nativ unterstützte Mediathek-Quellen (ids wie Weblink-Standarddienste); der EPG-Link öffnet dort die native Suche.
 const NATIVE_MEDIATHEK_SOURCES = new Set(['ard', 'zdf', 'arte']);
 const NATIVE_MEDIATHEK_LABELS = { ard: 'ARD Mediathek', zdf: 'ZDF Mediathek', arte: 'ARTE' };
-const LIGHT_THEME_GROUPS = new Set(['mediathek']);
-const systemLightQuery = window.matchMedia('(prefers-color-scheme: light)');
-// Die Navigationsleiste folgt dem Theme der angezeigten Seite: hell nur bei Hell-Theme-Bereich UND hellem System (Webviews/Player: dunkel).
-function updatePageTheme() {
-  const dashboardShown = !!dashboardView && dashboardView.style.display !== 'none';
-  const light = systemLightQuery.matches && dashboardShown && LIGHT_THEME_GROUPS.has(currentDashboardGroup);
-  overlayBar.dataset.pageTheme = light ? 'light' : 'dark';
-}
-systemLightQuery.addEventListener('change', updatePageTheme);
 const nav = document.getElementById('overlayNav');
 const updateBtn = document.getElementById('updateBtn');
 const dashboardUpdateSlot = document.getElementById('dashboardUpdateSlot');
@@ -947,7 +937,6 @@ function renderLiveTvDashboard() {
 
 function renderStartDashboard() {
   currentDashboardGroup = null;
-  updatePageTheme();
   settingsPanel.hidden = true;
   settingsPanelHost.hidden = true;
   if (settingsPanel.parentNode !== settingsPanelPlaceholder.parentNode)
@@ -1035,7 +1024,6 @@ function renderDashboard(groupKey, opts = {}) {
   podcastDashboardRoot.hidden = !isPodcasts;
   if (!isPodcasts) podcastHub.hideArea();
   dashboardView.classList.toggle('mediathek-active', isMediathek);
-  updatePageTheme();
   mediathekDashboardRoot.hidden = !isMediathek;
   if (!isMediathek) mediathekHub.hideArea();
   dashboardCount.textContent = isTv || isRadio || isPodcasts || isMediathek || isSettings || isRecording ? '' : `${items.length} ${items.length === 1 ? 'Dienst' : 'Dienste'}`;
@@ -1073,7 +1061,6 @@ function renderDashboard(groupKey, opts = {}) {
     items.forEach(svc => dashboardGrid.appendChild(renderDashboardTile(svc)));
   }
   dashboardView.style.display = '';
-  updatePageTheme();
   welcomeScreen.style.display = 'none';
 }
 
@@ -1345,7 +1332,6 @@ function navigateTo(svc) {
   switchWebview(false);
   if (dashboardView) {
     dashboardView.style.display = 'none';
-    updatePageTheme();
     podcastHub.hideArea();
     mediathekHub.hideArea();
     dashboardView.classList.remove('settings-dashboard');
@@ -2115,7 +2101,6 @@ async function selectTvChannel(ch, options = {}) {
   lastMediaTitle = 'TV: ' + ch.name;
   welcomeScreen.style.display = 'none';
   if (dashboardView) dashboardView.style.display = 'none';
-  updatePageTheme();
   podcastHub.hideArea();
   mediathekHub.hideArea();
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -3180,6 +3165,7 @@ webview.addEventListener('destroyed', () => {
 
 webview.addEventListener('did-finish-load', () => {
   hideError();
+  // Fremdseiten im Webview: neutrale helle Scrollbar-Daumen (Inhalt der Dienste ist nicht Teil des App-Designs)
   webview
     .insertCSS(
       `
@@ -3299,6 +3285,7 @@ tvView.addEventListener('destroyed', () => {
 
 tvView.addEventListener('did-finish-load', () => {
   hideError();
+  // TV-Player (tv.html, bleibt dunkel): helle Scrollbar-Daumen
   tvView
     .insertCSS(
       `

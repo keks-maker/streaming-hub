@@ -490,26 +490,25 @@ test('Genre: Zeilen übernehmen nur bekannte Gruppen aus der schlanken Projektio
   assert.deepEqual(Object.keys(GENRES), ['news', 'sport', 'doku', 'kinder', 'serie', 'film', 'show', 'musik', 'sonstiges']);
 });
 
-test('Genre: alle Gruppen aus lib/epg/genre.js haben eine Beschriftung und ein Farbtoken (Kontrast ≥ 3:1 auf dem dunklen Hintergrund)', () => {
+test('Genre: alle Gruppen aus lib/epg/genre.js haben eine Beschriftung und ein Farbtoken (Kontrast ≥ 3:1 im hellen und dunklen Design)', () => {
   const { GENRE_TABLE } = require('../lib/epg/genre.js');
   const { GENRES } = require('../epg-genres.js');
+  const themeCss = require('./helpers/css-theme.js');
   for (const group of GENRE_TABLE.priority) assert.ok(GENRES[group], `Beschriftung für ${group}`);
   const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
-  const lum = hex => {
-    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  };
-  const contrast = (a, b) => {
-    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
-    return (hi + 0.05) / (lo + 0.05);
-  };
-  const surfaces = ['#12121b', '#191925', '#242438'].filter(c => css.includes(c));
-  assert.equal(surfaces.length, 3);
-  for (const group of Object.keys(GENRES)) {
-    const match = css.match(new RegExp(`--g-${group}:\\s*(#[0-9a-fA-F]{6})`));
-    assert.ok(match, `Token --g-${group}`);
-    for (const surface of surfaces) assert.ok(contrast(match[1], surface) >= 3, `--g-${group} ${match[1]} auf ${surface}: ${contrast(match[1], surface).toFixed(2)}`);
-    assert.ok(css.includes(`[data-g="${group}"]`), `Zuordnung data-g=${group}`);
+  const tokens = themeCss.collectTokens(['styles.css']);
+  for (const scheme of ['dark', 'light']) {
+    const base = themeCss.resolve('var(--bg)', tokens, scheme);
+    const surfaces = ['--epg-surface', '--epg-surface-2', '--epg-block'].map(name => themeCss.resolve(`var(${name})`, tokens, scheme));
+    for (const group of Object.keys(GENRES)) {
+      assert.ok(`--g-${group}` in tokens, `Token --g-${group}`);
+      const color = themeCss.resolve(`var(--g-${group})`, tokens, scheme);
+      for (const surface of surfaces) {
+        const ratio = themeCss.contrast(color, surface, base);
+        assert.ok(ratio >= 3, `--g-${group} (${scheme}) ${ratio.toFixed(2)}`);
+      }
+      assert.ok(css.includes(`[data-g="${group}"]`), `Zuordnung data-g=${group}`);
+    }
   }
 });
 

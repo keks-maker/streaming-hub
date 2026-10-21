@@ -9,6 +9,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const { backgroundEnv, resolveLaunchTarget, launchArgs } = require('./platform');
+const { shotBoth } = require('./theme-audit');
 const { RELEASE_TARGETS, targetKey } = require('../lib/github-releases.js');
 
 const SCREENSHOT = process.env.E2E_UPDATE_SCREENSHOT;
@@ -71,6 +72,29 @@ test('Update-Dialog zeigt Notes, schliesst per Abbrechen/Esc und installiert nic
     expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
     expect(await page.locator('#updateNotesBody script').count()).toBe(0);
     if (SCREENSHOT) await page.screenshot({ path: SCREENSHOT });
+    if (process.env.THEME_SHOTS) {
+      // Nachweis Hell/Dunkel: Release-Notes-Dialog, Update-Hinweis (Toast) und Installationsfortschritt (nur Darstellung, es wird nichts installiert)
+      await shotBoth(page, process.env.THEME_SHOTS, 'update-notes');
+      await page.evaluate(() => {
+        document.getElementById('updateNotesOverlay').classList.remove('open');
+        const notice = document.getElementById('updateNotice');
+        notice.hidden = false;
+        notice.textContent = 'Update 99.0.2 verfügbar';
+      });
+      await shotBoth(page, process.env.THEME_SHOTS, 'update-hinweis');
+      await page.evaluate(() => {
+        document.getElementById('updateNotice').classList.add('error');
+        document.getElementById('updateNotice').textContent = 'Update fehlgeschlagen';
+        document.getElementById('updateOverlay').classList.add('open');
+      });
+      await shotBoth(page, process.env.THEME_SHOTS, 'update-fortschritt');
+      await page.evaluate(() => {
+        document.getElementById('updateOverlay').classList.remove('open');
+        document.getElementById('updateNotice').hidden = true;
+        document.getElementById('updateNotice').classList.remove('error');
+        document.getElementById('updateNotesOverlay').classList.add('open');
+      });
+    }
 
     await page.locator('#updateNotesCancel').click();
     await expect(overlay).toBeHidden();

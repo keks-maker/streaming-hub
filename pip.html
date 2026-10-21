@@ -7,6 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: https:; connect-src 'self' https:; frame-src https:; object-src 'none'; base-uri 'self';"
     />
+    <meta name="color-scheme" content="light dark" />
     <link rel="stylesheet" href="styles.css" />
     <style>
       * {
@@ -25,7 +26,7 @@
       }
       .pip-bar {
         height: 32px;
-        background: rgba(10, 10, 15, 0.96);
+        background: var(--c-modal-glass);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -74,7 +75,7 @@
       }
       video {
         object-fit: contain;
-        background: #000;
+        background: var(--video-black);
       }
     </style>
   </head>

@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session } = require('electron');
+const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -620,6 +620,11 @@ function requireWebviewRenderer(event) {
   }
 }
 
+// Fensterhintergrund passend zum Systemdesign (Farben = --bg in styles.css), damit vor dem ersten Zeichnen nichts aufblitzt
+function windowBackground() {
+  return nativeTheme.shouldUseDarkColors ? '#0a0a0f' : '#f3f5f8';
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     ...hiddenInHook(process.env), // Hook-Fall: nicht sofort aktivieren, ready-to-show zeigt per showInactive()
@@ -634,7 +639,7 @@ function createWindow() {
       webviewTag: true,
       preload: path.join(__dirname, 'preload.js'),
     },
-    backgroundColor: '#0a0a0f',
+    backgroundColor: windowBackground(),
     title: 'Streaming Hub',
   });
 
@@ -1633,7 +1638,7 @@ ipcMain.on('toggle-pip', (event, url) => {
     height: pipH,
     alwaysOnTop: true,
     frame: false,
-    backgroundColor: '#0a0a0f',
+    backgroundColor: windowBackground(),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
