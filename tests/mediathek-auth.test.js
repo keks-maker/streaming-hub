@@ -143,6 +143,27 @@ test('Auth-Netz: nur feste https-Hosts, POST, keine Weiterleitung, Fehler ohne A
   await assert.rejects(() => down.postForm(TOKEN_ENDPOINT, {}), error => error.code === 'network' && !error.message.includes('arte'));
 });
 
+test('Auth-Netz: Referer/Origin nur an Firebase-Hosts, nie an andere; ARD sendet sie bei Anmeldung und Auffrischung', async () => {
+  const seen = [];
+  const net = createAuthNet({ fetchImpl: async (url, init) => { seen.push({ url, headers: init.headers }); return { status: 200, text: async () => '{"idToken":"i","refreshToken":"r","id_token":"i2"}' }; } });
+  const extra = { Referer: 'https://www.ardmediathek.de/', Origin: 'https://www.ardmediathek.de', 'X-Evil': '1' };
+  await net.postJson('https://identitytoolkit.googleapis.com/v1/x', {}, extra);
+  await net.postForm('https://securetoken.googleapis.com/v1/token', {}, extra);
+  await net.postForm(TOKEN_ENDPOINT, {}, extra);
+  assert.equal(seen[0].headers.Referer, 'https://www.ardmediathek.de/');
+  assert.equal(seen[1].headers.Origin, 'https://www.ardmediathek.de');
+  assert.equal(seen[0].headers['X-Evil'], undefined);
+  assert.equal(seen[2].headers.Referer, undefined);
+  assert.equal(seen[2].headers.Origin, undefined);
+  const calls = [];
+  const spy = { postJson: async (u, b, h) => { calls.push(['json', h]); return { idToken: 'i', refreshToken: 'r', expiresIn: '3600' }; }, postForm: async (u, f, h) => { calls.push(['form', h]); return { id_token: 'i' }; } };
+  const ard = createArdProvider({ net: spy, now: () => NOW });
+  await ard.collect({ url: 'https://www.ardmediathek.de/', executeJavaScript: async () => 'ct' });
+  await ard.refresh({ refreshToken: 'r' });
+  for (const [, h] of calls) assert.deepEqual(h, { Referer: 'https://www.ardmediathek.de/', Origin: 'https://www.ardmediathek.de' });
+  assert.equal(calls.length, 2);
+});
+
 // ── Konten-Dienst ──
 
 function setup(over = {}) {
