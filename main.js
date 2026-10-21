@@ -1632,7 +1632,7 @@ ipcMain.on('toggle-pip', (event, url) => {
     height: pipH,
     alwaysOnTop: true,
     frame: false,
-    backgroundColor: windowBackground(),
+    backgroundColor: '#000000', // PiP: Videofläche immer schwarz, auch vor dem Laden (unabhängig vom Theme)
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

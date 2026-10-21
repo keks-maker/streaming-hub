@@ -16,7 +16,7 @@
         box-sizing: border-box;
       }
       body {
-        background: var(--bg);
+        background: #000; /* theme-literal: PiP immer schwarz */
         overflow: hidden;
         height: 100vh;
         display: flex;
@@ -26,7 +26,8 @@
       }
       .pip-bar {
         height: 32px;
-        background: var(--c-modal-glass);
+        background-color: var(--bg);
+        background-image: linear-gradient(var(--c-modal-glass), var(--c-modal-glass));
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -64,6 +65,7 @@
       .pip-content {
         flex: 1;
         position: relative;
+        background: #000; /* theme-literal: PiP immer schwarz */
       }
       webview,
       video {

@@ -77,7 +77,8 @@
 .mediathek-select-list { list-style:none; margin:0; padding:0; }
 .mediathek-select-row { border-top:1px solid var(--md-line); }
 .mediathek-select-row .mediathek-check-row { margin:0; padding:9px 4px; }
-.mediathek-select-row.is-disabled { opacity:.55; }
+.mediathek-select-row.is-disabled input { opacity:.55; }
+.mediathek-select-row.is-disabled .mediathek-card-title { color:var(--md-dim); }
 .mediathek-select-row.is-disabled .mediathek-check-row { cursor:default; }
 .mediathek-select-text { display:flex; flex-direction:column; gap:2px; min-width:0; }
 .mediathek-select-text .mediathek-card-title,.mediathek-select-text .mediathek-card-sub { white-space:normal; }
