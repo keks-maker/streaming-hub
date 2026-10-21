@@ -3911,6 +3911,7 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
 .mediathek-dialog-title { margin:4px 40px 0 0; font-size:26px; font-weight:800; line-height:1.2; }
 .mediathek-dialog-badges { display:flex; gap:6px; margin:8px 0 0; }
 .mediathek-fsk-badge { display:inline-block; padding:2px 8px; border:1px solid var(--md-line); border-radius:6px; background:var(--md-surface2); color:var(--md-text); font-size:12px; font-weight:700; letter-spacing:.03em; }
+.mediathek-fsk-inline { align-self:flex-start; margin-top:3px; padding:1px 6px; font-size:11px; }
 .mediathek-player-fsk { flex:none; border-color:color-mix(in srgb, var(--media-ink) 45%, transparent); background:color-mix(in srgb, var(--video-black) 55%, transparent); color:var(--media-ink); }
 .mediathek-dialog-meta,.mediathek-dialog-until { margin:8px 0 0; color:var(--md-dim); font-size:14px; }
 .mediathek-dialog-desc { margin:14px 0 0; font-size:15px; line-height:1.5; user-select:text; }

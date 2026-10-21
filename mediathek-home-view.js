@@ -184,7 +184,7 @@ function createMediathekHome(root, ctx) {
 
   function resumeEntryCard(item) {
     const card = resumeCard(item);
-    const entry = { id: `resume:${card.sourceId}:${card.title}`, title: card.title, sourceId: card.sourceId, imageUrl: card.imageUrl, duration: null, subtitle: card.series ? card.series.title : null };
+    const entry = { id: `resume:${card.sourceId}:${card.title}`, title: card.title, sourceId: card.sourceId, imageUrl: card.imageUrl, duration: null, subtitle: card.series ? card.series.title : null, fsk: card.fsk };
     return createEntryCard(doc, entry, {
       progress: card.fraction,
       onPlay: trigger => ctx.openResume(item, trigger),
@@ -374,6 +374,7 @@ function createMediathekHome(root, ctx) {
       else ctx.downloads.view.leave();
     }
     nodes.forEach(node => content.appendChild(node));
+    if (ctx.fsk) ctx.fsk.decorate(content, { max: 12 }); // Einstufung der ersten Karten nachladen (nie ganze Listen)
     restoreFocus(key);
     observeSentinel();
   }

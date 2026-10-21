@@ -7,7 +7,7 @@
 const options = require('./mediathek-download-options-model.js');
 const selectModel = require('./mediathek-download-select-model.js');
 const { entryForIpc } = require('./mediathek-hub-model.js');
-const { subtitleText } = require('./mediathek-format.js');
+const { subtitleText, fskText } = require('./mediathek-format.js');
 const { el, button } = require('./mediathek-cards.js');
 
 const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
@@ -73,12 +73,18 @@ function field(doc, id, labelText, choices, value, onChange) {
   return wrap;
 }
 
-function titleBlock(doc, text, id, sub) {
+function titleBlock(doc, text, id, sub, fsk = null) {
   const nodes = [];
   const title = el(doc, 'h2', 'mediathek-dialog-title', text);
   title.id = id;
   nodes.push(title);
   if (sub) nodes.push(el(doc, 'p', 'mediathek-dialog-meta', sub));
+  const badge = fskText(fsk);
+  if (badge) {
+    const row = el(doc, 'p', 'mediathek-dialog-badges');
+    row.appendChild(el(doc, 'span', 'mediathek-fsk-badge', badge));
+    nodes.push(row);
+  }
   return nodes;
 }
 
@@ -188,7 +194,7 @@ function createMediathekDownloadDialogs(ctx) {
       dialog.textContent = '';
       const closeBtn = button(doc, 'mediathek-dialog-close', '×', () => modal.close(), 'Schließen');
       dialog.appendChild(closeBtn);
-      dialog.append(...titleBlock(doc, 'Download-Optionen', 'mediathekDlOptionsTitle', [entry.title, subtitleText(entry)].filter(Boolean).join(' · ')));
+      dialog.append(...titleBlock(doc, 'Download-Optionen', 'mediathekDlOptionsTitle', [entry.title, subtitleText(entry)].filter(Boolean).join(' · '), entry.fsk));
 
       const available = preview && preview.available ? preview.available : null;
       const lists = options.choices(available, form);
@@ -340,6 +346,8 @@ function createMediathekDownloadDialogs(ctx) {
       const stateText = { done: 'Bereits geladen', running: 'Wird geladen', queued: 'In der Warteschlange', paused: 'Angehalten', scheduled: 'Zurückgestellt' }[row.state];
       const sub = [subtitleText(row.entry), stateText].filter(Boolean).join(' · ');
       if (sub) text.appendChild(el(doc, 'span', 'mediathek-card-sub', sub));
+      const rating = fskText(row.entry.fsk);
+      if (rating) text.appendChild(el(doc, 'span', 'mediathek-fsk-badge mediathek-fsk-inline', rating));
       label.append(box, text);
       li.appendChild(label);
       return li;

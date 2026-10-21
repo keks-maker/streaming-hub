@@ -62,7 +62,9 @@ function createThumb(doc, options) {
     thumb.appendChild(badge);
   }
   if (options.geo) thumb.appendChild(pill(doc, 'nur in DE', 'mediathek-pill-geo'));
-  if (typeof options.fsk === 'number' && options.fsk >= 12) thumb.appendChild(pill(doc, fskText(options.fsk), 'mediathek-pill-fsk'));
+  if (options.fskEntry) thumb.fskEntry = options.fskEntry; // Nachladen/Badge-Update (mediathek-fsk-loader.js)
+  const fsk = fskText(options.fsk);
+  if (fsk) thumb.appendChild(pill(doc, fsk, 'mediathek-pill-fsk')); // jede Einstufung, auch FSK 0 und 6
   const minutes = minutesText(options.duration);
   if (minutes) thumb.appendChild(pill(doc, minutes, 'mediathek-pill-duration'));
   if (typeof options.progress === 'number' && options.progress > 0) {
@@ -90,7 +92,7 @@ function createEntryCard(doc, entry, options = {}) {
   const subtitle = subtitleText(entry);
   main.setAttribute('aria-label', [entry.title, subtitle, options.blocked ? 'nicht abrufbar' : 'abspielen'].filter(Boolean).join(', '));
   main.append(
-    createThumb(doc, { imageUrl: entry.imageUrl, title: entry.title, sourceId: entry.sourceId, duration: entry.duration, geo: entry.regionRestricted, progress: options.progress, fsk: entry.fsk }),
+    createThumb(doc, { imageUrl: entry.imageUrl, title: entry.title, sourceId: entry.sourceId, duration: entry.duration, geo: entry.regionRestricted, progress: options.progress, fsk: entry.fsk, fskEntry: entry }),
     el(doc, 'span', 'mediathek-card-title', entry.title),
     el(doc, 'span', 'mediathek-card-sub', subtitle || ' '),
   );

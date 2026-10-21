@@ -305,7 +305,7 @@ function entryForIpc(entry) {
 
 /** Weiterschauen-Eintrag -> Karte (Folge ohne Stream-Adresse; Titel/Bild/Fortschritt aus dem Verlauf). */
 function resumeCard(item) {
-  return { title: item.title, sourceId: item.sourceId, imageUrl: item.imageUrl || null, series: item.series || null, fraction: item.fraction ?? null };
+  return { title: item.title, sourceId: item.sourceId, imageUrl: item.imageUrl || null, series: item.series || null, fraction: item.fraction ?? null, fsk: Number.isInteger(item.fsk) ? item.fsk : null };
 }
 
 module.exports = {

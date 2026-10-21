@@ -120,7 +120,7 @@ function createMediathekDownloadsView(root, ctx) {
       body.appendChild(note);
     }
     for (const warning of info.warnings) body.appendChild(el(doc, 'p', 'mediathek-dl-msg is-warn', warning));
-    li.append(createThumb(doc, { imageUrl: item.imageUrl, title: item.title, sourceId: item.sourceId, width: 320 }), body, actionButtons(item, info));
+    li.append(createThumb(doc, { imageUrl: item.imageUrl, title: item.title, sourceId: item.sourceId, width: 320, fsk: info.fsk }), body, actionButtons(item, info));
     return li;
   }
 
@@ -140,7 +140,7 @@ function createMediathekDownloadsView(root, ctx) {
       note.setAttribute('role', 'alert');
       body.appendChild(note);
     }
-    li.append(createThumb(doc, { imageUrl: item.imageUrl, title: item.title, sourceId: item.sourceId, duration: item.durationSec, width: 320 }), body, actionButtons(item, info));
+    li.append(createThumb(doc, { imageUrl: item.imageUrl, title: item.title, sourceId: item.sourceId, duration: item.durationSec, width: 320, fsk: info.fsk }), body, actionButtons(item, info));
     return li;
   }
 

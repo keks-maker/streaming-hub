@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session, nativeTheme } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -953,7 +953,7 @@ app.whenReady().then(() => {
     // Konten: in isolierten Testläufen weder safeStorage (Schlüsselbund) noch echtes Anmeldefenster
     const e2eRun = isIsolatedTestRun(process.env);
     const authNet = e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eAuthNet() : createAuthNet();
-    const accountLoginRunner = createLoginRunner({ BrowserWindow, session, getParent: () => mainWindow, logger });
+    const accountLoginRunner = createLoginRunner({ BrowserWindow, WebContentsView, ipcMain, session, getParent: () => mainWindow, logger });
     mediathekAuth = createMediathekAuth({
       providers: { arte: createArteProvider({ net: authNet }), ard: createArdProvider({ net: authNet }), zdf: createZdfProvider({ net: authNet }) },
       store: createAuthStore({ file: path.join(app.getPath('userData'), 'mediathek-auth.bin'), safeStorage: e2eRun ? null : safeStorage, logger }),

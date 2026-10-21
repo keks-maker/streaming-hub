@@ -13,12 +13,11 @@ const os = require('node:os');
 const path = require('node:path');
 const { EventEmitter } = require('node:events');
 const { fixture } = require('./fixtures/mediathek/index.js');
-const { createZdfProvider, parseSessionToken, USERINFO_URL } = require('../lib/mediathek/auth/zdf.js');
+const { createZdfProvider, tokenCandidates, USERINFO_URL } = require('../lib/mediathek/auth/zdf.js');
 const { createAuthNet } = require('../lib/mediathek/auth/net.js');
 const { createAuthStore } = require('../lib/mediathek/auth/store.js');
 const { createMediathekAuth } = require('../lib/mediathek/auth/index.js');
 const { createPinPrompt, validateSubmit } = require('../lib/mediathek/auth/pin-prompt.js');
-const { createLoginRunner } = require('../lib/mediathek/auth/login-window.js');
 const { createE2eAuthNet } = require('../lib/mediathek/auth/e2e-login.js');
 const { createZdfFsk, fskContext, validPtmdUrl, windowOpen, parseAppToken, ptmdToRoot, PIN_URL, VERIFICATION_URL } = require('../lib/mediathek/zdf-fsk.js');
 const { createMediathekHttp } = require('../lib/mediathek/http.js');
@@ -88,39 +87,56 @@ function makeFsk({ auth = fakeAuth(), routes = {}, pinStatus = 200, askPin = asy
 
 // ── Sitzung lesen ──
 
-test('Sitzungstoken: Zustandsspeicher vor altem Schlüssel, ungültige Werte ergeben null', () => {
-  const store = value => JSON.stringify({ store: JSON.stringify(value), legacy: null });
-  assert.equal(parseSessionToken(store({ state: { sessionToken: SECRET_TOKEN }, version: 1 })), SECRET_TOKEN);
-  assert.equal(parseSessionToken(store({ sessionToken: SECRET_TOKEN })), SECRET_TOKEN);
-  assert.equal(parseSessionToken(JSON.stringify({ store: null, legacy: SECRET_TOKEN })), SECRET_TOKEN);
-  assert.equal(parseSessionToken(JSON.stringify({ store: null, legacy: JSON.stringify(SECRET_TOKEN) })), SECRET_TOKEN, 'JSON-Zeichenkette');
-  assert.equal(parseSessionToken(store({ state: { sessionToken: null } })), null, 'abgemeldet');
-  assert.equal(parseSessionToken(store({ state: { sessionToken: 'kurz' } })), null);
-  assert.equal(parseSessionToken(store({ state: { sessionToken: 'mit Leerzeichen im Token!' } })), null);
-  assert.equal(parseSessionToken(JSON.stringify({ store: '{kaputt', legacy: SECRET_TOKEN })), SECRET_TOKEN);
-  assert.equal(parseSessionToken('kein json'), null);
+const JWT = `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ sub: 'u1' })).toString('base64url')}.c2ln`;
+const entries = (...list) => JSON.stringify(list.map(([key, value]) => ({ key, value: typeof value === 'string' ? value : JSON.stringify(value) })));
+
+test('Kandidaten: Zustandsspeicher, alter Schlüssel, verschachtelte JWTs und Cookies; JWT zuerst, ohne Duplikate', () => {
+  assert.deepEqual(tokenCandidates(entries(['local-user-data', { state: { sessionToken: SECRET_TOKEN }, version: 1 }])), [SECRET_TOKEN]);
+  assert.deepEqual(tokenCandidates(entries(['zdf_user_token', SECRET_TOKEN])), [SECRET_TOKEN]);
+  assert.deepEqual(tokenCandidates(entries(['zdf_user_token', JSON.stringify(SECRET_TOKEN)])), [SECRET_TOKEN], 'JSON-Zeichenkette');
+  assert.deepEqual(tokenCandidates(entries(['auth', { a: { b: [{ credentials: JWT }] } }])), [JWT], 'JWT auch unter beliebigem Schlüssel, tief verschachtelt');
+  assert.deepEqual(tokenCandidates(entries(['user', { name: 'Max Mustermann', id: 'abcdefgh12345' }])), [], 'Werte unter anderen Schlüsseln sind keine Kandidaten');
+  assert.deepEqual(tokenCandidates(entries(['x', { sessionToken: SECRET_TOKEN, jwt: JWT, dup: SECRET_TOKEN }])), [JWT, SECRET_TOKEN]);
+  assert.deepEqual(tokenCandidates('[]', [{ name: 'zdf_token', value: encodeURIComponent(SECRET_TOKEN) }, { name: 'theme', value: 'dark-mode-long' }]), [SECRET_TOKEN]);
+  assert.deepEqual(tokenCandidates('[]', [{ name: 'sess', value: encodeURIComponent(JSON.stringify({ accessToken: SECRET_TOKEN })) }]), [SECRET_TOKEN], 'Cookie mit JSON');
+  for (const bad of [entries(['local-user-data', { state: { sessionToken: null } }]), entries(['t', { token: 'kurz' }]), entries(['t', { token: 'mit Leerzeichen im Token!' }]), 'kein json', '{"a":1}', null]) assert.deepEqual(tokenCandidates(bad), []);
+  const many = entries(['t', Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`token${i}`, `candidate-value-${i}`]))]);
+  assert.ok(tokenCandidates(many).length <= 12, 'begrenzt');
 });
 
-test('Provider: collect prüft die Sitzung bei ZDF; anonym, 401 und fremde Seiten ergeben null', async () => {
+test('Provider: collect prüft Kandidaten gegen die Identity-API, nimmt den ersten gültigen und verwirft ungültige', async () => {
   const calls = [];
-  let status = 200;
-  const net = { request: async (method, url, options) => { calls.push({ method, url, options }); return { status, json: {} }; } };
+  const valid = new Set([SECRET_TOKEN]);
+  let status = null;
+  const net = { request: async (method, url, options) => { calls.push({ method, url, options }); return { status: status || (valid.has(options.headers.Authorization.slice(7)) ? 200 : 401), json: {} }; } };
   const provider = createZdfProvider({ net, now: () => 5000 });
-  const page = (url, token = SECRET_TOKEN) => ({ url, executeJavaScript: async () => JSON.stringify({ store: JSON.stringify({ state: { sessionToken: token } }), legacy: null }) });
-  assert.equal(await provider.collect(page('https://evil.example/', SECRET_TOKEN)), null);
+  const page = (url, list, cookies = []) => ({ url, executeJavaScript: async () => list, getCookies: async () => cookies });
+  assert.equal(await provider.collect(page('https://evil.example/', entries(['zdf_user_token', SECRET_TOKEN]))), null);
+  assert.equal(await provider.collect(page('https://zdf.de.evil.example/', entries(['zdf_user_token', SECRET_TOKEN]))), null);
   assert.equal(calls.length, 0, 'fremde Seite: nichts gelesen, nichts gesendet');
-  assert.equal(await provider.collect(page('https://www.zdf.de/', null)), null);
-  assert.equal(calls.length, 0, 'ohne Token kein Abruf');
-  status = 401;
-  assert.equal(await provider.collect(page('https://www.zdf.de/')), null);
-  status = 200;
-  const record = await provider.collect(page('https://www.zdf.de/mein-zdf'));
+  assert.equal(await provider.collect(page('https://www.zdf.de/', '[]')), null);
+  assert.equal(calls.length, 0, 'ohne Kandidat kein Abruf');
+  // mehrere Kandidaten: JWT ungültig, Cookie ungültig, Session-Token gültig
+  const stale = 'stale-session-token-0000';
+  const record = await provider.collect(page('https://www.zdf.de/serien/abc', entries(['x', { jwt: JWT, sessionToken: SECRET_TOKEN }]), [{ name: 'sess', value: stale }]));
   assert.deepEqual({ ...record, accessToken: undefined }, { accessToken: undefined, refreshToken: null, expiresAt: 5000 + 12 * 3600 * 1000, since: 5000, state: 'ok', clientId: null });
   assert.equal(record.accessToken, SECRET_TOKEN);
-  assert.deepEqual([calls[1].method, calls[1].url], ['GET', USERINFO_URL]);
-  assert.equal(calls[1].options.headers.Authorization, `Bearer ${SECRET_TOKEN}`);
+  assert.deepEqual(calls.map(call => call.options.headers.Authorization), [`Bearer ${JWT}`, `Bearer ${SECRET_TOKEN}`], 'JWT zuerst, danach der Schlüssel-Kandidat; gültiger beendet die Suche');
+  assert.deepEqual([calls[0].method, calls[0].url], ['GET', USERINFO_URL]);
+  // abgelehnte Kandidaten werden kurz nicht erneut gesendet
+  calls.length = 0;
+  valid.clear();
+  assert.equal(await provider.collect(page('https://www.zdf.de/', entries(['x', { jwt: JWT }]))), null);
+  assert.equal(calls.length, 0, 'bereits abgelehnt: nicht erneut gesendet');
+  // nur Cookie gültig
+  const fresh = 'fresh-cookie-token-9999';
+  valid.add(fresh);
+  assert.equal((await provider.collect(page('https://www.zdf.de/', '[]', [{ name: 'sess', value: fresh }]))).accessToken, fresh);
+  // Lesefehler der Seite: Cookies reichen trotzdem
+  assert.equal((await provider.collect({ url: 'https://www.zdf.de/', executeJavaScript: async () => { throw new Error('x'); }, getCookies: async () => [{ name: 'sess', value: fresh }] })).accessToken, fresh);
+  // Netzproblem: Fehler ohne Token im Text
   status = 503;
-  await assert.rejects(() => provider.collect(page('https://www.zdf.de/')), error => error.code === 'http' && error.status === 503);
+  await assert.rejects(() => provider.collect(page('https://www.zdf.de/', entries(['zdf_user_token', 'another-session-token']))), error => error.code === 'http' && error.status === 503 && !error.message.includes('another'));
 });
 
 test('Provider: Ablauf aus JWT; refresh prüft die Sitzung (200 verlängert, 401 abgelehnt, 5xx Netzproblem)', async () => {
@@ -128,7 +144,7 @@ test('Provider: Ablauf aus JWT; refresh prüft die Sitzung (200 verlängert, 401
   const net = { request: async () => ({ status, json: {} }) };
   const provider = createZdfProvider({ net, now: () => 1000 });
   const jwt = `h.${Buffer.from(JSON.stringify({ exp: 4000 })).toString('base64url')}.s`;
-  const page = { url: 'https://www.zdf.de/', executeJavaScript: async () => JSON.stringify({ store: null, legacy: jwt }) };
+  const page = { url: 'https://www.zdf.de/', executeJavaScript: async () => entries(['zdf_user_token', jwt]) };
   assert.equal((await provider.collect(page)).expiresAt, 4000000);
   const record = { accessToken: SECRET_TOKEN, refreshToken: null, expiresAt: 0, since: 7, state: 'ok', clientId: null };
   const next = await provider.refresh(record);
@@ -512,43 +528,16 @@ test('Meldungen: ZDF-Texte je Grund (Konto, Altersfreigabe auf der Website, FSK 
 
 // ── Anmeldefenster ──
 
-test('Anmeldefenster ZDF: Hosts zdf.de/ard.de/ard-zdf.de, Sammelseite nur www.zdf.de, Partition persist:mediathek-zdf', () => {
+test('Anmeldefenster ZDF: Hosts zdf.de/ard.de/ard-zdf.de, Sammelseite jede zdf.de-Seite, Partition persist:mediathek-zdf', () => {
   const provider = createZdfProvider({ net: {} });
   assert.equal(provider.partition, 'persist:mediathek-zdf');
   assert.equal(provider.login.startUrl, 'https://www.zdf.de/mein-zdf');
   for (const host of ['www.zdf.de', 'zdf.de', 'accounts.ard.de', 'accounts.ard-zdf.de']) assert.equal(provider.login.isAllowedHost(host), true, host);
   for (const host of ['zdf.de.evil.example', 'evilzdf.de', 'example.com', 'api.friendlycaptcha.com']) assert.equal(provider.login.isAllowedHost(host), false, host);
-  assert.equal(provider.login.isCollectPage('www.zdf.de'), true);
+  for (const host of ['www.zdf.de', 'zdf.de', 'login.zdf.de']) assert.equal(provider.login.isCollectPage(host), true, host);
+  assert.equal(provider.login.isCollectPage('zdf.de.evil.example'), false);
+  assert.equal(provider.login.collectUrl, 'https://www.zdf.de/mein-zdf');
   assert.equal(provider.login.isCollectPage('accounts.ard.de'), false);
-});
-
-test('Anmeldefenster: Sitzung wird nur auf www.zdf.de gelesen und liefert den Datensatz', async () => {
-  const windows = [];
-  class FakeWindow extends EventEmitter {
-    constructor(options) {
-      super();
-      this.options = options;
-      this.destroyed = false;
-      this.url = '';
-      this.webContents = { setWindowOpenHandler: () => {}, on: () => {}, loadURL: async target => { this.url = target; }, getURL: () => this.url, executeJavaScript: async () => JSON.stringify({ store: JSON.stringify({ state: { sessionToken: SECRET_TOKEN } }), legacy: null }) };
-      windows.push(this);
-    }
-    isDestroyed() { return this.destroyed; }
-    destroy() { this.destroyed = true; this.emit('closed'); }
-  }
-  const timers = [];
-  const session = { fromPartition: () => ({ setPermissionRequestHandler: () => {}, setPermissionCheckHandler: () => {} }) };
-  const runner = createLoginRunner({ BrowserWindow: FakeWindow, session, setTimer: fn => { const t = { fn }; timers.push(t); return t; }, clearTimer: () => {} });
-  const provider = createZdfProvider({ net: { request: async () => ({ status: 200, json: {} }) }, now: () => 100 });
-  const pending = runner.run(provider);
-  assert.equal(windows[0].url, 'https://www.zdf.de/mein-zdf');
-  windows[0].url = 'https://accounts.ard.de/login';
-  await timers[0].fn();
-  windows[0].url = 'https://www.zdf.de/mein-zdf';
-  await timers[0].fn();
-  const result = await pending;
-  assert.equal(result.ok, true);
-  assert.equal(result.record.accessToken, SECRET_TOKEN);
 });
 
 // ── PIN-Abfrage ──

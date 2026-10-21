@@ -356,3 +356,9 @@ test('OV-Zusammenführung: geschütztes Leerzeichen im Titel wird wie ein Leerze
   assert.deepEqual(merged.map(e => e.id), ['a']);
   assert.equal(merged[0].originalVersionId, 'o');
 });
+
+test('ARD-Suche: zdf/arte-Fremdinhalte (Einzelfilm, Magazin) und Einzelvideos ohne Folgen entfallen, Serien mit abrufbaren Folgen bleiben', () => {
+  const page = parser.parseSearchPage(fixture('ardSearchForeign'), 'ard');
+  assert.deepEqual(page.series.map(item => item.title), ['Exorzismus-Doku', 'ZDF-Serie bei ARD']);
+  assert.deepEqual(page.entries, []);
+});

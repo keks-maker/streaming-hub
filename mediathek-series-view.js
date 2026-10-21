@@ -216,12 +216,11 @@ function createMediathekSeriesView(root, ctx) {
     const title = el(doc, 'h2', 'mediathek-hero-title', series.title);
     title.id = 'mediathekSeriesTitle';
     text.appendChild(title);
+    const badges = el(doc, 'p', 'mediathek-dialog-badges mediathek-hero-fsk');
     const fsk = fskText(seriesFsk(state.seasons));
-    if (fsk) {
-      const badges = el(doc, 'p', 'mediathek-dialog-badges');
-      badges.appendChild(el(doc, 'span', 'mediathek-fsk-badge', fsk));
-      text.appendChild(badges);
-    }
+    if (fsk) badges.appendChild(el(doc, 'span', 'mediathek-fsk-badge', fsk));
+    badges.hidden = !fsk;
+    text.appendChild(badges);
     if (series.description) text.appendChild(el(doc, 'p', 'mediathek-hero-desc', series.description));
 
     const actions = el(doc, 'div', 'mediathek-actions');
@@ -314,7 +313,7 @@ function createMediathekSeriesView(root, ctx) {
     const text = el(doc, 'span', 'mediathek-episode-text');
     text.append(el(doc, 'span', 'mediathek-card-title', entry.title));
     if (sub) text.appendChild(el(doc, 'span', 'mediathek-card-sub', sub));
-    main.append(createThumb(doc, { imageUrl: entry.imageUrl, title: entry.title, duration: entry.duration, geo: entry.regionRestricted, width: 480 }), text);
+    main.append(createThumb(doc, { imageUrl: entry.imageUrl, title: entry.title, duration: entry.duration, geo: entry.regionRestricted, width: 480, fsk: entry.fsk, fskEntry: entry }), text);
     main.addEventListener('click', () => ctx.play(entry, series, main));
     const info = button(doc, 'mediathek-info-btn is-inline', 'i', () => ctx.openDetail(entry, series, info), `Details zu ${entry.title}`);
     if (dl() && !blocked) item.append(main, downloadButton(entry, series), info);
@@ -334,11 +333,24 @@ function createMediathekSeriesView(root, ctx) {
     return null;
   }
 
+  /** Kopf-Badge nachführen, wenn nachgeladene Folgen eine (höhere) Einstufung bringen. */
+  function refreshHeroFsk() {
+    if (!page) return;
+    const holder = root.querySelector('.mediathek-hero-fsk');
+    if (!holder) return;
+    const text = fskText(seriesFsk(page.snapshot().seasons));
+    holder.textContent = '';
+    if (text) holder.appendChild(el(doc, 'span', 'mediathek-fsk-badge', text));
+    holder.hidden = !text;
+  }
+  if (ctx.fsk) ctx.fsk.onChange(refreshHeroFsk);
+
   function render() {
     if (!page) return;
     const state = page.snapshot();
     const selector = focusSelector();
     renderContent(state);
+    if (ctx.fsk) ctx.fsk.decorate(root, { max: 30 }); // Einstufung der sichtbaren Folgenzeilen nachladen (höchstens 30, zwei parallel)
     if (selector) {
       const target = root.querySelector(selector);
       if (target) target.focus({ preventScroll: true });

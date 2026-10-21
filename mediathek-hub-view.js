@@ -7,6 +7,7 @@
 const { createHubStore, createSearchStore, enabledSourceIds, entryForIpc } = require('./mediathek-hub-model.js');
 const { blockedFromResolution } = require('./mediathek-detail-model.js');
 const { isPlayableUrl, startPosition } = require('./mediathek-player-model.js');
+const { createFskLoader } = require('./mediathek-fsk-loader.js');
 const { createMediathekHome } = require('./mediathek-home-view.js');
 const { createMediathekSeriesView } = require('./mediathek-series-view.js');
 const { createMediathekGenreView } = require('./mediathek-genre-view.js');
@@ -133,22 +134,14 @@ function createMediathekHub(root, options = {}) {
     return result.favorite;
   }
 
-  const fskKnown = new Map(); // "<quelle>:<id>" -> nachgeladene Altersfreigabe (ZDF-Teaser nennen sie oft nicht)
+  // Altersfreigabe nachladen (ZDF/ARD-Teaser nennen sie oft nicht): gestaffelt, gecacht, nur für sichtbare Einträge
+  const fskLoader = createFskLoader({ fetchFsk: entry => (typeof mediathek.entryFsk === 'function' ? mediathek.entryFsk(entryForIpc(entry)) : Promise.resolve({ ok: false })) });
 
-  /** Eintrag mit Altersfreigabe: ZDF ohne Angabe fragt einmal das Dokument ab (Main cached); Fehler lassen den Eintrag unverändert. */
+  /** Eintrag mit Altersfreigabe (bei Bedarf einmal nachgefragt); Fehler lassen den Eintrag unverändert. */
   async function withFsk(entry) {
-    if (!entry || typeof entry.fsk === 'number' || entry.sourceId !== 'zdf' || typeof mediathek.entryFsk !== 'function') return entry;
-    const key = `${entry.sourceId}:${entry.id}`;
-    if (!fskKnown.has(key)) {
-      try {
-        const result = await mediathek.entryFsk(entryForIpc(entry));
-        if (result && result.ok) fskKnown.set(key, typeof result.fsk === 'number' ? result.fsk : null);
-      } catch {
-        return entry;
-      }
-    }
-    const fsk = fskKnown.get(key);
-    return typeof fsk === 'number' ? { ...entry, fsk } : entry;
+    if (!entry) return entry;
+    const fsk = await fskLoader.lookup(entry);
+    return typeof fsk === 'number' && entry.fsk !== fsk ? { ...entry, fsk } : entry;
   }
 
   function openDetail(entry, series, trigger) {
@@ -310,6 +303,7 @@ function createMediathekHub(root, options = {}) {
   if (subsStore) subsStore.subscribe(patchSubscriptionBadges);
 
   const cardCtx = {
+    fsk: fskLoader,
     isSubscribed: series => (subsStore ? subsStore.isSubscribed(series) : false),
     isBlocked: id => blocked.get(id) || null,
     isFavorite: series => store.isFavorite(series),

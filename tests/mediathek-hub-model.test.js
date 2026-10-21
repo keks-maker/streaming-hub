@@ -119,7 +119,8 @@ test('Hub-Store: Weiterschauen und Meine Serien, Favoriten-Abfrage', async () =>
   assert.equal(store.snapshot().resumeLoaded, true);
   assert.equal(store.isFavorite(series('f')), true);
   assert.equal(store.isFavorite(series('g')), false);
-  assert.deepEqual(m.resumeCard({ title: 'T', sourceId: 'ard', imageUrl: undefined, fraction: 0.4 }), { title: 'T', sourceId: 'ard', imageUrl: null, series: null, fraction: 0.4 });
+  assert.deepEqual(m.resumeCard({ title: 'T', sourceId: 'ard', imageUrl: undefined, fraction: 0.4 }), { title: 'T', sourceId: 'ard', imageUrl: null, series: null, fraction: 0.4, fsk: null });
+  assert.equal(m.resumeCard({ title: 'T', sourceId: 'ard', fsk: 6 }).fsk, 6);
 });
 
 test('Suche: nur die jüngste Anfrage setzt Zustand (Request-Token)', async () => {
