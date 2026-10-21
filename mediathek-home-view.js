@@ -245,6 +245,13 @@ function createMediathekHome(root, ctx) {
     const nodes = [];
     const results = search.results(searchFilter(filter));
     if (snapshot.error) nodes.push(errorBlock(`Suche fehlgeschlagen: ${snapshot.error}`, () => search.search(snapshot.query, snapshot.sources)));
+    else {
+      for (const failure of search.failures(searchFilter(filter))) {
+        const box = errorBlock(`${sourceBadge(failure.sourceId)}: Suche fehlgeschlagen: ${failure.message}`, () => search.retry(failure.sourceId));
+        box.dataset.failedSource = failure.sourceId;
+        nodes.push(box);
+      }
+    }
     if (results.series.length) nodes.push(groupBlock('Serien', results.series.length, results.series.map(seriesCard), 'series'));
     if (results.entries.length) nodes.push(groupBlock('Folgen', results.entries.length, results.entries.map(entry => entryCard(entry, null)), 'entries'));
     if (search.isEmpty(searchFilter(filter))) {

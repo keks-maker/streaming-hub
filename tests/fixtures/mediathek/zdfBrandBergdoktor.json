@@ -1,0 +1,326 @@
+{
+ "document": {
+  "id": "der-bergdoktor-106",
+  "type": "brand",
+  "titel": "Der Bergdoktor",
+  "contentType": "brand",
+  "hasVideo": true,
+  "brandId": "der-bergdoktor-106",
+  "brandTitle": "Der Bergdoktor"
+ },
+ "cluster": [
+  {
+   "name": "Staffel 19 - alle verfügbaren Folgen",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "neuanfaenge-110",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/neuanfaenge-110",
+     "headline": "Der Bergdoktor",
+     "titel": "Neuanfänge",
+     "beschreibung": "Beschreibung Neuanfänge",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/neuanfaenge-110~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "19",
+     "episodeNumber": "1"
+    },
+    {
+     "id": "hoehenflug-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/hoehenflug-100",
+     "headline": "Der Bergdoktor",
+     "titel": "Höhenflug",
+     "beschreibung": "Beschreibung Höhenflug",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/hoehenflug-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "19",
+     "episodeNumber": "2"
+    }
+   ]
+  },
+  {
+   "name": "Exklusive Einblicke",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "backstage-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/backstage-100",
+     "headline": "Der Bergdoktor",
+     "titel": "Backstage beim Bergdoktor",
+     "beschreibung": "Beschreibung Backstage beim Bergdoktor",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/backstage-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "1",
+     "episodeNumber": "9"
+    }
+   ]
+  },
+  {
+   "name": "Im Gespräch",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "volle-kanne-vom-10-februar-2025-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/volle-kanne-vom-10-februar-2025-100",
+     "headline": "Volle Kanne",
+     "titel": "Ronja bei Volle Kanne",
+     "beschreibung": "Beschreibung Ronja bei Volle Kanne",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "volle-kanne-100",
+     "brandTitle": "Volle Kanne",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/volle-kanne-vom-10-februar-2025-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "2025",
+     "episodeNumber": "28"
+    }
+   ]
+  },
+  {
+   "name": "Staffel 17 - alle verfügbaren Folgen",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "der-blick-nach-vorn-1-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/der-blick-nach-vorn-1-100",
+     "headline": "Der Bergdoktor",
+     "titel": "Der Blick nach vorn (1)",
+     "beschreibung": "Beschreibung Der Blick nach vorn (1)",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "05.01.2024 20:15",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/der-blick-nach-vorn-1-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "17",
+     "episodeNumber": "1"
+    },
+    {
+     "id": "der-blick-nach-vorn-2-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/der-blick-nach-vorn-2-100",
+     "headline": "Der Bergdoktor",
+     "titel": "Der Blick nach vorn (2)",
+     "beschreibung": "Beschreibung Der Blick nach vorn (2)",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "05.01.2024 21:45",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/der-blick-nach-vorn-2-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "17",
+     "episodeNumber": "1"
+    },
+    {
+     "id": "trailer-s17-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/trailer-s17-100",
+     "headline": "Der Bergdoktor",
+     "titel": "Trailer Staffel 17",
+     "beschreibung": "Beschreibung Trailer Staffel 17",
+     "contentType": "clip",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/trailer-s17-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "17"
+    }
+   ]
+  },
+  {
+   "name": "",
+   "type": "teaserContent",
+   "teaser": [
+    {
+     "id": "neuanfaenge-110",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/neuanfaenge-110",
+     "headline": "Der Bergdoktor",
+     "titel": "Neuanfänge",
+     "beschreibung": "Beschreibung Neuanfänge",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/neuanfaenge-110~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "19",
+     "episodeNumber": "1"
+    }
+   ]
+  },
+  {
+   "name": "Die restlichen verfügbaren Folgen",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "mein-freund-102",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/mein-freund-102",
+     "headline": "Der Bergdoktor",
+     "titel": "Mein Freund",
+     "beschreibung": "Beschreibung Mein Freund",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "der-bergdoktor-106",
+     "brandTitle": "Der Bergdoktor",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/mein-freund-102~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "7",
+     "episodeNumber": "4"
+    }
+   ]
+  },
+  {
+   "name": "Weitere Serien",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "fruehling-144",
+     "type": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/fruehling-144",
+     "headline": "",
+     "titel": "Frühling",
+     "beschreibung": "",
+     "contentType": "brand",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandTitle": "Frühling",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/fruehling-144~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "die-bergretter-104",
+     "type": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/die-bergretter-104",
+     "headline": "",
+     "titel": "Die Bergretter",
+     "beschreibung": "",
+     "contentType": "brand",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandTitle": "Die Bergretter",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/die-bergretter-104~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

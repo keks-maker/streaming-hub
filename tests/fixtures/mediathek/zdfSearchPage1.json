@@ -1,0 +1,78 @@
+{
+ "nextPage": true,
+ "nextPageUrl": "https://zdf-prod-futura.zdf.de/mediathekV2/search?q=bergdoktor&profile=cellular-5&synth=true&sp=true&page=2",
+ "totalResultsCount": 188,
+ "results": [
+  {
+   "id": "der-bergdoktor-106",
+   "type": "brand",
+   "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/der-bergdoktor-106",
+   "headline": "",
+   "titel": "Der Bergdoktor",
+   "beschreibung": "Dr. Martin Gruber",
+   "contentType": "brand",
+   "hasVideo": true,
+   "channel": "ZDF",
+   "brandTitle": "Der Bergdoktor",
+   "teaserBild": {
+    "768": {
+     "url": "https://www.zdf.de/assets/der-bergdoktor-106~768x432",
+     "width": 768,
+     "height": 432
+    }
+   }
+  },
+  {
+   "id": "neuanfaenge-110",
+   "type": "video",
+   "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/neuanfaenge-110",
+   "headline": "Der Bergdoktor",
+   "titel": "Neuanfänge",
+   "beschreibung": "Beschreibung Neuanfänge",
+   "contentType": "episode",
+   "hasVideo": true,
+   "channel": "ZDF",
+   "brandId": "der-bergdoktor-106",
+   "brandTitle": "Der Bergdoktor",
+   "visibleFrom": "01.01.2026 10:00",
+   "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+   "length": 2700,
+   "fsk": "none",
+   "teaserBild": {
+    "768": {
+     "url": "https://www.zdf.de/assets/neuanfaenge-110~768x432",
+     "width": 768,
+     "height": 432
+    }
+   },
+   "seasonNumber": "19",
+   "episodeNumber": "1"
+  },
+  {
+   "id": "hoehenflug-100",
+   "type": "video",
+   "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/hoehenflug-100",
+   "headline": "Der Bergdoktor",
+   "titel": "Höhenflug",
+   "beschreibung": "Beschreibung Höhenflug",
+   "contentType": "episode",
+   "hasVideo": true,
+   "channel": "ZDF",
+   "brandId": "der-bergdoktor-106",
+   "brandTitle": "Der Bergdoktor",
+   "visibleFrom": "01.01.2026 10:00",
+   "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+   "length": 2700,
+   "fsk": "none",
+   "teaserBild": {
+    "768": {
+     "url": "https://www.zdf.de/assets/hoehenflug-100~768x432",
+     "width": 768,
+     "height": 432
+    }
+   },
+   "seasonNumber": "19",
+   "episodeNumber": "2"
+  }
+ ]
+}

@@ -1,0 +1,105 @@
+{
+ "document": {
+  "id": "schlachtfeld-100",
+  "type": "topic",
+  "titel": "Entscheidung auf dem Schlachtfeld",
+  "contentType": "topic",
+  "hasVideo": true
+ },
+ "cluster": [
+  {
+   "name": "Entscheidung auf dem Schlachtfeld - Staffel 2",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "marathon-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/marathon-100",
+     "headline": "Entscheidung auf dem Schlachtfeld",
+     "titel": "Marathon",
+     "beschreibung": "Beschreibung Marathon",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "schlachtfeld-100",
+     "brandTitle": "Entscheidung auf dem Schlachtfeld",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/marathon-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "2",
+     "episodeNumber": "1"
+    }
+   ]
+  },
+  {
+   "name": "",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "hastings-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/hastings-100",
+     "headline": "Entscheidung auf dem Schlachtfeld",
+     "titel": "Hastings",
+     "beschreibung": "Beschreibung Hastings",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "schlachtfeld-100",
+     "brandTitle": "Entscheidung auf dem Schlachtfeld",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/hastings-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     },
+     "seasonNumber": "2",
+     "episodeNumber": "4"
+    }
+   ]
+  },
+  {
+   "name": "Auch interessant",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "anderes-100",
+     "type": "video",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/anderes-100",
+     "headline": "X",
+     "titel": "Anderes",
+     "beschreibung": "Beschreibung Anderes",
+     "contentType": "episode",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandId": "x",
+     "brandTitle": "X",
+     "visibleFrom": "01.01.2026 10:00",
+     "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+     "length": 2700,
+     "fsk": "none",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/anderes-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

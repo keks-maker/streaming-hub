@@ -106,11 +106,15 @@ test('ZDF-Startseite: Cluster "Rubriken" als Kacheln zuerst, nur Rubrik-Teaser',
 
 test('ZDF-Rubrikseite: Videos mit Dublettenfilter, Marken ohne Videos entfallen, Unterrubrik ohne die Rubrik selbst', () => {
   const sections = parser.parseGenrePage(fixture('zdfRubrikFilme'), 'zdf');
-  assert.deepEqual(sections.map(s => s.title), ['Komödien', 'Mehr entdecken']);
+  assert.deepEqual(sections.map(s => s.title), ['Komödien', 'Romantische Filme und Serien', 'Mehr entdecken']);
   assert.deepEqual(sections[0].entries.map(e => e.id), ['ein-schrecklich-reiches-paar-102', 'lehrer-kann-jeder-102', 'mit-der-tuer-ins-haus-102']);
   assert.ok(sections[0].entries.every(e => e.sourceId === 'zdf'));
-  assert.deepEqual(sections[1].genres.map(g => g.id), ['doku-wissen-unterrubrik-100']);
+  // Marken (brand) sind Serien mit Folgenliste: Serienkarten statt des früheren Hinweises "nichts direkt Abspielbares"
+  assert.deepEqual(sections[1].series.map(s => s.id), ['der-bergdoktor-106', 'fruehling-144']);
+  assert.equal(sections[1].series[0].groupingURL, 'https://zdf-prod-futura.zdf.de/mediathekV2/document/der-bergdoktor-106');
   assert.equal(sections[1].entries.length, 0);
+  assert.deepEqual(sections[2].genres.map(g => g.id), ['doku-wissen-unterrubrik-100']);
+  assert.equal(sections[2].entries.length, 0);
 });
 
 test('Service: Rubrikseiten je Quelle über die gebauten Adressen, Nachladen ARD-Widget und arte', async () => {

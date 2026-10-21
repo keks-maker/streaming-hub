@@ -218,10 +218,10 @@ function createHubStore({ api }) {
 function createSearchStore({ api }) {
   const emitter = createEmitter();
   let token = 0;
-  const state = { query: '', sources: [], series: [], entries: [], paging: {}, loading: false, loadingMore: false, error: null, moreFailed: false };
+  const state = { query: '', sources: [], series: [], entries: [], paging: {}, loading: false, loadingMore: false, error: null, failures: {}, moreFailed: false };
 
   const reset = (query, sources) => {
-    Object.assign(state, { query, sources, series: [], entries: [], paging: {}, loading: false, loadingMore: false, error: null, moreFailed: false });
+    Object.assign(state, { query, sources, series: [], entries: [], paging: {}, loading: false, loadingMore: false, error: null, failures: {}, moreFailed: false });
   };
 
   function append(list, items) {
@@ -249,15 +249,31 @@ function createSearchStore({ api }) {
     emitter.emit();
     const results = await Promise.all(sources.map(async sourceId => ({ sourceId, result: await safeCall(() => api.search(text, sourceId, 0)) })));
     if (token !== mine) return mine;
-    let failed = 0;
     for (const { sourceId, result } of results) {
       if (result.ok) apply(sourceId, result);
-      else failed += 1;
+      else state.failures[sourceId] = result.error || SEARCH_MESSAGES.failed; // Fehler nie als „keine Treffer“ ausgeben
     }
     state.loading = false;
-    state.error = failed === results.length ? results[0].result.error || SEARCH_MESSAGES.failed : null;
+    state.error = Object.keys(state.failures).length === results.length ? results[0].result.error || SEARCH_MESSAGES.failed : null;
     emitter.emit();
     return mine;
+  }
+
+  /** Suche einer fehlgeschlagenen Quelle erneut (Seite 0); die Treffer der anderen Quellen bleiben. */
+  async function retry(sourceId) {
+    if (!state.query || state.loading || !(sourceId in state.failures)) return;
+    const mine = token;
+    delete state.failures[sourceId];
+    state.error = null;
+    state.loading = true;
+    emitter.emit();
+    const result = await safeCall(() => api.search(state.query, sourceId, 0));
+    if (token !== mine) return;
+    if (result.ok) apply(sourceId, result);
+    else state.failures[sourceId] = result.error || SEARCH_MESSAGES.failed;
+    state.loading = false;
+    state.error = Object.keys(state.failures).length === state.sources.length ? state.failures[sourceId] || SEARCH_MESSAGES.failed : null;
+    emitter.emit();
   }
 
   /** Nächste Seite aller Quellen (oder der gewählten Quelle), die weitere Treffer melden. */
@@ -284,6 +300,7 @@ function createSearchStore({ api }) {
     subscribe: emitter.subscribe,
     snapshot: () => state,
     search,
+    retry,
     loadMore,
     clear: () => search('', []),
     /** Trefferzahl je Quelle bzw. „all“ (Serien + Folgen). */
@@ -294,7 +311,9 @@ function createSearchStore({ api }) {
     },
     results: filter => ({ series: state.series.filter(item => inFilter(item, filter)), entries: state.entries.filter(item => inFilter(item, filter)) }),
     hasMore: (filter = 'all') => state.sources.some(id => (filter === 'all' || filter === id) && state.paging[id] && state.paging[id].hasMore),
-    isEmpty: filter => !state.loading && !state.error && state.query !== '' && state.series.filter(item => inFilter(item, filter)).length + state.entries.filter(item => inFilter(item, filter)).length === 0 && !state.loadingMore,
+    /** Fehlgeschlagene Quellen im Filter: [{ sourceId, message }]. */
+    failures: filter => state.sources.filter(id => id in state.failures && (filter === 'all' || filter === id)).map(id => ({ sourceId: id, message: state.failures[id] })),
+    isEmpty: filter => !state.loading && !state.error && !Object.keys(state.failures).some(id => filter === 'all' || filter === id) && state.query !== '' && state.series.filter(item => inFilter(item, filter)).length + state.entries.filter(item => inFilter(item, filter)).length === 0 && !state.loadingMore,
   };
 }
 

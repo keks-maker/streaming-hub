@@ -1,0 +1,103 @@
+{
+ "document": {
+  "id": "sendungen-100",
+  "type": "brandsAlphabetical",
+  "titel": "A - Z"
+ },
+ "cluster": [
+  {
+   "name": "A",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "aktenzeichen-xy-100",
+     "type": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/aktenzeichen-xy-100",
+     "headline": "",
+     "titel": "Aktenzeichen XY",
+     "beschreibung": "",
+     "contentType": "brand",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandTitle": "Aktenzeichen XY",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/aktenzeichen-xy-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "der-bergdoktor-106",
+     "type": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/der-bergdoktor-106",
+     "headline": "",
+     "titel": "Der Bergdoktor",
+     "beschreibung": "",
+     "contentType": "brand",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandTitle": "Der Bergdoktor",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/der-bergdoktor-106~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "die-welt-der-antike-100",
+     "type": "topic",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/die-welt-der-antike-100",
+     "headline": "",
+     "titel": "Die Welt der Antike",
+     "beschreibung": "",
+     "contentType": "topic",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandTitle": "Die Welt der Antike",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/die-welt-der-antike-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "0 - 9",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "3sat-100",
+     "type": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/3sat-100",
+     "headline": "",
+     "titel": "3sat Doku",
+     "beschreibung": "",
+     "contentType": "brand",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "brandTitle": "3sat Doku",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/3sat-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

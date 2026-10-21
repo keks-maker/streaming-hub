@@ -1,0 +1,32 @@
+{
+ "nextPage": false,
+ "totalResultsCount": 188,
+ "results": [
+  {
+   "id": "heimweh-100",
+   "type": "video",
+   "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/heimweh-100",
+   "headline": "Der Bergdoktor",
+   "titel": "Heimweh",
+   "beschreibung": "Beschreibung Heimweh",
+   "contentType": "episode",
+   "hasVideo": true,
+   "channel": "ZDF",
+   "brandId": "der-bergdoktor-106",
+   "brandTitle": "Der Bergdoktor",
+   "visibleFrom": "01.01.2008 20:15",
+   "offlineAvailability": "2028-02-18T23:59:00.000+01:00",
+   "length": 2700,
+   "fsk": "none",
+   "teaserBild": {
+    "768": {
+     "url": "https://www.zdf.de/assets/heimweh-100~768x432",
+     "width": 768,
+     "height": 432
+    }
+   },
+   "seasonNumber": "1",
+   "episodeNumber": "1"
+  }
+ ]
+}

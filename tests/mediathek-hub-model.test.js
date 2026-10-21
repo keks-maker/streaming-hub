@@ -224,6 +224,48 @@ test('Suche: Fehler aller Quellen, Leerzustand und Fehler beim Nachladen', async
   assert.equal(paged.hasMore('all'), true, 'nach einem Fehler bleibt Wiederholen möglich');
 });
 
+test('Suche: fällt nur eine Quelle aus, bleiben die Treffer der anderen und der Fehler erscheint mit Wiederholung (kein „keine Treffer“)', async () => {
+  let zdfOk = false;
+  const api = {
+    search: async (query, source) => {
+      if (source === 'zdf' && !zdfOk) return { ok: false, error: 'Server antwortete mit HTTP 503' };
+      return { ok: true, series: [], entries: [entry(`${source}1`, source)], page: 0, hasMore: false };
+    },
+  };
+  const store = m.createSearchStore({ api });
+  await store.search('x', ['ard', 'zdf']);
+  assert.equal(store.snapshot().error, null);
+  assert.deepEqual(store.failures('all'), [{ sourceId: 'zdf', message: 'Server antwortete mit HTTP 503' }]);
+  assert.deepEqual(store.failures('ard'), []);
+  assert.deepEqual(store.results('all').entries.map(e => e.id), ['ard1']);
+  // nur ZDF gewählt und ohne Treffer: Fehler statt Leerzustand
+  assert.equal(store.isEmpty('zdf'), false);
+  zdfOk = true;
+  await store.retry('zdf');
+  assert.deepEqual(store.failures('all'), []);
+  assert.deepEqual(store.results('all').entries.map(e => e.id).sort(), ['ard1', 'zdf1']);
+  assert.equal(store.snapshot().loading, false);
+  await store.retry('ard'); // ohne Fehler nichts zu tun
+});
+
+test('Suche: ZDF pagt über page/hasMore wie ARD und arte (Nachladen je Quelle)', async () => {
+  const seen = [];
+  const api = {
+    search: async (query, source, page) => {
+      seen.push(`${source}:${page}`);
+      return { ok: true, series: [], entries: [entry(`${source}-${page}`, source)], page, hasMore: source === 'zdf' && page < 2 };
+    },
+  };
+  const store = m.createSearchStore({ api });
+  await store.search('bergdoktor', ['zdf']);
+  assert.equal(store.hasMore('zdf'), true);
+  await store.loadMore('zdf');
+  await store.loadMore('zdf');
+  assert.equal(store.hasMore('zdf'), false);
+  assert.deepEqual(seen, ['zdf:0', 'zdf:1', 'zdf:2']);
+  assert.deepEqual(store.results('zdf').entries.map(e => e.id), ['zdf-0', 'zdf-1', 'zdf-2']);
+});
+
 test('Suche: veraltetes Nachladen wird verworfen, wenn inzwischen neu gesucht wurde', async () => {
   const more = deferred();
   const api = {

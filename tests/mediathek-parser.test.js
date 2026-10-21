@@ -344,11 +344,69 @@ test('arte: Seiten-URL und Suche mit Serien', () => {
   assert.equal(page.hasMore, false);
 });
 
-test('ZDF-Suche: nur Seite 0, ohne Serien', () => {
+test('ZDF-Suche: Marken als Serien, Folgen, ohne nextPage kein Nachladen', () => {
   const page0 = parser.parseSearchPage(fixture('zdfSearch'), 'zdf');
   assert.equal(page0.entries.length, 1);
-  assert.deepEqual(page0.series, []);
-  assert.equal(parser.parseSearchPage(fixture('zdfSearch'), 'zdf', 1).entries.length, 0);
+  assert.deepEqual(page0.series.map(s => s.id), ['heute-journal-104']);
+  assert.equal(page0.hasMore, false);
+});
+
+test('ZDF-Suche mit Paging: nextPage + nextPageUrl nur für die ZDF-Suche der API', () => {
+  const page = parser.parseSearchPage(fixture('zdfSearchPage1'), 'zdf', 0);
+  assert.deepEqual(page.series.map(s => s.id), ['der-bergdoktor-106']);
+  assert.deepEqual(page.entries.map(e => e.id), ['neuanfaenge-110', 'hoehenflug-100']);
+  assert.equal(page.hasMore, true);
+  assert.match(page.nextPageUrl, /^https:\/\/zdf-prod-futura\.zdf\.de\/mediathekV2\/search\?q=bergdoktor/);
+  const last = parser.parseSearchPage(fixture('zdfSearchPageLast'), 'zdf', 1);
+  assert.equal(last.hasMore, false);
+  assert.equal(last.page, 1);
+  for (const bad of ['https://evil.example/mediathekV2/search?q=x&page=2', 'http://zdf-prod-futura.zdf.de/mediathekV2/search?page=2', 'https://zdf-prod-futura.zdf.de/mediathekV2/document/x', 'kaputt']) {
+    const root = JSON.stringify({ nextPage: true, nextPageUrl: bad, results: [{ id: 'a-100', type: 'video', contentType: 'episode', titel: 'A' }] });
+    const result = parser.parseSearchPage(root, 'zdf', 0);
+    assert.equal(result.hasMore, false, bad);
+    assert.equal(result.nextPageUrl, null, bad);
+  }
+});
+
+test('ZDF-Serie (brand): Staffel-Cluster mit Folgen, Extras/Fremdmarken/Clips entfallen, Staffel und Folge aus den Teasern', () => {
+  const entries = parser.parseZdfEpisodes(fixture('zdfBrandBergdoktor'));
+  assert.deepEqual(entries.map(e => e.id), ['neuanfaenge-110', 'hoehenflug-100', 'der-blick-nach-vorn-1-100', 'der-blick-nach-vorn-2-100', 'mein-freund-102']);
+  assert.deepEqual(entries.map(e => [e.season, e.episode]), [[19, 1], [19, 2], [17, 1], [17, 1], [7, 4]]);
+  assert.equal(entries[2].airedAt, '2024-01-05T19:15:00.000Z');
+  assert.ok(entries.every(e => e.sourceId === 'zdf'));
+  assert.deepEqual(groupBySeason(entries).map(g => g.number), [7, 17, 19]);
+});
+
+test('ZDF-Serie (topic): Cluster "<Reihe> - Staffel N" und namenlose Folgen-Cluster, "Auch interessant" nicht', () => {
+  const entries = parser.parseZdfEpisodes(fixture('zdfTopicSchlachtfeld'));
+  assert.deepEqual(entries.map(e => [e.id, e.season, e.episode]), [['marathon-100', 2, 1], ['hastings-100', 2, 4]]);
+});
+
+test('ZDF: Staffelzahl ab 1900 ist ein Jahr (keine Staffel, keine Folge), Zahlen als Text werden gelesen', () => {
+  const { zdfSeasonEpisode } = require('../lib/mediathek/parser-zdf.js');
+  assert.deepEqual(zdfSeasonEpisode({ seasonNumber: '2025', episodeNumber: '28' }), { season: null, episode: null });
+  assert.deepEqual(zdfSeasonEpisode({ seasonNumber: '1900', episodeNumber: '3' }), { season: 1900, episode: 3 });
+  assert.deepEqual(zdfSeasonEpisode({ seasonNumber: '3', episodeNumber: '04' }), { season: 3, episode: 4 });
+  assert.deepEqual(zdfSeasonEpisode({ seasonNumber: '0' }), { season: null, episode: null });
+  assert.deepEqual(zdfSeasonEpisode({ seasonNumber: '4' }), { season: 4, episode: null });
+  assert.deepEqual(zdfSeasonEpisode({}), { season: null, episode: null });
+});
+
+test('ZDF-Startseite: Marken/Themen als Serienkarten (ohne Video-lose), A–Z als Rubrik-Kachel, Live/Sendung verpasst fehlen', () => {
+  const sections = parser.parseSections(fixture('zdfHomeSerien'), 'zdf');
+  assert.deepEqual(sections.map(s => s.title), ['Rubriken', 'Top-Serien zum Streamen', 'Doku-Reihen']);
+  assert.deepEqual(sections[0].genres.map(g => [g.id, g.title]), [['serien-100', 'Serien'], ['sendungen-100', 'Sendungen A–Z']]);
+  assert.deepEqual(sections[1].series.map(s => s.id), ['the-veil-112', 'tschappel-100']);
+  assert.equal(sections[1].series[0].description, 'Agentin im Einsatz');
+  assert.deepEqual(sections[2].series.map(s => s.id), ['schlachtfeld-100']);
+  assert.deepEqual(sections[2].entries.map(e => e.id), ['ein-film-100']);
+  const ids = JSON.stringify(sections);
+  assert.ok(!ids.includes('epg-livetv') && !ids.includes('sendung-verpasst'));
+});
+
+test('ZDF A–Z: je Buchstabe eine Reihe aus Serien', () => {
+  const sections = parser.parseGenrePage(fixture('zdfAz'), 'zdf');
+  assert.deepEqual(sections.map(s => [s.title, s.series.map(x => x.id)]), [['A', ['aktenzeichen-xy-100']], ['B', ['der-bergdoktor-106', 'die-welt-der-antike-100']], ['0 - 9', ['3sat-100']]]);
 });
 
 test('OV-Zusammenführung: geschütztes Leerzeichen im Titel wird wie ein Leerzeichen behandelt', () => {

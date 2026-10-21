@@ -20,7 +20,7 @@ function fakeHttp(handler) {
   };
 }
 
-test('Suche: ARD-Seite 0 mit Serien, Seite 1 ohne Serien, ZDF/arte nur Seite 0', async () => {
+test('Suche: ARD-Seite 0 mit Serien, Seite 1 ohne Serien', async () => {
   const http = fakeHttp(url => (url.includes('api.ardmediathek.de') ? fixture('ardSearchInstitut') : url.includes('zdf') ? fixture('zdfSearch') : fixture('arteSearch')));
   const service = createMediathekService({ http });
   const p0 = await service.searchPage('Das Institut', 'ard', 0);
@@ -30,12 +30,69 @@ test('Suche: ARD-Seite 0 mit Serien, Seite 1 ohne Serien, ZDF/arte nur Seite 0',
   assert.deepEqual(p1.series, []);
   assert.ok(http.calls[1].includes('vodPageNumber=1'));
   assert.ok(!http.calls[0].includes('vodPageNumber'));
-  for (const source of ['zdf', 'arte']) {
-    const before = http.calls.length;
-    assert.deepEqual(await service.searchPage('x', source, 1), { series: [], entries: [], page: 1, hasMore: false });
-    assert.equal(http.calls.length, before, 'kein Abruf für Folgeseiten');
-  }
   assert.equal((await service.searchPage('x', 'zdf', 0)).entries.length, 1);
+});
+
+const noSleep = () => Promise.resolve();
+const zdfDoc = id => `https://zdf-prod-futura.zdf.de/mediathekV2/document/${id}`;
+const httpError = status => Object.assign(new Error(`Server antwortete mit HTTP ${status}`), { code: 'http', status });
+
+test('ZDF-Suche mit Paging: nextPageUrl der Vorseite wird abgerufen, nie nach außen gereicht', async () => {
+  const http = fakeHttp(url => (url.includes('page=2') ? fixture('zdfSearchPageLast') : fixture('zdfSearchPage1')));
+  const service = createMediathekService({ http, sleep: noSleep });
+  const p0 = await service.searchPage('bergdoktor', 'zdf', 0);
+  assert.equal(p0.hasMore, true);
+  assert.equal('nextPageUrl' in p0, false);
+  assert.deepEqual(p0.series.map(s => s.id), ['der-bergdoktor-106']);
+  const p1 = await service.searchPage('bergdoktor', 'zdf', 1);
+  assert.equal(http.calls[1], 'https://zdf-prod-futura.zdf.de/mediathekV2/search?q=bergdoktor&profile=cellular-5&synth=true&sp=true&page=2');
+  assert.deepEqual(p1.entries.map(e => e.id), ['heimweh-100']);
+  assert.equal(p1.hasMore, false);
+  // ohne gemerkte Adresse (z. B. neuer Dienst): page= aus der Seitennummer
+  await createMediathekService({ http, sleep: noSleep }).searchPage('x y', 'zdf', 2);
+  assert.equal(http.calls[2], 'https://zdf-prod-futura.zdf.de/mediathekV2/search?q=x%20y&page=3');
+});
+
+test('Abruffehler: 503/Zeitüberschreitung werden höchstens zweimal wiederholt, danach als Fehler (nie als leere Liste); 404/ungültig sofort', async () => {
+  const sleeps = [];
+  let calls = 0;
+  const flaky = failures => ({
+    async getText() {
+      calls += 1;
+      if (calls <= failures) throw httpError(503);
+      return fixture('zdfSearchPageLast');
+    },
+  });
+  const make = http => createMediathekService({ http, sleep: ms => (sleeps.push(ms), Promise.resolve()) });
+  assert.equal((await make(flaky(2)).searchPage('x', 'zdf', 0)).entries.length, 1);
+  assert.equal(calls, 3);
+  assert.equal(sleeps.length, 2);
+  assert.ok(sleeps[1] > sleeps[0], 'Backoff');
+  calls = 0;
+  await assert.rejects(make(flaky(5)).searchPage('x', 'zdf', 0), { code: 'http', status: 503 });
+  assert.equal(calls, 3, 'ein Versuch plus zwei Wiederholungen');
+  calls = 0;
+  const gone = { async getText() { calls += 1; throw httpError(404); } };
+  await assert.rejects(make(gone).searchPage('x', 'zdf', 0), { status: 404 });
+  assert.equal(calls, 1);
+  calls = 0;
+  const timeout = { async getText() { calls += 1; throw Object.assign(new Error('Zeitüberschreitung'), { code: 'network' }); } };
+  await assert.rejects(make(timeout).fetchHomeSections('zdf'), { code: 'network' });
+  assert.equal(calls, 3);
+});
+
+test('ZDF-Serie: Folgen aus document/<id> mit Staffel und Folge; fremde Adressen werden nie abgerufen', async () => {
+  const http = fakeHttp(() => fixture('zdfBrandBergdoktor'));
+  const service = createMediathekService({ http, sleep: noSleep });
+  const series = { id: 'der-bergdoktor-106', title: 'Der Bergdoktor', sourceId: 'zdf', groupingURL: zdfDoc('der-bergdoktor-106') };
+  const episodes = await service.fetchEpisodes(series);
+  assert.equal(episodes.length, 5);
+  assert.deepEqual(episodes.map(e => e.season), [19, 19, 17, 17, 7]);
+  assert.equal(http.calls[0], series.groupingURL);
+  for (const groupingURL of ['https://evil.example/mediathekV2/document/x-100', 'http://zdf-prod-futura.zdf.de/mediathekV2/document/x-100', 'https://zdf-prod-futura.zdf.de/mediathekV2/search?q=x', 'https://zdf-prod-futura.zdf.de/mediathekV2/document/a/b', 'https://zdf-prod-futura.zdf.de/mediathekV2/document/x-100?profile=1', '']) {
+    await assert.rejects(service.fetchEpisodes({ ...series, groupingURL }), { code: 'invalidURL' }, groupingURL);
+  }
+  assert.equal(http.calls.length, 1);
 });
 
 test('Suche: Folgeseiten ohne Serien, ungültige Antwort -> fetchFailed', async () => {

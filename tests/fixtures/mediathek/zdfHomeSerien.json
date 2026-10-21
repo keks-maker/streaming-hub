@@ -1,0 +1,156 @@
+{
+ "stage": [],
+ "cluster": [
+  {
+   "name": "Top-Serien zum Streamen",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "the-veil-112",
+     "type": "brand",
+     "contentType": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/the-veil-112",
+     "titel": "The Veil",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/the-veil-112~768x432"
+      }
+     },
+     "beschreibung": "Agentin im Einsatz"
+    },
+    {
+     "id": "tschappel-100",
+     "type": "brand",
+     "contentType": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/tschappel-100",
+     "titel": "Tschappel",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/tschappel-100~768x432"
+      }
+     }
+    },
+    {
+     "id": "leer-100",
+     "type": "brand",
+     "contentType": "brand",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/leer-100",
+     "titel": "Ohne Video",
+     "hasVideo": false,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/leer-100~768x432"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Doku-Reihen",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "schlachtfeld-100",
+     "type": "topic",
+     "contentType": "topic",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/schlachtfeld-100",
+     "titel": "Entscheidung auf dem Schlachtfeld",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/schlachtfeld-100~768x432"
+      }
+     }
+    },
+    {
+     "id": "ein-film-100",
+     "type": "video",
+     "contentType": "episode",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/ein-film-100",
+     "titel": "Ein Film",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/ein-film-100~768x432"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Alles auf einen Blick",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "epg-livetv-100",
+     "type": "liveTv",
+     "contentType": "liveTv",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/epg-livetv-100",
+     "titel": "TV-Programm",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/epg-livetv-100~768x432"
+      }
+     }
+    },
+    {
+     "id": "sendung-verpasst-100",
+     "type": "broadcastMissed",
+     "contentType": "broadcastMissed",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/sendung-verpasst-100",
+     "titel": "Sendung verpasst",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/sendung-verpasst-100~768x432"
+      }
+     }
+    },
+    {
+     "id": "sendungen-100",
+     "type": "brandsAlphabetical",
+     "contentType": "brandsAlphabetical",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/sendungen-100",
+     "titel": "A - Z",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/sendungen-100~768x432"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Rubriken",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "serien-100",
+     "type": "category",
+     "contentType": "category",
+     "url": "https://zdf-prod-futura.zdf.de/mediathekV2/document/serien-100",
+     "titel": "Serien",
+     "hasVideo": true,
+     "channel": "ZDF",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/serien-100~768x432"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}
