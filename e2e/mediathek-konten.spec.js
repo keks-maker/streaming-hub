@@ -26,7 +26,7 @@ function buildRoutes() {
     [`auth:/item/${fskEntry.id}`]: noNet(fixture('ardItem')),
     // ZDF: Dokument mit FSK-Sperre, Startseite mit Api-Auth-Token der Web-App, Altersfreigabe des Kontos, Stream-Daten (PTMD)
     '/document/ZDFFSK': JSON.stringify({ document: { id: 'ZDFFSK', titel: 'Nachtkrimi', fsk: 'fsk16', fskCheck: true, streamApiUrlFsk: 'https://api.zdf.de/tmd/2/ios_native_4/vod/ptmd/mediathek/e2e/4' } }),
-    'www.zdf.de/': '<html>{\\"videoToken\\":{\\"apiToken\\":\\"e2eVideoToken0123456789abcdef\\"}}</html>',
+    'www.zdf.de/': '<html>{\\"videoToken\\":{\\"apiToken\\":\\"e2eVideoToken0123456789abcdef\\"},\\"appToken\\":{\\"apiToken\\":\\"e2eAppToken0123456789abcdef\\"}}</html>',
     '/identity/userinfo': JSON.stringify({ id: 'e2e' }),
     '/identity/fsk/verification': JSON.stringify({ verified: true }),
     'tmd/2/ios_native_4/vod/ptmd/mediathek/e2e/4': JSON.stringify({ priorityList: [{ formitaeten: [{ type: 'h264_aac_mp4_http_na_na', qualities: [{ quality: 'high', audio: { tracks: [{ class: 'main', language: 'deu', uri: NO_STREAM }] } }] }] }] }),

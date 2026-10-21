@@ -19,7 +19,8 @@ const { createAuthStore } = require('../lib/mediathek/auth/store.js');
 const { createMediathekAuth } = require('../lib/mediathek/auth/index.js');
 const { createPinPrompt, validateSubmit } = require('../lib/mediathek/auth/pin-prompt.js');
 const { createE2eAuthNet } = require('../lib/mediathek/auth/e2e-login.js');
-const { createZdfFsk, fskContext, validPtmdUrl, windowOpen, parseAppToken, ptmdToRoot, PIN_URL, VERIFICATION_URL } = require('../lib/mediathek/zdf-fsk.js');
+const { createZdfFsk, fskContext, validPtmdUrl, windowOpen, ptmdToRoot, PIN_URL, VERIFICATION_URL } = require('../lib/mediathek/zdf-fsk.js');
+const { parseAppToken } = require('../lib/mediathek/zdf-app-token.js');
 const { createMediathekHttp } = require('../lib/mediathek/http.js');
 const { createMediathekService } = require('../lib/mediathek/service.js');
 const { accountNote } = require('../lib/mediathek/restrictions.js');
@@ -29,7 +30,8 @@ const NIGHT = Date.parse('2026-10-21T21:30:00Z'); // 23:30 Berlin (MESZ)
 const DAY = Date.parse('2026-10-21T10:00:00Z'); // 12:00 Berlin
 const PTMD_URL = 'https://api.zdf.de/tmd/2/ios_native_4/vod/ptmd/mediathek/261007_0155_sendung_dai/4';
 const APP_TOKEN = 'ahBaeMeekaiy5ohsai4bee4ki6Oopoi5quailieb';
-const HOME_HTML = `<html>...\\"tokens\\":{\\"videoToken\\":{\\"apiToken\\":\\"${APP_TOKEN}\\",\\"expiresAt\\":\\"2026-10-22T14:21:34+02:00\\"},\\"appToken\\":{\\"apiToken\\":\\"other0000000000000000000\\"}}...</html>`;
+const IDENTITY_APP_TOKEN = 'other0000000000000000000';
+const HOME_HTML = `<html>...\\"tokens\\":{\\"videoToken\\":{\\"apiToken\\":\\"${APP_TOKEN}\\",\\"expiresAt\\":\\"2026-10-22T14:21:34+02:00\\"},\\"appToken\\":{\\"apiToken\\":\\"${IDENTITY_APP_TOKEN}\\",\\"expiresAt\\":\\"2026-10-22T14:21:34+02:00\\"}}...</html>`;
 
 const PTMD = {
   attributes: { fsk: { value: 'fsk16' } },
@@ -76,13 +78,25 @@ function fakeHttp(routes) {
 const httpError = status => Object.assign(new Error('x'), { code: 'http', status });
 const fskRoot = (over = {}) => ({ document: { id: 'x', fsk: 'fsk16', fskCheck: true, streamApiUrlFsk: PTMD_URL, ...over } });
 
-function makeFsk({ auth = fakeAuth(), routes = {}, pinStatus = 200, askPin = async () => ({ pin: '4711', remember: false }), now = DAY, warnings = [] } = {}) {
-  const http = fakeHttp({ 'www.zdf.de/': HOME_HTML, '/fsk/verification': { verified: true }, 'ptmd/mediathek': PTMD, ...routes });
-  const posts = [];
-  const net = { request: async (method, url, options) => { posts.push({ method, url, options }); return typeof pinStatus === 'function' ? pinStatus() : { status: pinStatus, json: null }; } };
+function makeFsk({ auth = fakeAuth(), routes = {}, pinStatus = 200, verification = { status: 200, json: { verified: true } }, askPin = async () => ({ pin: '4711', remember: false }), now = DAY, warnings = [] } = {}) {
+  const http = fakeHttp({ 'www.zdf.de/': HOME_HTML, 'ptmd/mediathek': PTMD, ...routes });
+  const posts = []; // PIN-Prüfungen (POST)
+  const identity = []; // alle Identity-Aufrufe (GET Altersfreigabe, POST PIN)
+  const net = {
+    request: async (method, url, options) => {
+      identity.push({ method, url, options });
+      if (method === 'POST') posts.push({ method, url, options });
+      if (method === 'GET') {
+        const answer = typeof verification === 'function' ? verification() : verification;
+        if (answer instanceof Error) throw answer;
+        return answer;
+      }
+      return typeof pinStatus === 'function' ? pinStatus() : { status: pinStatus, json: null };
+    },
+  };
   const prompts = [];
   const fsk = createZdfFsk({ http, auth, net, askPin: async options => { prompts.push(options); return askPin(options); }, now: () => now, logger: { warn: message => warnings.push(message) } });
-  return { fsk, http, auth, posts, prompts, warnings };
+  return { fsk, http, auth, posts, identity, prompts, warnings };
 }
 
 // ── Sitzung lesen ──
@@ -169,7 +183,7 @@ test('Freischaltung testen (ZDF): Meldung je Antwort; 401/403 = abgelaufen', asy
   await auth.login('zdf');
   assert.equal(auth.status().accounts.find(a => a.sender === 'zdf').ardAccount, true);
   let answer = '{"verified":false}';
-  auth.setHttp({ getText: async () => { if (answer instanceof Error) throw answer; return answer; } });
+  auth.setHttp({ getText: async url => { if (url === 'https://www.zdf.de/') return HOME_HTML; if (answer instanceof Error) throw answer; return answer; } });
   assert.match((await auth.test('zdf')).message, /Angemeldet; Altersverifikation bei ZDF: nein/);
   answer = '{"verified":true}';
   assert.match((await auth.test('zdf')).message, /: ja/);
@@ -324,6 +338,9 @@ test('Api-Auth-Token der Seite: aus dem HTML (maskiert oder offen), Ablauf aus d
   assert.deepEqual(parsed, { token: APP_TOKEN, expiresAt: Date.parse('2026-10-22T14:21:34+02:00') });
   assert.equal(parseAppToken(`{"videoToken":{"apiToken":"${APP_TOKEN}"}}`, DAY).expiresAt, DAY + 6 * 3600 * 1000);
   assert.equal(parseAppToken(`"apiToken":"${APP_TOKEN}"`, DAY).token, APP_TOKEN);
+  assert.deepEqual(parseAppToken(HOME_HTML, DAY, 'appToken'), { token: IDENTITY_APP_TOKEN, expiresAt: Date.parse('2026-10-22T14:21:34+02:00') });
+  assert.equal(parseAppToken(`"apiToken":"${APP_TOKEN}"`, DAY, 'appToken'), null, 'appToken nur unter eigenem Schlüssel');
+  assert.equal(parseAppToken(HOME_HTML, DAY, 'sonst'), null);
   assert.equal(parseAppToken('<html>nichts</html>', DAY), null);
   assert.equal(parseAppToken('{"videoToken":{"apiToken":"kurz"}}', DAY), null);
 });
@@ -367,35 +384,41 @@ test('Außerhalb des Zeitraums: abgemeldet/abgelaufen/FSK 18/ohne Altersfreigabe
   const eighteen = await out({}, fskRoot({ fsk: 'fsk18' }));
   assert.deepEqual(eighteen.outcome, { ok: false, account: 'tooHigh' });
   assert.equal(eighteen.setup.http.calls.length, 0, 'FSK 18: weder Altersprüfung noch Stream-Abruf');
-  const unverified = await out({}, fskRoot(), { routes: { '/fsk/verification': { verified: false } } });
+  const unverified = await out({}, fskRoot(), { verification: { status: 200, json: { verified: false } } });
   assert.deepEqual(unverified.outcome, { ok: false, account: 'notVerified' });
   assert.equal(unverified.setup.prompts.length, 0, 'keine PIN-Abfrage ohne Altersfreigabe');
   assert.ok(!unverified.setup.http.calls.some(call => call.url === PTMD_URL));
-  assert.deepEqual((await out({}, fskRoot(), { routes: { '/fsk/verification': httpError(401) } })).outcome, { ok: false, account: 'expired' });
-  assert.deepEqual((await out({}, fskRoot(), { routes: { '/fsk/verification': httpError(500) } })).outcome, { ok: false, account: 'error' });
-  assert.deepEqual((await out({}, fskRoot(), { routes: { '/fsk/verification': Object.assign(new Error('x'), { code: 'network' }) } })).outcome, { ok: false, account: 'network' });
-  assert.deepEqual((await out({}, fskRoot(), { routes: { '/fsk/verification': 'kein json' } })).outcome, { ok: false, account: 'error' });
+  assert.deepEqual((await out({ usable: false }, fskRoot(), { verification: { status: 401, json: null } })).outcome, { ok: false, account: 'network' }, 'lokal nicht nutzbar: vorher abgebrochen');
+  assert.deepEqual((await out({}, fskRoot(), { verification: { status: 500, json: null } })).outcome, { ok: false, account: 'error' });
+  assert.deepEqual((await out({}, fskRoot(), { verification: Object.assign(new Error('x'), { code: 'network' }) })).outcome, { ok: false, account: 'network' });
+  assert.deepEqual((await out({}, fskRoot(), { verification: { status: 200, json: null } })).outcome, { ok: false, account: 'error' });
   assert.deepEqual((await out({}, { document: { fsk: 'fsk16' } })).outcome, { ok: false, account: null }, 'ohne fskCheck nicht zuständig');
 });
 
 test('Mit Konto: Altersfreigabe -> PIN-Abfrage -> PIN-Prüfung (POST) -> Stream; PIN nur an den PIN-Aufruf', async () => {
   const warnings = [];
-  const { fsk, http, prompts, posts, auth } = makeFsk({ warnings });
+  const { fsk, http, prompts, posts, identity, auth } = makeFsk({ warnings });
   const outcome = await fsk.unlock(fskRoot());
   assert.equal(outcome.ok, true);
   assert.deepEqual(prompts, [{ rating: 'fsk16', canRemember: true }]);
   assert.equal(posts.length, 1);
   assert.deepEqual([posts[0].method, posts[0].url, posts[0].options.fields], ['POST', PIN_URL, { pin: '4711' }]);
   assert.equal(posts[0].options.headers.Authorization, `Bearer ${SECRET_TOKEN}`);
-  const verification = http.calls.find(call => call.url === VERIFICATION_URL);
-  assert.equal(verification.options.auth, 'zdf');
   assert.equal(auth.state.remembered, null, 'ohne Häkchen nichts merken');
-  // Reihenfolge: Prüfung vor Stream-Abruf
-  const order = http.calls.map(call => call.url);
-  assert.ok(order.indexOf(VERIFICATION_URL) < order.indexOf(PTMD_URL));
+  // Identity-Aufrufe wie im Web-Client: Authorization (Konto) + Api-Auth (appToken der Seite, nicht der videoToken), Formular-PIN
+  assert.deepEqual(identity.map(call => [call.method, call.url]), [['GET', VERIFICATION_URL], ['POST', PIN_URL]]);
+  for (const call of identity) {
+    assert.deepEqual(Object.keys(call.options.headers).sort(), ['Accept', 'Api-Auth', 'Authorization']);
+    assert.equal(call.options.headers['Api-Auth'], `Bearer ${IDENTITY_APP_TOKEN}`);
+    assert.equal(call.options.headers.Authorization, `Bearer ${SECRET_TOKEN}`);
+  }
+  // Reihenfolge: Prüfung vor Stream-Abruf; der Ptmd-Abruf nutzt den videoToken und keinen Konto-Token
+  assert.ok(http.calls.findIndex(call => call.url === PTMD_URL) > -1);
+  assert.equal(http.calls.find(call => call.url === PTMD_URL).options.hostHeaders['api.zdf.de']['Api-Auth'], `Bearer ${APP_TOKEN}`);
   // PIN und Token tauchen nirgends in Warnungen oder an anderen Aufrufen auf
   assert.ok(!JSON.stringify([warnings, http.calls]).includes('4711'));
   assert.ok(!JSON.stringify(http.calls.map(call => call.options.hostHeaders)).includes(SECRET_TOKEN));
+  assert.ok(!JSON.stringify(warnings).includes(IDENTITY_APP_TOKEN));
 });
 
 test('PIN merken: Häkchen speichert nach erfolgreicher Prüfung; gemerkte PIN fragt nicht mehr', async () => {
@@ -422,9 +445,10 @@ test('Falsche PIN: klare Meldung, keine Wiederholung, gemerkte falsche PIN wird 
   assert.equal(savedWrong.auth.state.cleared, 1);
   assert.equal(savedWrong.posts.length, 1);
   for (const status of [401, 403]) {
-    const expired = makeFsk({ auth: fakeAuth({ pin: '1234' }), pinStatus: status });
-    assert.deepEqual(await expired.fsk.unlock(fskRoot()), { ok: false, account: 'expired' });
-    assert.equal(expired.auth.state.cleared, 0, 'gemerkte PIN bleibt bei abgelaufener Sitzung erhalten');
+    const rejected = makeFsk({ auth: fakeAuth({ pin: '1234' }), pinStatus: status });
+    assert.deepEqual(await rejected.fsk.unlock(fskRoot()), { ok: false, account: 'rejected', status });
+    assert.equal(rejected.auth.state.cleared, 0, 'gemerkte PIN bleibt bei abgelehnter Sitzung erhalten');
+    assert.equal(rejected.posts.length, 1, 'PIN-Prüfung wird nie wiederholt');
   }
   const parallel = makeFsk({ auth: fakeAuth({ pin: '1234' }) });
   await Promise.all([parallel.fsk.unlock(fskRoot()), parallel.fsk.unlock(fskRoot())]);
@@ -433,7 +457,7 @@ test('Falsche PIN: klare Meldung, keine Wiederholung, gemerkte falsche PIN wird 
   assert.deepEqual(await locked.fsk.unlock(fskRoot()), { ok: false, account: 'pinLocked' });
   const server = makeFsk({ pinStatus: 500 });
   assert.deepEqual(await server.fsk.unlock(fskRoot()), { ok: false, account: 'error' });
-  const down = createZdfFsk({ http: fakeHttp({ '/fsk/verification': { verified: true } }), auth: fakeAuth(), net: { request: async () => { throw Object.assign(new Error('x'), { code: 'network' }); } }, askPin: async () => ({ pin: '1234', remember: false }), now: () => DAY });
+  const down = createZdfFsk({ http: fakeHttp({ 'www.zdf.de/': HOME_HTML }), auth: fakeAuth(), net: { request: async method => { if (method === 'GET') return { status: 200, json: { verified: true } }; throw Object.assign(new Error('x'), { code: 'network' }); } }, askPin: async () => ({ pin: '1234', remember: false }), now: () => DAY });
   assert.deepEqual(await down.unlock(fskRoot()), { ok: false, account: 'network' });
 });
 
@@ -445,7 +469,7 @@ test('PIN-Abfrage abgebrochen oder ungültig: pinCancelled, kein Abruf; fehlende
   }
   const throwing = makeFsk({ askPin: async () => { throw new Error('boom'); } });
   assert.equal((await throwing.fsk.unlock(fskRoot())).account, 'pinCancelled');
-  const none = createZdfFsk({ http: fakeHttp({ '/fsk/verification': { verified: true } }), auth: fakeAuth(), net: {}, now: () => DAY });
+  const none = createZdfFsk({ http: fakeHttp({ 'www.zdf.de/': HOME_HTML }), auth: fakeAuth(), net: { request: async () => ({ status: 200, json: { verified: true } }) }, now: () => DAY });
   assert.equal((await none.unlock(fskRoot())).account, 'pinCancelled');
   let release;
   const gate = new Promise(resolve => { release = resolve; });
@@ -477,6 +501,66 @@ test('Stream-Daten: abgelaufenes Seiten-Token wird einmal neu geholt; ohne Forma
   assert.deepEqual(await offline.fsk.unlock(fskRoot()), { ok: false, account: 'network' });
   const garbage = makeFsk({ now: NIGHT, routes: { 'ptmd/mediathek': 'kein json' } });
   assert.deepEqual(await garbage.fsk.unlock(fskRoot()), { ok: false, account: 'error' });
+});
+
+test('Identity-Ablehnung: 401/403 mit lokal gültigem Token = rejected mit Status (nicht "abgelaufen"); nur lokaler Ablauf = expired; Betriebslog ohne Token', async () => {
+  for (const status of [401, 403]) {
+    const warnings = [];
+    const setup = makeFsk({ warnings, verification: { status, json: null } });
+    assert.deepEqual(await setup.fsk.unlock(fskRoot()), { ok: false, account: 'rejected', status });
+    assert.equal(setup.identity.filter(call => call.method === 'GET').length, 2, 'ein Wiederholversuch mit frisch geholtem Seiten-Token');
+    assert.equal(setup.http.calls.filter(call => call.url === 'https://www.zdf.de/').length, 2, 'Seiten-Token neu geholt');
+    assert.match(warnings.join('\n'), new RegExp(`HTTP ${status}`));
+    assert.ok(!JSON.stringify(warnings).includes(SECRET_TOKEN) && !JSON.stringify(warnings).includes(IDENTITY_APP_TOKEN));
+    assert.equal(setup.prompts.length, 0, 'ohne Altersfreigabe keine PIN-Abfrage');
+  }
+  // Seiten-Token abgelaufen (erste Antwort 403, danach gültig): Wiederholung genügt
+  let calls = 0;
+  const heal = makeFsk({ verification: () => { calls += 1; return calls === 1 ? { status: 403, json: null } : { status: 200, json: { verified: true } }; } });
+  assert.equal((await heal.fsk.unlock(fskRoot())).ok, true);
+  assert.notEqual(heal.identity[0].options.headers['Api-Auth'], undefined);
+  // Token lokal abgelaufen (tokenUsable false, nachdem die Altersprüfung abgelehnt wurde): expired
+  const auth = fakeAuth();
+  let seen = 0;
+  auth.tokenUsable = () => { seen += 1; return seen < 2; };
+  const expired = makeFsk({ auth, verification: { status: 401, json: null } });
+  assert.deepEqual(await expired.fsk.unlock(fskRoot()), { ok: false, account: 'expired' });
+  // ohne Konto-Token (Header leer) wird nichts gesendet
+  const noHeaders = makeFsk({ auth: { ...fakeAuth(), getAuthHeaders: () => ({}) } });
+  assert.deepEqual(await noHeaders.fsk.unlock(fskRoot()), { ok: false, account: 'expired' });
+  assert.equal(noHeaders.identity.length, 0);
+  // kein appToken auf der Seite: fail-closed, kein Identity-Aufruf
+  const noApp = makeFsk({ routes: { 'www.zdf.de/': '<html></html>' } });
+  assert.deepEqual(await noApp.fsk.unlock(fskRoot()), { ok: false, account: 'error' });
+  assert.equal(noApp.identity.length, 0);
+});
+
+test('Auth-Netz: Api-Auth nur an api.zdf.de/identity/, nie an Firebase/arte', async () => {
+  const seen = [];
+  const net = createAuthNet({ fetchImpl: async (url, init) => { seen.push({ url, init }); return { status: 200, text: async () => '{}' }; } });
+  const headers = { Authorization: `Bearer ${SECRET_TOKEN}`, 'Api-Auth': `Bearer ${IDENTITY_APP_TOKEN}`, Accept: 'application/vnd.de.zdf.v1.0+json', 'X-Other': '1' };
+  await net.request('GET', 'https://api.zdf.de/identity/fsk/verification', { headers });
+  assert.equal(seen[0].init.headers['Api-Auth'], `Bearer ${IDENTITY_APP_TOKEN}`);
+  assert.equal('X-Other' in seen[0].init.headers, false);
+  await net.postForm('https://id.arte.tv/auth/realms/x/token', { a: 'b' }, headers);
+  assert.equal('Api-Auth' in seen[1].init.headers, false);
+  await assert.rejects(() => net.request('GET', 'https://api.zdf.de/content/documents/x.json', { headers }), error => error.code === 'forbidden-host');
+});
+
+test('Freischaltung testen (ZDF): Api-Auth der Seite wird mitgesendet; Ablehnung nennt den Status', async () => {
+  const store = createAuthStore({ file: null, safeStorage: null });
+  const provider = createZdfProvider({});
+  const record = { accessToken: jwtWith({ exp: Math.floor(Date.now() / 1000) + 3600 }), refreshToken: null, expiresAt: Date.now() + 3600000, since: Date.now(), state: 'ok', clientId: null, ardAccount: false };
+  const auth = createMediathekAuth({ providers: { zdf: provider }, store, loginRunner: { run: async () => ({ ok: true, record }) } });
+  await auth.login('zdf');
+  const calls = [];
+  let answer = '{"verified":true}';
+  auth.setHttp({ getText: async (url, options) => { calls.push({ url, options }); if (url === 'https://www.zdf.de/') return HOME_HTML; if (answer instanceof Error) throw answer; return answer; } });
+  assert.match((await auth.test('zdf')).message, /: ja/);
+  const check = calls.find(call => call.url === ZDF_VERIFICATION_URL);
+  assert.deepEqual(check.options.hostHeaders, { 'api.zdf.de': { 'Api-Auth': `Bearer ${IDENTITY_APP_TOKEN}` } });
+  answer = Object.assign(new Error('x'), { status: 403 });
+  assert.match((await auth.test('zdf')).message, /HTTP 403/);
 });
 
 // ── Einbindung ──
@@ -547,6 +631,8 @@ test('Meldungen: ZDF-Texte je Grund (Konto, Altersfreigabe auf der Website, FSK 
   assert.match(accountNote(base, 'pinCancelled', 'zdf'), /PIN wurde nicht eingegeben/);
   assert.match(accountNote(base, 'pinLocked', 'zdf'), /Zu viele falsche PIN/);
   assert.match(accountNote(base, 'noStream', 'zdf'), /keinen Stream/);
+  assert.equal(accountNote(base, 'rejected', 'zdf', 403), 'ZDF akzeptiert die Anmeldung nicht (HTTP 403) – bitte in den Konten abmelden und neu anmelden (Einstellungen ▸ Mediatheken ▸ Konten).');
+  assert.doesNotMatch(accountNote(base, 'rejected', 'zdf'), /HTTP/);
 });
 
 // ── Anmeldefenster ──
