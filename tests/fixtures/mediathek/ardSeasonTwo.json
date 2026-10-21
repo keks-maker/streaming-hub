@@ -1,0 +1,45 @@
+{
+ "teasers": [
+  {
+   "id": "s2-a",
+   "coreAssetType": "EPISODE",
+   "type": "ondemand",
+   "longTitle": "Neue Zeit 1",
+   "broadcastedOn": "2026-01-10T20:00:00Z",
+   "duration": 1500,
+   "publicationService": {
+    "name": "MDR",
+    "partner": "mdr"
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/s2-a?devicetype=pc&embedded=true",
+     "partner": "mdr"
+    }
+   }
+  },
+  {
+   "id": "s2-b",
+   "coreAssetType": "EPISODE",
+   "type": "ondemand",
+   "longTitle": "Neue Zeit 2 (S02/E02)",
+   "broadcastedOn": "2026-01-17T20:00:00Z",
+   "duration": 1500,
+   "publicationService": {
+    "name": "MDR",
+    "partner": "mdr"
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/s2-b?devicetype=pc&embedded=true",
+     "partner": "mdr"
+    }
+   }
+  }
+ ],
+ "pagination": {
+  "pageNumber": 0,
+  "pageSize": 48,
+  "totalElements": 2
+ }
+}

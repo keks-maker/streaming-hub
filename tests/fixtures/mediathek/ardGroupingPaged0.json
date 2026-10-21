@@ -1,0 +1,81 @@
+{
+ "widgets": [
+  {
+   "type": "gridlist",
+   "title": "Serie",
+   "show": {
+    "availableSeasons": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "teasers": [
+    {
+     "id": "item-1",
+     "coreAssetType": "EPISODE",
+     "type": "ondemand",
+     "longTitle": "Folge 1 (S01/E01)",
+     "broadcastedOn": "2025-01-01T20:00:00Z",
+     "duration": 1500,
+     "publicationService": {
+      "name": "MDR",
+      "partner": "mdr"
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/item-1?devicetype=pc&embedded=true",
+       "partner": "mdr"
+      }
+     }
+    },
+    {
+     "id": "item-2",
+     "coreAssetType": "EPISODE",
+     "type": "ondemand",
+     "longTitle": "Folge 2 (S01/E02)",
+     "broadcastedOn": "2025-01-08T20:00:00Z",
+     "duration": 1500,
+     "publicationService": {
+      "name": "MDR",
+      "partner": "mdr"
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/item-2?devicetype=pc&embedded=true",
+       "partner": "mdr"
+      }
+     }
+    },
+    {
+     "id": "extra-1",
+     "coreAssetType": "EXTRA_MAKING_OF",
+     "type": "ondemand",
+     "longTitle": "Making of",
+     "broadcastedOn": "2025-01-09T20:00:00Z",
+     "duration": 1500,
+     "publicationService": {
+      "name": "MDR",
+      "partner": "mdr"
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/extra-1?devicetype=pc&embedded=true",
+       "partner": "mdr"
+      }
+     }
+    }
+   ],
+   "pagination": {
+    "pageNumber": 0,
+    "pageSize": 3,
+    "totalElements": 8
+   },
+   "links": {
+    "self": {
+     "href": "https://api.ardmediathek.de/page-gateway/widgets/mdr/asset/SERIE1?pageNumber=0&pageSize=3&embedded=true&seasoned=false&seasonNumber=&withAudiodescription=false&withOriginalWithSubtitle=false&withOriginalversion=false&single=false"
+    }
+   }
+  }
+ ]
+}

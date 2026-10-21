@@ -134,10 +134,11 @@ test('Fenster zu: laufende Downloads halten die App im Tray (nur mit Tray), Aufn
   assert.deepEqual(decideWindowAllClosed({ recorder: none, scheduler: null }), { quit: true, reason: null });
 });
 
-test('hasMorePages: nur bei mehr Elementen als die bisherigen Seiten fassen, höchstens 4 Seiten', () => {
+test('hasMorePages: nur bei mehr Elementen als die bisherigen Seiten fassen, höchstens MAX_PAGES (42) Seiten', () => {
   assert.equal(season.hasMorePages({ pagination: { totalElements: 48 } }, 0), false);
   assert.equal(season.hasMorePages({ pagination: { totalElements: 49 } }, 0), true);
   assert.equal(season.hasMorePages({ pagination: { totalElements: 49 } }, 1), false);
-  assert.equal(season.hasMorePages({ pagination: { totalElements: 9999 } }, 3), false);
+  assert.equal(season.hasMorePages({ pagination: { totalElements: 9999 } }, 3), true);
+  assert.equal(season.hasMorePages({ pagination: { totalElements: 9999 } }, season.MAX_PAGES - 1), false);
   assert.equal(season.hasMorePages({}, 0), false);
 });

@@ -1,0 +1,177 @@
+{
+ "widgets": [
+  {
+   "type": "navigation",
+   "title": "Menü",
+   "teasers": [
+    {
+     "id": "x:filme",
+     "type": "editorialPage",
+     "longTitle": "Filme",
+     "mediumTitle": "Filme",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:filme?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "x:serien",
+     "type": "editorialPage",
+     "longTitle": "Serien",
+     "mediumTitle": "Serien",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:serien?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/serien?embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Starke Sendungen, starke Marken in der ARD",
+   "teasers": [
+    {
+     "id": "x:tatort",
+     "type": "editorialPage",
+     "longTitle": "Tatort",
+     "mediumTitle": "Tatort",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:tatort?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/tatort?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "x:sportschau",
+     "type": "editorialPage",
+     "longTitle": "Sportschau",
+     "mediumTitle": "Sportschau",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:sportschau?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/sportschau?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "x:marken-extra",
+     "type": "compilation",
+     "longTitle": "Mehr Marken",
+     "mediumTitle": "Mehr Marken",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:marken-extra?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/compilation/marken-extra?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "x:tatort",
+     "type": "editorialPage",
+     "longTitle": "Tatort",
+     "mediumTitle": "Tatort",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:tatort?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/tatort?embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Unsere TV-Programme live",
+   "teasers": [
+    {
+     "id": "live1",
+     "type": "live",
+     "coreAssetType": "PERMANENT_LIVESTREAM",
+     "longTitle": "Das Erste live",
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/item/live1"
+      }
+     }
+    },
+    {
+     "id": "ch1",
+     "type": "channel",
+     "longTitle": "NDR Channel",
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/home"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Rubriken",
+   "teasers": [
+    {
+     "id": "x:filme",
+     "type": "editorialPage",
+     "longTitle": "Filme",
+     "mediumTitle": "Filme",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:filme?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "x:serien",
+     "type": "editorialPage",
+     "longTitle": "Serien",
+     "mediumTitle": "Serien",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:serien?w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/serien?embedded=true"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

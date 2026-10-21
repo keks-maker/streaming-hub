@@ -65,6 +65,7 @@ test('Validierung: unbekannte Felder, falsche Quellen, Längen, Adressen', async
   assert.throws(() => call('mediathek:search', { query: 'x\u0000', source: 'ard' }));
   assert.throws(() => call('mediathek:series', { series: { ...series, evil: 1 } }), /Unbekanntes Feld/);
   assert.throws(() => call('mediathek:series', { series: { ...series, sourceId: 'rtl' } }));
+  for (const bad of [{ pages: 0 }, { pages: 51 }, { pages: 1.5 }, { season: 0 }, { season: 1900 }, { season: 'x' }, { extra: 1 }]) assert.throws(() => call('mediathek:series', { series, ...bad }), undefined, JSON.stringify(bad));
   assert.throws(() => call('mediathek:genre', { genre: { id: '../x', sourceId: 'arte' } }));
   assert.throws(() => call('mediathek:genre', { genre: { id: 'DOR', sourceId: 'ard' } }));
   assert.throws(() => call('mediathek:load-more', { section: { title: 'x', nextPage: 'https://evil.example/api/emac/v3/de/web/data/X/' } }));
@@ -94,7 +95,7 @@ test('home/search/series/genre/load-more: Ergebnisform und Fehler als { ok: fals
   assert.equal(search.series.length, 2);
   assert.equal(search.hasMore, true);
   const page2 = await call('mediathek:search', { query: 'Das Institut', source: 'ard', page: 1 });
-  assert.deepEqual(page2.series, []);
+  assert.equal(page2.series.length, 2);
   const result = await call('mediathek:series', { series });
   assert.equal(result.ok, true);
   assert.deepEqual(result.seasonNumbers, [10]);
@@ -174,4 +175,33 @@ test('Leere Folgenliste (FSK tagsüber): Erklärung statt leerer Meldung; Konto 
   assert.deepEqual(await signedOut.retryEmptySeries(series), { entries: [], account: 'signedOut' });
   const other = await signedOut.retryEmptySeries({ ...series, sourceId: 'arte' });
   assert.equal(other.account, 'signedOut');
+});
+
+test('mediathek:series (ARD, seitenweise): hasMore, Fortschritt, Staffeln; Staffel komplett; Fehler als { ok: false }', async () => {
+  const { call } = setup({
+    routes: {
+      '/pages/mdr/grouping/SERIE1': fixture('ardGroupingPaged0'),
+      'pageNumber=1': fixture('ardGroupingPaged1'),
+      'pageNumber=2': fixture('ardGroupingPaged2'),
+      'seasonNumber=2': fixture('ardSeasonTwo'),
+    },
+  });
+  const ardSeries = { ...series, id: 'SERIE1', groupingURL: 'https://api.ardmediathek.de/page-gateway/pages/mdr/grouping/SERIE1?embedded=true' };
+  const first = await call('mediathek:series', { series: ardSeries });
+  assert.equal(first.ok, true);
+  assert.equal(first.hasMore, true);
+  assert.deepEqual(first.progress, { loaded: 3, total: 8 });
+  assert.deepEqual(first.availableSeasons, [1, 2, 3]);
+  assert.deepEqual(first.seasonNumbers, [1, 2, 3], 'Staffeln aus dem Staffel-Widget plus die aus den Titeln');
+  const all = await call('mediathek:series', { series: ardSeries, pages: 3 });
+  assert.equal(all.hasMore, false);
+  assert.equal(all.seasons.reduce((n, s) => n + s.entries.length, 0), 6);
+  const season = await call('mediathek:series', { series: ardSeries, season: 2 });
+  assert.equal(season.ok, true);
+  assert.deepEqual(season.seasons.map(s => s.number), [2]);
+  assert.deepEqual(season.seasonNumbers, [1, 2, 3]);
+  const unknown = await call('mediathek:series', { series: ardSeries, season: 7 });
+  assert.equal(unknown.ok, false);
+  const failing = await call('mediathek:series', { series });
+  assert.equal(failing.ok, false);
 });

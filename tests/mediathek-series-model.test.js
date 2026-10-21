@@ -128,3 +128,72 @@ test('Genre-Seite: Reihen laden und nachladen', async () => {
   assert.equal(failing.snapshot().status, 'failed');
   assert.equal(failing.snapshot().error, 'offline');
 });
+
+test('ARD-Serie seitenweise: Nachladen hängt Folgen an, Fortschritt, Fehler mit Wiederholung, veraltete Antworten entfallen', async () => {
+  const calls = [];
+  let fail = true;
+  const all = [ep('a', null, null), ep('b', null, null), ep('c', null, null), ep('d', null, null)];
+  const api = {
+    series: async (_series, options) => {
+      calls.push(options);
+      const pages = options.pages || 1;
+      if (pages > 1 && fail) {
+        fail = false;
+        return { ok: false, error: 'HTTP 503' };
+      }
+      const shown = all.slice(0, pages * 2);
+      const seasons = groupBySeason(shown);
+      return { ok: true, seasons, seasonNumbers: seasonNumbers(seasons), playTarget: null, favorite: false, hasMore: shown.length < all.length, progress: { loaded: shown.length, total: all.length }, availableSeasons: null };
+    },
+  };
+  const page = createSeriesPage({ api, series });
+  await page.load();
+  assert.equal(page.total(), 2);
+  assert.equal(page.canLoadMore(), true);
+  assert.deepEqual(page.snapshot().progress, { loaded: 2, total: 4 });
+  await page.loadMore(); // Fehler: Liste bleibt, Meldung gesetzt
+  assert.equal(page.snapshot().moreError, 'HTTP 503');
+  assert.equal(page.total(), 2);
+  assert.equal(page.snapshot().loadingMore, false);
+  await page.loadMore();
+  assert.equal(page.snapshot().moreError, null);
+  assert.equal(page.total(), 4);
+  assert.equal(page.canLoadMore(), false);
+  assert.deepEqual(calls.map(c => c.pages), [1, 5, 5]);
+});
+
+test('ARD-Staffelwahl über availableSeasons: Staffel wird komplett nachgeladen, Alle zeigt wieder die Liste, Fehler mit Wiederholung', async () => {
+  const baseSeasons = groupBySeason([ep('a', null, null), ep('b', null, null)]);
+  let seasonFails = true;
+  const api = {
+    series: async (_series, options) => {
+      if (options.season) {
+        if (seasonFails) {
+          seasonFails = false;
+          return { ok: false, error: 'kaputt' };
+        }
+        return { ok: true, seasons: groupBySeason([ep('s2a', options.season, 1), ep('s2b', options.season, 2)]), seasonNumbers: [1, 2, 3], favorite: false };
+      }
+      return { ok: true, seasons: baseSeasons, seasonNumbers: [1, 2, 3], playTarget: null, favorite: false, hasMore: true, progress: { loaded: 2, total: 99 }, availableSeasons: [1, 2, 3] };
+    },
+  };
+  const page = createSeriesPage({ api, series });
+  await page.load();
+  assert.equal(page.showSeasonPicker(), true, 'Staffeln stehen schon vor dem Laden bereit');
+  assert.equal(page.canLoadMore(), true);
+  page.selectSeason(2);
+  assert.equal(page.snapshot().seasonStatus, 'loading');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.snapshot().seasonStatus, 'failed');
+  await page.retrySeason();
+  assert.equal(page.snapshot().seasonStatus, 'idle');
+  assert.deepEqual(page.visibleSeasons().map(s => [s.number, s.entries.map(e => e.id)]), [[2, ['s2a', 's2b']]]);
+  assert.equal(page.canLoadMore(), false, 'eine komplett geladene Staffel braucht kein Nachladen');
+  assert.deepEqual(page.loadedSeasons().flatMap(s => s.entries.map(e => e.id)).sort(), ['a', 'b', 's2a', 's2b'], 'Download-Auswahl sieht Liste und geladene Staffeln');
+  page.selectSeason(null);
+  assert.deepEqual(page.visibleSeasons().flatMap(s => s.entries.map(e => e.id)), ['a', 'b']);
+  assert.equal(page.canLoadMore(), true);
+  page.selectSeason(2); // aus dem Zwischenspeicher, kein erneuter Abruf
+  assert.equal(page.snapshot().seasonStatus, 'idle');
+  assert.equal(page.total(), 2);
+});

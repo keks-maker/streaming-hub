@@ -1,0 +1,50 @@
+{
+ "teasers": [
+  {
+   "id": "item-5",
+   "coreAssetType": "EPISODE",
+   "type": "ondemand",
+   "longTitle": "Folge 5",
+   "broadcastedOn": "2025-02-01T20:00:00Z",
+   "duration": 1500,
+   "publicationService": {
+    "name": "MDR",
+    "partner": "mdr"
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/item-5?devicetype=pc&embedded=true",
+     "partner": "mdr"
+    }
+   }
+  },
+  {
+   "id": "item-6",
+   "coreAssetType": "EPISODE",
+   "type": "ondemand",
+   "longTitle": "Folge 6",
+   "broadcastedOn": "2025-02-08T20:00:00Z",
+   "duration": 1500,
+   "publicationService": {
+    "name": "MDR",
+    "partner": "mdr"
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/item-6?devicetype=pc&embedded=true",
+     "partner": "mdr"
+    }
+   }
+  }
+ ],
+ "pagination": {
+  "pageNumber": 2,
+  "pageSize": 3,
+  "totalElements": 8
+ },
+ "links": {
+  "self": {
+   "href": "https://api.ardmediathek.de/page-gateway/widgets/mdr/asset/SERIE1?pageNumber=2&pageSize=3&embedded=true&seasoned=false&seasonNumber=&withAudiodescription=false&withOriginalWithSubtitle=false&withOriginalversion=false&single=false"
+  }
+ }
+}

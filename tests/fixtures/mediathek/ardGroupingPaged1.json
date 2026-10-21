@@ -1,0 +1,68 @@
+{
+ "teasers": [
+  {
+   "id": "item-3",
+   "coreAssetType": "EPISODE",
+   "type": "ondemand",
+   "longTitle": "Folge 3",
+   "broadcastedOn": "2025-01-15T20:00:00Z",
+   "duration": 1500,
+   "publicationService": {
+    "name": "MDR",
+    "partner": "mdr"
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/item-3?devicetype=pc&embedded=true",
+     "partner": "mdr"
+    }
+   }
+  },
+  {
+   "id": "item-4",
+   "coreAssetType": "EPISODE",
+   "type": "ondemand",
+   "longTitle": "Folge 4",
+   "broadcastedOn": "2025-01-22T20:00:00Z",
+   "duration": 1500,
+   "publicationService": {
+    "name": "MDR",
+    "partner": "mdr"
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/item-4?devicetype=pc&embedded=true",
+     "partner": "mdr"
+    }
+   }
+  },
+  {
+   "id": "item-4-ov",
+   "coreAssetType": "EPISODE",
+   "type": "ondemand",
+   "longTitle": "Folge 4 (Originalversion)",
+   "broadcastedOn": "2025-01-22T20:00:00Z",
+   "duration": 1500,
+   "publicationService": {
+    "name": "MDR",
+    "partner": "mdr"
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/mdr/item/item-4-ov?devicetype=pc&embedded=true",
+     "partner": "mdr"
+    }
+   }
+  }
+ ],
+ "pagination": {
+  "pageNumber": 1,
+  "pageSize": 3,
+  "totalElements": 8
+ },
+ "links": {
+  "self": {
+   "href": "https://api.ardmediathek.de/page-gateway/widgets/mdr/asset/SERIE1?pageNumber=1&pageSize=3&embedded=true&seasoned=false&seasonNumber=&withAudiodescription=false&withOriginalWithSubtitle=false&withOriginalversion=false&single=false"
+  }
+ }
+}

@@ -218,7 +218,8 @@ contextBridge.exposeInMainWorld('radio', {
 contextBridge.exposeInMainWorld('mediathek', {
   home: source => ipcRenderer.invoke('mediathek:home', { source }),
   search: (query, source, page) => ipcRenderer.invoke('mediathek:search', { query, source, page }),
-  series: series => ipcRenderer.invoke('mediathek:series', { series }),
+  // options: { pages } (ARD: Anzahl der geladenen Folgenseiten) oder { season } (ARD: komplette Staffel)
+  series: (series, options = {}) => ipcRenderer.invoke('mediathek:series', { series, ...(options.pages ? { pages: options.pages } : {}), ...(options.season ? { season: options.season } : {}) }),
   entryFsk: entry => ipcRenderer.invoke('mediathek:entry-fsk', { entry }),
   genre: genre => ipcRenderer.invoke('mediathek:genre', { genre }),
   loadMore: section => ipcRenderer.invoke('mediathek:load-more', { section }),

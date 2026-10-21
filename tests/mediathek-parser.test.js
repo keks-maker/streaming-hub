@@ -186,7 +186,7 @@ test('ARD-Suchseite: Serien, zusammengeführte OV, Paging', () => {
   assert.equal(ep8.season, 10);
   assert.equal(ep8.episode, 8);
   assert.equal(ep8.partner, 'one');
-  assert.deepEqual(parser.parseSearchPage(fixture('ardSearchInstitut'), 'ard', 1).series, []); // Folgeseiten ohne Serien
+  assert.equal(parser.parseSearchPage(fixture('ardSearchInstitut'), 'ard', 1).series.length, 2); // auch Folgeseiten tragen Serien (showPageNumber)
 });
 
 test('ARD-Suchseite: letzte Seite hat kein Weiteres', () => {
@@ -415,8 +415,38 @@ test('OV-Zusammenführung: geschütztes Leerzeichen im Titel wird wie ein Leerze
   assert.equal(merged[0].originalVersionId, 'o');
 });
 
-test('ARD-Suche: zdf/arte-Fremdinhalte (Einzelfilm, Magazin) und Einzelvideos ohne Folgen entfallen, Serien mit abrufbaren Folgen bleiben', () => {
+test('ARD-Suche: zdf/arte-Fremdinhalte (Einzelfilm, Magazin) entfallen, eigene Filme (SINGLE) öffnen als Seite mit der Folge, Serien bleiben', () => {
   const page = parser.parseSearchPage(fixture('ardSearchForeign'), 'ard');
-  assert.deepEqual(page.series.map(item => item.title), ['Exorzismus-Doku', 'ZDF-Serie bei ARD']);
+  // "The Pope's Exorcist" (SINGLE, Partner zdf) und "heute journal" (zdf) sind Fremdinhalte; "Einzelfilm" (swr) ist ARD-Film mit Grouping
+  assert.deepEqual(page.series.map(item => item.title), ['Exorzismus-Doku', 'Einzelfilm', 'ZDF-Serie bei ARD']);
+  assert.match(page.series[1].groupingURL, /\/pages\/swr\/grouping\//);
   assert.deepEqual(page.entries, []);
+});
+
+test('ARD-Suche mit Paging: Serien (showPageNumber) und Folgen (vodPageNumber) pagen gemeinsam, hasMore solange eine Liste weitere Seiten hat', () => {
+  const root = (vod, show, page) => JSON.stringify({ vodPageNumber: page, vodPageSize: 24, vodTotal: vod, showPageNumber: page, showPageSize: 24, showTotal: show, vodResults: [], showResults: [] });
+  assert.equal(parser.parseSearchPage(root(24, 74, 0), 'ard', 0).hasMore, true, 'nur Serien haben mehr (24 von 74)');
+  assert.equal(parser.parseSearchPage(root(74, 24, 0), 'ard', 0).hasMore, true, 'nur Folgen haben mehr');
+  assert.equal(parser.parseSearchPage(root(72, 72, 2), 'ard', 2).hasMore, false, 'Seite 3 von 3 ist die letzte');
+  assert.equal(parser.parseSearchPage(root(0, 0, 0), 'ard', 0).hasMore, false);
+  const url = sources.searchUrl('In aller Freundschaft', 'ard', 2);
+  assert.ok(url.includes('vodPageNumber=2') && url.includes('showPageNumber=2'), url);
+  assert.ok(!sources.searchUrl('x', 'ard').includes('showPageNumber'));
+});
+
+test('ARD-Startseite: Marken-/Themenkacheln (editorialPage, compilation) als Seitenkacheln in ihrer Reihe, "Menü", Live und Channel bleiben draußen', () => {
+  const sections = parser.parseSections(fixture('ardHomeMarken'), 'ard');
+  assert.deepEqual(sections.map(s => s.title), ['Rubriken', 'Starke Sendungen, starke Marken in der ARD']);
+  const marken = sections[1];
+  assert.deepEqual(marken.genres.map(g => [g.id, g.title]), [['ard/editorial/tatort', 'Tatort'], ['ard/editorial/sportschau', 'Sportschau'], ['ard/compilation/marken-extra', 'Mehr Marken']]);
+  assert.ok(marken.genres.every(g => g.sourceId === 'ard'));
+  assert.equal(marken.entries.length + marken.series.length, 0);
+  assert.ok(!JSON.stringify(sections).includes('live1') && !JSON.stringify(sections).includes('NDR Channel'));
+});
+
+test('Hörfassung ("Titel - Hörfassung", "(Hörfassung)") wird wie Audiodeskription mit dem Original zusammengeführt', () => {
+  const merged = mergeOriginalVersions([entry({ id: 'f', title: 'Die jungen Ärzte: Adventskind' }), entry({ id: 'h', title: 'Die jungen Ärzte: Adventskind - Hörfassung' }), entry({ id: 'g', title: 'Anderer Film' }), entry({ id: 'i', title: 'Anderer Film (Hörfassung)' })]);
+  assert.deepEqual(merged.map(e => e.id), ['f', 'g']);
+  assert.equal(merged[0].audioDescriptionId, 'h');
+  assert.equal(merged[1].audioDescriptionId, 'i');
 });

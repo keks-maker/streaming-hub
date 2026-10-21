@@ -27,6 +27,7 @@ function createMediathekSeriesView(root, ctx) {
   let unsubscribeDownloads = null;
   let current = null;
   let menuOpen = false;
+  let observer = null;
 
   function enter(series) {
     if (unsubscribe) unsubscribe();
@@ -69,9 +70,10 @@ function createMediathekSeriesView(root, ctx) {
   /** Zustände ohne Neuaufbau nachziehen (Fokus und Scrollposition bleiben). */
   function patchDownloads() {
     if (!page || !dl()) return;
+    const index = entryIndex();
     for (const row of root.querySelectorAll('.mediathek-episode')) {
       const btn = row.querySelector('[data-action="download"]');
-      const entry = findEntry(row.dataset.entryId);
+      const entry = index.get(row.dataset.entryId);
       if (btn && entry) paintDownloadButton(btn, entry);
     }
     const count = root.querySelector('.mediathek-dl-count');
@@ -100,13 +102,15 @@ function createMediathekSeriesView(root, ctx) {
     setIcon(icon, AUTO_SVG);
     btn.append(icon, el(doc, 'span', 'mediathek-auto-label'));
     paintAuto(btn);
-    btn.addEventListener('click', () => ctx.downloads.auto.toggle(series, { seasons: page.snapshot().seasons, trigger: btn }));
+    btn.addEventListener('click', () => ctx.downloads.auto.toggle(series, { seasons: page.loadedSeasons(), trigger: btn }));
     return btn;
   }
 
-  function findEntry(id) {
-    for (const season of page.snapshot().seasons) for (const entry of season.entries) if (entry.id === id) return entry;
-    return null;
+  /** Alle geladenen Folgen nach ID (Liste plus komplett geladene Staffeln). */
+  function entryIndex() {
+    const index = new Map();
+    for (const season of page.loadedSeasons()) for (const entry of season.entries) index.set(entry.id, entry);
+    return index;
   }
 
   function paintCount(node) {
@@ -153,7 +157,7 @@ function createMediathekSeriesView(root, ctx) {
           menuOpen = false;
           renderMenu();
           toggle.setAttribute('aria-expanded', 'false');
-          ctx.downloads.openSelection({ series, seasons: page.snapshot().seasons, mode: item.id, trigger: toggle });
+          ctx.downloads.openSelection({ series, seasons: page.loadedSeasons(), mode: item.id, trigger: toggle });
         });
         entry.setAttribute('role', 'menuitem');
         entry.dataset.mode = item.id;
@@ -350,6 +354,7 @@ function createMediathekSeriesView(root, ctx) {
     const state = page.snapshot();
     const selector = focusSelector();
     renderContent(state);
+    observeSentinel();
     if (ctx.fsk) ctx.fsk.decorate(root, { max: 30 }); // Einstufung der sichtbaren Folgenzeilen nachladen (höchstens 30, zwei parallel)
     if (selector) {
       const target = root.querySelector(selector);
@@ -378,12 +383,24 @@ function createMediathekSeriesView(root, ctx) {
       return;
     }
     const total = page.total();
+    const more = page.canLoadMore();
     const head = el(doc, 'div', 'mediathek-episodes-head');
     const title = el(doc, 'h3', 'mediathek-group-title');
-    title.append(el(doc, 'span', '', 'Folgen'), el(doc, 'span', 'mediathek-group-count', String(total)));
+    title.append(el(doc, 'span', '', 'Folgen'), el(doc, 'span', 'mediathek-group-count', more ? `${total}+` : String(total)));
     head.append(title, sortControl(state));
     root.appendChild(head);
     if (page.showSeasonPicker()) root.appendChild(seasonChips(state));
+    if (state.seasonStatus === 'loading') {
+      root.appendChild(statusLine(`Staffel ${state.selectedSeason} wird geladen …`));
+      return;
+    }
+    if (state.seasonStatus === 'failed') {
+      const box = el(doc, 'div', 'mediathek-block mediathek-error');
+      box.setAttribute('role', 'alert');
+      box.append(el(doc, 'span', '', `Staffel konnte nicht geladen werden: ${state.seasonError}`), button(doc, 'mediathek-btn', 'Erneut versuchen', () => page.retrySeason()));
+      root.appendChild(box);
+      return;
+    }
     if (total === 0) {
       root.appendChild(el(doc, 'p', 'mediathek-hint mediathek-empty', state.emptyNote || 'Keine Folgen verfügbar.'));
       if (state.emptyConnect && typeof ctx.openAccounts === 'function') {
@@ -402,6 +419,44 @@ function createMediathekSeriesView(root, ctx) {
       section.append(heading, list);
       root.appendChild(section);
     }
+    if (more) root.appendChild(moreBlock(state));
+  }
+
+  function statusLine(text) {
+    const line = el(doc, 'div', 'mediathek-block mediathek-status');
+    line.setAttribute('role', 'status');
+    const spin = el(doc, 'span', 'mediathek-spinner');
+    spin.setAttribute('aria-hidden', 'true');
+    line.append(spin, el(doc, 'span', '', text));
+    return line;
+  }
+
+  /** Fuß der Folgenliste (ARD, lange Serien): Fortschritt, Nachladen-Knopf, Fehler mit „Erneut versuchen“; sichtbar nachgeladen wird auch beim Scrollen. */
+  function moreBlock(state) {
+    if (state.loadingMore) return statusLine(`Weitere Folgen werden geladen …${state.progress ? ` (${state.progress.loaded} von ${state.progress.total})` : ''}`);
+    const box = el(doc, 'div', `mediathek-block ${state.moreError ? 'mediathek-error' : 'mediathek-more'}`);
+    box.dataset.sentinel = '1';
+    if (state.moreError) {
+      box.setAttribute('role', 'alert');
+      box.dataset.failed = '1';
+      box.append(el(doc, 'span', '', `Weitere Folgen konnten nicht geladen werden: ${state.moreError}`), button(doc, 'mediathek-btn', 'Erneut versuchen', () => page.loadMore()));
+      return box;
+    }
+    const label = state.progress ? `Weitere Folgen laden (${state.progress.loaded} von ${state.progress.total})` : 'Weitere Folgen laden';
+    box.appendChild(button(doc, 'mediathek-btn', label, () => page.loadMore()));
+    return box;
+  }
+
+  function observeSentinel() {
+    if (observer) observer.disconnect();
+    observer = null;
+    const sentinel = root.querySelector('[data-sentinel]:not([data-failed])');
+    const Observer = doc.defaultView && doc.defaultView.IntersectionObserver;
+    if (!sentinel || !Observer) return;
+    observer = new Observer(entries => {
+      if (entries.some(entry => entry.isIntersecting) && page) page.loadMore();
+    });
+    observer.observe(sentinel);
   }
 
   return {
@@ -419,6 +474,8 @@ function createMediathekSeriesView(root, ctx) {
       unsubscribe = null;
       if (unsubscribeDownloads) unsubscribeDownloads();
       unsubscribeDownloads = null;
+      if (observer) observer.disconnect();
+      observer = null;
     },
     /** Favorit extern geändert (z. B. aus dem Detail-Fenster). */
     setFavorite(value) {

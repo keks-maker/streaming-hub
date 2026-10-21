@@ -20,15 +20,15 @@ function fakeHttp(handler) {
   };
 }
 
-test('Suche: ARD-Seite 0 mit Serien, Seite 1 ohne Serien', async () => {
+test('Suche: ARD-Seite 0 und Folgeseite mit Serien (showPageNumber)', async () => {
   const http = fakeHttp(url => (url.includes('api.ardmediathek.de') ? fixture('ardSearchInstitut') : url.includes('zdf') ? fixture('zdfSearch') : fixture('arteSearch')));
   const service = createMediathekService({ http });
   const p0 = await service.searchPage('Das Institut', 'ard', 0);
   assert.equal(p0.series.length, 2);
   assert.equal(p0.hasMore, true);
   const p1 = await service.searchPage('Das Institut', 'ard', 1);
-  assert.deepEqual(p1.series, []);
-  assert.ok(http.calls[1].includes('vodPageNumber=1'));
+  assert.equal(p1.series.length, 2);
+  assert.ok(http.calls[1].includes('vodPageNumber=1') && http.calls[1].includes('showPageNumber=1'));
   assert.ok(!http.calls[0].includes('vodPageNumber'));
   assert.equal((await service.searchPage('x', 'zdf', 0)).entries.length, 1);
 });
@@ -216,4 +216,64 @@ test('HTTP: Allowlist vor dem Abruf und nach Redirect, Fehlercodes, Größenlimi
 test('HTTP: Netzwerkfehler tragen keine Adresse', async () => {
   const http = createMediathekHttp({ fetchImpl: async () => { throw Object.assign(new Error('fetch failed'), { code: 'ENOTFOUND' }); }, lookup: undefined });
   await assert.rejects(http.getText('https://api.arte.tv/geheim/pfad?token=abc'), error => error.code === 'network' && !/geheim|token/.test(error.message));
+});
+
+const ardPagedHttp = () =>
+  fakeHttp(url => {
+    if (url.includes('/pages/mdr/grouping/SERIE1')) return fixture('ardGroupingPaged0');
+    if (url.includes('pageNumber=1')) return fixture('ardGroupingPaged1');
+    if (url.includes('pageNumber=2')) return fixture('ardGroupingPaged2');
+    if (url.includes('seasonNumber=2')) return fixture('ardSeasonTwo');
+    throw Object.assign(new Error('weg'), { code: 'network', permanent: true });
+  });
+const ardPagedSeries = { id: 'SERIE1', title: 'Serie', sourceId: 'ard', groupingURL: 'https://api.ardmediathek.de/page-gateway/pages/mdr/grouping/SERIE1?embedded=true' };
+
+test('ARD-Serie: fetchEpisodes lädt alle Seiten (nicht nur Seite 0), Extras entfallen, OV zusammengefasst', async () => {
+  const http = ardPagedHttp();
+  const service = createMediathekService({ http, sleep: noSleep });
+  const episodes = await service.fetchEpisodes(ardPagedSeries);
+  assert.deepEqual(episodes.map(e => e.id), ['item-1', 'item-2', 'item-3', 'item-4', 'item-5', 'item-6']);
+  assert.equal(episodes[3].originalVersionId, 'item-4-ov');
+  assert.equal(http.calls.length, 3);
+  assert.ok(http.calls[1].includes('pageNumber=1') && http.calls[2].includes('pageNumber=2'));
+});
+
+test('ARD-Serienseite: seitenweise (pages), Fortschritt, hasMore und verfügbare Staffeln; Seiten werden kurz zwischengespeichert', async () => {
+  const http = ardPagedHttp();
+  const service = createMediathekService({ http, sleep: noSleep });
+  const first = await service.fetchEpisodeView(ardPagedSeries, { pages: 1 });
+  assert.deepEqual(first.entries.map(e => e.id), ['item-1', 'item-2']);
+  assert.equal(first.hasMore, true);
+  assert.deepEqual(first.progress, { loaded: 3, total: 8 });
+  assert.deepEqual(first.availableSeasons, [1, 2, 3]);
+  const more = await service.fetchEpisodeView(ardPagedSeries, { pages: 3 });
+  assert.equal(more.entries.length, 6);
+  assert.equal(more.hasMore, false);
+  assert.equal(more.progress, null);
+  assert.equal(http.calls.length, 3, 'Seite 0 kam aus dem Zwischenspeicher');
+  await assert.rejects(service.fetchEpisodeView({ ...ardPagedSeries, groupingURL: 'https://evil.example/x' }, { pages: 1 }), { code: 'invalidURL' });
+});
+
+test('ARD-Serienseite: Staffel komplett über das Staffel-Widget, Staffel/Folge gesetzt; unbekannte Staffel wird abgelehnt', async () => {
+  const http = ardPagedHttp();
+  const service = createMediathekService({ http, sleep: noSleep });
+  const view = await service.fetchEpisodeView(ardPagedSeries, { season: 2 });
+  assert.deepEqual(view.entries.map(e => [e.id, e.season, e.episode]), [['s2-a', 2, 1], ['s2-b', 2, 2]]);
+  assert.deepEqual(view.availableSeasons, [1, 2, 3]);
+  assert.ok(http.calls.some(url => url.includes('/widgets/ard/asset/SERIE1') && url.includes('seasonNumber=2')));
+  await assert.rejects(service.fetchEpisodeView(ardPagedSeries, { season: 9 }), { code: 'invalidURL' });
+});
+
+test('ARD-Serienliste: Obergrenze 2000 Folgen und höchstens 45 Seiten', async () => {
+  const page = n => JSON.stringify({ teasers: Array.from({ length: 48 }, (_, i) => ({ id: `e${n}-${i}`, coreAssetType: 'EPISODE', type: 'ondemand', longTitle: `E ${n}-${i}`, links: { target: { href: `https://api.ardmediathek.de/page-gateway/pages/ard/item/e${n}-${i}` } } })), pagination: { pageNumber: n, pageSize: 48, totalElements: 9000 }, links: { self: { href: `https://api.ardmediathek.de/page-gateway/widgets/ard/asset/BIG?pageNumber=${n}&pageSize=48` } } });
+  const http = fakeHttp(url => {
+    const match = /pageNumber=(\d+)/.exec(url);
+    return page(match ? Number(match[1]) : 0).replace('"teasers"', '"widgets":[],"teasers"');
+  });
+  const service = createMediathekService({ http, sleep: noSleep });
+  const big = { id: 'BIG', title: 'Big', sourceId: 'ard', groupingURL: 'https://api.ardmediathek.de/page-gateway/pages/ard/grouping/BIG?embedded=true' };
+  const view = await service.fetchEpisodeView(big, { pages: 0 });
+  assert.ok(view.entries.length >= 2000 && view.entries.length <= 2000 + 48, String(view.entries.length));
+  assert.ok(http.calls.length <= 45);
+  assert.equal(view.hasMore, false, 'bei erreichter Obergrenze gibt es kein Nachladen mehr');
 });
