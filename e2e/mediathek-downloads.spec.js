@@ -77,7 +77,7 @@ function seedUserData({ userData, tmpRoot }) {
   const items = [
     record('dl_done_0001', 1, {
       status: 'done',
-      entry: { id: episodes[2].id, title: episodes[2].title, sourceId: 'ard', imageUrl: null, duration: 2656, airedAt: '2026-09-23T19:00:00Z', availableUntil: '2027-03-01T00:00:00Z' },
+      entry: { id: episodes[2].id, title: episodes[2].title, sourceId: 'ard', imageUrl: null, duration: 2656, airedAt: '2026-09-23T19:00:00Z', availableUntil: '2027-03-01T00:00:00Z', fsk: 12 },
       title: 'Mitten im Feuer - Teil 1',
       episode: 1,
       root: dlRoot,
@@ -185,6 +185,7 @@ test('Bibliothek: Größe, Datum, „Quelle läuft ab am“; Abspielen über dl:
   const player = page.locator('.mediathek-player');
   await expect(player).toBeVisible();
   await expect(page.locator('#overlayBar')).toBeHidden(); // Offline-Wiedergabe: Navigationsleiste liegt nicht über dem Player
+  await expect(player.locator('.mediathek-player-fsk')).toHaveText('FSK 12'); // Einstufung aus dem Download-Datensatz
   const video = player.locator('video');
   await expect(video).toHaveAttribute('src', /^dl:\/\/local\/dl_done_0001\.mp4$/);
   if (hasVideo) {

@@ -51,3 +51,31 @@ test('Leere Folgenliste: Erklärung mit Zeitfenstern; Konto-Hinweis nur ohne Anm
   assert.match(emptySeriesNote('signedIn'), /Auch mit Konto liefert der Sender derzeit keine Folgen\.$/);
   assert.ok(!/Konto/.test(base));
 });
+
+test('ZDF-Dokument: Freigabe aus der Infozeile (Vorrang) oder dem Feld fsk; service.fetchFsk cached und fragt nur ohne Angabe', async () => {
+  const doc = { document: { fsk: 'none', videoInfo: '88 min | FSK 12 | 31.12.2025 | UT - AD' } };
+  assert.equal(parser.parseZdfFsk(JSON.stringify(doc)), 12);
+  assert.equal(parser.parseZdfFsk(JSON.stringify({ document: { fsk: 'fsk16' } })), 16);
+  assert.equal(parser.parseZdfFsk(JSON.stringify({ document: { fsk: 'none' } })), null);
+  assert.equal(parser.parseZdfFsk('kein json'), null);
+
+  const { createMediathekService } = require('../lib/mediathek/service.js');
+  let calls = 0;
+  const service = createMediathekService({ http: { getText: async () => { calls += 1; return JSON.stringify(doc); } } });
+  const entry = { id: 'der-schwarze-schwan-102', title: 'T', sourceId: 'zdf', fsk: null };
+  assert.equal(await service.fetchFsk(entry), 12);
+  assert.equal(await service.fetchFsk(entry), 12);
+  assert.equal(calls, 1);
+  assert.equal(await service.fetchFsk({ ...entry, fsk: 16 }), 16);
+  assert.equal(await service.fetchFsk({ ...entry, sourceId: 'ard' }), null);
+  assert.equal(calls, 1);
+  const failing = createMediathekService({ http: { getText: async () => { throw new Error('x'); } } });
+  assert.equal(await failing.fetchFsk(entry), null);
+});
+
+test('Download-Datensatz speichert die Freigabe; ältere ohne Feld bleiben null', () => {
+  const { minimalEntry } = require('../lib/download/records.js');
+  assert.equal(minimalEntry({ id: 'a', title: 'T', sourceId: 'zdf', fsk: 12 }).fsk, 12);
+  assert.equal(minimalEntry({ id: 'a', title: 'T', sourceId: 'zdf' }).fsk, null);
+  assert.equal(minimalEntry({ id: 'a', title: 'T', sourceId: 'zdf', fsk: 7 }).fsk, null);
+});

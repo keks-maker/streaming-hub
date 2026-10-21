@@ -174,7 +174,14 @@ function createMediathekDetail(host, ctx) {
     if (target) target.focus();
   }
 
-  return { open, close, render, isOpen: () => Boolean(backdrop), currentEntry: () => (state ? state.entry : null) };
+  /** Ersetzt den Eintrag des offenen Fensters (z. B. nachgeladene Altersfreigabe), wenn es noch dieselbe Folge zeigt. */
+  function refreshEntry(entry) {
+    if (!state || !backdrop || state.entry.id !== entry.id || state.entry.sourceId !== entry.sourceId) return;
+    state = { ...state, entry };
+    render();
+  }
+
+  return { open, close, render, refreshEntry, isOpen: () => Boolean(backdrop), currentEntry: () => (state ? state.entry : null) };
 }
 
 module.exports = { createMediathekDetail };
