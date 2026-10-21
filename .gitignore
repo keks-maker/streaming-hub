@@ -21,3 +21,6 @@ test-results/
 playwright-report/
 release-x64/
 release-linux/
+
+# Symlink-Variante (Worktrees) ebenfalls ignorieren
+node_modules
