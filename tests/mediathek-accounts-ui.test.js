@@ -163,7 +163,7 @@ test('Ansicht: PIN nur über das Feld (vier Ziffern), wird nie wieder angezeigt;
   assert.equal(root.byId('settingsMediathekAccountsPinInput').value, '', 'Feld wird geleert');
   assert.ok(!root.textContent.includes('4711'));
   assert.equal(root.byId('settingsMediathekAccountsPinEnabled').disabled, false);
-  assert.match(root.byId('settingsMediathekAccountsPinHint').textContent, /im Zweifel wird sie nicht gesendet/);
+  assert.match(root.byId('settingsMediathekAccountsPinHint').textContent, /keine Jugendschutz-PIN.*nicht gesendet/);
 });
 
 test('Ansicht: Ladefehler wird als Fehlermeldung gezeigt', async () => {
@@ -203,7 +203,7 @@ function ipcSetup() {
 
 test('IPC: alle Kanäle nur für das Hauptfenster, Event wird weitergereicht', async () => {
   const { handlers, listeners, sent } = ipcSetup();
-  const channels = ['status', 'login', 'logout', 'test', 'set-pin', 'set-pin-enabled'].map(name => `mediathek:accounts-${name}`);
+  const channels = ['status', 'login', 'diagnose', 'logout', 'test', 'set-pin', 'set-pin-enabled'].map(name => `mediathek:accounts-${name}`);
   assert.deepEqual([...handlers.keys()].sort(), channels.sort());
   for (const channel of channels) assert.throws(() => handlers.get(channel)({ sender: 'webview' }, {}), /nicht autorisiert/, channel);
   listeners.changed({ accounts: [] });
@@ -242,7 +242,7 @@ test('Verdrahtung: Seite, Navigation, Renderer und Preload-Whitelist', () => {
   assert.ok(isValidPage('mediathek-accounts'));
   assert.match(read('renderer.js'), /page === 'mediathek-accounts'\) settingsMediathekAccountsView\.refresh\(\)/);
   const preload = read('preload.js');
-  for (const channel of ['status', 'login', 'logout', 'test', 'set-pin', 'set-pin-enabled']) assert.ok(preload.includes(`'mediathek:accounts-${channel}'`), channel);
+  for (const channel of ['status', 'login', 'diagnose', 'logout', 'test', 'set-pin', 'set-pin-enabled']) assert.ok(preload.includes(`'mediathek:accounts-${channel}'`), channel);
   assert.ok(preload.includes("radioListener('mediathek:accounts-changed')"));
   const block = preload.slice(preload.indexOf('accounts: {'), preload.indexOf('accounts: {') + 900);
   assert.ok(!/token|password|passwort/i.test(block), 'keine Token-/Passwort-Kanäle im Preload');

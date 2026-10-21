@@ -45,11 +45,13 @@ function createMediathekAccountsView(root, { mediathek, logger = null } = {}) {
     const login = button('Anmelden', `settingsMediathekAccount-${sender}-login`, () => run(sender, 'login'));
     const logout = button('Abmelden', `settingsMediathekAccount-${sender}-logout`, () => run(sender, 'logout'));
     const test = button('Freischaltung testen', `settingsMediathekAccount-${sender}-test`, () => run(sender, 'test'));
-    for (const node of [login, logout, test]) node.setAttribute('aria-describedby', state.id);
+    const diagnose = button('Ablauf aufzeichnen (Diagnose)', `settingsMediathekAccount-${sender}-diagnose`, () => run(sender, 'diagnose'));
+    diagnose.hidden = true;
+    for (const node of [login, logout, test, diagnose]) node.setAttribute('aria-describedby', state.id);
     const actions = el(doc, 'div', 'settings-account-actions');
-    actions.append(login, logout, test);
+    actions.append(login, logout, test, diagnose);
     card.append(title, badge, state, hint, actions);
-    cards.set(sender, { card, title, badge, state, hint, login, logout, test, actions });
+    cards.set(sender, { card, title, badge, state, hint, login, logout, test, diagnose, actions });
     return card;
   }
 
@@ -70,6 +72,8 @@ function createMediathekAccountsView(root, { mediathek, logger = null } = {}) {
       parts.login.disabled = !info.canLogin;
       parts.logout.disabled = !info.canLogout;
       parts.test.disabled = !info.canTest;
+      parts.diagnose.hidden = !(info.supported && account.canDiagnose === true);
+      parts.diagnose.disabled = !info.canDiagnose;
     }
     storageNote.textContent = current.persistent ? STORAGE_NOTE.persistent : STORAGE_NOTE.memoryOnly;
   }
@@ -103,7 +107,7 @@ function createMediathekAccountsView(root, { mediathek, logger = null } = {}) {
     toggle.disabled = !current.pin.set;
     toggle.addEventListener('change', () => call(() => accounts.setPinEnabled(toggle.checked), toggle.checked ? 'PIN-Übermittlung aktiviert (experimentell).' : 'PIN-Übermittlung aus.'));
     toggleLabel.append(toggle, el(doc, 'span', '', ' PIN beim Abruf mitsenden (experimentell)'));
-    const hint = el(doc, 'p', 'settings-field-hint', `${current.pin.set ? 'Eine PIN ist gespeichert. ' : ''}Die PIN wird nur verschlüsselt abgelegt, nie angezeigt und nur an den dafür vorgesehenen ARD-Abruf gesendet. Wie die ARD die PIN beim Abruf erwartet, ist nicht geklärt: im Zweifel wird sie nicht gesendet.`);
+    const hint = el(doc, 'p', 'settings-field-hint', `${current.pin.set ? 'Eine PIN ist gespeichert. ' : ''}Die PIN wird nur verschlüsselt abgelegt, nie angezeigt und nur an den dafür vorgesehenen ARD-Abruf gesendet. Nach bisherigem Stand verlangt die ARD keine Jugendschutz-PIN (nur Anmeldung und Altersfreigabe beim Anbieter); die Einstellung bleibt daher ohne Wirkung und die PIN wird nicht gesendet.`);
     hint.id = 'settingsMediathekAccountsPinHint';
     pinHost.append(heading, label, save, clear, toggleLabel, hint);
   }
@@ -133,9 +137,10 @@ function createMediathekAccountsView(root, { mediathek, logger = null } = {}) {
   async function run(sender, action) {
     busy.add(sender);
     renderCards();
-    setStatus(statusEl, action === 'login' ? 'Anbieter-Fenster geöffnet: dort anmelden …' : action === 'test' ? 'Prüfe …' : 'Melde ab …');
+    setStatus(statusEl, action === 'login' ? 'Anbieter-Fenster geöffnet: dort anmelden …' : action === 'diagnose' ? 'Aufzeichnung läuft: im Fenster einen gesperrten Beitrag öffnen und die PIN bzw. Altersfreigabe dort eingeben, danach das Fenster schließen. Es werden nur Namen und Statuscodes gespeichert, keine Werte, Token oder PIN.' : action === 'test' ? 'Prüfe …' : 'Melde ab …');
     try {
       if (action === 'login') await call(() => accounts.login(sender), 'Angemeldet. Beiträge, die der Anbieter für dich freigibt, sind jetzt abrufbar.');
+      else if (action === 'diagnose') await call(() => accounts.diagnose(sender), null);
       else if (action === 'logout') await call(() => accounts.logout(sender), 'Abgemeldet. Sitzungsdaten wurden gelöscht.');
       else await call(() => accounts.test(sender), null);
     } finally {

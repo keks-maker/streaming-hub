@@ -235,6 +235,7 @@ contextBridge.exposeInMainWorld('mediathek', {
   accounts: {
     status: () => ipcRenderer.invoke('mediathek:accounts-status'),
     login: sender => ipcRenderer.invoke('mediathek:accounts-login', { sender }),
+    diagnose: sender => ipcRenderer.invoke('mediathek:accounts-diagnose', { sender }),
     logout: sender => ipcRenderer.invoke('mediathek:accounts-logout', { sender }),
     test: sender => ipcRenderer.invoke('mediathek:accounts-test', { sender }),
     setPin: pin => ipcRenderer.invoke('mediathek:accounts-set-pin', { pin }),

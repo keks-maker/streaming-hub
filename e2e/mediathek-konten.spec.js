@@ -100,7 +100,7 @@ test('Anmelden (Fenster-Ergebnis gemockt): Status, Testen, Freischaltung des Bei
 
 test('Renderer kennt nur Zustände: keine Token-API, ZDF-Anmeldung wird abgelehnt', async () => {
   const api = await page.evaluate(() => Object.keys(window.mediathek.accounts).sort());
-  expect(api).toEqual(['login', 'logout', 'onChanged', 'setPin', 'setPinEnabled', 'status', 'test']);
+  expect(api).toEqual(['diagnose', 'login', 'logout', 'onChanged', 'setPin', 'setPinEnabled', 'status', 'test']);
   const zdf = await page.evaluate(() => window.mediathek.accounts.login('zdf'));
   expect(zdf.ok).toBe(false);
   expect(zdf.code).toBe('unsupported');

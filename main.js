@@ -49,6 +49,7 @@ const { createArteProvider } = require('./lib/mediathek/auth/arte.js');
 const { createArdProvider } = require('./lib/mediathek/auth/ard.js');
 const { createLoginRunner } = require('./lib/mediathek/auth/login-window.js');
 const { createE2eLoginRunner, createE2eAuthNet } = require('./lib/mediathek/auth/e2e-login.js');
+const { createDiagnoseRecorder } = require('./lib/mediathek/auth/diagnose.js');
 const { registerAccountsIpc } = require('./lib/mediathek/auth/ipc.js');
 const { createRoutedHttp } = require('./lib/mediathek/e2e-http.js');
 const { createMediathekFavorites } = require('./lib/mediathek/favorites.js');
@@ -947,10 +948,12 @@ app.whenReady().then(() => {
     // Konten: in isolierten Testläufen weder safeStorage (Schlüsselbund) noch echtes Anmeldefenster
     const e2eRun = isIsolatedTestRun(process.env);
     const authNet = e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eAuthNet() : createAuthNet();
+    const accountLoginRunner = createLoginRunner({ BrowserWindow, session, getParent: () => mainWindow, logger });
     mediathekAuth = createMediathekAuth({
       providers: { arte: createArteProvider({ net: authNet }), ard: createArdProvider({ net: authNet }) },
       store: createAuthStore({ file: path.join(app.getPath('userData'), 'mediathek-auth.bin'), safeStorage: e2eRun ? null : safeStorage, logger }),
-      loginRunner: e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eLoginRunner(process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN) : createLoginRunner({ BrowserWindow, session, getParent: () => mainWindow, logger }),
+      loginRunner: e2eRun && process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN ? createE2eLoginRunner(process.env.STREAMING_HUB_E2E_MEDIATHEK_LOGIN) : accountLoginRunner,
+      diagnoseRunner: e2eRun ? null : createDiagnoseRecorder({ openProviderWindow: accountLoginRunner.openProviderWindow, file: path.join(app.getPath('userData'), 'diagnose-ard.json'), logger }),
       clearPartition: async partition => {
         const ses = session.fromPartition(partition);
         await ses.clearStorageData();

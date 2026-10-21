@@ -37,6 +37,7 @@ function describeAccount(account, { busy = false } = {}) {
     canLogin: supported && state !== 'signedIn' && !busy,
     loginLabel: state === 'expired' ? 'Erneut anmelden' : 'Anmelden',
     canLogout: supported && state !== 'signedOut' && !busy,
+    canDiagnose: supported && account.canDiagnose === true && !busy,
     canTest: supported && state === 'signedIn' && !busy,
     supported,
   };

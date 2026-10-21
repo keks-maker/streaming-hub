@@ -33,6 +33,7 @@ function createAuth(initial = {}, refresh = null) {
       refresh: refresh || (async r => ({ ...r, accessToken: `${sender}-REFRESHED`, expiresAt: Date.now() + 3600000 })),
       login: {},
       pinBinding: null,
+      personalizeUrl: sender === 'ard' ? (url, r) => `${url}${url.includes('?') ? '&' : '?'}userId=uid-of-${r.accessToken.length}` : undefined,
     };
     if (initial[sender]) store.set(sender, { ...record(sender), ...initial[sender] });
   }
@@ -195,6 +196,15 @@ test('IPC resolve-playback: Meldungen je Konto-Zustand', async () => {
   const unlocked = await run({ ard: {} }, { [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: fixture('ardItem') } });
   assert.equal(unlocked.resolution.kind, 'playable');
   assert.equal(unlocked.message, null);
+});
+
+test('Wiedergabe ARD: der Wiederholungsabruf mit Konto trägt userId, der anonyme Abruf nicht', async () => {
+  const { auth } = createAuth({ ard: {} });
+  const http = routedHttp({ [ARD_ROUTE]: { anon: fixture('ardItemInstitutFskBlocked'), auth: fixture('ardItem') } });
+  await createMediathekService({ http, auth }).resolveStreamDetail(ARD_ENTRY);
+  assert.equal(http.calls.length, 2);
+  assert.ok(!http.calls[0].url.includes('userId='));
+  assert.match(http.calls[1].url, /[?&]userId=uid-of-/);
 });
 
 test('Wiedergabe ARD: Token abgelaufen und Auffrischung scheitert am Netz -> eigener Hinweis, kein Abruf ohne Kopfzeile, Status ohne Fehlalarm', async () => {
