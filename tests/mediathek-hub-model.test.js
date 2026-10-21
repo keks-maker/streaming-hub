@@ -53,6 +53,24 @@ test('Reihen: reihum gemischt, Genre-Reihe zuerst, leere Reihen entfallen', () =
   assert.deepEqual(m.buildRows(home, ['zdf']).map(row => row.id), ['zdf-0']);
 });
 
+test('Reihen: Rubriken (ARD, ZDF) und Genres (arte) stehen ganz oben, auch bei "Alle"', () => {
+  const loaded = sections => ({ status: 'loaded', sections: sections.map(s => ({ ...s, moreState: 'idle' })) });
+  const genre = (id, sourceId) => ({ id, title: id, sourceId });
+  const home = {
+    ard: loaded([section('A1', { entries: [entry('1')] }), section('Rubriken', { genres: [genre('ard/editorial/filme', 'ard')] })]),
+    zdf: loaded([section('Z1', { entries: [entry('z', 'zdf')] }), section('Rubriken', { genres: [genre('filme-104', 'zdf')] })]),
+    arte: loaded([section('Genres', { genres: [genre('DOR', 'arte')] })]),
+  };
+  assert.deepEqual(m.buildRows(home, ['ard', 'zdf', 'arte']).map(row => `${row.sourceId}:${row.title}`), ['ard:Rubriken', 'zdf:Rubriken', 'arte:Genres', 'ard:A1', 'zdf:Z1']);
+  assert.deepEqual(m.buildRows(home, ['zdf']).map(row => row.title), ['Rubriken', 'Z1']);
+});
+
+test('Nachladen: Genre-Kacheln werden ohne Dubletten angehängt', () => {
+  const base = section('Reihe', { genres: [{ id: 'a', title: 'A', sourceId: 'ard' }], nextPage: 'https://api.ardmediathek.de/page-gateway/widgets/x' });
+  const merged = m.mergeSection(base, { genres: [{ id: 'a', title: 'A', sourceId: 'ard' }, { id: 'b', title: 'B', sourceId: 'ard' }], nextPage: null });
+  assert.deepEqual(merged.genres.map(g => g.id), ['a', 'b']);
+});
+
 test('Nachladen: neue Seite wird ohne Dubletten angehängt, nextPage wandert weiter', () => {
   const base = { ...section('Highlights', { entries: [entry('1', 'arte'), entry('2', 'arte')], nextPage: 'https://api.arte.tv/p2' }), moreState: 'loading' };
   const merged = m.mergeSection(base, { entries: [entry('2', 'arte'), entry('3', 'arte')], series: [], nextPage: null });

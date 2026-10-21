@@ -3,7 +3,7 @@
 // DOM-Bausteine der Mediathek-Oberfläche: Bild mit Platzhalter, Folgen-/Serien-/Genre-Karten und scrollbare Reihen.
 // Texte der Sender kommen ausschließlich per textContent in den DOM. Funktionen nehmen das Dokument entgegen (testbar).
 
-const { sourceBadge, sourceColor, subtitleText, minutesText, fskText, imageSrc, initials, placeholderHue } = require('./mediathek-format.js');
+const { sourceBadge, genreNoun, sourceColor, subtitleText, minutesText, fskText, imageSrc, initials, placeholderHue } = require('./mediathek-format.js');
 const { AUTO_SVG } = require('./mediathek-download-icons.js');
 
 function el(doc, tag, className, text) {
@@ -157,13 +157,14 @@ function updateStar(star, series, favorite) {
   setIcon(star, favorite ? STAR_SVG : STAR_OUTLINE_SVG);
 }
 
-/** Genre-Karte (arte). options: { onOpen() } */
+/** Genre-/Rubrik-Karte (arte Genre, ARD/ZDF Rubrik). options: { onOpen() } */
 function createGenreCard(doc, genre, options = {}) {
   const card = el(doc, 'li', 'mediathek-card mediathek-genre-card');
   const main = el(doc, 'button', 'mediathek-card-main');
   main.type = 'button';
-  main.setAttribute('aria-label', `Genre ${genre.title}`);
-  main.append(createThumb(doc, { imageUrl: genre.imageUrl, title: genre.title, sourceId: genre.sourceId }), el(doc, 'span', 'mediathek-card-title', genre.title), el(doc, 'span', 'mediathek-card-sub', 'Genre'));
+  const noun = genreNoun(genre.sourceId);
+  main.setAttribute('aria-label', `${noun} ${genre.title}`);
+  main.append(createThumb(doc, { imageUrl: genre.imageUrl, title: genre.title, sourceId: genre.sourceId }), el(doc, 'span', 'mediathek-card-title', genre.title), el(doc, 'span', 'mediathek-card-sub', noun));
   if (options.onOpen) main.addEventListener('click', () => options.onOpen(main));
   card.appendChild(main);
   return card;

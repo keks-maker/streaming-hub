@@ -79,7 +79,7 @@ function createSeriesPage({ api, series }) {
   };
 }
 
-/** Genre-Seite (arte): Reihen mit Nachladen. */
+/** Genre-/Rubrik-Seite (arte, ARD, ZDF): Reihen mit Nachladen. */
 function createGenrePage({ api, genre }) {
   const emitter = createEmitter();
   let token = 0;
@@ -105,7 +105,7 @@ function createGenrePage({ api, genre }) {
       state.status = 'loaded';
     } else {
       state.status = 'failed';
-      state.error = result.error || 'Die Genre-Seite konnte nicht geladen werden.';
+      state.error = result.error || 'Die Seite konnte nicht geladen werden.';
     }
     emitter.emit();
   }

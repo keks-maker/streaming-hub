@@ -1,0 +1,183 @@
+{
+ "document": {
+  "id": "filme-104",
+  "titel": "Filme",
+  "contentType": "category"
+ },
+ "cluster": [
+  {
+   "name": "Derzeit beliebte Filme",
+   "type": "clusterA",
+   "reference": {
+    "url": "https://zdf-prod-futura.zdf.de/mediathek/v2/recommendation/cluster"
+   }
+  },
+  {
+   "name": "Komödien",
+   "type": "teaser",
+   "moreLabel": "Alle",
+   "teaser": [
+    {
+     "id": "ein-schrecklich-reiches-paar-102",
+     "type": "video",
+     "contentType": "episode",
+     "titel": "Ein schrecklich reiches Paar",
+     "headline": "",
+     "beschreibung": "Die unorthodoxe Millionärsgattin Eva Klüber tobt, als sich ihr Mann Rainer von ihr scheiden lässt und sie laut Ehevertrag nichts vom gemeinsamen Vermögen behalten soll.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "length": 5300,
+     "fsk": "none",
+     "offlineAvailability": "2027-04-19T23:59:00.000+02:00",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/hero-ein-schrecklich-reiches-paar-100~768x432?cb=1783579394187",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "lehrer-kann-jeder-102",
+     "type": "video",
+     "contentType": "episode",
+     "titel": "Lehrer kann jeder!",
+     "headline": "",
+     "beschreibung": "Richard ist gerade arbeitslos. Zudem hat sich gerade seine Frau Anke von ihm getrennt. Da kommt dem Mathematiker die geniale Idee, als Quereinsteiger an der Schule seiner Frau anzuheuern.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "length": 5305,
+     "fsk": "none",
+     "offlineAvailability": "2027-03-01T23:59:00.000+01:00",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/lehrer-kann-jeder-100~768x432?cb=1773067032949",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "mit-der-tuer-ins-haus-102",
+     "type": "video",
+     "contentType": "episode",
+     "titel": "Mit der Tür ins Haus",
+     "headline": "",
+     "beschreibung": "Nora freut sich, als ihre Eltern, seit 20 Jahren ausgewandert, vor der Tür stehen. Doch diese sind nicht gekommen, um zu feiern, sondern um zu bleiben.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "length": 5305,
+     "fsk": "none",
+     "offlineAvailability": "2027-10-09T23:59:00.000+02:00",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/mit-der-tuer-ins-haus-110~768x432?cb=1729088654204",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "ein-schrecklich-reiches-paar-102",
+     "type": "video",
+     "contentType": "episode",
+     "titel": "Ein schrecklich reiches Paar",
+     "headline": "",
+     "beschreibung": "Die unorthodoxe Millionärsgattin Eva Klüber tobt, als sich ihr Mann Rainer von ihr scheiden lässt und sie laut Ehevertrag nichts vom gemeinsamen Vermögen behalten soll.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "length": 5300,
+     "fsk": "none",
+     "offlineAvailability": "2027-04-19T23:59:00.000+02:00",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/hero-ein-schrecklich-reiches-paar-100~768x432?cb=1783579394187",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Romantische Filme und Serien",
+   "type": "teaser",
+   "moreLabel": "Alle",
+   "teaser": [
+    {
+     "id": "der-bergdoktor-106",
+     "type": "brand",
+     "contentType": "brand",
+     "titel": "Der Bergdoktor",
+     "headline": "",
+     "brandTitle": "Der Bergdoktor",
+     "beschreibung": "Im idyllischen Alpendorf Ellmau kümmert sich Dr. Martin Gruber aufopfernd um die Sorgen und Nöte seiner Patienten. Auch daheim auf dem Gruberhof und in Martins Liebesleben geht es turbulent zu.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/hero-der-bergdoktor-100~768x432?cb=1786097073862",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "fruehling-144",
+     "type": "brand",
+     "contentType": "brand",
+     "titel": "Frühling",
+     "headline": "",
+     "brandTitle": "Frühling",
+     "beschreibung": "Im bayerischen Dorf Frühling kennt sie jeder: Dorfhelferin Katja Baumann. Ob Kühe melken, Kinder hüten oder Trost spenden, Katja ist immer zur Stelle. Findet sie auch privat endlich das Glück?",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/fruehling-herzkino-simone-thomalla-100~768x432?cb=1764949748334",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Mehr entdecken",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "doku-wissen-unterrubrik-100",
+     "type": "category",
+     "contentType": "category",
+     "titel": "Erfundene Unterrubrik",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/kategorie-erfunden-100~768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "filme-104",
+     "type": "category",
+     "contentType": "category",
+     "titel": "Filme",
+     "headline": "",
+     "beschreibung": "Infos zu den aktuellen Filmen inklusive Videos, Online-Specials und vieles mehr.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/kategorie-filme-100~768x432?cb=1766146103117",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

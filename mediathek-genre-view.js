@@ -1,9 +1,9 @@
 'use strict';
 
-// Genre-Seite (arte): Reihen des Genres mit Nachladen. Dünne Ansicht über mediathek-series-model.js (createGenrePage).
+// Genre-/Rubrik-Seite (arte Genre, ARD/ZDF Rubrik): Reihen mit Nachladen. Dünne Ansicht über mediathek-series-model.js (createGenrePage).
 
 const { createGenrePage } = require('./mediathek-series-model.js');
-const { sourceBadge } = require('./mediathek-format.js');
+const { sourceBadge, genreNoun } = require('./mediathek-format.js');
 const { el, button, setIcon, createRow, appendToRow, createCardFactory } = require('./mediathek-cards.js');
 
 const BACK_SVG =
@@ -40,7 +40,7 @@ function createMediathekGenreView(root, ctx) {
     back.append(icon, el(doc, 'span', '', 'Mediatheken'));
     back.addEventListener('click', () => ctx.back());
     const text = el(doc, 'div', 'mediathek-page-head-text');
-    text.appendChild(el(doc, 'p', 'mediathek-eyebrow', `${sourceBadge('arte')} · GENRE`));
+    text.appendChild(el(doc, 'p', 'mediathek-eyebrow', `${sourceBadge(state.genre.sourceId)} · ${genreNoun(state.genre.sourceId).toUpperCase()}`));
     const title = el(doc, 'h2', 'mediathek-hero-title', state.genre.title);
     title.id = 'mediathekGenreTitle';
     text.appendChild(title);
@@ -53,7 +53,7 @@ function createMediathekGenreView(root, ctx) {
       line.setAttribute('role', 'status');
       const spin = el(doc, 'span', 'mediathek-spinner');
       spin.setAttribute('aria-hidden', 'true');
-      line.append(spin, el(doc, 'span', '', 'Genre wird geladen …'));
+      line.append(spin, el(doc, 'span', '', `${genreNoun(state.genre.sourceId)} wird geladen …`));
       root.appendChild(line);
     } else if (state.status === 'failed') {
       const box = el(doc, 'div', 'mediathek-block mediathek-error');
@@ -77,7 +77,7 @@ function createMediathekGenreView(root, ctx) {
         section.entries.forEach(entry => appendToRow(row.list, cards.entry(entry, null)));
         root.appendChild(row.section);
       });
-      if (!shown) root.appendChild(el(doc, 'p', 'mediathek-hint mediathek-empty', 'In diesem Genre ist nichts verfügbar.'));
+      if (!shown) root.appendChild(el(doc, 'p', 'mediathek-hint mediathek-empty', state.genre.sourceId === 'arte' ? 'In diesem Genre ist nichts verfügbar.' : 'In dieser Rubrik gibt es hier derzeit nichts direkt Abspielbares.'));
     }
     if (hadFocus) {
       const target = root.querySelector('#mediathekGenreBack');

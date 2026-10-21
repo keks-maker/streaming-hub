@@ -1,0 +1,463 @@
+{
+ "title": "Die besten Filme in der ARD",
+ "links": {
+  "self": {
+   "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+  }
+ },
+ "widgets": [
+  {
+   "type": "top_navigation",
+   "title": "Navigation",
+   "teasers": [
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:8833670499431801566",
+     "type": "editorialPage",
+     "longTitle": "Übersicht",
+     "mediumTitle": "Übersicht",
+     "shortTitle": "Übersicht",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:-1176546083284010010",
+     "type": "editorialPage",
+     "longTitle": "Krimi & Thriller",
+     "mediumTitle": "Krimi & Thriller",
+     "shortTitle": "Krimi & Thriller",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme-krimis-thriller?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:-2242754457259374065",
+     "type": "editorialPage",
+     "longTitle": "Komödie",
+     "mediumTitle": "Komödie",
+     "shortTitle": "Komödie",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme-komoedien?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:2693905770524507950",
+     "type": "editorialPage",
+     "longTitle": "Drama & Arthouse",
+     "mediumTitle": "Drama & Arthouse",
+     "shortTitle": "Drama & Arthouse",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme-drama?embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Neu verfügbare Film-Highlights",
+   "teasers": [
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:7664870209204045212",
+     "coreAssetType": "EPISODE",
+     "type": "poster",
+     "longTitle": "Unter Feinden (2) | Das neue Team aus Kiel ermittelt",
+     "mediumTitle": "Unter Feinden (2) | Das neue Team aus Kiel ermittelt",
+     "shortTitle": "Unter Feinden (2) | Team Kiel ermittelt",
+     "duration": 5240,
+     "availableTo": "2027-10-18T18:15:00Z",
+     "maturityContentRating": "FSK12",
+     "publicationService": {
+      "name": "NDR",
+      "partner": "ndr"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:6828cb2b4e8e1768?ch=a1187c6bd91b7c62&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/item/Y3JpZDovL25kci5kZS85ZmM2Nzc0My1lMGE5LTRiODYtOTIwMi02NWJmMzNlNGY2MjNfZ2FuemVTZW5kdW5n?devicetype=pc&embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:5936640091938044290",
+     "coreAssetType": "EPISODE",
+     "type": "poster",
+     "longTitle": "Unter Freunden (1) | Das neue Team aus Kiel ermittelt",
+     "mediumTitle": "Unter Freunden (1) | Das neue Team aus Kiel ermittelt",
+     "shortTitle": "Unter Freunden (1) |  Team Kiel ermittelt",
+     "duration": 5170,
+     "availableTo": "2027-10-11T18:15:00Z",
+     "maturityContentRating": "FSK12",
+     "publicationService": {
+      "name": "NDR",
+      "partner": "ndr"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:98201c5f5d3412ce?ch=651e790410e9087d&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/item/Y3JpZDovL25kci5kZS9hMjIyNWMyMC05NDUwLTQzMjktOGUyZi0yMDMwYzIzZGQ0ZjFfZ2FuemVTZW5kdW5n?devicetype=pc&embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:2530968972185166887",
+     "coreAssetType": "EPISODE",
+     "type": "poster",
+     "longTitle": "Sommer auf Asphalt | Vater-Tochter-Komödie",
+     "mediumTitle": "Sommer auf Asphalt | Vater-Tochter-Komödie",
+     "shortTitle": "Sommer auf Asphalt | Komödie",
+     "duration": 5306,
+     "availableTo": "2027-10-21T18:15:00Z",
+     "maturityContentRating": "FSK12",
+     "publicationService": {
+      "name": "NDR",
+      "partner": "ndr"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:425ff58d6b10edcc?w={width}&ch=01f90d6669340bb0"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/item/Y3JpZDovL25kci5kZS9jOGQ1MjQ5MS05OTg1LTRiY2YtOWY5YS03ODFjNDJhOGQzNTNfZ2FuemVTZW5kdW5n?devicetype=pc&embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:111111111111111111",
+     "coreAssetType": "SINGLE",
+     "type": "poster",
+     "longTitle": "Erfundener ZDF-Spielfilm",
+     "mediumTitle": "Erfundener ZDF-Spielfilm",
+     "shortTitle": "Unter Feinden (2) | Team Kiel ermittelt",
+     "duration": 5240,
+     "availableTo": "2027-10-18T18:15:00Z",
+     "maturityContentRating": "FSK12",
+     "publicationService": {
+      "name": "ZDF",
+      "partner": "zdf"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:6828cb2b4e8e1768?ch=a1187c6bd91b7c62&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/zdf/item/erfunden-zdf-film"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:7664870209204045212",
+     "coreAssetType": "EPISODE",
+     "type": "poster",
+     "longTitle": "Unter Feinden (2) | Das neue Team aus Kiel ermittelt",
+     "mediumTitle": "Unter Feinden (2) | Das neue Team aus Kiel ermittelt",
+     "shortTitle": "Unter Feinden (2) | Team Kiel ermittelt",
+     "duration": 5240,
+     "availableTo": "2027-10-18T18:15:00Z",
+     "maturityContentRating": "FSK12",
+     "publicationService": {
+      "name": "NDR",
+      "partner": "ndr"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:6828cb2b4e8e1768?ch=a1187c6bd91b7c62&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/item/Y3JpZDovL25kci5kZS85ZmM2Nzc0My1lMGE5LTRiODYtOTIwMi02NWJmMzNlNGY2MjNfZ2FuemVTZW5kdW5n?devicetype=pc&embedded=true"
+      }
+     }
+    }
+   ],
+   "pagination": {
+    "pageNumber": 0,
+    "pageSize": 5,
+    "totalElements": 8
+   },
+   "links": {
+    "self": {
+     "href": "https://api.ardmediathek.de/page-gateway/widgets/ard/editorials/5K9EyEcCXoCa0bd2GbUYSK%3A5391434829540709119?pageNumber=0&pageSize=5&embedded=true"
+    }
+   }
+  },
+  {
+   "type": "gridlist",
+   "title": "Aktuelle Film-Highlights | Trailer",
+   "teasers": [
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:1199459524515858284",
+     "coreAssetType": "EXTRA_TRAILER",
+     "type": "ondemand",
+     "longTitle": "Thriller",
+     "mediumTitle": "Thriller",
+     "shortTitle": "Thriller",
+     "duration": 71,
+     "broadcastedOn": "2026-10-14T18:15:00Z",
+     "availableTo": "2027-10-14T18:15:00Z",
+     "maturityContentRating": "FSK12",
+     "publicationService": {
+      "name": "NDR",
+      "partner": "ndr"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:fe17f9dd5b7bd3f2?ch=3c47b4be709cae69&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/item/Y3JpZDovL25kci5kZS85YTk4MDg3Yy1jMmJjLTQxNzQtYWY2Ny04M2E5OGUxODg3MDU?devicetype=pc&embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:1317064808915439541",
+     "coreAssetType": "EXTRA_TRAILER",
+     "type": "ondemand",
+     "longTitle": "Familiendrama",
+     "mediumTitle": "Familiendrama",
+     "shortTitle": "Familiendrama",
+     "duration": 64,
+     "broadcastedOn": "2026-10-07T18:15:00Z",
+     "availableTo": "2027-10-07T18:15:00Z",
+     "maturityContentRating": "FSK12",
+     "publicationService": {
+      "name": "NDR",
+      "partner": "ndr"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:329083093ca0bc7f?w={width}&ch=99620ebb70db1a87"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/item/Y3JpZDovL25kci5kZS9iZDI4NWQ2NC1iNTUwLTQ4MzgtYTQzNC0yNmYzYTExNjM1Yzg?devicetype=pc&embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Beliebte Krimireihen",
+   "teasers": [
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:-7721813173808842307",
+     "type": "editorialPage",
+     "longTitle": "Alle Teams, Folgen, Extras",
+     "mediumTitle": "Alle Teams, Folgen, Extras",
+     "shortTitle": "Alle Teams, Folgen, Extras",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:a94a6a4c500a5082?ch=dcfd8569d60054b7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/tatort?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:-3108434393691006391",
+     "type": "editorialPage",
+     "longTitle": "Polizeiruf 110",
+     "mediumTitle": "Polizeiruf 110",
+     "shortTitle": "Polizeiruf 110",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:01423877d57cd31e?ch=01423877d57cd31e&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/polizeiruf-110?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:-3623886338459182352",
+     "type": "compilation",
+     "longTitle": "Skandinavische Krimis",
+     "mediumTitle": "Skandinavische Krimis",
+     "shortTitle": "Skandinavische Krimis",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:0dbaa9c453315997?ch=b6180bd010a1821d&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/compilation/6fIicPgZFD9kQMnuCiXlUb?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:8872250768959397655",
+     "coreAssetType": "SEASON_SERIES",
+     "type": "show",
+     "longTitle": "Der Usedom-Krimi | Reihe",
+     "mediumTitle": "Der Usedom-Krimi | Reihe",
+     "shortTitle": "Der Usedom-Krimi | Reihe",
+     "publicationService": {
+      "name": "ARD",
+      "partner": "ard"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:53f9428fdd444858?ch=d1619dbd94b32b7e&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/grouping/Y3JpZDovL2Rhc2Vyc3RlLmRlL2Rlci11c2Vkb20ta3JpbWk?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "5K9EyEcCXoCa0bd2GbUYSK:-2274766285368607513",
+     "coreAssetType": "INFINITE_SERIES",
+     "type": "show",
+     "longTitle": "Brokenwood · Mord in Neuseeland | Reihe",
+     "mediumTitle": "Brokenwood · Mord in Neuseeland | Reihe",
+     "shortTitle": "Brokenwood · Mord in Neuseeland | Reihe",
+     "publicationService": {
+      "name": "ARD",
+      "partner": "ard"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2bc12846e6c29558?ch=2e38f5d835a0b5d4&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/grouping/Y3JpZDovL2Rhc2Vyc3RlLmRlL2Jyb2tlbndvb2QtbW9yZC1pbi1uZXVzZWVsYW5k?embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Rubriken",
+   "teasers": [
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-3584917561745520264",
+     "type": "compilation",
+     "longTitle": "Alle Rubriken",
+     "mediumTitle": "Alle Rubriken",
+     "shortTitle": "Alle Rubriken",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:906142710c866bbc?ch=f8629a871dda711e&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/compilation/alle-rubriken?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-8924155217250593118",
+     "type": "editorialPage",
+     "longTitle": "Filme",
+     "mediumTitle": "Filme",
+     "shortTitle": "Filme",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:3219129291993371209",
+     "type": "editorialPage",
+     "longTitle": "Serien",
+     "mediumTitle": "Serien",
+     "shortTitle": "Serien",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:888d5cae1606616a?ch=7ea621fb37baa180&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/serien?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-4634442077157068708",
+     "type": "editorialPage",
+     "longTitle": "Kinder & Familie",
+     "mediumTitle": "Kinder & Familie",
+     "shortTitle": "Kinder & Familie",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:e24a4dffb9a24721?ch=67147b37df9dcb25&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/kinderfamilie?embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "banner",
+   "title": "Weiter zu ARD Plus",
+   "teasers": []
+  }
+ ]
+}

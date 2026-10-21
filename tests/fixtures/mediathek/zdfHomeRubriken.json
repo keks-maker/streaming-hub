@@ -1,0 +1,128 @@
+{
+ "stage": [],
+ "cluster": [
+  {
+   "name": "Neu in der Mediathek",
+   "type": "teaser",
+   "teaser": [
+    {
+     "id": "verzeihen-102",
+     "type": "video",
+     "contentType": "episode",
+     "titel": "Verzeihen",
+     "headline": "Einfach Elli",
+     "brandTitle": "Einfach Elli",
+     "beschreibung": "Bei einem Bergrennen wird Radfahrer Toni lebensgefährlich verletzt. Elli kämpft um Sekunden. Doch im Krankenhaus stößt sie auf eine Wahrheit, die mehr verletzt als Worte.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "length": 5317,
+     "fsk": "none",
+     "offlineAvailability": "2027-03-04T23:59:00.000+01:00",
+     "teaserBild": {
+      "768": {
+       "url": "https://epg-image.zdf.de/fotobase-webdelivery/images/e4aeca28-5fc7-4e66-bb4c-76612129c69c?layout=768x432",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "lila-und-der-tod-100",
+     "type": "video",
+     "contentType": "episode",
+     "titel": "Lila und der Tod",
+     "headline": "Notruf Hafenkante",
+     "brandTitle": "Notruf Hafenkante",
+     "beschreibung": "Ein Stein wird durch die Scheibe eines Bestattungsinstituts geworfen und verursacht damit mehr als nur ein paar zerbrochene Scherben. Was geht in dem Bestattungshaus vor sich?",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "length": 2585,
+     "fsk": "none",
+     "offlineAvailability": "2027-02-26T23:59:00.000+01:00",
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/lila-und-der-tod-102~768x432?cb=1772183357868",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Rubriken",
+   "type": "teaser",
+   "moreLabel": "Alle",
+   "teaser": [
+    {
+     "id": "filme-104",
+     "type": "category",
+     "contentType": "category",
+     "titel": "Filme",
+     "headline": "",
+     "beschreibung": "Infos zu den aktuellen Filmen inklusive Videos, Online-Specials und vieles mehr.",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/kategorie-filme-100~768x432?cb=1766146103117",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "serien-100",
+     "type": "category",
+     "contentType": "category",
+     "titel": "Serien",
+     "headline": "",
+     "beschreibung": "Infos zu den aktuellen Serien inklusive Videos, Online-Specials und vieles mehr",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/kategorie-serien-100~768x432?cb=1766155718630",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "doku-wissen-104",
+     "type": "category",
+     "contentType": "category",
+     "titel": "Dokus & Reportagen",
+     "headline": "",
+     "beschreibung": "Erleben Sie die besten Dokumentationen, Reportagen und Wissensformate der ZDFmediathek ständig verfügbar",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/kategorie-dokus-100~768x432?cb=1767693973777",
+       "width": 768,
+       "height": 432
+      }
+     }
+    },
+    {
+     "id": "krimi-102",
+     "type": "category",
+     "contentType": "category",
+     "titel": "Krimi",
+     "headline": "",
+     "beschreibung": "Aktuelle Krimiserien und Krimis in Spielfilmlänge",
+     "channel": "ZDF",
+     "hasVideo": true,
+     "teaserBild": {
+      "768": {
+       "url": "https://www.zdf.de/assets/kategorie-krimi-100~768x432?cb=1766147847906",
+       "width": 768,
+       "height": 432
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

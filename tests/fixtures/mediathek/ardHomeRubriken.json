@@ -1,0 +1,190 @@
+{
+ "widgets": [
+  {
+   "type": "navigation",
+   "title": "Menü",
+   "teasers": [
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-3584917561745520264",
+     "type": "compilation",
+     "longTitle": "Alle Rubriken",
+     "mediumTitle": "Alle Rubriken",
+     "shortTitle": "Alle Rubriken",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:906142710c866bbc?ch=f8629a871dda711e&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/compilation/alle-rubriken?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-8924155217250593118",
+     "type": "editorialPage",
+     "longTitle": "Filme",
+     "mediumTitle": "Filme",
+     "shortTitle": "Filme",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:3219129291993371209",
+     "type": "editorialPage",
+     "longTitle": "Serien",
+     "mediumTitle": "Serien",
+     "shortTitle": "Serien",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:888d5cae1606616a?ch=7ea621fb37baa180&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/serien?embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Unsere Top-Serien",
+   "teasers": [
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:9060831272141584760",
+     "coreAssetType": "SEASON_SERIES",
+     "type": "show",
+     "longTitle": "House of Yang | Sechsteilige Mysteryserie über das Verschwinden zweier Mädchen",
+     "mediumTitle": "House of Yang | Sechsteilige Mysteryserie über das Verschwinden zweier Mädchen",
+     "shortTitle": "House of Yang | Sechsteilige Mysteryserie",
+     "publicationService": {
+      "name": "SWR",
+      "partner": "swr"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:e5fea83e129315b0?w={width}&ch=fba6cafa8c7c5121"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/swr/grouping/Y3JpZDovL3N3ci5kZS9zZGIvc3RJZC8xOTIx?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:4505891148893521506",
+     "coreAssetType": "SEASON_SERIES",
+     "type": "show",
+     "longTitle": "Babylon Berlin | Die finale Staffel",
+     "mediumTitle": "Babylon Berlin | Die finale Staffel",
+     "shortTitle": "Babylon Berlin | Die finale Staffel",
+     "publicationService": {
+      "name": "ARD",
+      "partner": "ard"
+     },
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:cfe210e5f8515757?ch=e5f1a0c621c933e8&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/grouping/Y3JpZDovL2Rhc2Vyc3RlLmRlL2JhYnlsb24tYmVybGlu?embedded=true"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "gridlist",
+   "title": "Rubriken",
+   "teasers": [
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-3584917561745520264",
+     "type": "compilation",
+     "longTitle": "Alle Rubriken",
+     "mediumTitle": "Alle Rubriken",
+     "shortTitle": "Alle Rubriken",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:906142710c866bbc?ch=f8629a871dda711e&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/compilation/alle-rubriken?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-8924155217250593118",
+     "type": "editorialPage",
+     "longTitle": "Filme",
+     "mediumTitle": "Filme",
+     "shortTitle": "Filme",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:3219129291993371209",
+     "type": "editorialPage",
+     "longTitle": "Serien",
+     "mediumTitle": "Serien",
+     "shortTitle": "Serien",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:888d5cae1606616a?ch=7ea621fb37baa180&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/serien?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "1FdQ5oz2JK6o2qmyqMsqiI:-4634442077157068708",
+     "type": "editorialPage",
+     "longTitle": "Kinder & Familie",
+     "mediumTitle": "Kinder & Familie",
+     "shortTitle": "Kinder & Familie",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:e24a4dffb9a24721?ch=67147b37df9dcb25&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/kinderfamilie?embedded=true"
+      }
+     }
+    }
+   ],
+   "pagination": {
+    "pageNumber": 0,
+    "pageSize": 100,
+    "totalElements": 4
+   }
+  }
+ ]
+}

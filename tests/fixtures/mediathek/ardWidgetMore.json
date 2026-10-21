@@ -1,0 +1,116 @@
+{
+ "title": "Neu verfügbare Film-Highlights",
+ "type": "gridlist",
+ "teasers": [
+  {
+   "id": "5K9EyEcCXoCa0bd2GbUYSK:9149408764418647201",
+   "coreAssetType": "EPISODE",
+   "type": "poster",
+   "longTitle": "Sonne und Beton | Coming-of-Age-Drama",
+   "mediumTitle": "Sonne und Beton | Coming-of-Age-Drama",
+   "shortTitle": "Sonne und Beton | Coming-of-Age-Drama",
+   "duration": 6522,
+   "availableTo": "2026-10-30T22:59:00Z",
+   "maturityContentRating": "FSK12",
+   "publicationService": {
+    "name": "ARD",
+    "partner": "ard"
+   },
+   "images": {
+    "aspect16x9": {
+     "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:48dc2fbe530032ce?ch=2248aacb00117fc3&w={width}"
+    }
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/ard/item/Y3JpZDovL2FyZC5kZS9jZDUwZTI0Zi0xZjMxLTQwOWUtOTQ5OS0yNzFiMWQxYWQ3NjlfZ2FuemVTZW5kdW5n?devicetype=pc&embedded=true"
+    }
+   }
+  },
+  {
+   "id": "5K9EyEcCXoCa0bd2GbUYSK:-1199421570889982980",
+   "coreAssetType": "EPISODE",
+   "type": "poster",
+   "longTitle": "Doppelmord | Der Usedom-Krimi",
+   "mediumTitle": "Doppelmord | Der Usedom-Krimi",
+   "shortTitle": "Doppelmord | Der Usedom-Krimi",
+   "duration": 5330,
+   "availableTo": "2027-10-19T18:14:00Z",
+   "maturityContentRating": "FSK12",
+   "publicationService": {
+    "name": "ARD",
+    "partner": "ard"
+   },
+   "images": {
+    "aspect16x9": {
+     "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:4942d6db5e152b01?ch=834b05718d3c2ce5&w={width}"
+    }
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/ard/item/Y3JpZDovL2FyZC5kZS9wbGFuQVJEX2M4NzE5MTE3LTY2YWQtNDczYy1hNWU1LWE2YzhlYWMzNjIxYV9nYW56ZVNlbmR1bmc?devicetype=pc&embedded=true"
+    }
+   }
+  },
+  {
+   "id": "5K9EyEcCXoCa0bd2GbUYSK:5989001330282739028",
+   "coreAssetType": "EPISODE",
+   "type": "poster",
+   "longTitle": "Silver Linings | Hollywood-Drama mit Jennifer Lawrence",
+   "mediumTitle": "Silver Linings | Hollywood-Drama mit Jennifer Lawrence",
+   "shortTitle": "Silver Linings | Hollywood-Drama",
+   "duration": 6810,
+   "availableTo": "2026-11-14T22:59:59Z",
+   "maturityContentRating": "FSK12",
+   "publicationService": {
+    "name": "rbb",
+    "partner": "rbb"
+   },
+   "images": {
+    "aspect16x9": {
+     "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:6bcc43cbbdfcbf41?w={width}&ch=b1545d80b74494f5"
+    }
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/rbb/item/Y3JpZDovL3JiYl83NjFhNWFkNy1kN2M5LTQ1MDAtYmM2NC1kZjRiMWU0MDkzODlfcHVibGljYXRpb24?devicetype=pc&embedded=true"
+    }
+   }
+  },
+  {
+   "id": "5K9EyEcCXoCa0bd2GbUYSK:-918123928591977553",
+   "coreAssetType": "EPISODE",
+   "type": "poster",
+   "longTitle": "Elodie | Familiendrama mit Karoline Schuch",
+   "mediumTitle": "Elodie | Familiendrama mit Karoline Schuch",
+   "shortTitle": "Elodie | Psychodrama mit Karoline Schuch",
+   "duration": 5294,
+   "availableTo": "2027-10-07T18:15:00Z",
+   "maturityContentRating": "FSK12",
+   "publicationService": {
+    "name": "NDR",
+    "partner": "ndr"
+   },
+   "images": {
+    "aspect16x9": {
+     "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:37b813bfc7e84439?w={width}&ch=48d40eb336032f80"
+    }
+   },
+   "links": {
+    "target": {
+     "href": "https://api.ardmediathek.de/page-gateway/pages/ndr/item/Y3JpZDovL25kci5kZS9lZDJiYjM5Mi1hOGNkLTQ3ZGQtOTVmZi0wNWUxMWY5ZTAwYWJfZ2FuemVTZW5kdW5n?devicetype=pc&embedded=true"
+    }
+   }
+  }
+ ],
+ "pagination": {
+  "pageNumber": 1,
+  "pageSize": 5,
+  "totalElements": 8
+ },
+ "links": {
+  "self": {
+   "href": "https://api.ardmediathek.de/page-gateway/widgets/ard/editorials/5K9EyEcCXoCa0bd2GbUYSK%3A5391434829540709119?pageNumber=1&pageSize=5&embedded=true"
+  }
+ }
+}

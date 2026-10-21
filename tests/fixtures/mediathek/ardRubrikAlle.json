@@ -1,0 +1,123 @@
+{
+ "title": "Alle Rubriken",
+ "links": {
+  "self": {
+   "href": "https://api.ardmediathek.de/page-gateway/pages/ard/compilation/alle-rubriken?embedded=true"
+  }
+ },
+ "widgets": [
+  {
+   "type": "gridlist",
+   "title": "Alle Rubriken",
+   "teasers": [
+    {
+     "id": "aefffe3f-f075-46bc-b1d0-31c101a8b745:-2805435066646282142",
+     "type": "editorialPage",
+     "longTitle": "Filme",
+     "mediumTitle": "Filme",
+     "shortTitle": "Filme",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:2394b79c0a4ce7ec?ch=701b6c6554cdf7f7&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/filme?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "aefffe3f-f075-46bc-b1d0-31c101a8b745:9211141791619433915",
+     "type": "editorialPage",
+     "longTitle": "Serien",
+     "mediumTitle": "Serien",
+     "shortTitle": "Serien",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:888d5cae1606616a?ch=7ea621fb37baa180&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/serien?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "aefffe3f-f075-46bc-b1d0-31c101a8b745:-6339204089965960841",
+     "type": "editorialPage",
+     "longTitle": "Dokus",
+     "mediumTitle": "Dokus",
+     "shortTitle": "Dokus",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:3d270adbf2abd728?ch=aa02b1e08ac16ec2&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/dokus?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "aefffe3f-f075-46bc-b1d0-31c101a8b745:-5149272908321305877",
+     "type": "editorialPage",
+     "longTitle": "tagesschau & Information",
+     "mediumTitle": "tagesschau & Information",
+     "shortTitle": "tagesschau & Information",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:3ac02e9c5feb8341?ch=7132f310787ac732&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/tagesschau?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "aefffe3f-f075-46bc-b1d0-31c101a8b745:-5584988807646743304",
+     "type": "editorialPage",
+     "longTitle": "Sportschau",
+     "mediumTitle": "Sportschau",
+     "shortTitle": "Sportschau",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:486eb3f78743fce1?ch=826f1ee8fe32b592&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/sport?embedded=true"
+      }
+     }
+    },
+    {
+     "id": "aefffe3f-f075-46bc-b1d0-31c101a8b745:-46656585257480391",
+     "type": "editorialPage",
+     "longTitle": "Kinder & Familie",
+     "mediumTitle": "Kinder & Familie",
+     "shortTitle": "Kinder & Familie",
+     "images": {
+      "aspect16x9": {
+       "src": "https://api.ardmediathek.de/image-service/images/urn:ard:image:e24a4dffb9a24721?ch=67147b37df9dcb25&w={width}"
+      }
+     },
+     "links": {
+      "target": {
+       "href": "https://api.ardmediathek.de/page-gateway/pages/ard/editorial/kinderfamilie?embedded=true"
+      }
+     }
+    }
+   ],
+   "pagination": {
+    "pageNumber": 0,
+    "pageSize": 24,
+    "totalElements": 19
+   }
+  }
+ ]
+}

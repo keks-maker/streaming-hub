@@ -9,7 +9,8 @@ const { sourceLabel } = require('./mediathek-format.js');
 /** Der „Downloads“-Chip ist aktiv; sichtbar ist er nur bei eingeschalteter Einstellung „Download-Funktion anzeigen“ (showDownloads). */
 const DOWNLOADS_CHIP_ENABLED = true;
 const ROW_LIMIT = 40;
-const GENRES_TITLE = 'Genres';
+/** Titel der Kachel-Reihen mit Genres (arte) bzw. Rubriken (ARD, ZDF); sie stehen ganz oben. */
+const GENRE_ROW_TITLES = ['Genres', 'Rubriken'];
 const SPECIAL_FILTERS = ['favorites', 'resume', 'downloads', 'others'];
 const SEARCH_DEBOUNCE_MS = 450;
 
@@ -89,7 +90,7 @@ function searchFilter(filter) {
   return SPECIAL_FILTERS.includes(filter) ? 'all' : filter;
 }
 
-/** Reihen aller aktiven Quellen reihum gemischt (ARD 1, ZDF 1, arte 1, ARD 2 …); Genre-Reihen stehen zuerst. */
+/** Reihen aller aktiven Quellen reihum gemischt (ARD 1, ZDF 1, arte 1, ARD 2 …); Genre-/Rubriken-Reihen stehen zuerst. */
 function buildRows(home, sources) {
   const perSource = sources.map(sourceId => {
     const entry = home[sourceId];
@@ -109,8 +110,9 @@ function buildRows(home, sources) {
   const merged = [];
   const longest = Math.max(0, ...perSource.map(list => list.length));
   for (let i = 0; i < longest; i += 1) for (const list of perSource) if (i < list.length) merged.push(list[i]);
-  const isGenres = row => row.title === GENRES_TITLE && row.genres.length > 0;
-  return [...merged.filter(isGenres), ...merged.filter(row => !isGenres(row)).filter(row => row.series.length + row.genres.length + row.entries.length > 0)];
+  const isGenres = row => GENRE_ROW_TITLES.includes(row.title) && row.genres.length > 0;
+  const genreRows = sources.flatMap(sourceId => merged.filter(row => row.sourceId === sourceId && isGenres(row))); // je Quelle gruppiert, in Reihenfolge der Quellen
+  return [...genreRows, ...merged.filter(row => !isGenres(row)).filter(row => row.series.length + row.genres.length + row.entries.length > 0)];
 }
 
 /** Zeilen der Quellenleiste ohne Quellen, die in den Einstellungen ausgeblendet sind. */
@@ -125,7 +127,9 @@ function mergeSection(section, more) {
   const fresh = (more.entries || []).filter(entry => !seen.has(entry.id));
   const seenSeries = new Set(section.series.map(series => series.id));
   const freshSeries = (more.series || []).filter(series => !seenSeries.has(series.id));
-  return { ...section, entries: section.entries.concat(fresh), series: section.series.concat(freshSeries), nextPage: more.nextPage || null, moreState: 'idle' };
+  const seenGenres = new Set((section.genres || []).map(genre => genre.id));
+  const freshGenres = (more.genres || []).filter(genre => !seenGenres.has(genre.id));
+  return { ...section, entries: section.entries.concat(fresh), series: section.series.concat(freshSeries), genres: (section.genres || []).concat(freshGenres), nextPage: more.nextPage || null, moreState: 'idle' };
 }
 
 function cleanSection(section) {

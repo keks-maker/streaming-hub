@@ -8,6 +8,9 @@ const SOURCE_COLORS = { ard: '#3a8dde', zdf: '#f08a3c', arte: '#e8602c' };
 const SOURCE_LABELS = { ard: 'ARD', zdf: 'ZDF', arte: 'arte' };
 
 const sourceBadge = sourceId => badge(sourceId);
+
+/** Bezeichnung einer Genre-/Rubrik-Seite: arte nennt sie Genre, ARD und ZDF Rubrik. */
+const genreNoun = sourceId => (sourceId === 'arte' ? 'Genre' : 'Rubrik');
 const sourceLabel = sourceId => SOURCE_LABELS[sourceId] || String(sourceId || '').toUpperCase();
 const sourceColor = sourceId => SOURCE_COLORS[sourceId] || '#6c5ce7';
 
@@ -92,4 +95,4 @@ function clockText(seconds) {
   return h > 0 ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
 }
 
-module.exports = { sourceBadge, sourceLabel, sourceColor, minutesText, subtitleText, fskText, seriesFsk, germanDate, availableUntilText, imageSrc, initials, placeholderHue, clockText };
+module.exports = { sourceBadge, genreNoun, sourceLabel, sourceColor, minutesText, subtitleText, fskText, seriesFsk, germanDate, availableUntilText, imageSrc, initials, placeholderHue, clockText };
