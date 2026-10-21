@@ -1,7 +1,7 @@
 'use strict';
 
 // Tests: Konten-Seite. Modell (Texte, Knöpfe), Ansicht mit Fake-DOM und Attrappe für window.mediathek.accounts, IPC
-// (Absenderprüfung, Validierung, nie Token/PIN in Antworten, Event) und die Verdrahtung (Seite, Navigation, Preload-Kanäle).
+// (Absenderprüfung, Validierung, nie Token in Antworten, Event) und die Verdrahtung (Seite, Navigation, Preload-Kanäle).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { describeAccount, sinceText, GENERAL_HINT } = require('../settings-mediathek-accounts-model.js');
 const { createMediathekAccountsView } = require('../settings-mediathek-accounts.js');
-const { registerAccountsIpc, validateSender, validatePin, validateEnabled } = require('../lib/mediathek/auth/ipc.js');
+const { registerAccountsIpc, validateSender } = require('../lib/mediathek/auth/ipc.js');
 const { isValidPage } = require('../settings-view.js');
 const { makeDoc } = require('./helpers/fake-dom.js');
 
@@ -19,7 +19,6 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 function status(over = {}) {
   return {
     persistent: true,
-    pin: { supported: true, set: false, enabled: false },
     accounts: [
       { sender: 'arte', name: 'arte', experimental: true, state: 'signedOut', since: null },
       { sender: 'ard', name: 'ARD', experimental: true, state: 'signedOut', since: null },
@@ -60,8 +59,6 @@ function makeAccounts(initial = status()) {
     login: async sender => { calls.push(['login', sender]); initial = status({ accounts: initial.accounts.map(a => (a.sender === sender ? { ...a, state: 'signedIn', since: 1700000000000 } : a)) }); return api.loginResult || { ok: true, status: initial }; },
     logout: async sender => { calls.push(['logout', sender]); initial = status({ accounts: initial.accounts.map(a => (a.sender === sender ? { ...a, state: 'signedOut', since: null } : a)) }); return { ok: true, status: initial }; },
     test: async sender => { calls.push(['test', sender]); return api.testResult || { ok: true, code: 'valid', message: 'Anmeldung gültig.' }; },
-    setPin: async pin => { calls.push(['setPin', pin]); initial = status({ pin: { supported: true, set: pin !== null, enabled: false } }); return { ok: true, status: initial }; },
-    setPinEnabled: async enabled => { calls.push(['setPinEnabled', enabled]); return { ok: true, status: status({ pin: { supported: true, set: true, enabled } }) }; },
     onChanged: cb => { listener = cb; },
     emit: next => listener(next),
   };
@@ -141,29 +138,11 @@ test('Ansicht: abgebrochene Anmeldung zeigt die Meldung als Fehler; Änderungs-E
   assert.equal(button(root, 'ard', 'login').textContent, 'Erneut anmelden');
 });
 
-test('Ansicht: PIN nur über das Feld (vier Ziffern), wird nie wieder angezeigt; Schalter erst mit PIN', async () => {
-  const accounts = makeAccounts();
-  const { root, view } = mount(accounts);
+test('Ansicht: kein PIN-Feld und keine Diagnose-Aufzeichnung', async () => {
+  const { root, view } = mount(makeAccounts());
   await view.refresh();
-  const input = root.byId('settingsMediathekAccountsPinInput');
-  assert.equal(input.type, 'password');
-  assert.equal(input.maxLength, 4);
-  assert.equal(root.byId('settingsMediathekAccountsPinEnabled').disabled, true);
-  assert.equal(root.byId('settingsMediathekAccountsPinClear').disabled, true);
-  input.value = '12';
-  root.byId('settingsMediathekAccountsPinSave').click();
-  await tick();
-  assert.equal(accounts.calls.length, 0);
-  assert.match(statusText(root), /vier Ziffern/);
-  input.value = '4711';
-  root.byId('settingsMediathekAccountsPinSave').click();
-  await tick();
-  await tick();
-  assert.deepEqual(accounts.calls[0], ['setPin', '4711']);
-  assert.equal(root.byId('settingsMediathekAccountsPinInput').value, '', 'Feld wird geleert');
-  assert.ok(!root.textContent.includes('4711'));
-  assert.equal(root.byId('settingsMediathekAccountsPinEnabled').disabled, false);
-  assert.match(root.byId('settingsMediathekAccountsPinHint').textContent, /keine Jugendschutz-PIN.*nicht gesendet/);
+  assert.equal(root.byId('settingsMediathekAccountsPinInput'), null);
+  assert.equal(root.byId('settingsMediathekAccount-ard-diagnose'), null);
 });
 
 test('Ansicht: Ladefehler wird als Fehlermeldung gezeigt', async () => {
@@ -181,15 +160,12 @@ function ipcSetup() {
   const sent = [];
   const listeners = {};
   const calls = [];
-  const fakeStatus = { persistent: true, pin: { supported: true, set: false, enabled: false }, accounts: [] };
+  const fakeStatus = { persistent: true, accounts: [] };
   const auth = {
     status: () => fakeStatus,
     login: async sender => { calls.push(['login', sender]); return { ok: true, status: fakeStatus }; },
     logout: async sender => { calls.push(['logout', sender]); return { ok: true, status: fakeStatus }; },
     test: async sender => { calls.push(['test', sender]); return { ok: true, code: 'valid', message: 'ok' }; },
-    setPin: pin => calls.push(['setPin', pin]),
-    clearPin: () => calls.push(['clearPin']),
-    setPinEnabled: enabled => calls.push(['setPinEnabled', enabled]),
     on: (event, fn) => { listeners[event] = fn; },
   };
   registerAccountsIpc({
@@ -203,14 +179,14 @@ function ipcSetup() {
 
 test('IPC: alle Kanäle nur für das Hauptfenster, Event wird weitergereicht', async () => {
   const { handlers, listeners, sent } = ipcSetup();
-  const channels = ['status', 'login', 'diagnose', 'logout', 'test', 'set-pin', 'set-pin-enabled'].map(name => `mediathek:accounts-${name}`);
+  const channels = ['status', 'login', 'logout', 'test'].map(name => `mediathek:accounts-${name}`);
   assert.deepEqual([...handlers.keys()].sort(), channels.sort());
   for (const channel of channels) assert.throws(() => handlers.get(channel)({ sender: 'webview' }, {}), /nicht autorisiert/, channel);
   listeners.changed({ accounts: [] });
   assert.deepEqual(sent, [['mediathek:accounts-changed', { accounts: [] }]]);
 });
 
-test('IPC: Validierung und Ergebnisse (Zustände, nie Token/PIN)', async () => {
+test('IPC: Validierung und Ergebnisse (Zustände, nie Token)', async () => {
   const { call, calls } = ipcSetup();
   assert.equal((await call('mediathek:accounts-status')).ok, true);
   assert.throws(() => call('mediathek:accounts-status', { x: 1 }), /Unerwartete Eingabe/);
@@ -220,17 +196,7 @@ test('IPC: Validierung und Ergebnisse (Zustände, nie Token/PIN)', async () => {
   await call('mediathek:accounts-logout', { sender: 'ard' });
   await call('mediathek:accounts-test', { sender: 'ard' });
   assert.deepEqual(calls, [['login', 'arte'], ['login', 'zdf'], ['logout', 'ard'], ['test', 'ard']]);
-  for (const bad of [{ pin: '123' }, { pin: '12345' }, { pin: 1234 }, { pin: 'abcd' }, { pin: '1234', extra: 1 }, {}]) assert.throws(() => call('mediathek:accounts-set-pin', bad), undefined, JSON.stringify(bad));
-  const saved = await call('mediathek:accounts-set-pin', { pin: '4711' });
-  await call('mediathek:accounts-set-pin', { pin: null });
-  assert.deepEqual(calls.slice(4), [['setPin', '4711'], ['clearPin']]);
-  assert.ok(!JSON.stringify(saved).includes('4711'));
-  assert.throws(() => call('mediathek:accounts-set-pin-enabled', { enabled: 'ja' }));
-  await call('mediathek:accounts-set-pin-enabled', { enabled: true });
-  assert.deepEqual(calls.at(-1), ['setPinEnabled', true]);
   assert.equal(validateSender({ sender: 'ard' }), 'ard');
-  assert.equal(validatePin({ pin: null }), null);
-  assert.equal(validateEnabled({ enabled: false }), false);
 });
 
 // ── Verdrahtung ──
@@ -242,7 +208,7 @@ test('Verdrahtung: Seite, Navigation, Renderer und Preload-Whitelist', () => {
   assert.ok(isValidPage('mediathek-accounts'));
   assert.match(read('renderer.js'), /page === 'mediathek-accounts'\) settingsMediathekAccountsView\.refresh\(\)/);
   const preload = read('preload.js');
-  for (const channel of ['status', 'login', 'diagnose', 'logout', 'test', 'set-pin', 'set-pin-enabled']) assert.ok(preload.includes(`'mediathek:accounts-${channel}'`), channel);
+  for (const channel of ['status', 'login', 'logout', 'test']) assert.ok(preload.includes(`'mediathek:accounts-${channel}'`), channel);
   assert.ok(preload.includes("radioListener('mediathek:accounts-changed')"));
   const block = preload.slice(preload.indexOf('accounts: {'), preload.indexOf('accounts: {') + 900);
   assert.ok(!/token|password|passwort/i.test(block), 'keine Token-/Passwort-Kanäle im Preload');
@@ -254,6 +220,6 @@ test('Sicherheit: Anmeldefenster-Modul ohne Preload/Bridge und ohne Passwortvera
   assert.ok(!/nodeIntegration:\s*true|sandbox:\s*false|contextIsolation:\s*false/.test(login));
   for (const file of ['lib/mediathek/auth/index.js', 'lib/mediathek/auth/ard.js', 'lib/mediathek/auth/arte.js', 'lib/mediathek/auth/login-window.js', 'lib/mediathek/auth/store.js']) {
     assert.ok(!/console\.(log|info|debug)/.test(read(file)), `${file}: keine Konsolenausgabe`);
-    assert.ok(!/logger\.\w+\([^)]*(accessToken|refreshToken|customToken|idToken|\.pin\b)/.test(read(file)), `${file}: Token/PIN nicht im Log`);
+    assert.ok(!/logger\.\w+\([^)]*(accessToken|refreshToken|customToken|idToken|\.pin\b)/.test(read(file)), `${file}: Token nicht im Log`);
   }
 });

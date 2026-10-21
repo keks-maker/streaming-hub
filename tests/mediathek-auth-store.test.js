@@ -25,22 +25,18 @@ function tmpFile() {
 
 const RECORD = { accessToken: 'ACCESS-SECRET', refreshToken: 'REFRESH-SECRET', expiresAt: 2000000000000, since: 1700000000000, state: 'ok', clientId: 'web' };
 
-test('Speichern: Datei enthält weder Token noch PIN im Klartext, Neuladen liefert die Werte', () => {
+test('Speichern: Datei enthält keinen Token im Klartext, Neuladen liefert die Werte', () => {
   const { dir, file } = tmpFile();
   try {
     const safeStorage = fakeSafeStorage();
     const store = createAuthStore({ file, safeStorage });
     assert.equal(store.persistent, true);
     store.set('arte', RECORD);
-    store.setPin('4711');
-    store.setPinEnabled(true);
     const raw = fs.readFileSync(file, 'utf8');
-    for (const secret of ['ACCESS-SECRET', 'REFRESH-SECRET', '4711', 'accessToken']) assert.ok(!raw.includes(secret), `Klartext ${secret}`);
+    for (const secret of ['ACCESS-SECRET', 'REFRESH-SECRET', 'accessToken']) assert.ok(!raw.includes(secret), `Klartext ${secret}`);
     assert.equal(fs.statSync(file).mode & 0o077, 0, 'nur Besitzer');
     const again = createAuthStore({ file, safeStorage });
     assert.deepEqual(again.get('arte'), RECORD);
-    assert.equal(again.getPin(), '4711');
-    assert.equal(again.getPinEnabled(), true);
     assert.deepEqual(fs.readdirSync(dir), ['mediathek-auth.bin'], 'keine Temp-Reste');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -54,7 +50,6 @@ test('Ohne safeStorage: nichts auf der Platte, Werte nur im Arbeitsspeicher', ()
       const store = createAuthStore({ file, safeStorage });
       assert.equal(store.persistent, false);
       store.set('ard', RECORD);
-      store.setPin('1234');
       assert.equal(store.get('ard').accessToken, 'ACCESS-SECRET');
       assert.deepEqual(fs.readdirSync(dir), [], 'keine Datei');
       assert.equal(createAuthStore({ file, safeStorage }).get('ard'), null);
@@ -96,12 +91,10 @@ test('Beschädigte oder fremd verschlüsselte Datei: abgemeldet, kein Absturz, L
   }
 });
 
-test('Validierung: unbekannter Sender, ungültiger Datensatz, ungültige PIN', () => {
+test('Validierung: unbekannter Sender, ungültiger Datensatz', () => {
   const store = createAuthStore({ file: null, safeStorage: null });
   assert.throws(() => store.set('zdf', RECORD), /Unbekannter Sender/);
   assert.throws(() => store.set('arte', { accessToken: '' }), /Ungültig/);
-  assert.throws(() => store.setPin('12a4'), /vier Ziffern/);
-  assert.throws(() => store.setPin('123'), /vier Ziffern/);
 });
 
 test('Schreibfehler: kein Absturz, Temp-Datei aufgeräumt, Warnung ohne Token', () => {
@@ -126,11 +119,30 @@ test('Verschlüsselungsfehler beim Speichern: kein Absturz, nichts auf der Platt
     const storage = { ...fakeSafeStorage(), encryptString: () => { throw new Error('keychain locked ACCESS-SECRET'); } };
     const store = createAuthStore({ file, safeStorage: storage, logger: { warn: m => warnings.push(m) } });
     assert.doesNotThrow(() => store.set('arte', RECORD));
-    assert.doesNotThrow(() => store.setPin('1234'));
+    assert.doesNotThrow(() => store.set('ard', RECORD));
     assert.deepEqual(fs.readdirSync(dir), []);
     assert.equal(warnings.length, 2);
-    assert.ok(warnings.every(m => !m.includes('SECRET') && !m.includes('1234')));
+    assert.ok(warnings.every(m => !m.includes('SECRET')));
     assert.equal(store.get('arte').accessToken, 'ACCESS-SECRET');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Ältere Datei mit PIN-Feld: bleibt lesbar, das Feld wird beim nächsten Speichern verworfen', () => {
+  const { dir, file } = tmpFile();
+  try {
+    const safeStorage = fakeSafeStorage();
+    const legacy = JSON.stringify({ accounts: { arte: RECORD }, pin: '4711', pinEnabled: true });
+    fs.writeFileSync(file, JSON.stringify({ v: 1, enc: safeStorage.encryptString(legacy).toString('base64') }));
+    const store = createAuthStore({ file, safeStorage });
+    assert.deepEqual(store.get('arte'), RECORD);
+    store.set('ard', RECORD);
+    const wrapper = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const saved = JSON.parse(safeStorage.decryptString(Buffer.from(wrapper.enc, 'base64')));
+    assert.equal('pin' in saved, false);
+    assert.equal('pinEnabled' in saved, false);
+    assert.deepEqual(Object.keys(saved.accounts).sort(), ['ard', 'arte']);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

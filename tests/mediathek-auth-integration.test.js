@@ -32,7 +32,6 @@ function createAuth(initial = {}, refresh = null) {
       headers: r => (sender === 'ard' ? { 'X-Authorization': `Bearer ${r.accessToken}` } : { Authorization: `Bearer ${r.accessToken}` }),
       refresh: refresh || (async r => ({ ...r, accessToken: `${sender}-REFRESHED`, expiresAt: Date.now() + 3600000 })),
       login: {},
-      pinBinding: null,
       personalizeUrl: sender === 'ard' ? (url, r) => `${url}${url.includes('?') ? '&' : '?'}userId=uid-of-${r.accessToken.length}` : undefined,
     };
     if (initial[sender]) store.set(sender, { ...record(sender), ...initial[sender] });
