@@ -197,3 +197,16 @@ test('ARD-Staffelwahl über availableSeasons: Staffel wird komplett nachgeladen,
   assert.equal(page.snapshot().seasonStatus, 'idle');
   assert.equal(page.total(), 2);
 });
+
+test('arte-Unterreihen: Namen statt "Staffel n" in Anzeige und geladener Liste', async () => {
+  const grouped = groupBySeason([ep('a', 1, null), ep('b', 2, null), ep('c', null, null)]).map(g => (g.number === 1 ? { ...g, title: 'Alltag' } : g));
+  const api = { series: async () => ({ ok: true, seasons: grouped, seasonNumbers: [1, 2], playTarget: null, favorite: false, seasonTitles: { 1: 'Alltag' } }) };
+  const page = createSeriesPage({ api, series });
+  await page.load();
+  assert.equal(page.seasonLabel(1), 'Alltag');
+  assert.equal(page.seasonLabel(2), 'Staffel 2');
+  assert.equal(page.seasonLabel(null), 'Weitere Folgen');
+  assert.deepEqual(page.loadedSeasons().map(g => [g.number, g.title || null]), [[1, 'Alltag'], [2, null], [null, null]]);
+  const { menuItems } = require('../mediathek-download-select-model.js');
+  assert.deepEqual(menuItems([1, 2], { 1: 'Alltag' }).filter(i => i.id.startsWith('season')).map(i => i.label), ['Alltag', 'Staffel 2']);
+});

@@ -1,0 +1,173 @@
+{
+ "title": "Karambolage",
+ "zones": [
+  {
+   "code": {
+    "name": "collection_content"
+   },
+   "title": "Karambolage",
+   "data": []
+  },
+  {
+   "code": {
+    "name": "collection_videos"
+   },
+   "title": "Alle Videos",
+   "data": [
+    {
+     "type": "teaser",
+     "title": "Folge 1",
+     "programId": "100-001-A",
+     "kind": {
+      "code": "SHOW"
+     },
+     "images": {
+      "landscape": {
+       "resolutions": [
+        {
+         "w": 400,
+         "url": "https://api-cdn.arte.tv/img/100-001-A.jpg"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "type": "teaser",
+     "title": "Folge 2",
+     "programId": "100-002-A",
+     "kind": {
+      "code": "SHOW"
+     },
+     "images": {
+      "landscape": {
+       "resolutions": [
+        {
+         "w": 400,
+         "url": "https://api-cdn.arte.tv/img/100-002-A.jpg"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "type": "teaser",
+     "title": "Folge 3",
+     "programId": "100-003-A",
+     "kind": {
+      "code": "SHOW"
+     },
+     "images": {
+      "landscape": {
+       "resolutions": [
+        {
+         "w": 400,
+         "url": "https://api-cdn.arte.tv/img/100-003-A.jpg"
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "nextPage": "https://api.arte.tv/api/emac/v3/de/web/data/COLLECTION_VIDEOS/?collectionId=RC-1&limit=20&page=2"
+  },
+  {
+   "code": {
+    "name": "collection_subcollection"
+   },
+   "title": "Karambolage - Alltag",
+   "data": [
+    {
+     "type": "teaser",
+     "title": "Folge 1",
+     "programId": "100-001-A",
+     "kind": {
+      "code": "SHOW"
+     },
+     "images": {
+      "landscape": {
+       "resolutions": [
+        {
+         "w": 400,
+         "url": "https://api-cdn.arte.tv/img/100-001-A.jpg"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "type": "teaser",
+     "title": "Folge 2",
+     "programId": "100-002-A",
+     "kind": {
+      "code": "SHOW"
+     },
+     "images": {
+      "landscape": {
+       "resolutions": [
+        {
+         "w": 400,
+         "url": "https://api-cdn.arte.tv/img/100-002-A.jpg"
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "nextPage": "https://api.arte.tv/api/emac/v3/de/web/data/COLLECTION_SUBCOLLECTION/?collectionId=RC-1&limit=20&page=2&subCollectionId=RC-2"
+  },
+  {
+   "code": {
+    "name": "collection_subcollection"
+   },
+   "title": "Karambolage - Die Sprache",
+   "data": [
+    {
+     "type": "teaser",
+     "title": "Folge 3",
+     "programId": "100-003-A",
+     "kind": {
+      "code": "SHOW"
+     },
+     "images": {
+      "landscape": {
+       "resolutions": [
+        {
+         "w": 400,
+         "url": "https://api-cdn.arte.tv/img/100-003-A.jpg"
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "nextPage": null
+  },
+  {
+   "code": {
+    "name": "collection_upcoming"
+   },
+   "title": "Demnächst",
+   "data": [
+    {
+     "type": "teaser",
+     "title": "Bald",
+     "programId": "100-009-A",
+     "kind": {
+      "code": "SHOW"
+     },
+     "images": {
+      "landscape": {
+       "resolutions": [
+        {
+         "w": 400,
+         "url": "https://api-cdn.arte.tv/img/100-009-A.jpg"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

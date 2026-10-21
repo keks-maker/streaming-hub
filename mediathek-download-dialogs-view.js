@@ -396,7 +396,7 @@ function createMediathekDownloadDialogs(ctx) {
           selection.toggleSeason(season.number);
           render();
         });
-        head.append(box, el(doc, 'span', 'mediathek-season-title', season.number === null ? 'Weitere Folgen' : `Staffel ${season.number}`));
+        head.append(box, el(doc, 'span', 'mediathek-season-title', season.number === null ? 'Weitere Folgen' : season.title || `Staffel ${season.number}`));
         const list = el(doc, 'ul', 'mediathek-select-list');
         selection.rows.filter(row => row.season === season.number).forEach(row => list.appendChild(rowFor(row)));
         section.append(head, list);

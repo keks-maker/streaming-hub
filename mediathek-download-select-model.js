@@ -17,9 +17,9 @@ function estimateBytes(entry, maxHeight = '1080') {
 }
 
 /** Einträge der Menüs im Serienkopf. */
-function menuItems(seasonNumbers) {
+function menuItems(seasonNumbers, titles = {}) {
   const items = [{ id: 'all', label: 'Alle Folgen' }];
-  if (seasonNumbers.length > 1) for (const number of seasonNumbers) items.push({ id: `season:${number}`, label: `Staffel ${number}` });
+  if (seasonNumbers.length > 1) for (const number of seasonNumbers) items.push({ id: `season:${number}`, label: titles[number] || `Staffel ${number}` });
   items.push({ id: 'select', label: 'Auswahl …' }, { id: 'new', label: 'Nur neue' });
   return items;
 }

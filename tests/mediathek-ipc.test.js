@@ -205,3 +205,13 @@ test('mediathek:series (ARD, seitenweise): hasMore, Fortschritt, Staffeln; Staff
   const failing = await call('mediathek:series', { series });
   assert.equal(failing.ok, false);
 });
+
+test('mediathek:series (arte): Unterreihen tragen ihren Namen (seasons[].title, seasonTitles)', async () => {
+  const { call } = setup({ routes: { '/pages/RC-1/': fixture('arteCollectionNamed'), COLLECTION_VIDEOS: JSON.stringify({ data: [], nextPage: null }), COLLECTION_SUBCOLLECTION: JSON.stringify({ data: [], nextPage: null }) } });
+  const arteSeries = { id: 'RC-1', title: 'Karambolage', imageUrl: null, description: null, sourceId: 'arte', groupingURL: 'https://api.arte.tv/api/emac/v3/de/web/pages/RC-1/' };
+  const result = await call('mediathek:series', { series: arteSeries });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.seasonTitles, { 1: 'Alltag', 2: 'Die Sprache' });
+  assert.deepEqual(result.seasons.map(s => [s.number, s.title]), [[1, 'Alltag'], [2, 'Die Sprache']]);
+  assert.deepEqual(result.seasonNumbers, [1, 2]);
+});

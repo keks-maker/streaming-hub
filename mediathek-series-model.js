@@ -32,6 +32,7 @@ function createSeriesPage({ api, series }) {
     hasMore: false,
     progress: null, // { loaded, total } (ARD)
     availableSeasons: null, // ARD: Staffeln aus dem Staffel-Widget (komplett nachladbar)
+    seasonTitles: {}, // arte: Namen der Unterreihen je Gruppennummer
     loadingMore: false,
     moreError: null,
     seasonData: {}, // Staffel -> komplett geladene Staffeln [{ number, entries }] (ARD)
@@ -74,6 +75,7 @@ function createSeriesPage({ api, series }) {
     state.hasMore = result.hasMore === true;
     state.progress = result.progress && Number.isFinite(result.progress.loaded) && Number.isFinite(result.progress.total) ? result.progress : null;
     state.availableSeasons = Array.isArray(result.availableSeasons) ? result.availableSeasons : null;
+    state.seasonTitles = result.seasonTitles && typeof result.seasonTitles === 'object' ? result.seasonTitles : {};
     if (state.selectedSeason !== null && !state.seasonNumbers.includes(state.selectedSeason)) state.selectedSeason = null;
   }
 
@@ -160,7 +162,7 @@ function createSeriesPage({ api, series }) {
       };
       for (const list of Object.values(state.seasonData)) add(list);
       add(state.seasons);
-      return groupBySeason([...entries.values()]);
+      return groupBySeason([...entries.values()]).map(group => (group.number !== null && state.seasonTitles[group.number] ? { ...group, title: state.seasonTitles[group.number] } : group));
     },
     total() {
       return this.visibleSeasons().reduce((sum, season) => sum + season.entries.length, 0);
@@ -168,6 +170,8 @@ function createSeriesPage({ api, series }) {
     /** Beschriftung des Abspielen-Knopfs. */
     playLabel: () => (state.playTarget && PLAY_LABELS[state.playTarget.kind]) || PLAY_LABELS.start,
     showSeasonPicker: () => state.seasonNumbers.length > 1,
+    /** Anzeigename einer Staffel/Unterreihe: Name der Unterreihe (arte) sonst "Staffel N". */
+    seasonLabel: number => (number === null ? 'Weitere Folgen' : state.seasonTitles[number] || `Staffel ${number}`),
     /** Nachladen der Liste anbieten: nur ohne Staffelwahl (eine gewählte Staffel liegt komplett vor). */
     canLoadMore: () => state.hasMore && (state.selectedSeason === null || !state.seasonData[state.selectedSeason]),
   };

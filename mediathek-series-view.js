@@ -150,7 +150,7 @@ function createMediathekSeriesView(root, ctx) {
       list.hidden = !menuOpen;
       list.textContent = '';
       if (!menuOpen) return;
-      for (const item of menuItems(page.snapshot().seasonNumbers)) {
+      for (const item of menuItems(page.snapshot().seasonNumbers, page.snapshot().seasonTitles)) {
         const li = el(doc, 'li');
         li.setAttribute('role', 'none');
         const entry = button(doc, 'mediathek-menu-item', item.label, () => {
@@ -275,7 +275,7 @@ function createMediathekSeriesView(root, ctx) {
     const make = (label, number) => {
       const chip = button(doc, 'mediathek-chip', label, () => {
         page.selectSeason(number);
-        ctx.announce(number === null ? 'Alle Staffeln' : `Staffel ${number}`);
+        ctx.announce(number === null ? 'Alle Staffeln' : page.seasonLabel(number));
       });
       const on = state.selectedSeason === number;
       chip.classList.toggle('is-on', on);
@@ -284,7 +284,7 @@ function createMediathekSeriesView(root, ctx) {
       return chip;
     };
     bar.appendChild(make('Alle', null));
-    state.seasonNumbers.forEach(number => bar.appendChild(make(`Staffel ${number}`, number)));
+    state.seasonNumbers.forEach(number => bar.appendChild(make(page.seasonLabel(number), number)));
     return bar;
   }
 
@@ -391,7 +391,7 @@ function createMediathekSeriesView(root, ctx) {
     root.appendChild(head);
     if (page.showSeasonPicker()) root.appendChild(seasonChips(state));
     if (state.seasonStatus === 'loading') {
-      root.appendChild(statusLine(`Staffel ${state.selectedSeason} wird geladen …`));
+      root.appendChild(statusLine(`${page.seasonLabel(state.selectedSeason)} wird geladen …`));
       return;
     }
     if (state.seasonStatus === 'failed') {
@@ -413,7 +413,7 @@ function createMediathekSeriesView(root, ctx) {
     }
     for (const season of page.visibleSeasons()) {
       const section = el(doc, 'section', 'mediathek-season');
-      const heading = el(doc, 'h3', 'mediathek-season-title', season.number === null ? 'Weitere Folgen' : `Staffel ${season.number}`);
+      const heading = el(doc, 'h3', 'mediathek-season-title', page.seasonLabel(season.number));
       const list = el(doc, 'ul', 'mediathek-episode-list');
       season.entries.forEach(entry => list.appendChild(episodeRow(entry, state.series)));
       section.append(heading, list);

@@ -86,7 +86,7 @@ test('Hub: Reihen je Quelle, Fehlerzustand mit Wiederholen, Genres, Nachladen', 
   await expect(page.locator('#mediathekDashboard .mediathek-error')).toContainText('ZDF'); // ZDF nicht erreichbar
   await expect(page.locator('#mediathekDashboard .mediathek-error button')).toHaveText('Erneut versuchen');
   // arte: Genres zuerst, Highlights mit Nachladen
-  await expect(page.locator('#mediathekDashboard .mediathek-genre-card')).toHaveCount(6);
+  await expect(page.locator('#mediathekDashboard .mediathek-genre-card')).toHaveCount(13); // 6 genannte + 7 ergänzte Genres
   const firstTitle = await rows.first().innerText();
   expect(firstTitle).toContain('Genres');
   const highlights = page.locator('#mediathekDashboard [data-row="arte-1"] .mediathek-entry-card');
@@ -210,7 +210,9 @@ test('Suche: Gruppen, Zähler je Quelle, Paging, Leer- und Teilfehler-Zustand', 
   await expect(chip('ARD (6)')).toBeVisible();
   await expect(chip('arte (1)')).toBeVisible();
   await expect(chip('ZDF (0)')).toBeVisible(); // ZDF-Anfrage scheitert, Rest bleibt nutzbar
-  await expect(page.locator('#mediathekDashboard .mediathek-error')).toHaveCount(0);
+  // ... der Ausfall erscheint als Fehler mit Wiederholen, nicht als „keine Treffer“
+  await expect(page.locator('#mediathekDashboard .mediathek-error[data-failed-source="zdf"]')).toContainText('ZDF: Suche fehlgeschlagen');
+  await expect(page.locator('#mediathekDashboard .mediathek-error[data-failed-source="zdf"] button')).toHaveText('Erneut versuchen');
   // Paging (ARD)
   await page.locator('#mediathekDashboard [data-sentinel] button').click();
   await expect(page.locator('#mediathekDashboard [data-group="entries"] .mediathek-entry-card')).toHaveCount(6);

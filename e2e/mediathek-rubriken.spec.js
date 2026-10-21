@@ -11,7 +11,7 @@ const { MIN, xmltvTime, launchApp } = require('./epg-helpers');
 const { fixture } = require('../tests/fixtures/mediathek/index.js');
 
 // Rubrik, die nur Marken (keine abspielbaren Videos) enthält: Leerzustand
-const BRANDS_ONLY = JSON.stringify({ document: { id: 'krimi-102', titel: 'Krimi' }, cluster: [{ name: 'Krimiserien', type: 'teaser', teaser: [{ id: 'sko-100', type: 'brand', contentType: 'brand', titel: 'SOKO' }] }] });
+const BRANDS_ONLY = JSON.stringify({ document: { id: 'krimi-102', titel: 'Krimi' }, cluster: [{ name: 'Krimiserien', type: 'teaser', teaser: [{ id: 'sko-100', type: 'brand', contentType: 'brand', titel: 'SOKO', hasVideo: false }] }] });
 
 function buildRoutes() {
   return {
@@ -110,7 +110,7 @@ test('ZDF-Rubrik: Reihen mit Videos, Fehlerzustand mit Wiederholen, Leerzustand'
   await rubricCard('Filme').click();
   await expect(page.locator('#mediathekGenreTitle')).toHaveText('Filme');
   await expect(page.locator('#mediathekPanel-genre .mediathek-eyebrow')).toHaveText('ZDF · RUBRIK');
-  await expect(page.locator('#mediathekPanel-genre .mediathek-row-title')).toHaveText(['Komödien', 'Mehr entdecken']);
+  await expect(page.locator('#mediathekPanel-genre .mediathek-row-title')).toHaveText(['Komödien', 'Romantische Filme und Serien', 'Mehr entdecken']);
   await expect(page.locator('#mediathekPanel-genre [data-row="genre-0"] .mediathek-entry-card')).toHaveCount(3);
   await page.locator('#mediathekGenreBack').click();
   // nicht erreichbare Rubrik (Serien): Fehlerzustand mit Wiederholen

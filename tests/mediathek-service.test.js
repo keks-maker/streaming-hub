@@ -139,12 +139,12 @@ test('arte-Serie: einzelne Zone bleibt ohne Staffel, Nachladen ist begrenzt, Feh
   const looping = fakeHttp(url => {
     if (url.includes('/pages/RC-')) return JSON.stringify({ zones: [{ code: { name: 'collection_videos' }, data: [{ type: 'teaser', title: 'A', programId: '1-000-A', kind: { code: 'SHOW' } }], nextPage: 'https://api.arte.tv/api/emac/v3/de/web/data/MORE/?page=2' }] });
     pages += 1;
-    return JSON.stringify({ data: [{ type: 'teaser', title: `B${pages}`, programId: `${pages}0-000-A`, kind: { code: 'SHOW' } }], nextPage: 'https://api.arte.tv/api/emac/v3/de/web/data/MORE/?page=3' });
+    return JSON.stringify({ data: [{ type: 'teaser', title: `B${pages}`, programId: `${pages}0-000-A`, kind: { code: 'SHOW' } }], nextPage: `https://api.arte.tv/api/emac/v3/de/web/data/MORE/?page=${pages + 2}` });
   });
   const series = { id: 'RC-1', title: 'S', sourceId: 'arte', groupingURL: 'https://api.arte.tv/api/emac/v3/de/web/pages/RC-1/' };
   const episodes = await createMediathekService({ http: looping }).fetchEpisodes(series);
-  assert.equal(pages, 8); // höchstens 8 Nachladeseiten
-  assert.equal(episodes.length, 9);
+  assert.equal(pages, 12); // höchstens 12 Nachladeseiten
+  assert.equal(episodes.length, 13);
   assert.ok(episodes.every(e => e.season === null));
   const failing = fakeHttp(url => {
     if (url.includes('/pages/RC-')) return JSON.stringify({ zones: [{ code: { name: 'collection_videos' }, data: [{ type: 'teaser', title: 'A', programId: '1-000-A', kind: { code: 'SHOW' } }], nextPage: 'https://api.arte.tv/api/emac/v3/de/web/data/MORE/' }] });
@@ -276,4 +276,55 @@ test('ARD-Serienliste: Obergrenze 2000 Folgen und höchstens 45 Seiten', async (
   assert.ok(view.entries.length >= 2000 && view.entries.length <= 2000 + 48, String(view.entries.length));
   assert.ok(http.calls.length <= 45);
   assert.equal(view.hasMore, false, 'bei erreichter Obergrenze gibt es kein Nachladen mehr');
+});
+
+const arteNamed = () =>
+  fakeHttp(url => {
+    if (url.includes('/pages/RC-1/')) return fixture('arteCollectionNamed');
+    const next = new URL(url);
+    const page = Number(next.searchParams.get('page'));
+    const item = (pid, title) => ({ type: 'teaser', title, programId: pid, kind: { code: 'SHOW' } });
+    if (next.pathname.endsWith('COLLECTION_VIDEOS/')) return JSON.stringify({ data: [item('100-001-A', 'Folge 1'), item('100-002-A', 'Folge 2'), item('100-003-A', 'Folge 3'), item(`1${page}0-004-A`, `Spät ${page}`)], nextPage: page < 2 ? `${url.replace(/page=\d+/, `page=${page + 1}`)}` : null });
+    return JSON.stringify({ data: [item('100-001-A', 'Folge 1'), item('100-002-A', 'Folge 2'), item('200-001-A', 'Alltag 3')], nextPage: null });
+  });
+const arteSeries = { id: 'RC-1', title: 'Karambolage', sourceId: 'arte', groupingURL: 'https://api.arte.tv/api/emac/v3/de/web/pages/RC-1/' };
+
+test('arte-Serie: Unterreihen mit ihrem Namen statt "Staffel n", Zuordnung zur Unterreihe gewinnt gegen "Alle Videos"', async () => {
+  const http = arteNamed();
+  const view = await createMediathekService({ http }).fetchEpisodeView(arteSeries);
+  assert.deepEqual(view.seasonTitles, { 1: 'Alltag', 2: 'Die Sprache' });
+  const bySeason = new Map();
+  for (const entry of view.entries) bySeason.set(entry.id, entry.season);
+  assert.equal(bySeason.get('100-001-A'), 1, 'in Alltag und Alle Videos: Alltag gewinnt');
+  assert.equal(bySeason.get('100-003-A'), 2, 'Die Sprache gewinnt gegen Alle Videos');
+  assert.equal(bySeason.get('200-001-A'), 1);
+  assert.equal(new Set(view.entries.map(e => e.id)).size, view.entries.length);
+  assert.ok(view.entries.filter(e => e.season === null).length >= 1, 'Folgen nur in "Alle Videos" bleiben ohne Unterreihe');
+  assert.ok(!view.entries.some(e => e.id === '100-009-A'), '"Demnächst" gehört nicht zur Folgenliste');
+  assert.equal(view.hasMore, false);
+});
+
+test('arte-Serie: Nachladen mit limit=100 und page=1 (statt 20er-Seiten), bis 1000 Folgen, Dubletten der ersten Seite entfallen', async () => {
+  const http = arteNamed();
+  await createMediathekService({ http }).fetchEpisodes(arteSeries);
+  const more = http.calls.filter(url => url.includes('COLLECTION_VIDEOS'));
+  assert.ok(more.length >= 1);
+  assert.ok(more[0].includes('limit=100') && more[0].includes('page=1'), more[0]);
+  assert.ok(more.every(url => !url.includes('limit=20')));
+  const sub = http.calls.find(url => url.includes('COLLECTION_SUBCOLLECTION'));
+  assert.ok(sub.includes('limit=100') && sub.includes('subCollectionId=RC-2'), sub);
+});
+
+test('arte-Serie: alle Unterreihen "Staffel N" -> echte Staffelnummern ohne Namen; arte-Suche pagt (page 1-basiert)', async () => {
+  const zones = ['Staffel 2', 'Staffel 1'].map((name, index) => ({ code: { name: 'collection_subcollection' }, title: `Serie - ${name}`, data: [{ type: 'teaser', title: `E${index}`, programId: `${index}00-000-A`, kind: { code: 'SHOW' } }], nextPage: null }));
+  const http = fakeHttp(url => (url.includes('/pages/RC-') ? JSON.stringify({ title: 'Serie', zones }) : JSON.stringify({ data: [], nextPage: null })));
+  const view = await createMediathekService({ http }).fetchEpisodeView({ ...arteSeries, id: 'RC-9', groupingURL: 'https://api.arte.tv/api/emac/v3/de/web/pages/RC-9/' });
+  assert.deepEqual(view.entries.map(e => [e.id, e.season]), [['000-000-A', 2], ['100-000-A', 1]]);
+  assert.deepEqual(view.seasonTitles, {});
+  const search = fakeHttp(() => JSON.stringify({ pageNumber: 2, nextPage: 'https://api.arte.tv/api/emac/v3/de/web/data/SEARCH_LISTING/?limit=20&page=3&query=k', data: [{ type: 'teaser', title: 'V', kind: { code: 'SHOW' }, programId: '1-000-A' }] }));
+  const service = createMediathekService({ http: search });
+  const page = await service.searchPage('Karambolage', 'arte', 1);
+  assert.equal(page.hasMore, true);
+  assert.equal(page.page, 1);
+  assert.ok(search.calls[0].includes('page=2&limit=20'));
 });

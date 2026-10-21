@@ -276,9 +276,41 @@ test('arte: Genre-Reihe steht oben, sechs Genres mit Codes (Slug-Rückfall)', ()
   const genres = sections[0];
   assert.equal(genres.title, 'Genres');
   assert.ok(!genres.entries.length && !genres.series.length);
-  assert.deepEqual(genres.genres.map(g => g.id), ['ACT', 'DOR', 'SER', 'CIN', 'ARTE_CONCERT', 'EMI']);
-  assert.deepEqual(genres.genres.map(g => g.title), ['Info', 'Dokus', 'Serien', 'Filme', 'Konzerte', 'Sendungen']);
-  assert.ok(genres.genres.every(g => g.imageUrl));
+  assert.deepEqual(genres.genres.slice(0, 6).map(g => g.id), ['ACT', 'DOR', 'SER', 'CIN', 'ARTE_CONCERT', 'EMI']);
+  assert.deepEqual(genres.genres.slice(0, 6).map(g => g.title), ['Info', 'Dokus', 'Serien', 'Filme', 'Konzerte', 'Sendungen']);
+  assert.ok(genres.genres.slice(0, 6).every(g => g.imageUrl));
+});
+
+test('arte: fehlende Genres (Geschichte, Wissenschaft, Entdeckung der Welt, Kultur und Pop, Kunst, Junior, Meistgesehen) ergänzt, ohne Live/TV-Programm und ohne Dubletten', () => {
+  const sections = parser.parseSections(fixture('arteHomeGenres'), 'arte');
+  const ids = sections[0].genres.map(g => g.id);
+  assert.deepEqual(ids.slice(6), ['HIS', 'SCI', 'DEC', 'CPO', 'ART', 'JUN', 'MOST_VIEWED']);
+  assert.ok(!ids.some(id => /LIVE|TV_GUIDE/.test(id)));
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(sections[0].genres.slice(6).every(g => g.sourceId === 'arte' && g.imageUrl === null && arte.arteGenrePageUrl(g.id)));
+  // eine bereits genannte Genre-Kachel wird nicht doppelt
+  const root = { zones: [{ code: { name: 'genres_HOME' }, title: 'x', data: [{ type: 'teaser', title: 'Geschichte', kind: { code: 'EXTERNAL' }, deeplink: 'arte://emac/HIS' }] }] };
+  assert.deepEqual(parser.parseSections(JSON.stringify(root), 'arte')[0].genres.map(g => g.id), ['HIS', 'SCI', 'DEC', 'CPO', 'ART', 'JUN', 'MOST_VIEWED']);
+});
+
+test('arte-Suche mit Paging: nextPage der API gültig -> hasMore, page 1-basiert in der Adresse', () => {
+  const json = nextPage => JSON.stringify({ pageNumber: 1, nextPage, data: [{ type: 'teaser', title: 'V', kind: { code: 'SHOW' }, programId: '1-000-A' }] });
+  const next = 'https://api.arte.tv/api/emac/v3/de/web/data/SEARCH_LISTING/?limit=20&page=2&query=Karambolage';
+  assert.equal(parser.parseSearchPage(json(next), 'arte', 0).hasMore, true);
+  assert.equal(parser.parseSearchPage(json(null), 'arte', 3).hasMore, false);
+  assert.equal(parser.parseSearchPage(json('https://evil.example/x'), 'arte', 0).hasMore, false);
+  assert.equal(parser.parseSearchPage(json(next), 'arte', 2).page, 2);
+  assert.ok(sources.searchUrl('Karambolage', 'arte').includes('page=1&limit=20'));
+  assert.ok(sources.searchUrl('Karambolage', 'arte', 4).includes('page=5&limit=20'));
+});
+
+test('arte: Name der Unterreihe ohne Sammlungstitel', () => {
+  assert.equal(arte.arteSubcollectionName('Tracks_Music', 'Tracks'), 'Music');
+  assert.equal(arte.arteSubcollectionName('Karambolage - Alltag', 'Karambolage'), 'Alltag');
+  assert.equal(arte.arteSubcollectionName('Occupied - Die Besatzung - Staffel 2', 'Occupied - Die Besatzung'), 'Staffel 2');
+  assert.equal(arte.arteSubcollectionName('Alltag', 'Karambolage'), 'Alltag');
+  assert.equal(arte.arteSubcollectionName('Karambolage', 'Karambolage'), 'Karambolage');
+  assert.equal(arte.arteSubcollectionName('', 'X'), null);
 });
 
 test('arte: Genre-Code aus Deeplink/Slug, Fremdhosts und Pfadtricks abgelehnt', () => {
