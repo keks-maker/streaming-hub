@@ -3836,7 +3836,7 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
 .mediathek-pill-source { top:8px; left:8px; color:var(--src-c,var(--media-ink)); background:var(--media-scrim); }
 .mediathek-pill-geo { left:8px; bottom:8px; background:var(--md-amber); color:var(--md-amber-ink); }
 .mediathek-pill-duration { right:8px; bottom:8px; }
-.mediathek-pill-fsk { top:8px; right:8px; }
+.mediathek-pill-fsk { top:33px; left:8px; } /* unter dem Senderbadge, nie unter den runden Knöpfen oben rechts (i, Stern, Entfernen) */
 .mediathek-progress { position:absolute; left:0; right:0; bottom:0; height:5px; background:color-mix(in srgb, var(--video-black) 55%, transparent); }
 .mediathek-progress i { display:block; height:100%; background:var(--md-accent); }
 .mediathek-lock { position:absolute; inset:0; display:grid; place-items:center; color:var(--media-ink); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }

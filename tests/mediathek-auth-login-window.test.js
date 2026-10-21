@@ -260,32 +260,31 @@ test('Schließen durch den Nutzer: einmaliger letzter Versuch übernimmt eine vo
   assert.equal(second.windows[0].destroyed, true);
 });
 
+const FAKE_JWT = 'eyJhbGciOiJIUzI1NiJ9.' + Buffer.from(JSON.stringify({ exp: 99999 })).toString('base64url') + '.c2ln';
 test('ZDF: Cookies der Partition werden dem Provider als Kandidaten geliefert, Übernehmen auf Unterseite', async () => {
-  const requests = [];
-  const net = { request: async (method, url, options) => { requests.push(options.headers.Authorization); return { status: options.headers.Authorization === 'Bearer cookie-token-valid-1' ? 200 : 401, json: {} }; } };
-  const zdf = createZdfProvider({ net, now: () => 1000 });
-  const cookies = [{ name: 'other', value: 'x', domain: 'evil.example' }, { name: 'zdf_session', value: 'cookie-token-valid-1', domain: '.zdf.de' }];
+  const zdf = createZdfProvider({ now: () => 1000 });
+  const cookies = [{ name: 'other', value: FAKE_JWT.replace('c2ln', 'ZXZpbA'), domain: 'evil.example' }, { name: 'zdf_session', value: FAKE_JWT, domain: '.zdf.de' }];
   const { runner, windows, pageOf, barOf, ipcHandlers } = setup([], { cookies });
   const pending = runner.run(zdf);
   pageOf(windows[0]).url = 'https://www.zdf.de/serien/x';
   await ipcHandlers['mediathek:login-accept']({ sender: barOf(windows[0]) });
   const result = await pending;
-  assert.equal(result.record.accessToken, 'cookie-token-valid-1');
-  assert.deepEqual(requests, ['Bearer cookie-token-valid-1'], 'fremde Cookies werden nicht herangezogen');
+  assert.equal(result.record.accessToken, FAKE_JWT, 'fremde Cookies werden nicht herangezogen');
 });
 
 test('ZDF: nichts gefunden -> einmal zu Mein ZDF navigieren und erneut prüfen', async () => {
-  const net = { request: async () => ({ status: 200, json: {} }) };
-  const zdf = createZdfProvider({ net, now: () => 1000 });
+  const zdf = createZdfProvider({ now: () => 1000 });
   const { runner, windows, pageOf, barOf, ipcHandlers } = setup();
   const pending = runner.run(zdf);
   const page = pageOf(windows[0]);
   page.url = 'https://www.zdf.de/';
-  page.loadURL = async target => { page.loaded.push(target); page.url = target; page.script = () => JSON.stringify([{ key: 'local-user-data', value: JSON.stringify({ state: { sessionToken: 'session-token-0001' } }) }]); };
+  page.loadURL = async target => { page.loaded.push(target); page.url = target; page.script = () => JSON.stringify([{ key: 'local-user-data', value: JSON.stringify({ state: { sessionToken: FAKE_JWT, isArdAccount: true } }) }]); };
   page.script = () => '[]';
   await ipcHandlers['mediathek:login-accept']({ sender: barOf(windows[0]) });
   assert.equal(page.loaded.at(-1), 'https://www.zdf.de/mein-zdf');
-  assert.equal((await pending).record.accessToken, 'session-token-0001');
+  const found = (await pending).record;
+  assert.equal(found.accessToken, FAKE_JWT);
+  assert.equal(found.ardAccount, true);
 });
 
 test('E2E-Ersatz: "ok" liefert Fake-Datensatz, alles andere Abbruch', async () => {
@@ -294,4 +293,16 @@ test('E2E-Ersatz: "ok" liefert Fake-Datensatz, alles andere Abbruch', async () =
   assert.equal(ok.record.since, 5000);
   assert.ok(ok.record.accessToken.startsWith('e2e-'));
   assert.deepEqual(await createE2eLoginRunner('cancel').run({ sender: 'ard' }), { ok: false, code: 'cancelled' });
+});
+
+test('ZDF: nichts gefunden -> konkrete Rückmeldung "noneZdf"', async () => {
+  const zdf = createZdfProvider({ now: () => 1000 });
+  const { runner, windows, pageOf, barOf, ipcHandlers } = setup();
+  runner.run(zdf);
+  const page = pageOf(windows[0]);
+  page.url = 'https://www.zdf.de/';
+  page.loadURL = async target => { page.url = target; };
+  page.script = () => '[]';
+  await ipcHandlers['mediathek:login-accept']({ sender: barOf(windows[0]) });
+  assert.deepEqual(barOf(windows[0]).sent.map(entry => entry[1]), ['checking', 'noneZdf']);
 });

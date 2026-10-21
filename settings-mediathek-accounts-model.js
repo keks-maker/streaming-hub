@@ -32,7 +32,7 @@ function describeAccount(account, { busy = false } = {}) {
     title: account.name,
     badge: account.experimental ? 'experimentell' : null,
     statusKind: state === 'signedIn' ? 'ok' : state === 'expired' ? 'warn' : 'none',
-    statusText: state === 'signedIn' ? sinceText(account.since) : STATE_TEXT[state] || STATE_TEXT.signedOut,
+    statusText: state === 'signedIn' ? sinceText(account.since) + (account.ardAccount ? ' (ARD-Konto)' : '') : STATE_TEXT[state] || STATE_TEXT.signedOut,
     hint: SENDER_HINTS[account.sender] || '',
     canLogin: supported && state !== 'signedIn' && !busy,
     loginLabel: state === 'expired' ? 'Erneut anmelden' : 'Anmelden',

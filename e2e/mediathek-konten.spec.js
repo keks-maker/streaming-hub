@@ -124,7 +124,7 @@ test('ZDF: FSK-Beitrag nur mit Konto (Altersfreigabe + PIN) abspielbar; Abmelden
   await page.locator('#settingsMediathekAccount-zdf-login').click();
   await expect(page.locator('#settingsMediathekAccount-zdf-state')).toContainText('Angemeldet seit');
   await page.locator('#settingsMediathekAccount-zdf-test').click();
-  await expect(page.locator('#settingsMediathekAccountsStatus')).toContainText('Anmeldung gültig');
+  await expect(page.locator('#settingsMediathekAccountsStatus')).toContainText('Altersverifikation bei ZDF: ja');
   const unlocked = await resolveZdf();
   expect(unlocked.resolution.kind).toBe('playable');
   expect(unlocked.resolution.url).toBe(NO_STREAM);

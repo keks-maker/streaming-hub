@@ -13,7 +13,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { EventEmitter } = require('node:events');
 const { fixture } = require('./fixtures/mediathek/index.js');
-const { createZdfProvider, tokenCandidates, USERINFO_URL } = require('../lib/mediathek/auth/zdf.js');
+const { createZdfProvider, tokenCandidates, isUsableJwt, sessionFromLocalData, VERIFICATION_URL: ZDF_VERIFICATION_URL } = require('../lib/mediathek/auth/zdf.js');
 const { createAuthNet } = require('../lib/mediathek/auth/net.js');
 const { createAuthStore } = require('../lib/mediathek/auth/store.js');
 const { createMediathekAuth } = require('../lib/mediathek/auth/index.js');
@@ -104,56 +104,79 @@ test('Kandidaten: Zustandsspeicher, alter Schlüssel, verschachtelte JWTs und Co
   assert.ok(tokenCandidates(many).length <= 12, 'begrenzt');
 });
 
-test('Provider: collect prüft Kandidaten gegen die Identity-API, nimmt den ersten gültigen und verwirft ungültige', async () => {
-  const calls = [];
-  const valid = new Set([SECRET_TOKEN]);
-  let status = null;
-  const net = { request: async (method, url, options) => { calls.push({ method, url, options }); return { status: status || (valid.has(options.headers.Authorization.slice(7)) ? 200 : 401), json: {} }; } };
-  const provider = createZdfProvider({ net, now: () => 5000 });
+const jwtWith = claims => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.c2ln`;
+const localData = state => entries(['local-user-data', { state, version: 3 }], ['zdf-session-data', { token: 'x' }]);
+
+test('Provider: collect liest state.sessionToken aus local-user-data, lokal geprüft, ohne Netzabruf; isArdAccount wird übernommen', async () => {
+  const net = { request: async () => { throw new Error('keine Remote-Prüfung beim Übernehmen'); } };
+  const provider = createZdfProvider({ net, now: () => 5_000_000 });
   const page = (url, list, cookies = []) => ({ url, executeJavaScript: async () => list, getCookies: async () => cookies });
-  assert.equal(await provider.collect(page('https://evil.example/', entries(['zdf_user_token', SECRET_TOKEN]))), null);
-  assert.equal(await provider.collect(page('https://zdf.de.evil.example/', entries(['zdf_user_token', SECRET_TOKEN]))), null);
-  assert.equal(calls.length, 0, 'fremde Seite: nichts gelesen, nichts gesendet');
+  const good = jwtWith({ sub: 'u1', exp: 9_000 });
+  assert.equal(await provider.collect(page('https://evil.example/', localData({ sessionToken: good }))), null);
+  assert.equal(await provider.collect(page('https://zdf.de.evil.example/', localData({ sessionToken: good }))), null);
+  const record = await provider.collect(page('https://www.zdf.de/', localData({ sessionToken: good, isArdAccount: true, hasLoggedInBefore: true })));
+  assert.deepEqual({ ...record, accessToken: undefined }, { accessToken: undefined, refreshToken: null, expiresAt: 9_000_000, since: 5_000_000, state: 'ok', clientId: null, ardAccount: true });
+  assert.equal(record.accessToken, good);
+  assert.equal((await provider.collect(page('https://www.zdf.de/', localData({ sessionToken: good })))).ardAccount, false);
+  // ohne exp: lokal 12 Stunden
+  assert.equal((await provider.collect(page('https://www.zdf.de/', localData({ sessionToken: JWT })))).expiresAt, 5_000_000 + 12 * 3600 * 1000);
+  // ausgeloggt, abgelaufen, kaputt, kein JWT: nichts gefunden
+  assert.equal(await provider.collect(page('https://www.zdf.de/', localData({ sessionToken: null, hasLoggedInBefore: true }))), null);
+  assert.equal(await provider.collect(page('https://www.zdf.de/', localData({ sessionToken: jwtWith({ exp: 4_000 }) }))), null, 'abgelaufen');
+  assert.equal(await provider.collect(page('https://www.zdf.de/', localData({ sessionToken: jwtWith({ exp: 5_030 }) }))), null, 'läuft innerhalb des Puffers ab');
+  assert.equal(await provider.collect(page('https://www.zdf.de/', localData({ sessionToken: 'kein-jwt-aber-lang-genug-0123' }))), null);
+  assert.equal(await provider.collect(page('https://www.zdf.de/', JSON.stringify([{ key: 'local-user-data', value: '{kaputt' }]))), null);
+  assert.equal(await provider.collect(page('https://www.zdf.de/', 'kein json')), null);
   assert.equal(await provider.collect(page('https://www.zdf.de/', '[]')), null);
-  assert.equal(calls.length, 0, 'ohne Kandidat kein Abruf');
-  // mehrere Kandidaten: JWT ungültig, Cookie ungültig, Session-Token gültig
-  const stale = 'stale-session-token-0000';
-  const record = await provider.collect(page('https://www.zdf.de/serien/abc', entries(['x', { jwt: JWT, sessionToken: SECRET_TOKEN }]), [{ name: 'sess', value: stale }]));
-  assert.deepEqual({ ...record, accessToken: undefined }, { accessToken: undefined, refreshToken: null, expiresAt: 5000 + 12 * 3600 * 1000, since: 5000, state: 'ok', clientId: null });
-  assert.equal(record.accessToken, SECRET_TOKEN);
-  assert.deepEqual(calls.map(call => call.options.headers.Authorization), [`Bearer ${JWT}`, `Bearer ${SECRET_TOKEN}`], 'JWT zuerst, danach der Schlüssel-Kandidat; gültiger beendet die Suche');
-  assert.deepEqual([calls[0].method, calls[0].url], ['GET', USERINFO_URL]);
-  // abgelehnte Kandidaten werden kurz nicht erneut gesendet
-  calls.length = 0;
-  valid.clear();
-  assert.equal(await provider.collect(page('https://www.zdf.de/', entries(['x', { jwt: JWT }]))), null);
-  assert.equal(calls.length, 0, 'bereits abgelehnt: nicht erneut gesendet');
-  // nur Cookie gültig
-  const fresh = 'fresh-cookie-token-9999';
-  valid.add(fresh);
-  assert.equal((await provider.collect(page('https://www.zdf.de/', '[]', [{ name: 'sess', value: fresh }]))).accessToken, fresh);
-  // Lesefehler der Seite: Cookies reichen trotzdem
-  assert.equal((await provider.collect({ url: 'https://www.zdf.de/', executeJavaScript: async () => { throw new Error('x'); }, getCookies: async () => [{ name: 'sess', value: fresh }] })).accessToken, fresh);
-  // Netzproblem: Fehler ohne Token im Text
-  status = 503;
-  await assert.rejects(() => provider.collect(page('https://www.zdf.de/', entries(['zdf_user_token', 'another-session-token']))), error => error.code === 'http' && error.status === 503 && !error.message.includes('another'));
 });
 
-test('Provider: Ablauf aus JWT; refresh prüft die Sitzung (200 verlängert, 401 abgelehnt, 5xx Netzproblem)', async () => {
-  let status = 200;
-  const net = { request: async () => ({ status, json: {} }) };
-  const provider = createZdfProvider({ net, now: () => 1000 });
-  const jwt = `h.${Buffer.from(JSON.stringify({ exp: 4000 })).toString('base64url')}.s`;
-  const page = { url: 'https://www.zdf.de/', executeJavaScript: async () => entries(['zdf_user_token', jwt]) };
-  assert.equal((await provider.collect(page)).expiresAt, 4000000);
-  const record = { accessToken: SECRET_TOKEN, refreshToken: null, expiresAt: 0, since: 7, state: 'ok', clientId: null };
-  const next = await provider.refresh(record);
-  assert.deepEqual([next.since, next.accessToken, next.expiresAt], [7, SECRET_TOKEN, 1000 + 12 * 3600 * 1000]);
-  status = 403;
-  await assert.rejects(() => provider.refresh(record), error => error.code === 'rejected');
-  status = 500;
-  await assert.rejects(() => provider.refresh(record), error => error.code === 'http');
-  assert.deepEqual(provider.headers(record), { Authorization: `Bearer ${SECRET_TOKEN}`, Accept: 'application/vnd.de.zdf.v1.0+json' });
+test('Provider: Rückfall auf sessionStorage, andere Einträge und Cookies - nur JWT, lokal gültig', async () => {
+  const provider = createZdfProvider({ now: () => 5_000_000 });
+  const page = (list, cookies = []) => ({ url: 'https://www.zdf.de/', executeJavaScript: async () => list, getCookies: async () => cookies });
+  const good = jwtWith({ exp: 9_000 });
+  assert.equal((await provider.collect(page(entries(['zdf-session-data', { token: good }])))).accessToken, good);
+  assert.equal((await provider.collect(page('[]', [{ name: 'sess', value: encodeURIComponent(good) }]))).accessToken, good);
+  assert.equal(await provider.collect(page(entries(['zdf-session-data', { token: SECRET_TOKEN }]))), null, 'kein JWT-Aufbau');
+  assert.equal(await provider.collect(page(entries(['zdf-session-data', { token: jwtWith({ exp: 1 }) }]))), null, 'abgelaufen');
+  assert.equal(isUsableJwt('a.b.c', 0), false);
+  assert.equal(sessionFromLocalData(entries(['x', {}]), 0), null);
+  // Lesefehler der Seite: Cookies reichen trotzdem
+  const broken = { url: 'https://www.zdf.de/', executeJavaScript: async () => { throw new Error('x'); }, getCookies: async () => [{ name: 'sess', value: good }] };
+  assert.equal((await provider.collect(broken)).accessToken, good);
+});
+
+test('Provider: refresh prüft nur lokal (Ablauf), "Freischaltung testen" wertet verified aus', async () => {
+  const provider = createZdfProvider({ now: () => 1000 });
+  const valid = { accessToken: jwtWith({ exp: 4000 }), refreshToken: null, expiresAt: 0, since: 7, state: 'ok', clientId: null };
+  const next = await provider.refresh(valid);
+  assert.deepEqual([next.since, next.expiresAt], [7, 4_000_000]);
+  await assert.rejects(() => provider.refresh({ ...valid, accessToken: jwtWith({ exp: 1 }) }), error => error.code === 'rejected');
+  const plain = { ...valid, accessToken: SECRET_TOKEN };
+  assert.equal((await provider.refresh(plain)).expiresAt, 1000 + 12 * 3600 * 1000);
+  assert.deepEqual(provider.headers(plain), { Authorization: `Bearer ${SECRET_TOKEN}`, Accept: 'application/vnd.de.zdf.v1.0+json' });
+  assert.equal(provider.validateUrl, ZDF_VERIFICATION_URL);
+  assert.match(provider.describeValidation('{"verified":true}'), /Altersverifikation bei ZDF: ja/);
+  assert.match(provider.describeValidation('{"verified":false}'), /: nein/);
+  assert.match(provider.describeValidation('kaputt'), /nicht prüfbar/);
+  assert.doesNotMatch(provider.describeValidation('{"verified":true,"secret":"abc"}'), /abc/);
+});
+
+test('Freischaltung testen (ZDF): Meldung je Antwort; 401/403 = abgelaufen', async () => {
+  const store = createAuthStore({ file: null, safeStorage: null });
+  const provider = createZdfProvider({});
+  const record = { accessToken: jwtWith({ exp: Math.floor(Date.now() / 1000) + 3600 }), refreshToken: null, expiresAt: Date.now() + 3600000, since: Date.now(), state: 'ok', clientId: null, ardAccount: true };
+  const auth = createMediathekAuth({ providers: { zdf: provider }, store, loginRunner: { run: async () => ({ ok: true, record }) } });
+  await auth.login('zdf');
+  assert.equal(auth.status().accounts.find(a => a.sender === 'zdf').ardAccount, true);
+  let answer = '{"verified":false}';
+  auth.setHttp({ getText: async () => { if (answer instanceof Error) throw answer; return answer; } });
+  assert.match((await auth.test('zdf')).message, /Angemeldet; Altersverifikation bei ZDF: nein/);
+  answer = '{"verified":true}';
+  assert.match((await auth.test('zdf')).message, /: ja/);
+  answer = '<html>';
+  assert.match((await auth.test('zdf')).message, /nicht prüfbar/);
+  answer = Object.assign(new Error('x'), { status: 403 });
+  assert.equal((await auth.test('zdf')).code, 'expired');
 });
 
 test('Hostbindung ZDF: Token nur an api.zdf.de unter /identity/ (https, exakter Host), nicht an PTMD, Seiten oder Fremde', async () => {
@@ -613,5 +636,5 @@ test('E2E-Ersatznetz: ZDF-Identity antwortet ohne Netz (PIN 1234 richtig)', asyn
   const net = createE2eAuthNet();
   assert.equal((await net.request('POST', PIN_URL, { fields: { pin: '1234' } })).status, 200);
   assert.equal((await net.request('POST', PIN_URL, { fields: { pin: '0000' } })).status, 403);
-  assert.equal((await net.request('GET', USERINFO_URL)).status, 200);
+  assert.equal((await net.request('GET', ZDF_VERIFICATION_URL)).status, 200);
 });
