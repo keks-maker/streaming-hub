@@ -13,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const { _electron: electron } = require('@playwright/test');
-const { resolveLaunchTarget, launchArgs } = require('../e2e/platform');
+const { resolveLaunchTarget, launchArgs, backgroundEnv } = require('../e2e/platform');
 
 const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'assets', 'screenshots'));
 const ROOT = '/tmp/shsh';
@@ -94,7 +94,7 @@ function prepare(base) {
   const app = await electron.launch({
     executablePath: target.executablePath,
     args: [...launchArgs(target), '--force-device-scale-factor=2'],
-    env: { ...process.env, HOME, STREAMING_HUB_USER_DATA: USER_DATA, STREAMING_HUB_EPG_FIXTURE: epg, STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9' },
+    env: { ...process.env, HOME, STREAMING_HUB_USER_DATA: USER_DATA, ...backgroundEnv(), STREAMING_HUB_EPG_FIXTURE: epg, STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9' },
     timeout: 45_000,
   });
   const page = await app.firstWindow();

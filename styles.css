@@ -3630,7 +3630,7 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
   .nav-section-item,.nav-settings-item { padding:0 9px; gap:6px; }
 }
 
-/* Navigationsleiste im Apple-Design (Etappe 0, angeglichen an iPadNavigation.swift): Kapsel, adaptiv Hell/Dunkel (folgt prefers-color-scheme wie der Rest der App),
+/* Navigationsleiste im Apple-Design (Etappe 0, angeglichen an iPadNavigation.swift): Kapsel, Theme folgt der angezeigten Seite (data-page-theme am Balken, gesetzt von renderer.js updatePageTheme: hell nur bei Seiten mit Hell-Theme und hellem System),
    gestapelte Einträge (Icon über Label) mit Bereichsfarbe und Unterstrich am aktiven Eintrag. */
 .overlay-bar {
   --nav-bg: #171717;
@@ -3642,18 +3642,16 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
   --nav-btn-fg: rgba(255,255,255,.8);
 }
 .overlay-bar [data-section] { --nav-c: var(--nav-c-dark); }
-@media (prefers-color-scheme: light) {
-  .overlay-bar {
-    --nav-bg: #fff;
-    --nav-bg-solid: #fff;
-    --nav-border: rgba(0,0,0,.12);
-    --nav-shadow: 0 3px 8px rgba(0,0,0,.10);
-    --nav-text: rgba(0,0,0,.6);
-    --nav-btn-bg: rgba(0,0,0,.06);
-    --nav-btn-fg: rgba(0,0,0,.7);
-  }
-  .overlay-bar [data-section] { --nav-c: var(--nav-c-light); }
+.overlay-bar[data-page-theme="light"] {
+  --nav-bg: #fff;
+  --nav-bg-solid: #fff;
+  --nav-border: rgba(0,0,0,.12);
+  --nav-shadow: 0 3px 8px rgba(0,0,0,.10);
+  --nav-text: rgba(0,0,0,.6);
+  --nav-btn-bg: rgba(0,0,0,.06);
+  --nav-btn-fg: rgba(0,0,0,.7);
 }
+.overlay-bar[data-page-theme="light"] [data-section] { --nav-c: var(--nav-c-light); }
 .overlay-bar { backdrop-filter: none; }
 .overlay-bar [data-section="livetv"] { --nav-c-dark:#9B80E8; --nav-c-light:#6A47C7; }
 .overlay-bar [data-section="radio"] { --nav-c-dark:#F5940F; --nav-c-light:#C96A00; }
@@ -3662,7 +3660,7 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
 .overlay-bar [data-section="mediathek"] { --nav-c-dark:#1AB8E0; --nav-c-light:#0A86A8; }
 .overlay-bar [data-section="settings"] { --nav-c-dark:#8C9EB8; --nav-c-light:#5A6678; }
 .overlay-bar .nav-section-item[data-section], .overlay-bar .nav-settings-item {
-  position: relative; flex-direction: column !important; justify-content: center; gap: 3px !important;
+  position: relative !important; flex-direction: column !important; justify-content: center; gap: 3px !important;
   min-width: 64px; height: 52px !important; padding: 0 12px; margin-left: 0;
   border-radius: 14px; background: transparent; color: var(--nav-text);
   transition: background .15s ease;

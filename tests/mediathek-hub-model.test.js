@@ -237,11 +237,14 @@ test('Folge für IPC: nur erlaubte Felder, streamUrl entfällt', () => {
 });
 
 test('Weitere Mediatheken: Chip nur bei eigenen Weblink-Diensten, Standard-ARD/ZDF/arte zählen nicht', () => {
-  const defaults = [{ id: 'ard', group: 'mediathek' }, { id: 'zdf', group: 'mediathek' }, { id: 'arte', group: 'mediathek' }, { id: 'netflix', group: 'streaming' }];
+  const defaults = [{ id: 'ard', group: 'mediathek', url: 'https://www.ardmediathek.de/' }, { id: 'zdf', group: 'mediathek', url: 'https://www.zdf.de/' }, { id: 'arte', group: 'mediathek', url: 'https://www.arte.tv/de/' }, { id: 'netflix', group: 'streaming' }];
   assert.deepEqual(m.otherMediathekServices(defaults), []);
   const withCustom = [...defaults, { id: '3sat-1700000000000', group: 'mediathek' }];
   assert.deepEqual(m.otherMediathekServices(withCustom).map(svc => svc.id), ['3sat-1700000000000']);
   assert.deepEqual(m.otherMediathekServices(null), []);
+  // Randfall: Standardeintrag gelöscht, eigener Dienst „ARD“ (id 'ard') mit anderer URL bleibt sichtbar
+  const ownArd = [{ id: 'ard', group: 'mediathek', url: 'https://example.org/ard' }, { id: 'zdf', group: 'mediathek', url: 'https://www.zdf.de/' }];
+  assert.deepEqual(m.otherMediathekServices(ownArd).map(svc => svc.url), ['https://example.org/ard']);
   const ids = hasOthers => m.filterItems({ enabledSources: ['ard'], hasOthers }).map(item => item.id);
   assert.ok(!ids(m.otherMediathekServices(defaults).length > 0).includes('others'));
   assert.ok(ids(m.otherMediathekServices(withCustom).length > 0).includes('others'));

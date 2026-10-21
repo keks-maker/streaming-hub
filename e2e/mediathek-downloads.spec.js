@@ -403,12 +403,21 @@ test('Einstellungen: Seiten, Begrenzung, Speicherort prüfen, Hinweise, „Downl
   await page.evaluate(() => window.downloads.setSettings({ showDownloads: true }));
 });
 
-test('Navigationsleiste folgt dem Systemdesign (dunkel bei dunkel, hell bei hell)', async () => {
-  const expected = { dark: 'rgb(23, 23, 23)', light: 'rgb(255, 255, 255)' };
-  for (const scheme of ['dark', 'light']) {
+test('Navigationsleiste folgt dem Theme der Seite: Mediathek hell bei hellem System, LiveTV/Einstellungen immer dunkel', async () => {
+  const barBg = () => page.locator('#overlayNav').evaluate(node => getComputedStyle(node.closest('.overlay-bar') || node).backgroundColor);
+  const dark = 'rgb(23, 23, 23)';
+  const white = 'rgb(255, 255, 255)';
+  for (const [scheme, section, expected] of [
+    ['dark', 'mediathek', dark], ['light', 'mediathek', white],
+    ['light', 'livetv', dark], ['light', 'settings', dark], ['dark', 'settings', dark],
+  ]) {
     await page.emulateMedia({ colorScheme: scheme });
-    const bar = await page.locator('#overlayNav').evaluate(node => getComputedStyle(node.closest('.overlay-bar') || node).backgroundColor);
-    expect(bar).toBe(expected[scheme]);
+    await page.locator(`#overlayNav [data-section="${section}"]`).click();
+    await expect.poll(barBg, { message: `${section}/${scheme}` }).toBe(expected);
   }
+  // Unterstrich des aktiven Eintrags bleibt auf den Eintrag begrenzt (nicht über die ganze Leiste)
+  const widths = await page.locator('#overlayNav .nav-settings-item.active').evaluate(node => ({ after: parseFloat(getComputedStyle(node, '::after').width), item: node.getBoundingClientRect().width }));
+  expect(widths.after).toBeLessThan(widths.item);
   await page.emulateMedia({ colorScheme: 'dark' });
+  await page.locator('#overlayNav [data-section="mediathek"]').click();
 });

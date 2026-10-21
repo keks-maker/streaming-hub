@@ -53,12 +53,25 @@ function filterItems({ enabledSources, searching = false, counts = {}, downloads
   return items;
 }
 
-/** Standard-Weblinks der nativ unterstützten Quellen (ids ard/zdf/arte); eigene Dienste tragen eine angehängte Zeitmarke in der id. */
-const NATIVE_SERVICE_IDS = ['ard', 'zdf', 'arte'];
+/** Mitgelieferte Standard-Weblinks der nativ unterstützten Quellen (ids und Hosts wie in services.json). */
+const NATIVE_DEFAULT_SERVICES = {
+  ard: 'www.ardmediathek.de',
+  zdf: 'www.zdf.de',
+  arte: 'www.arte.tv',
+};
+
+function hostOf(url) {
+  try { return new URL(String(url)).hostname.toLowerCase(); } catch { return ''; }
+}
+
+/** Ist der Eintrag einer der mitgelieferten Standard-Weblinks (id UND Host)? Ein selbst angelegter Dienst mit gleicher id, aber anderer URL zählt nicht. */
+function isNativeDefaultService(svc) {
+  return Object.prototype.hasOwnProperty.call(NATIVE_DEFAULT_SERVICES, svc.id) && hostOf(svc.url) === NATIVE_DEFAULT_SERVICES[svc.id];
+}
 
 /** Weblink-Dienste für „Weitere Mediatheken“: Gruppe mediathek ohne die durch ARD/ZDF/arte ersetzten Standardeinträge. */
 function otherMediathekServices(services) {
-  return (services || []).filter(svc => svc && svc.group === 'mediathek' && !NATIVE_SERVICE_IDS.includes(svc.id));
+  return (services || []).filter(svc => svc && svc.group === 'mediathek' && !isNativeDefaultService(svc));
 }
 
 /** Gewählter Filter, falls (noch) vorhanden, sonst „Alle“. */

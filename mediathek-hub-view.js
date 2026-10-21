@@ -406,6 +406,8 @@ function createMediathekHub(root, options = {}) {
     visible = true;
     root.hidden = false;
     route = normalizeRoute(next);
+    // Einstiegsroute { view: 'home', search: { sourceId, text } } (z. B. EPG „In <Mediathek> ansehen“): Quelle vorwählen und suchen
+    const preset = next && next.view === 'home' && next.search && typeof next.search.text === 'string' && next.search.text.trim() ? next.search : null;
     applyPanels();
     if (!settingsLoaded) await loadSettings();
     await loadDownloadSettings();
@@ -414,6 +416,10 @@ function createMediathekHub(root, options = {}) {
     if (subsStore) subsStore.load();
     store.loadAll(enabledSources());
     store.loadFavorites();
+    if (preset) {
+      view.filter = enabledSources().includes(preset.sourceId) ? preset.sourceId : 'all';
+      home.setQuery(preset.text.trim().slice(0, 200));
+    }
     if (route.view === 'home') home.render();
     if (route.view === 'series') seriesView.focusFirst();
     else if (route.view === 'genre') genreView.focusFirst();

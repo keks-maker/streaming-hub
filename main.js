@@ -8,7 +8,7 @@ const os = require('os');
 const { fork, spawn: spawnChild } = require('child_process');
 const { reconcilePostUpdate, reconcileRadioSources, reconcilePodcastSources } = require('./lib/post-update-reconcile.js');
 const { resolveAppVersion } = require('./lib/app-version.js');
-const { revealWindow, isBackgroundE2E } = require('./lib/e2e-background.js');
+const { revealWindow, isBackgroundE2E, hiddenInHook, showInactiveInHook } = require('./lib/e2e-background.js');
 const { createUserStorage } = require('./lib/user-storage.js');
 const { parseBackup } = require('./lib/backup.js');
 const {
@@ -622,6 +622,7 @@ function requireWebviewRenderer(event) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    ...hiddenInHook(process.env), // Hook-Fall: nicht sofort aktivieren, ready-to-show zeigt per showInactive()
     width: 1280,
     height: 850,
     minWidth: 900,
@@ -1627,6 +1628,7 @@ ipcMain.on('toggle-pip', (event, url) => {
 
   const pipUrl = remoteHttpUrl(url, 'PiP-URL');
   pipWindow = new BrowserWindow({
+    ...hiddenInHook(process.env),
     width: pipW,
     height: pipH,
     alwaysOnTop: true,
@@ -1641,6 +1643,7 @@ ipcMain.on('toggle-pip', (event, url) => {
     },
   });
 
+  showInactiveInHook(pipWindow, process.env);
   pipWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   const allowPipNavigation = (_event, navigationUrl) => {
     try {

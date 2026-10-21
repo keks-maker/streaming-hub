@@ -14,7 +14,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const { _electron: electron } = require('@playwright/test');
-const { resolveLaunchTarget, launchArgs } = require('../e2e/platform');
+const { resolveLaunchTarget, launchArgs, backgroundEnv } = require('../e2e/platform');
 
 const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'assets', 'screenshots'));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -51,7 +51,7 @@ const PLAYING = 'swr3';
   const app = await electron.launch({
     executablePath: target.executablePath,
     args: [...launchArgs(target), '--force-device-scale-factor=2'],
-    env: { ...process.env, HOME: home, STREAMING_HUB_USER_DATA: userData, STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9', STREAMING_HUB_E2E_BACKGROUND: '1' },
+    env: { ...process.env, HOME: home, STREAMING_HUB_USER_DATA: userData, STREAMING_HUB_UPDATE_URL: 'http://127.0.0.1:9', ...backgroundEnv() },
     timeout: 45_000,
   });
   const page = await app.firstWindow();
