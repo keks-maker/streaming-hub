@@ -3729,6 +3729,8 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
 .overlay-bar { backdrop-filter: none; }
 /* Läuft ein Player über dem Bild (Mediathek, Dashboard-Vorschau, Aufnahme), bleibt auch die Leiste darüber dunkel (Kontrast zum Video) */
 body:has(.mediathek-player, .dashboard-player:not([style*="none"]), .recording-player:not([style*="none"])) .overlay-bar { color-scheme: dark; }
+/* Der Mediathek-Player liegt in der Dashboard-Ansicht (z-index 25) und läge sonst unter der Navbar (90): sie verschwindet, solange er offen ist */
+body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:none; }
 .overlay-bar .nav-section-item[data-section], .overlay-bar .nav-settings-item {
   position: relative !important; flex-direction: column !important; justify-content: center; gap: 3px !important;
   min-width: 64px; height: 52px !important; padding: 0 12px; margin-left: 0;
@@ -3834,6 +3836,7 @@ body:has(.mediathek-player, .dashboard-player:not([style*="none"]), .recording-p
 .mediathek-pill-source { top:8px; left:8px; color:var(--src-c,var(--media-ink)); background:var(--media-scrim); }
 .mediathek-pill-geo { left:8px; bottom:8px; background:var(--md-amber); color:var(--md-amber-ink); }
 .mediathek-pill-duration { right:8px; bottom:8px; }
+.mediathek-pill-fsk { top:8px; right:8px; }
 .mediathek-progress { position:absolute; left:0; right:0; bottom:0; height:5px; background:color-mix(in srgb, var(--video-black) 55%, transparent); }
 .mediathek-progress i { display:block; height:100%; background:var(--md-accent); }
 .mediathek-lock { position:absolute; inset:0; display:grid; place-items:center; color:var(--media-ink); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
@@ -3905,6 +3908,9 @@ body:has(.mediathek-player, .dashboard-player:not([style*="none"]), .recording-p
 .mediathek-dialog { position:relative; width:min(640px,100%); max-height:calc(100vh - 40px); overflow:auto; padding:26px 28px 28px; background:var(--md-dialog); color:var(--md-text); border:1px solid var(--md-line); border-radius:22px; box-shadow:0 20px 60px color-mix(in srgb, var(--shadow) 45%, transparent); }
 .mediathek-dialog-close { position:absolute; top:12px; right:14px; width:36px; height:36px; display:grid; place-items:center; background:var(--md-surface2); border:0; border-radius:50%; color:var(--md-text); font-size:22px; line-height:1; cursor:pointer; }
 .mediathek-dialog-title { margin:4px 40px 0 0; font-size:26px; font-weight:800; line-height:1.2; }
+.mediathek-dialog-badges { display:flex; gap:6px; margin:8px 0 0; }
+.mediathek-fsk-badge { display:inline-block; padding:2px 8px; border:1px solid var(--md-line); border-radius:6px; background:var(--md-surface2); color:var(--md-text); font-size:12px; font-weight:700; letter-spacing:.03em; }
+.mediathek-player-fsk { flex:none; border-color:color-mix(in srgb, var(--media-ink) 45%, transparent); background:color-mix(in srgb, var(--video-black) 55%, transparent); color:var(--media-ink); }
 .mediathek-dialog-meta,.mediathek-dialog-until { margin:8px 0 0; color:var(--md-dim); font-size:14px; }
 .mediathek-dialog-desc { margin:14px 0 0; font-size:15px; line-height:1.5; user-select:text; }
 .mediathek-dialog-hint { margin:14px 0 0; padding:10px 12px; border-radius:10px; font-size:14px; background:color-mix(in srgb,var(--md-amber) 16%,transparent); color:var(--md-text); border:1px solid color-mix(in srgb,var(--md-amber) 55%,transparent); }

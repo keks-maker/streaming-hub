@@ -19,6 +19,7 @@ function createSeriesPage({ api, series }) {
     seasons: [],
     seasonNumbers: [],
     playTarget: null,
+    emptyNote: null,
     favorite: false,
     newestFirst: false, // Serien werden von vorn geschaut
     selectedSeason: null,
@@ -36,6 +37,7 @@ function createSeriesPage({ api, series }) {
       state.seasons = Array.isArray(result.seasons) ? result.seasons : [];
       state.seasonNumbers = Array.isArray(result.seasonNumbers) ? result.seasonNumbers : [];
       state.playTarget = result.playTarget || null;
+      state.emptyNote = typeof result.emptyNote === 'string' ? result.emptyNote : null;
       state.favorite = result.favorite === true;
       if (state.selectedSeason !== null && !state.seasonNumbers.includes(state.selectedSeason)) state.selectedSeason = null;
       state.status = 'loaded';

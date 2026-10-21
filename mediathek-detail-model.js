@@ -4,7 +4,7 @@
 // Hinweise zu Region (Geoblock) und Altersfreigabe (FSK). `blocked` sind Folgen, deren Wiedergabe in dieser Sitzung
 // als gesperrt gemeldet wurde: { reason: 'geoBlocked'|'ageRestricted'|'unavailable', message }.
 
-const { sourceBadge, subtitleText, minutesText, availableUntilText } = require('./mediathek-format.js');
+const { sourceBadge, subtitleText, minutesText, availableUntilText, fskText } = require('./mediathek-format.js');
 
 function detailInfo(entry, { blocked = null, series = null } = {}) {
   const hints = [];
@@ -20,6 +20,7 @@ function detailInfo(entry, { blocked = null, series = null } = {}) {
     kicker,
     title: entry.title,
     meta,
+    fsk: fskText(entry.fsk),
     availability: availableUntilText(entry),
     description: typeof entry.description === 'string' && entry.description.trim() ? entry.description.trim() : null,
     hints,

@@ -3,7 +3,7 @@
 // DOM-Bausteine der Mediathek-Oberfläche: Bild mit Platzhalter, Folgen-/Serien-/Genre-Karten und scrollbare Reihen.
 // Texte der Sender kommen ausschließlich per textContent in den DOM. Funktionen nehmen das Dokument entgegen (testbar).
 
-const { sourceBadge, sourceColor, subtitleText, minutesText, imageSrc, initials, placeholderHue } = require('./mediathek-format.js');
+const { sourceBadge, sourceColor, subtitleText, minutesText, fskText, imageSrc, initials, placeholderHue } = require('./mediathek-format.js');
 const { AUTO_SVG } = require('./mediathek-download-icons.js');
 
 function el(doc, tag, className, text) {
@@ -62,6 +62,7 @@ function createThumb(doc, options) {
     thumb.appendChild(badge);
   }
   if (options.geo) thumb.appendChild(pill(doc, 'nur in DE', 'mediathek-pill-geo'));
+  if (typeof options.fsk === 'number' && options.fsk >= 12) thumb.appendChild(pill(doc, fskText(options.fsk), 'mediathek-pill-fsk'));
   const minutes = minutesText(options.duration);
   if (minutes) thumb.appendChild(pill(doc, minutes, 'mediathek-pill-duration'));
   if (typeof options.progress === 'number' && options.progress > 0) {
@@ -89,7 +90,7 @@ function createEntryCard(doc, entry, options = {}) {
   const subtitle = subtitleText(entry);
   main.setAttribute('aria-label', [entry.title, subtitle, options.blocked ? 'nicht abrufbar' : 'abspielen'].filter(Boolean).join(', '));
   main.append(
-    createThumb(doc, { imageUrl: entry.imageUrl, title: entry.title, sourceId: entry.sourceId, duration: entry.duration, geo: entry.regionRestricted, progress: options.progress }),
+    createThumb(doc, { imageUrl: entry.imageUrl, title: entry.title, sourceId: entry.sourceId, duration: entry.duration, geo: entry.regionRestricted, progress: options.progress, fsk: entry.fsk }),
     el(doc, 'span', 'mediathek-card-title', entry.title),
     el(doc, 'span', 'mediathek-card-sub', subtitle || ' '),
   );

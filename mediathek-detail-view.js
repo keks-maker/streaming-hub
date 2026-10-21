@@ -64,6 +64,11 @@ function createMediathekDetail(host, ctx) {
     const title = el(doc, 'h2', 'mediathek-dialog-title', info.title);
     title.id = 'mediathekDetailTitle';
     dialog.appendChild(title);
+    if (info.fsk) {
+      const badges = el(doc, 'p', 'mediathek-dialog-badges');
+      badges.appendChild(el(doc, 'span', 'mediathek-fsk-badge', info.fsk));
+      dialog.appendChild(badges);
+    }
     if (info.meta.length) dialog.appendChild(el(doc, 'p', 'mediathek-dialog-meta', info.meta.join('   ·   ')));
     if (info.availability) {
       const until = el(doc, 'p', 'mediathek-dialog-until', info.availability);

@@ -17,6 +17,22 @@ function minutesText(seconds) {
   return `${Math.max(1, Math.round(seconds / 60))} Min.`;
 }
 
+/** "FSK 12" für eine Altersfreigabe (0/6/12/16/18); null ohne Angabe. */
+function fskText(fsk) {
+  return typeof fsk === 'number' && Number.isInteger(fsk) && fsk >= 0 && fsk <= 18 ? `FSK ${fsk}` : null;
+}
+
+/** Höchste Altersfreigabe der Folgen einer Serie (Staffeln wie groupBySeason); null, wenn keine Folge eine nennt. */
+function seriesFsk(seasons) {
+  let top = null;
+  for (const season of Array.isArray(seasons) ? seasons : []) {
+    for (const entry of Array.isArray(season.entries) ? season.entries : []) {
+      if (typeof entry.fsk === 'number' && (top === null || entry.fsk > top)) top = entry.fsk;
+    }
+  }
+  return top;
+}
+
 /** "Staffel 2 · Folge 3 · Untertitel" bzw. nur der Untertitel; null ohne Angaben. */
 function subtitleText(entry) {
   const parts = [];
@@ -76,4 +92,4 @@ function clockText(seconds) {
   return h > 0 ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
 }
 
-module.exports = { sourceBadge, sourceLabel, sourceColor, minutesText, subtitleText, germanDate, availableUntilText, imageSrc, initials, placeholderHue, clockText };
+module.exports = { sourceBadge, sourceLabel, sourceColor, minutesText, subtitleText, fskText, seriesFsk, germanDate, availableUntilText, imageSrc, initials, placeholderHue, clockText };
