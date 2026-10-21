@@ -53,6 +53,14 @@ function filterItems({ enabledSources, searching = false, counts = {}, downloads
   return items;
 }
 
+/** Standard-Weblinks der nativ unterstützten Quellen (ids ard/zdf/arte); eigene Dienste tragen eine angehängte Zeitmarke in der id. */
+const NATIVE_SERVICE_IDS = ['ard', 'zdf', 'arte'];
+
+/** Weblink-Dienste für „Weitere Mediatheken“: Gruppe mediathek ohne die durch ARD/ZDF/arte ersetzten Standardeinträge. */
+function otherMediathekServices(services) {
+  return (services || []).filter(svc => svc && svc.group === 'mediathek' && !NATIVE_SERVICE_IDS.includes(svc.id));
+}
+
 /** Gewählter Filter, falls (noch) vorhanden, sonst „Alle“. */
 function resolveFilter(filter, items) {
   return items.some(item => item.id === filter) ? filter : 'all';
@@ -292,6 +300,7 @@ module.exports = {
   SEARCH_DEBOUNCE_MS,
   ROW_LIMIT,
   filterItems,
+  otherMediathekServices,
   resolveFilter,
   activeSources,
   searchFilter,

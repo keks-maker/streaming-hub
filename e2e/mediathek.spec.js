@@ -79,7 +79,7 @@ test('Navigation: Kachel öffnet den nativen Bereich; Quellenleiste mit Download
   await expect(page.locator('#mediathekDashboard')).toBeVisible();
   await expect(page.locator('#dashboardGrid .dashboard-tile')).toHaveCount(0); // alte Kachel-Ansicht entfällt
   const chips = await page.locator('#mediathekDashboard .mediathek-chips .mediathek-chip').allTextContents();
-  expect(chips).toEqual(['Alle', 'ARD', 'ZDF', 'arte', 'Meine Serien', 'Weiterschauen', 'Downloads', 'Weitere Mediatheken']);
+  expect(chips).toEqual(['Alle', 'ARD', 'ZDF', 'arte', 'Meine Serien', 'Weiterschauen', 'Downloads']); // ohne eigene Weblink-Dienste kein „Weitere Mediatheken“
   await expect(page.locator('#mediathekDashboard .mediathek-chip[aria-pressed="true"]')).toHaveText('Alle');
   await expect(page.locator('#mediathekDashboard .mediathek-search-input')).toBeVisible();
 });
@@ -217,11 +217,20 @@ test('Suche: Gruppen, Zähler je Quelle, Paging, Leer- und Teilfehler-Zustand', 
   await expect(input).toHaveValue('');
 });
 
-test('Weitere Mediatheken: Weblink-Dienste bleiben erreichbar', async () => {
+test('Weitere Mediatheken: nur eigene Weblink-Dienste, Standard-Weblinks fehlen', async () => {
+  await expect(chip('Weitere Mediatheken')).toHaveCount(0);
+  const added = await page.evaluate(() => window.electronAPI.addService({ name: 'Testmediathek', url: 'https://example.com/', group: 'mediathek', color: '#1AB8E0' }));
+  expect(added).toBeTruthy();
+  await page.locator('#mediathekDashboard .mediathek-search-input').focus();
+  await page.locator('#overlayNav [data-section="livetv"]').click();
+  await page.locator('#overlayNav [data-section="mediathek"]').click();
+  await expect(chip('Weitere Mediatheken')).toBeVisible();
   await chip('Weitere Mediatheken').click();
-  await expect(page.locator('#mediathekDashboard .mediathek-service-btn')).toHaveCount(3); // ARD, ZDF, arte (Standard-Weblinks)
-  await expect(page.locator('#mediathekDashboard .mediathek-service-btn', { hasText: 'ARD Mediathek' })).toBeVisible();
+  await expect(page.locator('#mediathekDashboard .mediathek-service-btn')).toHaveCount(1);
+  await expect(page.locator('#mediathekDashboard .mediathek-service-btn', { hasText: 'Testmediathek' })).toBeVisible();
   await chip('Alle').click();
+  const id = await page.evaluate(async () => (await window.electronAPI.getServices()).find(s => s.name === 'Testmediathek').id);
+  await page.evaluate(serviceId => window.electronAPI.removeService(serviceId), id);
 });
 
 test('Einstellungen: Quellen ein/aus wirken im Hub, Wiedergabe wird gespeichert', async () => {

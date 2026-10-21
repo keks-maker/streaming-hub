@@ -235,3 +235,14 @@ test('Folge für IPC: nur erlaubte Felder, streamUrl entfällt', () => {
   const { validateEntry } = require('../lib/mediathek/validation.js');
   assert.doesNotThrow(() => validateEntry(entryForIpc({ ...validateEntry({ id: 'a', title: 'T', sourceId: 'ard' }) })));
 });
+
+test('Weitere Mediatheken: Chip nur bei eigenen Weblink-Diensten, Standard-ARD/ZDF/arte zählen nicht', () => {
+  const defaults = [{ id: 'ard', group: 'mediathek' }, { id: 'zdf', group: 'mediathek' }, { id: 'arte', group: 'mediathek' }, { id: 'netflix', group: 'streaming' }];
+  assert.deepEqual(m.otherMediathekServices(defaults), []);
+  const withCustom = [...defaults, { id: '3sat-1700000000000', group: 'mediathek' }];
+  assert.deepEqual(m.otherMediathekServices(withCustom).map(svc => svc.id), ['3sat-1700000000000']);
+  assert.deepEqual(m.otherMediathekServices(null), []);
+  const ids = hasOthers => m.filterItems({ enabledSources: ['ard'], hasOthers }).map(item => item.id);
+  assert.ok(!ids(m.otherMediathekServices(defaults).length > 0).includes('others'));
+  assert.ok(ids(m.otherMediathekServices(withCustom).length > 0).includes('others'));
+});

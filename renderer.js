@@ -36,6 +36,7 @@ const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
 const { createPodcastHub } = require('./podcast-hub-view.js');
 const { createMediathekHub } = require('./mediathek-hub-view.js');
+const { otherMediathekServices } = require('./mediathek-hub-model.js');
 const { createMediathekSourcesView } = require('./settings-mediathek-sources.js');
 const { createMediathekPlaybackView } = require('./settings-mediathek-playback.js');
 const { createMediathekAccountsView } = require('./settings-mediathek-accounts.js');
@@ -624,7 +625,7 @@ const mediathekHub = createMediathekHub(mediathekDashboardRoot, {
   fileManager: /Mac/i.test(navigator.platform || '') ? 'Finder' : /Win/i.test(navigator.platform || '') ? 'Explorer' : 'Dateimanager',
   logger,
   notify: showTvToast,
-  services: () => services.filter(svc => svc.group === 'mediathek'),
+  services: () => otherMediathekServices(services),
   iconSrc: svc => safeResourceUrl(getIconSrc(svc)),
   openService: svc => navigateTo(svc),
   openWeb: (url, title) => navigateTo({ id: 'mediathek-web', name: title || 'Mediathek', url, group: 'mediathek' }),

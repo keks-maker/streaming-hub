@@ -403,11 +403,12 @@ test('Einstellungen: Seiten, Begrenzung, Speicherort prüfen, Hinweise, „Downl
   await page.evaluate(() => window.downloads.setSettings({ showDownloads: true }));
 });
 
-test('Navigationsleiste ist immer dunkel (auch bei heller Systemeinstellung)', async () => {
+test('Navigationsleiste folgt dem Systemdesign (dunkel bei dunkel, hell bei hell)', async () => {
+  const expected = { dark: 'rgb(23, 23, 23)', light: 'rgb(255, 255, 255)' };
   for (const scheme of ['dark', 'light']) {
     await page.emulateMedia({ colorScheme: scheme });
     const bar = await page.locator('#overlayNav').evaluate(node => getComputedStyle(node.closest('.overlay-bar') || node).backgroundColor);
-    expect(bar).toBe('rgb(23, 23, 23)');
+    expect(bar).toBe(expected[scheme]);
   }
   await page.emulateMedia({ colorScheme: 'dark' });
 });
