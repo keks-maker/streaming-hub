@@ -95,7 +95,7 @@ test('Verdrahtung: nur Webviews der Streaming-Partition', () => {
   };
   assert.equal(attachWebviewGuest(fakeContents({ session: {} }), deps), false); // persist:tv
   assert.equal(attachWebviewGuest(fakeContents({ type: 'window', session: streaming }), deps), false);
-  let clock = 10000;
+  const clock = 10000;
   deps.now = () => clock;
   const c = fakeContents({ session: streaming });
   assert.equal(attachWebviewGuest(c, deps), true);
