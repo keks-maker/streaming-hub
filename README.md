@@ -375,6 +375,8 @@ Kurz gesagt:
 - **Immer nur eins** – Radio, Podcast, andere Dienste und YouTube-Video schließen sich gegenseitig aus.
 - **Ein/Aus** – Einstellungen → Streaming → YouTube.
 
+Im Einzelnen:
+
 - **Wieder hochholen** – „Zurück zum Video“ (Knopf oder Klick aufs Videobild) zeigt die Ursprungsseite mit Kommentaren an derselben Stelle, „App-füllend anzeigen“ nur das Video im ganzen Fenster (Steuerung bei Mausbewegung), „Vollbild“ über den ganzen Bildschirm. **Esc** oder das **X** oben links über dem Video („Verkleinern (Esc)“, erscheint bei Mausbewegung) geht jeweils eine Stufe zurück, nämlich zu der Stufe, aus der du kamst. **Alt+←** und der Zurück-Knopf bewegen nur das Stöbern; führt „Zurück“ auf die Seite des laufenden Videos, wird der Player wieder groß. Wer YouTube verlässt (Dashboard, anderer Bereich), behält den Mini-Player; ein pausiertes Video aus „App-füllend“ bleibt dabei pausiert erhalten. Das Kreuz beendet die Wiedergabe. Alle Knöpfe haben Tooltips.
 - **Ton** – Das Video endet, sobald ein anderer Streamingdienst, LiveTV, Radio, Podcast, eine Mediathek oder eine Aufnahme-Wiedergabe startet. Startet ein Video, pausieren Radio und Podcast wie bei anderen Diensten (Einstellung „Radio pausieren, wenn LiveTV, ein Streamingdienst oder eine Aufnahme startet“).
 - **Playlist** – Beim Überfahren einer Kachel erscheint in der Titelzeile links neben dem Drei-Punkte-Menü ein runder „+“-Knopf in der Akzentfarbe („Zur Playlist hinzufügen“); der Rechtsklick auf einen Video-Link oder ein Vorschaubild bietet „Als Nächstes abspielen“ und „Zur Playlist hinzufügen“. Das Feld hinter dem Playlist-Knopf zeigt die kommenden Videos mit Vorschaubild und Titel: Klick spielt ab, per Ziehen (oder ▲▼) umsortieren, × entfernt. Am Videoende startet der nächste Eintrag; ist die Liste leer, endet die Wiedergabe (YouTubes eigenes Autoplay wird abgebrochen). Die Playlist bleibt über Neustarts erhalten (`youtube-playlist.json`, höchstens 200 Einträge, nur YouTube-Video-IDs). Weitere gespeicherte Dateien: `youtube-adblock-settings.json` (Werbeblocker) und `youtube-mini-settings.json` (Mini-Player-Einstellungen) im Datenordner der App.
@@ -403,9 +405,9 @@ Drücke `?` für eine Übersicht aller Kürzel:
 | `Strg` + `T` | Live-TV öffnen |
 | `Strg` + `P` | Bild-in-Bild umschalten |
 | `F11` | Vollbild umschalten |
-| `I` | YouTube: Video in den Mini-Player verkleinern |
+| `i` | YouTube: Video in den Mini-Player verkleinern |
 | `?` | Kürzel-Übersicht |
-| `Escape` | Modal / Overlay schließen; bei YouTube eine Stufe zurück (Vollbild → App-füllend → Mini-Player) |
+| `Escape` | Modal / Overlay schließen; bei YouTube zurück zur vorherigen Stufe (aus Vollbild bzw. App-füllend dorthin, wo du herkamst) |
 
 **Im TV-Player zusätzlich:**
 
