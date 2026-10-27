@@ -34,6 +34,9 @@ const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const { createDashboardHub } = require('./dashboard-hub-view.js');
 const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
+const { createYoutubeMini } = require('./youtube-mini-controller.js');
+const { shouldStopVideo, startedPlayback } = require('./lib/youtube-exclusivity.js');
+const { isYouTubePageUrl } = require('./lib/youtube-adblock.js');
 const { createPodcastHub } = require('./podcast-hub-view.js');
 const { createMediathekHub } = require('./mediathek-hub-view.js');
 const { otherMediathekServices } = require('./mediathek-hub-model.js');
@@ -583,9 +586,47 @@ const radioDashboardView = createRadioDashboard(radioDashboardRoot, {
 });
 const podcastDetails = createPodcastDetailsCache({ podcasts: window.podcasts });
 window.podcasts.onRefreshed?.(() => podcastDetails.clear());
+// ── YouTube-Mini-Player: zweite Webview (Video) neben contentView (Stöbern), Steuerung über die gemeinsame Leiste ──
+const ytPlayerView = document.getElementById('ytPlayerView');
+function isYoutubeService(svc) {
+  return Boolean(svc && svc.url && isYouTubePageUrl(normalizeUrl(svc.url)));
+}
+function youtubeService() {
+  return services.find(isYoutubeService) || { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com/' };
+}
+// Läuft die App gerade im YouTube-Bereich (Inhalts- oder Player-Webview), nicht in einem Dashboard/TV?
+function isYoutubeArea() {
+  return !currentDashboardGroup && currentProvider !== '__tv__' && isYoutubeService(services.find(s => s.id === currentProvider));
+}
+const ytMini = createYoutubeMini({
+  contentView,
+  playerView: ytPlayerView,
+  api: window.electronAPI,
+  logger,
+  notify: showTvToast,
+  hooks: {
+    // Startet ein Video, pausieren Radio und Podcast (Einstellung pauseOnTv); das Video selbst bleibt unberührt
+    beforePlay: () => pauseRadioForVideo(),
+    enterYoutubeArea: () => enterYoutubeArea(),
+    isYoutubeArea,
+    onPlacement: place => {
+      // Steht das Player-Webview groß, gehören Zurück, Fehlerseite und Medientasten zu ihm
+      if (place === 'content' || place === 'window') webview = ytPlayerView;
+      else if (webview === ytPlayerView) webview = contentView;
+      updateBackBtn();
+    },
+    onHtmlFullscreen: active => {
+      overlayBar.classList.toggle('is-fullscreen', active);
+      setHtmlFullscreen(active);
+    },
+  },
+});
+ytMini.init().catch(error => logger.warn('YouTube-Mini-Player nicht verfügbar:', error && error.message ? error.message : error));
+
 const radioMiniPlayerView = createRadioMiniPlayer(radioMiniPlayerRoot, {
   radio: window.radio,
   podcasts: window.podcasts.player,
+  youtube: { getView: () => ytMini.getView(), subscribe: cb => ytMini.subscribe(cb), setVideoSlot: el => ytMini.setVideoSlot(el), actions: ytMini.actions },
   logger,
   notify: showTvToast,
   getFavoriteCount: () => radioFavoriteCount,
@@ -639,7 +680,8 @@ const mediathekHub = createMediathekHub(mediathekDashboardRoot, {
   onBack: () => handleBackNavigation(),
   onOpenSettings: () => openSettingsPage('mediathek-sources'),
   onOpenAccounts: () => openSettingsPage('mediathek-accounts'),
-  onPlaybackStart: () => pauseRadioForVideo(),
+  // Mediathek-Wiedergabe startet: Radio/Podcast pausieren, ein YouTube-Video endet
+  onPlaybackStart: () => pauseRadioForVideo().finally(() => ytMini.stopForOtherPlayback()),
 });
 
 function updateRadioFavoriteCount(sources) {
@@ -652,7 +694,11 @@ window.radio.onOpen?.(() => showDashboard('radio'));
 // Tray „Podcasts öffnen“: Sendungsseite der laufenden Episode, sonst das Podcast-Dashboard
 window.podcasts.onOpen?.(target => showDashboard('podcasts', target && target.podcastId ? { route: { view: 'show', id: target.podcastId } } : {}));
 window.radio.getState().then(initial => (radioLatestState = radioLatestState || initial)).catch(() => {});
+let radioPreviousStatus = 'idle';
 window.radio.onState(next => {
+  // Radio startet → ein YouTube-Video endet (nur beim Wechsel in loading/playing, nicht bei jeder Titelmeldung)
+  if (startedPlayback(radioPreviousStatus, next) && shouldStopVideo({ source: 'radio', sourceState: next, videoActive: ytMini.isActive() })) ytMini.stopForOtherPlayback();
+  radioPreviousStatus = next && next.status;
   radioLatestState = next;
 });
 
@@ -668,7 +714,10 @@ function setHtmlFullscreen(active) {
 // Podcast-Episode: gleiche Regel und Einstellung (pauseOnTv) wie beim Radio; die Position bleibt erhalten.
 let podcastLatestState = null;
 window.podcasts.player.getState().then(initial => (podcastLatestState = podcastLatestState || initial)).catch(() => {});
+let podcastPreviousStatus = 'idle';
 window.podcasts.player.onState(next => {
+  if (startedPlayback(podcastPreviousStatus, next) && shouldStopVideo({ source: 'podcast', sourceState: next, videoActive: ytMini.isActive() })) ytMini.stopForOtherPlayback();
+  podcastPreviousStatus = next && next.status;
   podcastLatestState = next;
 });
 async function pausePodcastForVideo() {
@@ -800,6 +849,7 @@ function openDashboardPlayer(tile, ch) {
   activePreview.fullscreen = true;
   dashboardPlayer.requestFullscreen().catch(() => {});
   pauseRadioForVideo();
+  ytMini.stopForOtherPlayback();
 }
 
 function disposeDashboardPlayback() {
@@ -1045,6 +1095,7 @@ function renderDashboard(groupKey, opts = {}) {
     if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
     loadEpgStartViewUi();
     loadYoutubeAdblockUi();
+    loadYoutubeMiniUi();
   } else if (isTv) {
     renderLiveTvDashboard();
   } else if (isRadio) {
@@ -1074,6 +1125,7 @@ function openSettingsPage(page) {
 
 function showDashboard(groupKey, opts = {}) {
   closeEpgForNavigation();
+  ytMini.onLeaveArea(); // ein Video auf der Wiedergabeseite läuft klein in der Leiste weiter
   if (!restoringNav) pushNavState();
   disposeDashboardPlayback();
   currentProvider = '';
@@ -1252,8 +1304,9 @@ function pushNavState() {
 
 function updateBackBtn() {
   if (!backBtn) return;
-  backBtn.style.display = navStack.length ? '' : 'none';
-  overlayBar.classList.toggle('has-back', navStack.length > 0);
+  const canGoBack = navStack.length > 0 || ytMini.canGoBack();
+  backBtn.style.display = canGoBack ? '' : 'none';
+  overlayBar.classList.toggle('has-back', canGoBack);
 }
 
 function goBack() {
@@ -1291,6 +1344,8 @@ function goBack() {
 }
 
 function handleBackNavigation() {
+  // YouTube mit Mini-Player: Zurück bewegt nur das Stöbern; führt es auf die Seite des laufenden Videos, wird der Player wieder groß
+  if (ytMini.handleBack()) return true;
   if (
     webviewReady &&
     currentProvider &&
@@ -1316,10 +1371,8 @@ function goToStartPage() {
   showDashboard('start');
 }
 
-function navigateTo(svc) {
-  closeEpgForNavigation();
-  if (!restoringNav) pushNavState();
-  disposeDashboardPlayback();
+// Webview-Bereich eines Dienstes anzeigen (ohne zu laden): Navigationsleiste, Dashboard weg, Webview sichtbar
+function enterServiceArea(svc) {
   dashboardView.classList.remove('start-page');
   overlayBar.classList.remove('start-page');
   placeUpdateButton(overlayUpdateSlot);
@@ -1327,7 +1380,6 @@ function navigateTo(svc) {
   currentProvider = svc.id;
   currentDashboardGroup = null;
   lastMediaTitle = '';
-  pauseRadioForVideo();
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const btn = nav.querySelector(`.nav-item[data-provider="${svc.id}"]`);
   if (btn) btn.classList.add('active');
@@ -1342,11 +1394,30 @@ function navigateTo(svc) {
   welcomeScreen.style.display = 'none';
   overlayBar.classList.add('nav-collapsed');
   overlayBar.classList.remove('is-fullscreen');
+}
+
+// „Zurück zum Video“ aus einem anderen Bereich: zum YouTube-Bereich wechseln, ohne die Inhalts-Webview neu zu laden
+function enterYoutubeArea() {
+  if (isYoutubeArea()) return;
+  closeEpgForNavigation();
+  if (!restoringNav) pushNavState();
+  disposeDashboardPlayback();
+  enterServiceArea(youtubeService());
+}
+
+function navigateTo(svc) {
+  closeEpgForNavigation();
+  if (!restoringNav) pushNavState();
+  disposeDashboardPlayback();
+  ytMini.onServiceNavigate(isYoutubeService(svc)); // YouTube behält das Video (klein), jeder andere Dienst beendet es
+  pauseRadioForVideo();
+  enterServiceArea(svc);
   const targetUrl = normalizeUrl(svc.url);
   lastUrlByService[svc.id] = targetUrl;
+  if (ytMini.interceptNavigate(targetUrl)) return; // Video-Adresse: lädt die Player-Webview, die Inhalts-Webview bleibt
   if (webviewReady) {
     try {
-      webview.loadURL(targetUrl);
+      contentView.loadURL(targetUrl);
     } catch (e) {
       logger.warn('loadURL failed:', targetUrl, e);
     }
@@ -1567,6 +1638,39 @@ if (settingsYoutubeAdblock) {
       loadYoutubeAdblockUi();
     }
   });
+}
+
+// ── Settings „Streaming“: YouTube-Mini-Player (Schalter, Standard an) und Klick-Verhalten ──
+// Persistenz und Validierung im Main (lib/youtube-mini-ipc.js); der Controller wendet die Einstellung sofort an.
+const settingsYoutubeMini = document.getElementById('settingsYoutubeMini');
+const settingsYoutubeClick = document.getElementById('settingsYoutubeClick');
+const settingsYoutubeMiniStatus = document.getElementById('settingsYoutubeMiniStatus');
+
+function loadYoutubeMiniUi() {
+  if (!settingsYoutubeMini || !settingsYoutubeClick) return;
+  const saved = ytMini.getSettings();
+  settingsYoutubeMini.checked = saved.enabled;
+  settingsYoutubeClick.value = saved.clickBehavior;
+  settingsYoutubeClick.disabled = !saved.enabled;
+  settingsYoutubeMiniStatus.textContent = '';
+}
+
+async function saveYoutubeMiniSetting(patch) {
+  try {
+    const saved = await ytMini.applySettings(patch);
+    settingsYoutubeMini.checked = saved.enabled;
+    settingsYoutubeClick.value = saved.clickBehavior;
+    settingsYoutubeClick.disabled = !saved.enabled;
+    settingsYoutubeMiniStatus.textContent = 'Gespeichert.';
+  } catch (e) {
+    settingsYoutubeMiniStatus.textContent = 'Speichern fehlgeschlagen: ' + (e?.message || e);
+    loadYoutubeMiniUi();
+  }
+}
+
+if (settingsYoutubeMini && settingsYoutubeClick) {
+  settingsYoutubeMini.addEventListener('change', () => saveYoutubeMiniSetting({ enabled: settingsYoutubeMini.checked }));
+  settingsYoutubeClick.addEventListener('change', () => saveYoutubeMiniSetting({ clickBehavior: settingsYoutubeClick.value }));
 }
 
 // ── Limits: Parallel-Limit, Höchstdauer, Reserve (Etappe 1) ──
@@ -2129,6 +2233,7 @@ async function selectTvChannel(ch, options = {}) {
   currentProvider = '__tv__';
   switchWebview(true);
   pauseRadioForVideo();
+  ytMini.stopForOtherPlayback();
   lastMediaTitle = 'TV: ' + ch.name;
   welcomeScreen.style.display = 'none';
   if (dashboardView) dashboardView.style.display = 'none';
@@ -3006,6 +3111,7 @@ async function openRecordingPlayback(meta) {
     hideRecordingPlayerError();
     recordingPlayer.style.display = 'flex';
     pauseRadioForVideo();
+    ytMini.stopForOtherPlayback();
     if (file.kind === 'hls' && typeof Hls !== 'undefined' && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: false });
       recordingPlaybackHls = hls;
@@ -3452,6 +3558,8 @@ historyClear.addEventListener('click', () => {
 // Keyboard shortcut handler (shared for document + webview forwarding)
 function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
   if (key === 'Escape') {
+    // YouTube-Video app-füllend/Vollbild: Esc macht eine Stufe kleiner
+    if (ytMini.handleEscape()) return true;
     if (recLimitPending) {
       closeRecordingLimitDialog(false); // Soft-Limit-Dialog: Esc = „Verwerfen“
       return true;
@@ -3576,6 +3684,7 @@ window.electronAPI.onMediaKey(action => {
     previoustrack: 'navigator.mediaSession.previousTrack()',
     stop: 'navigator.mediaSession.stop()',
   };
+  if (ytMini.handleMediaKey(action)) return;
   const cmd = cmds[action];
   if (cmd && webviewReady && webview.getURL() !== 'about:blank') {
     webview.executeJavaScript(cmd).catch(() => {});

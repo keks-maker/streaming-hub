@@ -48,6 +48,15 @@
              preload="preload-content.js"
              plugins>
     </webview>
+    <!-- YouTube-Mini-Player: zweite Webview für das Video (Stöbern läuft in contentView). Wird nie neu geladen, nur per CSS
+         verschoben: Wiedergabeseite (content), Leiste (slot), ganzes Fenster (window) oder unsichtbar (hidden) -->
+    <webview id="ytPlayerView" class="yt-player-view yt-place-hidden"
+             src="about:blank"
+             partition="persist:streaming"
+             preload="preload-content.js"
+             allowpopups
+             plugins>
+    </webview>
     <div id="errorOverlay" class="error-overlay" style="display:none">
       <div class="error-overlay-content">
         <span id="errorMsg" class="error-msg"></span>
@@ -517,6 +526,19 @@
               </label>
               <p class="settings-card-desc">Entfernt Werbung in Videos und blendet Werbe-Elemente aus. Wirkt nur auf YouTube, andere Dienste bleiben unberührt. Die Netzsperre gilt sofort, der Rest nach dem Neuladen der YouTube-Seite.</p>
               <div class="settings-status settings-status-left" id="settingsYoutubeAdblockStatus" role="status" aria-live="polite"></div>
+              <label class="settings-rec-check" for="settingsYoutubeMini">
+                <input id="settingsYoutubeMini" type="checkbox" checked>
+                <span>Mini-Player für YouTube</span>
+              </label>
+              <p class="settings-card-desc">Läuft ein Video und du stöberst in YouTube weiter, läuft es klein in der Leiste unten weiter, auch in den anderen Bereichen der App. Dort lässt es sich vergrößern oder beenden, und eine Playlist merkt sich Videos als Nächstes. Aus: YouTube verhält sich wie bisher.</p>
+              <label class="settings-field" for="settingsYoutubeClick">
+                <span class="settings-field-label">Klick auf ein Video, während eines läuft</span>
+                <select class="settings-group-select" id="settingsYoutubeClick">
+                  <option value="replace">Laufendes Video ersetzen</option>
+                  <option value="playlist">Zur Playlist hinzufügen</option>
+                </select>
+              </label>
+              <div class="settings-status settings-status-left" id="settingsYoutubeMiniStatus" role="status" aria-live="polite"></div>
             </div>
           </section>
 
