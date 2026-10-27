@@ -76,6 +76,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Programmführer-Einstellungen (Etappe 3.5): Startansicht (auto | list | grid | jng), im Main validiert
   getEpgViewSettings: () => ipcRenderer.invoke('epg-view:get-settings'),
   setEpgViewSettings: patch => ipcRenderer.invoke('epg-view:set-settings', patch),
+  // YouTube-Werbeblocker (Streaming-Seite der Einstellungen): { enabled }, im Main validiert
+  getYoutubeAdblock: () => ipcRenderer.invoke('youtube-adblock:get-settings'),
+  setYoutubeAdblock: patch => ipcRenderer.invoke('youtube-adblock:set-settings', patch),
   getEpgStatus: () => ipcRenderer.invoke('epg:status'),
   refreshEpgCache: () => ipcRenderer.invoke('epg:refresh'),
 

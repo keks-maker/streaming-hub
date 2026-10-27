@@ -1,5 +1,70 @@
 // v0.3.7. – postMessage-Bridge + komplette Shortcut-Weiterleitung inkl. Alt+← (Zurück)
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, contextBridge, webFrame } = require('electron');
+
+// ── YouTube-Werbeblocker ──
+// Läuft synchron beim Preload-Start, also vor allen Seitenskripten, direkt in der Main-World
+// (contextBridge.executeInMainWorld: unabhängig von CSP und Trusted Types, anders als ein <script>-Element).
+// Ob der Blocker aktiv ist (Schalter an UND YouTube-Seite), entscheidet der Main (lib/youtube-adblock-ipc.js).
+// Logik aus der iOS-App mytube (Scripts.swift): Werbung aus Player-Antworten entfernen + Skip-Fallback.
+/* global Response, setInterval -- Main-World-Globals; die Funktion wird als Text in die Seite übertragen */
+function youtubeAdblockMainWorld() {
+  if (window.__shAdblock) return;
+  window.__shAdblock = true;
+  const AD_KEYS = ['adPlacements', 'playerAds', 'adSlots'];
+  const strip = o => {
+    try {
+      if (o && typeof o === 'object') {
+        for (const k of AD_KEYS) if (k in o) delete o[k];
+        if (o.playerResponse) strip(o.playerResponse);
+      }
+    } catch (e) {
+      // fremdes Objekt: unverändert durchreichen
+    }
+    return o;
+  };
+  const parse = JSON.parse;
+  JSON.parse = function () {
+    return strip(parse.apply(this, arguments));
+  };
+  const json = Response.prototype.json;
+  Response.prototype.json = function () {
+    return json.apply(this, arguments).then(strip);
+  };
+  try {
+    let initialPlayerResponse;
+    Object.defineProperty(window, 'ytInitialPlayerResponse', {
+      configurable: true,
+      get() {
+        return initialPlayerResponse;
+      },
+      set(v) {
+        initialPlayerResponse = strip(v);
+      },
+    });
+  } catch (e) {
+    // Eigenschaft schon fest definiert: Antworten werden trotzdem über JSON.parse/json() bereinigt
+  }
+  // Fallback: läuft doch eine Anzeige, ans Ende springen bzw. überspringen
+  setInterval(() => {
+    const v = document.querySelector('video');
+    if (document.querySelector('.ad-showing, .ad-interrupting') && v && isFinite(v.duration) && v.duration > 0) {
+      v.currentTime = v.duration;
+    }
+    document
+      .querySelectorAll('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-container button')
+      .forEach(b => b.click());
+  }, 400);
+}
+
+try {
+  const adblockState = ipcRenderer.sendSync('youtube-adblock:page-state');
+  if (adblockState && adblockState.active === true) {
+    contextBridge.executeInMainWorld({ func: youtubeAdblockMainWorld });
+    if (typeof adblockState.css === 'string' && adblockState.css) webFrame.insertCSS(adblockState.css);
+  }
+} catch (_) {
+  // Blocker ist optional: nie den restlichen Preload verhindern
+}
 
 const script = document.createElement('script');
 script.textContent = `

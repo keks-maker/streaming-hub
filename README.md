@@ -347,7 +347,7 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 
 - **Allgemein** – Backup & Restore
 - **LiveTV** – Quellen, Sender, EPG, Wiedergabe (TV-Modus) und Aufnahmen
-- **Streaming** – Streaming-Dienste hinzufügen und entfernen
+- **Streaming** – Streaming-Dienste hinzufügen und entfernen, YouTube-Werbeblocker
 - **Radio** – Sender, Eigene Sender und Wiedergabe
 - **Mediatheken** – Mediatheken hinzufügen und entfernen
 
@@ -359,6 +359,9 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 
 #### Dienste verwalten
 Über **+** fügst du eigene Streaming-Dienste oder Mediatheken hinzu (Name, URL, Icon, Farbe); mit dem ×-Button entfernst du sie wieder.
+
+#### YouTube-Werbeblocker
+Unter **Streaming → YouTube** blockiert „Werbung auf YouTube blockieren“ (Standard: an) Werbe-Anfragen, entfernt Werbung aus den Videoantworten und blendet Werbe-Elemente aus. Der Blocker wirkt nur auf YouTube (youtube.com, youtube-nocookie.com), nie auf andere Dienste. Das Umschalten sperrt Werbe-Anfragen sofort; Skript und Ausblenden gelten nach dem Neuladen der YouTube-Seite. Das Ausblenden setzt auf YouTube-Elementnamen und kann nach Änderungen bei YouTube nachgezogen werden müssen.
 
 #### TV-Modus
 - **FreeTV** – LiveTV öffnet das Dashboard mit den Sendern aus deinen eigenen M3U-Quellen

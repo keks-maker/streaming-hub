@@ -1044,6 +1044,7 @@ function renderDashboard(groupKey, opts = {}) {
     // Aufnahmen-Settings (Phase 1c): Speicherort + ffmpeg-Diagnose laden
     if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
     loadEpgStartViewUi();
+    loadYoutubeAdblockUi();
   } else if (isTv) {
     renderLiveTvDashboard();
   } else if (isRadio) {
@@ -1535,6 +1536,35 @@ if (settingsEpgStartView) {
     } catch (e) {
       settingsEpgStartViewStatus.textContent = 'Speichern fehlgeschlagen: ' + (e?.message || e);
       loadEpgStartViewUi();
+    }
+  });
+}
+
+// ── Settings „Streaming“: YouTube-Werbeblocker (Standard an) ──
+// Persistenz und Validierung im Main (lib/youtube-adblock-ipc.js); hier nur Anzeige und Speichern.
+const settingsYoutubeAdblock = document.getElementById('settingsYoutubeAdblock');
+const settingsYoutubeAdblockStatus = document.getElementById('settingsYoutubeAdblockStatus');
+
+async function loadYoutubeAdblockUi() {
+  if (!settingsYoutubeAdblock || !window.electronAPI.getYoutubeAdblock) return;
+  try {
+    const saved = await window.electronAPI.getYoutubeAdblock();
+    settingsYoutubeAdblock.checked = saved.enabled;
+    settingsYoutubeAdblockStatus.textContent = '';
+  } catch (e) {
+    settingsYoutubeAdblockStatus.textContent = 'Werbeblocker nicht verfügbar: ' + (e?.message || e);
+  }
+}
+
+if (settingsYoutubeAdblock) {
+  settingsYoutubeAdblock.addEventListener('change', async () => {
+    try {
+      const saved = await window.electronAPI.setYoutubeAdblock({ enabled: settingsYoutubeAdblock.checked });
+      settingsYoutubeAdblock.checked = saved.enabled;
+      settingsYoutubeAdblockStatus.textContent = 'Gespeichert. YouTube-Seiten bitte neu laden, damit die Änderung vollständig gilt.';
+    } catch (e) {
+      settingsYoutubeAdblockStatus.textContent = 'Speichern fehlgeschlagen: ' + (e?.message || e);
+      loadYoutubeAdblockUi();
     }
   });
 }

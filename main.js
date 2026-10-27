@@ -33,6 +33,7 @@ const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
 const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
+const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
@@ -832,6 +833,8 @@ app.whenReady().then(() => {
   }
   // Startansicht des Programmführers (Etappe 3.5): unabhängig vom EPG-Dienst, damit die Einstellung immer erreichbar bleibt
   registerEpgViewSettingsIpc({ ipcMain, storage: userStorage, requireMainRenderer });
+  // YouTube-Werbeblocker: Netzsperre auf der Streaming-Partition (nur YouTube-Seiten) + Schalter + Zustand für den Preload
+  registerYoutubeAdblock({ ipcMain, session, storage: userStorage, requireMainRenderer, logger });
 
   // ── Radio (Konzept §2/§7): Zustand im Main, Audio im unsichtbaren Player-Fenster ──
   // Das Player-Fenster wird erst beim ersten Abspielen erzeugt (show:false), in Tests öffnet sich nichts.
