@@ -262,3 +262,55 @@ test('Verdrahtung: Einstellung, Preload-API, Streaming-Seite', () => {
   assert.match(streaming, /id="settingsYoutubeAdblock" type="checkbox" checked/);
   assert.match(read('renderer.js'), /setYoutubeAdblock\(\{ enabled: settingsYoutubeAdblock\.checked \}\)/);
 });
+
+test('Main-World-Hook: entfernt Werbe-Kacheln aus Feed-Antworten, Rest und Guide bleiben', () => {
+  const on = loadPreload({ adblockState: { active: true, css: '' } });
+  const win = {};
+  const ctx = vm.createContext({ window: win, document: { querySelector: () => null, querySelectorAll: () => [] }, Response: class {}, JSON, setInterval() {}, isFinite });
+  vm.runInContext(`(${on.executed[0].func.toString()})()`, ctx);
+  const video = id => ({ richItemRenderer: { content: { videoRenderer: { videoId: id } } } });
+  const feed = {
+    responseContext: {},
+    contents: { twoColumnBrowseResultsRenderer: { tabs: [{ tabRenderer: { content: { richGridRenderer: { contents: [
+      { richItemRenderer: { content: { adSlotRenderer: { x: 1 } } } },
+      video('a'),
+      { richSectionRenderer: { content: { adSlotRenderer: {} } } },
+      { richSectionRenderer: { content: { richShelfRenderer: { title: 'Shorts' } } } },
+      { adSlotRenderer: {} },
+      video('b'),
+      { continuationItemRenderer: {} },
+    ] } } } }] } },
+  };
+  const parsed = JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(feed))));
+  const items = parsed.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.richGridRenderer.contents;
+  assert.equal(items.length, 4);
+  assert.deepEqual(items.map(i => Object.keys(i)[0]), ['richItemRenderer', 'richSectionRenderer', 'richItemRenderer', 'continuationItemRenderer']);
+  assert.equal(items[0].richItemRenderer.content.videoRenderer.videoId, 'a');
+
+  // Fortsetzungen und ytInitialData
+  const cont = { onResponseReceivedActions: [{ appendContinuationItemsAction: { continuationItems: [video('c'), { richItemRenderer: { content: { adSlotRenderer: {} } } }] } }] };
+  const c2 = JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(cont))));
+  assert.equal(c2.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems.length, 1);
+  win.ytInitialData = JSON.parse(JSON.stringify(feed));
+  assert.equal(JSON.stringify(win.ytInitialData).includes('adSlotRenderer'), false);
+
+  // itemSectionRenderer: nur reine Werbe-Listen fallen, normale Videos bleiben
+  const sections = { responseContext: {}, contents: { sectionListRenderer: { contents: [
+    { itemSectionRenderer: { contents: [{ adSlotRenderer: {} }] } },
+    { itemSectionRenderer: { contents: [{ videoRenderer: { videoId: 'v' } }] } },
+    { itemSectionRenderer: { contents: [{ adSlotRenderer: {} }, { videoRenderer: { videoId: 'w' } }] } },
+    { richSectionRenderer: { content: { richShelfRenderer: { title: 'Shorts', contents: [{ richItemRenderer: { content: { reelItemRenderer: {} } } }] } } } },
+  ] } } };
+  const s2 = JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(sections)))).contents.sectionListRenderer.contents;
+  assert.equal(s2.length, 3);
+  assert.deepEqual(s2[0].itemSectionRenderer.contents, [{ videoRenderer: { videoId: 'v' } }]);
+  assert.deepEqual(s2[1].itemSectionRenderer.contents, [{ videoRenderer: { videoId: 'w' } }]);
+  assert.ok(s2[2].richSectionRenderer.content.richShelfRenderer.contents[0].richItemRenderer.content.reelItemRenderer);
+
+  // Regression: Nicht-Werbung und Guide-Antwort unverändert
+  const guide = { responseContext: {}, items: [{ guideSectionRenderer: { items: [{ guideEntryRenderer: { icon: { iconType: 'HOME' }, navigationEndpoint: {} } }] } }] };
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(guide)))), guide);
+  const plain = { responseContext: {}, contents: [video('x'), video('y')] };
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(plain)))), plain);
+  assert.deepEqual(ctx.JSON.parse('[{"adSlotRenderer":{}}]').length, 1); // reine Arrays ohne Feed-Kennzeichen: unberührt
+});

@@ -11,11 +11,49 @@ function youtubeAdblockMainWorld() {
   if (window.__shAdblock) return;
   window.__shAdblock = true;
   const AD_KEYS = ['adPlacements', 'playerAds', 'adSlots'];
+  // Werbe-Kacheln in Feed-Antworten (Browse/Next): ganze Einträge samt Wrapper aus den Listen entfernen,
+  // damit das Raster nachrückt. Nur Arrays werden gefiltert; Tiefe begrenzt, Guide u. a. bleiben unberührt.
+  const AD_RENDERERS = [
+    'adSlotRenderer', 'displayAdRenderer', 'promotedSparklesWebRenderer', 'promotedSparklesTextSearchRenderer',
+    'promotedVideoRenderer', 'inFeedAdLayoutRenderer', 'brandVideoSingletonRenderer', 'searchPyvRenderer',
+  ];
+  const WRAPPERS = ['richItemRenderer', 'richSectionRenderer', 'itemSectionRenderer'];
+  const isAdEntry = e => {
+    if (!e || typeof e !== 'object') return false;
+    for (const r of AD_RENDERERS) if (r in e) return true;
+    for (const w of WRAPPERS) {
+      const inner = e[w];
+      if (inner && typeof inner === 'object') {
+        const c = inner.content;
+        if (c && typeof c === 'object') for (const r of AD_RENDERERS) if (r in c) return true;
+        // itemSectionRenderer: nur wenn die Liste ausschließlich aus Werbung besteht
+        const list = inner.contents;
+        if (w === 'itemSectionRenderer' && Array.isArray(list) && list.length && list.every(isAdEntry)) return true;
+      }
+    }
+    return false;
+  };
+  const dropAdTiles = (node, depth) => {
+    if (!node || typeof node !== 'object' || depth > 14) return;
+    if (Array.isArray(node)) {
+      for (let i = node.length - 1; i >= 0; i--) {
+        if (isAdEntry(node[i])) node.splice(i, 1);
+        else dropAdTiles(node[i], depth + 1);
+      }
+      return;
+    }
+    for (const k in node) {
+      const v = node[k];
+      if (v && typeof v === 'object') dropAdTiles(v, depth + 1);
+    }
+  };
+  const isFeedData = o => 'responseContext' in o || 'onResponseReceivedActions' in o || ('contents' in o && 'header' in o);
   const strip = o => {
     try {
       if (o && typeof o === 'object') {
         for (const k of AD_KEYS) if (k in o) delete o[k];
         if (o.playerResponse) strip(o.playerResponse);
+        if (!Array.isArray(o) && isFeedData(o)) dropAdTiles(o, 0);
       }
     } catch (e) {
       // fremdes Objekt: unverändert durchreichen
@@ -43,6 +81,20 @@ function youtubeAdblockMainWorld() {
     });
   } catch (e) {
     // Eigenschaft schon fest definiert: Antworten werden trotzdem über JSON.parse/json() bereinigt
+  }
+  try {
+    let initialData;
+    Object.defineProperty(window, 'ytInitialData', {
+      configurable: true,
+      get() {
+        return initialData;
+      },
+      set(v) {
+        initialData = strip(v);
+      },
+    });
+  } catch (e) {
+    // Eigenschaft schon fest definiert: Folgeantworten werden trotzdem bereinigt
   }
   // Fallback: läuft doch eine Anzeige, ans Ende springen bzw. überspringen
   setInterval(() => {
