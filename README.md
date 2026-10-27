@@ -347,7 +347,7 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 
 - **Allgemein** – Backup & Restore
 - **LiveTV** – Quellen, Sender, EPG, Wiedergabe (TV-Modus) und Aufnahmen
-- **Streaming** – Streaming-Dienste hinzufügen und entfernen, YouTube-Werbeblocker
+- **Streaming** – Streaming-Dienste hinzufügen und entfernen, YouTube-Werbeblocker und Mini-Player
 - **Radio** – Sender, Eigene Sender und Wiedergabe
 - **Mediatheken** – Mediatheken hinzufügen und entfernen
 
@@ -362,6 +362,16 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 
 #### YouTube-Werbeblocker
 Unter **Streaming → YouTube** blockiert „Werbung auf YouTube blockieren“ (Standard: an) Werbe-Anfragen, entfernt Werbung aus den Videoantworten und blendet Werbe-Elemente aus. Der Blocker wirkt nur auf YouTube (youtube.com, youtube-nocookie.com), nie auf andere Dienste. Das Umschalten sperrt Werbe-Anfragen sofort; Skript und Ausblenden gelten nach dem Neuladen der YouTube-Seite. Das Ausblenden setzt auf YouTube-Elementnamen und kann nach Änderungen bei YouTube nachgezogen werden müssen.
+
+#### YouTube-Mini-Player mit Video und Playlist
+Läuft ein YouTube-Video und du stöberst weiter (Logo, Suche, Kanal, Abos ...), läuft das Video ohne Neuladen und ohne Unterbrechung klein in der Leiste am unteren Rand weiter (dieselbe Leiste wie bei Radio und Podcast, dort bleibt alles wie bisher). Das Stöbern läuft in einer zweiten Webview, das Video bleibt in seiner eigenen; beide teilen Anmeldung und Werbeblocker. Ein **pausiertes** Video wird nicht automatisch klein. Manuell geht es über YouTubes Miniplayer-Knopf oder die Taste `i`.
+
+- **Wieder hochholen** – „Zurück zum Video“ (Knopf oder Klick aufs Videobild) zeigt die Ursprungsseite mit Kommentaren an derselben Stelle, „App-füllend anzeigen“ nur das Video im ganzen Fenster (Steuerung bei Mausbewegung), „Vollbild“ über den ganzen Bildschirm. **Esc** geht jeweils eine Stufe zurück, nämlich zu der Stufe, aus der du kamst. **Alt+←** und der Zurück-Knopf bewegen nur das Stöbern; führt „Zurück“ auf die Seite des laufenden Videos, wird der Player wieder groß. Wer YouTube verlässt (Dashboard, anderer Bereich), behält den Mini-Player. Das Kreuz beendet die Wiedergabe. Alle Knöpfe haben Tooltips.
+- **Ton** – Das Video endet, sobald ein anderer Streamingdienst, LiveTV, Radio, Podcast, eine Mediathek oder eine Aufnahme-Wiedergabe startet. Startet ein Video, pausieren Radio und Podcast wie bei anderen Diensten (Einstellung „Radio pausieren, wenn LiveTV, ein Streamingdienst oder eine Aufnahme startet“).
+- **Playlist** – Beim Überfahren eines Vorschaubilds erscheint „+“ („Zur Playlist hinzufügen“); der Rechtsklick auf einen Video-Link oder ein Vorschaubild bietet „Als Nächstes abspielen“ und „Zur Playlist hinzufügen“. Das Feld hinter dem Playlist-Knopf zeigt die kommenden Videos mit Vorschaubild und Titel: Klick spielt ab, per Ziehen (oder ▲▼) umsortieren, × entfernt. Am Videoende startet der nächste Eintrag; ist die Liste leer, endet die Wiedergabe (YouTubes eigenes Autoplay wird abgebrochen). Die Playlist bleibt über Neustarts erhalten (`youtube-playlist.json`, höchstens 200 Einträge, nur YouTube-Video-IDs).
+- **Einstellungen** (Streaming → YouTube) – „Mini-Player für YouTube“ (Standard an; aus = YouTube verhält sich wie bisher) und „Klick auf ein Video, während eines läuft“: Laufendes Video ersetzen (Standard) oder Zur Playlist hinzufügen.
+
+Nur YouTube ist betroffen; andere Dienste, TV und Bild-in-Bild bleiben unverändert.
 
 #### Links und Kontextmenü in Streaming-Diensten
 Externe Links in YouTube (z. B. in Videobeschreibungen, auch im PiP-Fenster) öffnen im Standardbrowser, YouTube-Links bleiben in der App; es entstehen nie neue App-Fenster. Bei anderen Diensten werden Popups wie bisher verworfen. Ein Rechtsklick zeigt ein Kontextmenü: Kopieren bei markiertem Text, in Eingabefeldern Ausschneiden/Kopieren/Einfügen/Alles auswählen, bei Links „Link im Browser öffnen“ und „Link kopieren“.
