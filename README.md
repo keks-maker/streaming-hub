@@ -28,6 +28,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 - **Live-TV** – Sender-Kacheln, Favoriten, aktuell laufende Sendungen und Senderverwaltung (M3U-Quellen, Suche, Sortierung)
 - **Radio** – Online-Radio mit mitgelieferter Senderliste (rund 250 deutsche Sender), eigenen Sendern per Stream-URL, Favoriten, Mini-Player und Steuerung aus dem Menüzeilensymbol; spielt auch bei geschlossenem Fenster weiter
 - **Podcasts** – Sendungen über die iTunes-Suche finden, abonnieren oder per Feed-Adresse hinzufügen, mitgelieferte öffentlich-rechtliche Liste, neue Episoden, Hörstatus und Fortsetzen, Player mit Tempo und Sprüngen, Mini-Player und Steuerung aus dem Menüzeilensymbol
+- **YouTube** – mit eingebautem Werbeblocker (schaltbar) und **Mini-Player mit Video und Playlist**: Das Video läuft beim Weiterstöbern klein in der unteren Leiste weiter, eine Warteschlange sammelt die nächsten Videos (Abschnitt „YouTube-Mini-Player mit Video und Playlist“)
 - **Programmführer (EPG)** – Vollbild-Programmübersicht als Liste, Raster oder „Jetzt & Gleich“, Suche, Senderauswahl, Genre-Filter, Kanalansicht mit 7 Tagen je Sender, Details mit Poster, Besetzung und weiteren Terminen, Aufnehmen, Abbrechen und Stoppen direkt in der Sendung
 - **Aufnahmen** – Live-TV-Sendungen aufnehmen, auch vom Beginn der laufenden Sendung an, aus dem EPG im Voraus planen und später in der App abspielen
 - **Zeitversetztes Fernsehen (Timeshift)** – Bei unterstützten Live-Streams zurückspulen und Sendungen per EPG-Marker anspringen
@@ -40,7 +41,7 @@ Zentrale Streaming-Anwendung mit Widevine-DRM-Unterstützung über Castlabs Elec
 - **Einstellungen** – Dienste, TV-Quellen, Sender, EPG, Wiedergabe, Aufnahmen, Radio und Podcasts an einem Ort
 - **Backup/Restore** – Einstellungen, Dienste, TV-Quellen, Radio, Podcasts und Verlauf sichern und wiederherstellen
 - **Auto-Update** – Neue Versionen direkt aus der App installieren
-- **Tastaturkürzel** – für Navigation, Verlauf, Aufnahmen, Bild-in-Bild und Vollbild
+- **Tastaturkürzel** – für Navigation, Verlauf, Aufnahmen, Bild-in-Bild, Vollbild und den YouTube-Mini-Player
 
 ## Voraussetzungen
 
@@ -214,7 +215,7 @@ Wähle in der Navigationsleiste oder auf der Startseite **Radio** (direkt nach L
 
 #### Mini-Player
 
-Solange Radio läuft oder pausiert ist, zeigt eine Leiste am unteren Rand auf allen Seiten Sender und aktuellen Titel (sofern der Sender ihn liefert), **Vorheriger / Play-Pause / Nächster Favorit**, Lautstärke und **Stopp**. Im Vollbild ist sie ausgeblendet. Startest du einen LiveTV-Kanal, einen Streamingdienst oder eine Aufnahme, wird das Radio pausiert (abschaltbar) und nicht automatisch fortgesetzt.
+Solange Radio läuft oder pausiert ist, zeigt eine Leiste am unteren Rand auf allen Seiten Sender und aktuellen Titel (sofern der Sender ihn liefert), **Vorheriger / Play-Pause / Nächster Favorit**, Lautstärke und **Stopp**. Im Vollbild ist sie ausgeblendet. Die Leiste ist gemeinsam: Auch ein laufendes YouTube-Video erscheint dort (siehe „YouTube-Mini-Player mit Video und Playlist“); es spielt immer nur eines von Radio, Podcast und YouTube. Startest du einen LiveTV-Kanal, einen Streamingdienst oder eine Aufnahme, wird das Radio pausiert (abschaltbar) und nicht automatisch fortgesetzt.
 
 #### Senderverwaltung
 
@@ -366,9 +367,17 @@ Unter **Streaming → YouTube** blockiert „Werbung auf YouTube blockieren“ (
 #### YouTube-Mini-Player mit Video und Playlist
 Läuft ein YouTube-Video und du stöberst weiter (Logo, Suche, Kanal, Abos ...), läuft das Video ohne Neuladen und ohne Unterbrechung klein in der Leiste am unteren Rand weiter (dieselbe Leiste wie bei Radio und Podcast, dort bleibt alles wie bisher). Das Stöbern läuft in einer zweiten Webview, das Video bleibt in seiner eigenen; beide teilen Anmeldung und Werbeblocker. Ein **pausiertes** Video wird nicht automatisch klein. Manuell geht es über YouTubes Miniplayer-Knopf oder die Taste `i`.
 
+Kurz gesagt:
+- **Automatisch klein** – Verlässt du die Videoseite, während es läuft, wird das Video zum Mini-Player; manuell mit der Taste `i` oder YouTubes Miniplayer-Knopf.
+- **Drei Wege nach oben** – „Zurück zum Video“, „App-füllend anzeigen“, „Vollbild“.
+- **Schließen in Stufen** – `Esc` oder das X über dem Video gehen eine Stufe zurück; das Kreuz in der Leiste beendet die Wiedergabe.
+- **Playlist** – „+“ an Kacheln oder Rechtsklick, Umsortieren per Ziehen, bleibt nach Neustart erhalten.
+- **Immer nur eins** – Radio, Podcast, andere Dienste und YouTube-Video schließen sich gegenseitig aus.
+- **Ein/Aus** – Einstellungen → Streaming → YouTube.
+
 - **Wieder hochholen** – „Zurück zum Video“ (Knopf oder Klick aufs Videobild) zeigt die Ursprungsseite mit Kommentaren an derselben Stelle, „App-füllend anzeigen“ nur das Video im ganzen Fenster (Steuerung bei Mausbewegung), „Vollbild“ über den ganzen Bildschirm. **Esc** oder das **X** oben links über dem Video („Verkleinern (Esc)“, erscheint bei Mausbewegung) geht jeweils eine Stufe zurück, nämlich zu der Stufe, aus der du kamst. **Alt+←** und der Zurück-Knopf bewegen nur das Stöbern; führt „Zurück“ auf die Seite des laufenden Videos, wird der Player wieder groß. Wer YouTube verlässt (Dashboard, anderer Bereich), behält den Mini-Player; ein pausiertes Video aus „App-füllend“ bleibt dabei pausiert erhalten. Das Kreuz beendet die Wiedergabe. Alle Knöpfe haben Tooltips.
 - **Ton** – Das Video endet, sobald ein anderer Streamingdienst, LiveTV, Radio, Podcast, eine Mediathek oder eine Aufnahme-Wiedergabe startet. Startet ein Video, pausieren Radio und Podcast wie bei anderen Diensten (Einstellung „Radio pausieren, wenn LiveTV, ein Streamingdienst oder eine Aufnahme startet“).
-- **Playlist** – Beim Überfahren einer Kachel erscheint in der Titelzeile links neben dem Drei-Punkte-Menü ein runder „+“-Knopf in der Akzentfarbe („Zur Playlist hinzufügen“); der Rechtsklick auf einen Video-Link oder ein Vorschaubild bietet „Als Nächstes abspielen“ und „Zur Playlist hinzufügen“. Das Feld hinter dem Playlist-Knopf zeigt die kommenden Videos mit Vorschaubild und Titel: Klick spielt ab, per Ziehen (oder ▲▼) umsortieren, × entfernt. Am Videoende startet der nächste Eintrag; ist die Liste leer, endet die Wiedergabe (YouTubes eigenes Autoplay wird abgebrochen). Die Playlist bleibt über Neustarts erhalten (`youtube-playlist.json`, höchstens 200 Einträge, nur YouTube-Video-IDs).
+- **Playlist** – Beim Überfahren einer Kachel erscheint in der Titelzeile links neben dem Drei-Punkte-Menü ein runder „+“-Knopf in der Akzentfarbe („Zur Playlist hinzufügen“); der Rechtsklick auf einen Video-Link oder ein Vorschaubild bietet „Als Nächstes abspielen“ und „Zur Playlist hinzufügen“. Das Feld hinter dem Playlist-Knopf zeigt die kommenden Videos mit Vorschaubild und Titel: Klick spielt ab, per Ziehen (oder ▲▼) umsortieren, × entfernt. Am Videoende startet der nächste Eintrag; ist die Liste leer, endet die Wiedergabe (YouTubes eigenes Autoplay wird abgebrochen). Die Playlist bleibt über Neustarts erhalten (`youtube-playlist.json`, höchstens 200 Einträge, nur YouTube-Video-IDs). Weitere gespeicherte Dateien: `youtube-adblock-settings.json` (Werbeblocker) und `youtube-mini-settings.json` (Mini-Player-Einstellungen) im Datenordner der App.
 - **Einstellungen** (Streaming → YouTube) – „Mini-Player für YouTube“ (Standard an; aus = YouTube verhält sich wie bisher) und „Klick auf ein Video, während eines läuft“: Laufendes Video ersetzen (Standard) oder Zur Playlist hinzufügen.
 
 Nur YouTube ist betroffen; andere Dienste, TV und Bild-in-Bild bleiben unverändert.
@@ -394,8 +403,9 @@ Drücke `?` für eine Übersicht aller Kürzel:
 | `Strg` + `T` | Live-TV öffnen |
 | `Strg` + `P` | Bild-in-Bild umschalten |
 | `F11` | Vollbild umschalten |
+| `I` | YouTube: Video in den Mini-Player verkleinern |
 | `?` | Kürzel-Übersicht |
-| `Escape` | Modal / Overlay schließen |
+| `Escape` | Modal / Overlay schließen; bei YouTube eine Stufe zurück (Vollbild → App-füllend → Mini-Player) |
 
 **Im TV-Player zusätzlich:**
 
