@@ -227,8 +227,9 @@ test('Main-World-Hook: entfernt Werbe-Schlüssel aus JSON.parse, Response.json u
       return Promise.resolve({ adPlacements: [1], playerAds: [2], adSlots: [3], keep: 1, playerResponse: { adSlots: [1], ok: true } });
     }
   }
-  const ctx = vm.createContext({ window: win, document: doc, Response: FakeResponse, JSON, setInterval: (f, ms) => intervals.push([f, ms]), isFinite });
+  const ctx = vm.createContext({ window: win, document: doc, Response: FakeResponse, setInterval: (f, ms) => intervals.push([f, ms]), isFinite });
   vm.runInContext(`(${on.executed[0].func.toString()})()`, ctx);
+  ctx.JSON = vm.runInContext('JSON', ctx);
 
   const parsed = ctx.JSON.parse('{"adPlacements":[1],"adSlots":[],"title":"t","playerResponse":{"playerAds":[1],"x":2}}');
   assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { title: 't', playerResponse: { x: 2 } });
@@ -266,8 +267,9 @@ test('Verdrahtung: Einstellung, Preload-API, Streaming-Seite', () => {
 test('Main-World-Hook: entfernt Werbe-Kacheln aus Feed-Antworten, Rest und Guide bleiben', () => {
   const on = loadPreload({ adblockState: { active: true, css: '' } });
   const win = {};
-  const ctx = vm.createContext({ window: win, document: { querySelector: () => null, querySelectorAll: () => [] }, Response: class {}, JSON, setInterval() {}, isFinite });
+  const ctx = vm.createContext({ window: win, document: { querySelector: () => null, querySelectorAll: () => [] }, Response: class {}, setInterval() {}, isFinite });
   vm.runInContext(`(${on.executed[0].func.toString()})()`, ctx);
+  const ctxJson = vm.runInContext('JSON', ctx); // Context-eigenes, gehooktes JSON
   const video = id => ({ richItemRenderer: { content: { videoRenderer: { videoId: id } } } });
   const feed = {
     responseContext: {},
@@ -281,7 +283,7 @@ test('Main-World-Hook: entfernt Werbe-Kacheln aus Feed-Antworten, Rest und Guide
       { continuationItemRenderer: {} },
     ] } } } }] } },
   };
-  const parsed = JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(feed))));
+  const parsed = JSON.parse(JSON.stringify(ctxJson.parse(JSON.stringify(feed))));
   const items = parsed.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.richGridRenderer.contents;
   assert.equal(items.length, 4);
   assert.deepEqual(items.map(i => Object.keys(i)[0]), ['richItemRenderer', 'richSectionRenderer', 'richItemRenderer', 'continuationItemRenderer']);
@@ -289,10 +291,15 @@ test('Main-World-Hook: entfernt Werbe-Kacheln aus Feed-Antworten, Rest und Guide
 
   // Fortsetzungen und ytInitialData
   const cont = { onResponseReceivedActions: [{ appendContinuationItemsAction: { continuationItems: [video('c'), { richItemRenderer: { content: { adSlotRenderer: {} } } }] } }] };
-  const c2 = JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(cont))));
+  const c2 = JSON.parse(JSON.stringify(ctxJson.parse(JSON.stringify(cont))));
   assert.equal(c2.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems.length, 1);
-  win.ytInitialData = JSON.parse(JSON.stringify(feed));
+  const hostJsonParse = JSON.parse;
+  const rawFeed = JSON.parse(JSON.stringify(feed)); // Host-JSON, ungehookt (siehe Assertion unten)
+  assert.equal(JSON.stringify(rawFeed).includes('adSlotRenderer'), true); // Eingabe enthält Werbung
+  win.ytInitialData = rawFeed; // unbereinigt: nur der Setter darf filtern
   assert.equal(JSON.stringify(win.ytInitialData).includes('adSlotRenderer'), false);
+  assert.equal(JSON.stringify(win.ytInitialData).includes('"videoId":"a"'), true);
+  assert.equal(JSON.parse, hostJsonParse); // Host-JSON bleibt ungehookt
 
   // itemSectionRenderer: nur reine Werbe-Listen fallen, normale Videos bleiben
   const sections = { responseContext: {}, contents: { sectionListRenderer: { contents: [
@@ -301,7 +308,7 @@ test('Main-World-Hook: entfernt Werbe-Kacheln aus Feed-Antworten, Rest und Guide
     { itemSectionRenderer: { contents: [{ adSlotRenderer: {} }, { videoRenderer: { videoId: 'w' } }] } },
     { richSectionRenderer: { content: { richShelfRenderer: { title: 'Shorts', contents: [{ richItemRenderer: { content: { reelItemRenderer: {} } } }] } } } },
   ] } } };
-  const s2 = JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(sections)))).contents.sectionListRenderer.contents;
+  const s2 = JSON.parse(JSON.stringify(ctxJson.parse(JSON.stringify(sections)))).contents.sectionListRenderer.contents;
   assert.equal(s2.length, 3);
   assert.deepEqual(s2[0].itemSectionRenderer.contents, [{ videoRenderer: { videoId: 'v' } }]);
   assert.deepEqual(s2[1].itemSectionRenderer.contents, [{ videoRenderer: { videoId: 'w' } }]);
@@ -309,8 +316,8 @@ test('Main-World-Hook: entfernt Werbe-Kacheln aus Feed-Antworten, Rest und Guide
 
   // Regression: Nicht-Werbung und Guide-Antwort unverändert
   const guide = { responseContext: {}, items: [{ guideSectionRenderer: { items: [{ guideEntryRenderer: { icon: { iconType: 'HOME' }, navigationEndpoint: {} } }] } }] };
-  assert.deepEqual(JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(guide)))), guide);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctxJson.parse(JSON.stringify(guide)))), guide);
   const plain = { responseContext: {}, contents: [video('x'), video('y')] };
-  assert.deepEqual(JSON.parse(JSON.stringify(ctx.JSON.parse(JSON.stringify(plain)))), plain);
-  assert.deepEqual(ctx.JSON.parse('[{"adSlotRenderer":{}}]').length, 1); // reine Arrays ohne Feed-Kennzeichen: unberührt
+  assert.deepEqual(JSON.parse(JSON.stringify(ctxJson.parse(JSON.stringify(plain)))), plain);
+  assert.deepEqual(ctxJson.parse('[{"adSlotRenderer":{}}]').length, 1); // reine Arrays ohne Feed-Kennzeichen: unberührt
 });
