@@ -118,6 +118,22 @@ try {
   // Blocker ist optional: nie den restlichen Preload verhindern
 }
 
+// ── YouTube-Mini-Player ──
+// Skript (samt Stufen-CSS) liefert der Main (lib/youtube-mini-ipc.js, page-state): nur bei eingeschaltetem Mini-Player und YouTube-Seite.
+// Das Skript meldet per window.postMessage ({ __shMini }); hier wird es an den Host (Renderer) weitergereicht, der alles prüft.
+try {
+  const miniState = ipcRenderer.sendSync('youtube-mini:page-state');
+  if (miniState && miniState.active === true && typeof miniState.script === 'string' && miniState.script) {
+    webFrame.executeJavaScript(miniState.script).catch(() => {});
+    window.addEventListener('message', e => {
+      if (e.source !== window || !e.data || typeof e.data !== 'object' || !e.data.__shMini || typeof e.data.__shMini !== 'object') return;
+      ipcRenderer.sendToHost('youtube-mini', e.data.__shMini);
+    });
+  }
+} catch (_) {
+  // Mini-Player ist optional: nie den restlichen Preload verhindern
+}
+
 const script = document.createElement('script');
 script.textContent = `
 (function() {

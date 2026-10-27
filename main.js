@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, WebContentsView, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session, nativeTheme, Menu, clipboard } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session, nativeTheme, Menu, clipboard, webContents, net } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -34,6 +34,8 @@ const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
+const { registerYoutubeMini } = require('./lib/youtube-mini-ipc.js');
+let youtubeMini = null; // Zugriff auf die Mini-Player-Einstellungen (Kontextmenü der Webviews)
 const { attachWebviewGuest } = require('./lib/webview-guest.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
@@ -836,6 +838,8 @@ app.whenReady().then(() => {
   registerEpgViewSettingsIpc({ ipcMain, storage: userStorage, requireMainRenderer });
   // YouTube-Werbeblocker: Netzsperre auf der Streaming-Partition (nur YouTube-Seiten) + Schalter + Zustand für den Preload
   registerYoutubeAdblock({ ipcMain, session, storage: userStorage, requireMainRenderer, logger });
+  // YouTube-Mini-Player: Einstellungen, Playlist, Webview-Rollen und Seitenskript für den Preload
+  youtubeMini = registerYoutubeMini({ ipcMain, session, webContents, storage: userStorage, requireMainRenderer, getMainContents: () => mainWindow?.webContents || null, net, logger });
 
   // ── Radio (Konzept §2/§7): Zustand im Main, Audio im unsichtbaren Player-Fenster ──
   // Das Player-Fenster wird erst beim ersten Abspielen erzeugt (show:false), in Tests öffnet sich nichts.
@@ -1728,7 +1732,18 @@ function sendFullscreenState() {
 // Externe Links und Kontextmenü der Content-Webviews (persist:streaming, auch PiP)
 app.on('web-contents-created', (_event, contents) => {
   try {
-    attachWebviewGuest(contents, { streamingSession: session.fromPartition('persist:streaming'), shell, Menu, clipboard, logger });
+    attachWebviewGuest(contents, {
+      streamingSession: session.fromPartition('persist:streaming'),
+      shell,
+      Menu,
+      clipboard,
+      logger,
+      // Kontextmenü „Als Nächstes abspielen“ / „Zur Playlist hinzufügen“: der Haupt-Renderer führt die Aktion aus
+      isYoutubeMiniEnabled: guest => Boolean(youtubeMini && youtubeMini.getSettings().enabled && mainWindow && guest.hostWebContents === mainWindow.webContents),
+      onYoutubeAction: (guest, payload) => {
+        mainWindow?.webContents.send('youtube-mini:context-action', payload);
+      },
+    });
   } catch (e) {
     logger.warn('Webview-Anbindung fehlgeschlagen:', e.message);
   }

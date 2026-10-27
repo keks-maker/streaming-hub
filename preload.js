@@ -79,6 +79,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // YouTube-Werbeblocker (Streaming-Seite der Einstellungen): { enabled }, im Main validiert
   getYoutubeAdblock: () => ipcRenderer.invoke('youtube-adblock:get-settings'),
   setYoutubeAdblock: patch => ipcRenderer.invoke('youtube-adblock:set-settings', patch),
+  // YouTube-Mini-Player: Einstellungen, Playlist, Anmeldung der Player-Webview, Titelsuche, Kontextmenü-Aktionen (alles im Main validiert)
+  getYoutubeMiniSettings: () => ipcRenderer.invoke('youtube-mini:get-settings'),
+  setYoutubeMiniSettings: patch => ipcRenderer.invoke('youtube-mini:set-settings', patch),
+  getYoutubePlaylist: () => ipcRenderer.invoke('youtube-mini:get-playlist'),
+  setYoutubePlaylist: list => ipcRenderer.invoke('youtube-mini:set-playlist', list),
+  registerYoutubePlayer: webContentsId => ipcRenderer.invoke('youtube-mini:register-player', webContentsId),
+  resolveYoutubeTitle: ref => ipcRenderer.invoke('youtube-mini:resolve-title', ref),
+  onYoutubeContextAction: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('youtube-mini:context-action', handler);
+    return () => ipcRenderer.removeListener('youtube-mini:context-action', handler);
+  },
   getEpgStatus: () => ipcRenderer.invoke('epg:status'),
   refreshEpgCache: () => ipcRenderer.invoke('epg:refresh'),
 
