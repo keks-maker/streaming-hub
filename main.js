@@ -1,7 +1,7 @@
 // v0.3.6.
 const { compareVersions, cleanChannelName, parseM3UFull, applyChannelOverrides } = require('@streaming-hub/typed-core');
 const logger = require('./logger.js');
-const { app, BrowserWindow, WebContentsView, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session, nativeTheme } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, components, screen, globalShortcut, dialog, shell, protocol, powerMonitor, powerSaveBlocker, nativeImage, systemPreferences, safeStorage, session, nativeTheme, Menu, clipboard } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -34,6 +34,7 @@ const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
+const { attachWebviewGuest } = require('./lib/webview-guest.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
 const { RadioController } = require('./lib/radio/RadioController.js');
 const { RadioLibrary } = require('./lib/radio/RadioLibrary.js');
@@ -1723,6 +1724,15 @@ ipcMain.on('toggle-fullscreen', event => {
 function sendFullscreenState() {
   mainWindow?.webContents.send('fullscreen-state', mainWindow.isFullScreen());
 }
+
+// Externe Links und Kontextmenü der Content-Webviews (persist:streaming, auch PiP)
+app.on('web-contents-created', (_event, contents) => {
+  try {
+    attachWebviewGuest(contents, { streamingSession: session.fromPartition('persist:streaming'), shell, Menu, clipboard, logger });
+  } catch (e) {
+    logger.warn('Webview-Anbindung fehlgeschlagen:', e.message);
+  }
+});
 
 app.on('browser-window-created', (_event, window) => {
   window.on('enter-full-screen', sendFullscreenState);

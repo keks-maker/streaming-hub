@@ -101,10 +101,11 @@ function fakeMain({ stored = null, mainSender = {} } = {}) {
   let handler = null;
   let writes = [];
   const ipcMain = { handle: (c, f) => handles.set(c, f), on: (c, f) => ons.set(c, f) };
+  const ses = { webRequest: { onBeforeRequest: (f, h) => ((filter = f), (handler = h)) } };
   const session = {
     fromPartition: name => {
       assert.equal(name, 'persist:streaming');
-      return { webRequest: { onBeforeRequest: (f, h) => ((filter = f), (handler = h)) } };
+      return ses;
     },
   };
   const storage = { readJson: () => stored, writeJson: (k, v) => writes.push([k, v]) };
@@ -117,7 +118,7 @@ function fakeMain({ stored = null, mainSender = {} } = {}) {
     handler({ url, webContents: hasContents ? { getURL: () => pageUrl, isDestroyed: () => false } : null }, r => (result = r));
     return result;
   };
-  return { handles, ons, request, getFilter: () => filter, writes: () => writes, mainSender };
+  return { ses, handles, ons, request, getFilter: () => filter, writes: () => writes, mainSender };
 }
 
 test('Main: Netzsperre wirkt sofort beim Umschalten, nur auf YouTube-Seiten', async () => {
@@ -146,7 +147,7 @@ test('Main: gespeicherter Zustand, Absicherung der Kanäle, Preload-Zustand', as
   assert.deepEqual(m.writes(), []);
 
   const state = url => {
-    const event = { senderFrame: { url }, sender: { getURL: () => url } };
+    const event = { senderFrame: { url }, sender: { getURL: () => url, session: m.ses } };
     m.ons.get('youtube-adblock:page-state')(event);
     return event.returnValue;
   };
@@ -158,6 +159,10 @@ test('Main: gespeicherter Zustand, Absicherung der Kanäle, Preload-Zustand', as
   assert.match(on.css, /ytm-promoted-video-renderer/);
   assert.deepEqual(state('https://www.netflix.com/'), { active: false, css: '' });
   assert.deepEqual(state('file:///x/index.html'), { active: false, css: '' });
+  // Andere Partition (persist:tv): nie aktiv, auch nicht auf YouTube
+  const tv = { senderFrame: { url: 'https://www.youtube.com/' }, sender: { getURL: () => 'https://www.youtube.com/', session: {} } };
+  m.ons.get('youtube-adblock:page-state')(tv);
+  assert.deepEqual(tv.returnValue, { active: false, css: '' });
 });
 
 // ── Main-World-Hook (preload-content.js) ──

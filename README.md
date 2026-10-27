@@ -363,6 +363,9 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 #### YouTube-Werbeblocker
 Unter **Streaming → YouTube** blockiert „Werbung auf YouTube blockieren“ (Standard: an) Werbe-Anfragen, entfernt Werbung aus den Videoantworten und blendet Werbe-Elemente aus. Der Blocker wirkt nur auf YouTube (youtube.com, youtube-nocookie.com), nie auf andere Dienste. Das Umschalten sperrt Werbe-Anfragen sofort; Skript und Ausblenden gelten nach dem Neuladen der YouTube-Seite. Das Ausblenden setzt auf YouTube-Elementnamen und kann nach Änderungen bei YouTube nachgezogen werden müssen.
 
+#### Links und Kontextmenü in Streaming-Diensten
+Externe Links (z. B. in YouTube-Videobeschreibungen) öffnen im Standardbrowser, Links innerhalb des Dienstes bleiben in der App. Ein Rechtsklick zeigt ein Kontextmenü: Kopieren bei markiertem Text, in Eingabefeldern Ausschneiden/Kopieren/Einfügen/Alles auswählen, bei Links „Link im Browser öffnen“ und „Link kopieren“.
+
 #### TV-Modus
 - **FreeTV** – LiveTV öffnet das Dashboard mit den Sendern aus deinen eigenen M3U-Quellen
 - **MagentaTV** – TV-Button öffnet web.magentatv.de im Webview
