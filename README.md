@@ -364,7 +364,7 @@ Klicke auf das Zahnrad-Icon in der Navigationsleiste, um die Einstellungen zu ö
 Unter **Streaming → YouTube** blockiert „Werbung auf YouTube blockieren“ (Standard: an) Werbe-Anfragen, entfernt Werbung aus den Videoantworten und blendet Werbe-Elemente aus. Der Blocker wirkt nur auf YouTube (youtube.com, youtube-nocookie.com), nie auf andere Dienste. Das Umschalten sperrt Werbe-Anfragen sofort; Skript und Ausblenden gelten nach dem Neuladen der YouTube-Seite. Das Ausblenden setzt auf YouTube-Elementnamen und kann nach Änderungen bei YouTube nachgezogen werden müssen.
 
 #### Links und Kontextmenü in Streaming-Diensten
-Externe Links (z. B. in YouTube-Videobeschreibungen) öffnen im Standardbrowser, Links innerhalb des Dienstes bleiben in der App. Ein Rechtsklick zeigt ein Kontextmenü: Kopieren bei markiertem Text, in Eingabefeldern Ausschneiden/Kopieren/Einfügen/Alles auswählen, bei Links „Link im Browser öffnen“ und „Link kopieren“.
+Externe Links in YouTube (z. B. in Videobeschreibungen, auch im PiP-Fenster) öffnen im Standardbrowser, YouTube-Links bleiben in der App; es entstehen nie neue App-Fenster. Bei anderen Diensten werden Popups wie bisher verworfen. Ein Rechtsklick zeigt ein Kontextmenü: Kopieren bei markiertem Text, in Eingabefeldern Ausschneiden/Kopieren/Einfügen/Alles auswählen, bei Links „Link im Browser öffnen“ und „Link kopieren“.
 
 #### TV-Modus
 - **FreeTV** – LiveTV öffnet das Dashboard mit den Sendern aus deinen eigenen M3U-Quellen

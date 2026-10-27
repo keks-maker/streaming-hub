@@ -87,7 +87,7 @@
       <button class="pip-close" id="closeBtn">&times;</button>
     </div>
     <div class="pip-content">
-      <webview id="pipView" partition="persist:streaming" preload="preload-content.js" plugins></webview>
+      <webview id="pipView" partition="persist:streaming" preload="preload-content.js" allowpopups plugins></webview>
       <video id="pipVideo" autoplay muted playsinline style="display: none"></video>
     </div>
     <script src="node_modules/hls.js/dist/hls.min.js"></script>
@@ -99,7 +99,8 @@
 
       let activeHls = null;
       window.addEventListener('message', e => {
-        if (e.source !== window || e.origin !== window.location.origin) return;
+        // Bei file:// meldet Chromium den Absender als origin "null", location.origin ist "file://"; e.source === window sichert die Herkunft.
+        if (e.source !== window || (e.origin !== window.location.origin && e.origin !== 'null')) return;
         if (!e.data || typeof e.data !== 'object' || Array.isArray(e.data)) return;
         if (!['load-url', 'load-tv-stream'].includes(e.data.type) || typeof e.data.url !== 'string') return;
         let target;

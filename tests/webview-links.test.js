@@ -10,7 +10,7 @@ const { attachWebviewGuest } = require('../lib/webview-guest.js');
 
 const YT = 'https://www.youtube.com/watch?v=abc';
 
-test('window.open: externe http(s)-Ziele öffnen im Browser, nie andere Schemata', () => {
+test('window.open von YouTube: externe http(s)-Ziele öffnen im Browser, nie andere Schemata', () => {
   assert.deepEqual(classifyWindowOpen({ url: 'https://example.org/x', pageUrl: YT }), { action: 'external', url: 'https://example.org/x' });
   assert.deepEqual(classifyWindowOpen({ url: 'http://example.org/', pageUrl: YT }).action, 'external');
   for (const url of ['javascript:alert(1)', 'file:///etc/passwd', 'mailto:a@b.c', 'data:text/html,x', 'vscode://x', '', 'kaputt', null]) {
@@ -18,13 +18,25 @@ test('window.open: externe http(s)-Ziele öffnen im Browser, nie andere Schemata
   }
 });
 
-test('window.open: YouTube-intern bleibt in der Webview, Weiterleitung führt zum Ziel', () => {
+test('window.open von YouTube: YouTube-Ziele bleiben in der Webview, Weiterleitung führt zum Ziel', () => {
   assert.deepEqual(classifyWindowOpen({ url: 'https://www.youtube.com/channel/x', pageUrl: YT }), { action: 'internal', url: 'https://www.youtube.com/channel/x' });
-  assert.equal(classifyWindowOpen({ url: 'https://m.youtube.com/watch?v=1', pageUrl: YT }).action, 'internal');
+  for (const url of ['https://m.youtube.com/watch?v=1', 'https://youtu.be/abc', 'https://www.youtube-nocookie.com/embed/x', 'https://youtube.com/']) {
+    assert.equal(classifyWindowOpen({ url, pageUrl: YT }).action, 'internal', url);
+  }
   const r = classifyWindowOpen({ url: 'https://www.youtube.com/redirect?event=video_description&q=https%3A%2F%2Fexample.org%2Fa%3Fb%3D1&v=abc', pageUrl: YT });
   assert.deepEqual(r, { action: 'external', url: 'https://example.org/a?b=1' });
   assert.equal(classifyWindowOpen({ url: 'https://www.youtube.com/redirect?q=javascript%3Aalert(1)', pageUrl: YT }).action, 'internal');
-  assert.equal(classifyWindowOpen({ url: 'https://evil-youtube.com.example.org/', pageUrl: YT }).action, 'external');
+  for (const url of ['https://evil-youtube.com.example.org/', 'https://youtu.be.example.org/', 'https://notyoutube.com/']) {
+    assert.equal(classifyWindowOpen({ url, pageUrl: YT }).action, 'external', url);
+  }
+});
+
+test('window.open von Nicht-YouTube-Seiten wird verworfen', () => {
+  for (const pageUrl of ['https://www.netflix.com/watch/1', 'https://example.org/', 'https://youtu.be/abc', 'https://evil-youtube.com/', 'about:blank', '', undefined]) {
+    for (const url of ['https://example.org/', 'https://www.youtube.com/watch?v=1']) {
+      assert.equal(classifyWindowOpen({ url, pageUrl }).action, 'deny', `${pageUrl} -> ${url}`);
+    }
+  }
 });
 
 test('Navigation: nur YouTube-Weiterleitungen gehen nach außen', () => {
@@ -83,6 +95,8 @@ test('Verdrahtung: nur Webviews der Streaming-Partition', () => {
   };
   assert.equal(attachWebviewGuest(fakeContents({ session: {} }), deps), false); // persist:tv
   assert.equal(attachWebviewGuest(fakeContents({ type: 'window', session: streaming }), deps), false);
+  let clock = 10000;
+  deps.now = () => clock;
   const c = fakeContents({ session: streaming });
   assert.equal(attachWebviewGuest(c, deps), true);
   assert.deepEqual(c.open({ url: 'https://example.org/' }), { action: 'deny' });
@@ -98,4 +112,32 @@ test('Verdrahtung: nur Webviews der Streaming-Partition', () => {
   c.emit('context-menu', {}, { selectionText: 'x' });
   c.emit('context-menu', {}, {});
   assert.equal(popups.length, 1);
+});
+
+test('Popups: immer deny, Drosselung auf ein Öffnen pro Sekunde, Fremdseiten ohne Wirkung', () => {
+  const streaming = {};
+  const opened = [];
+  let clock = 5000;
+  const deps = {
+    streamingSession: streaming,
+    shell: { openExternal: u => (opened.push(u), Promise.resolve()) },
+    Menu: {},
+    clipboard: {},
+    now: () => clock,
+  };
+  const c = fakeContents({ session: streaming });
+  attachWebviewGuest(c, deps);
+  for (let i = 0; i < 5; i++) assert.deepEqual(c.open({ url: `https://example.org/${i}` }), { action: 'deny' });
+  assert.deepEqual(opened, ['https://example.org/0']);
+  clock += 999;
+  c.open({ url: 'https://example.org/x' });
+  assert.equal(opened.length, 1);
+  clock += 1;
+  c.open({ url: 'https://example.org/y' });
+  assert.deepEqual(opened, ['https://example.org/0', 'https://example.org/y']);
+  const other = fakeContents({ session: streaming, url: 'https://www.netflix.com/' });
+  attachWebviewGuest(other, deps);
+  assert.deepEqual(other.open({ url: 'https://example.org/n' }), { action: 'deny' });
+  assert.equal(opened.length, 2);
+  assert.deepEqual(other.loaded, []);
 });
