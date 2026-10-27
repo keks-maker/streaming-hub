@@ -94,12 +94,14 @@ function escape(state) {
 
 /**
  * Der Nutzer verlässt die Wiedergabeseite (Navigation in YouTube, anderer App-Bereich):
- * ein laufendes Video wird klein, ein pausiertes verworfen (wie bisher beim Seitenwechsel).
- * Rückgabe: { state, drop } – drop: Webview leeren.
+ * ein laufendes Video wird klein, ein pausiertes von der Wiedergabeseite verworfen (wie bisher beim Seitenwechsel).
+ * Aus „App-füllend“ bleibt auch ein pausiertes Video erhalten und landet pausiert im Mini-Player (wie im Mini-Modus).
+ * Ein beendetes Video wird immer verworfen. Rückgabe: { state, drop } – drop: Webview leeren.
  */
 function leavePage(state) {
   if (state.stage !== 'page' && state.stage !== 'app') return { state, drop: false };
-  return isPlaying(state) ? { state: { ...state, stage: 'mini', back: [] }, drop: false } : { state: initialState(), drop: true };
+  const keep = isPlaying(state) || (state.stage === 'app' && state.status !== 'ended');
+  return keep ? { state: { ...state, stage: 'mini', back: [] }, drop: false } : { state: initialState(), drop: true };
 }
 
 function close() {

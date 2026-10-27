@@ -39,6 +39,18 @@ test('Pausiertes Video wird NICHT klein: es wird verworfen (wie bisher beim Seit
   assert.equal(S.leavePage(S.setStatus(playing(), 'ended')).drop, true);
 });
 
+test('Pausiertes Video aus App-füllend bleibt erhalten und landet pausiert im Mini-Player; ein beendetes wird verworfen', () => {
+  const paused = S.setStatus(S.appFill(playing()), 'paused');
+  const result = S.leavePage(paused);
+  assert.equal(result.drop, false);
+  assert.equal(result.state.stage, 'mini');
+  assert.equal(result.state.status, 'paused');
+  assert.equal(result.state.videoId, A);
+  assert.deepEqual(result.state.back, []);
+  assert.equal(S.leavePage(S.setStatus(S.appFill(playing()), 'ended')).drop, true);
+  assert.equal(S.leavePage(S.setStatus(playing(), 'paused')).drop, true, 'von der Wiedergabeseite bleibt es beim Verwerfen');
+});
+
 test('leavePage wirkt nur auf page und app; mini und idle bleiben', () => {
   const mini = S.leavePage(playing(S.initialState(), A, 'mini'));
   assert.equal(mini.state.stage, 'mini');

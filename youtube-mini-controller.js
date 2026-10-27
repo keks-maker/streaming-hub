@@ -228,6 +228,16 @@ function createYoutubeMini(deps) {
     return result;
   }
 
+  /** Eine Stufe kleiner (Esc, X-Knopf): aus Vollbild bzw. App-füllend zurück zur Herkunft. true = behandelt. */
+  function stepDown() {
+    const result = state.escape(model);
+    if (!result.handled) return false;
+    const wasFullscreen = model.stage === 'fullscreen';
+    setModel(result.state);
+    if (wasFullscreen) exec('document.fullscreenElement && document.exitFullscreen()');
+    return true;
+  }
+
   // ───────── Nachrichten der Webviews ─────────
 
   function videoIdOf(message) {
@@ -244,6 +254,8 @@ function createYoutubeMini(deps) {
       if (target.kind === 'browse') browseFromPlayer(target.url);
     } else if (message.type === 'mini') {
       if (state.isActive(model)) minimize();
+    } else if (message.type === 'shrink') {
+      stepDown(); // X-Knopf über dem Video: wie Esc
     } else if (message.type === 'add') {
       const id = videoIdOf(message);
       if (id) addToPlaylist(id, playlistModel.cleanTitle(message.title));
@@ -626,12 +638,7 @@ function createYoutubeMini(deps) {
     /** Esc: eine Stufe kleiner. true = behandelt. */
     handleEscape() {
       if (now() - lastFullscreenLeave < ESC_AFTER_FULLSCREEN_MS) return true; // dieselbe Taste hat den Vollbildmodus schon beendet
-      const result = state.escape(model);
-      if (!result.handled) return false;
-      const wasFullscreen = model.stage === 'fullscreen';
-      setModel(result.state);
-      if (wasFullscreen) exec('document.fullscreenElement && document.exitFullscreen()');
-      return true;
+      return stepDown();
     },
 
     /** Medientasten der Tastatur steuern das kleine Video. true = behandelt. */

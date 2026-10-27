@@ -16,19 +16,27 @@ function makePage({ role, clickBehavior = 'replace', href = 'https://www.youtube
   const posted = [];
   const classes = new Set();
   const appended = [];
+  const timers = [];
+  const attach = host => n => { n.parentNode = host; appended.push(n); };
+  const player = { id: 'movie_player', appendChild: null };
+  player.appendChild = attach(player);
   const video = { currentTime: 12, duration: 300, paused: false, ended: false, readyState: 4, volume: 0.7, muted: false, tagName: 'VIDEO', play() { this.paused = false; }, pause() { this.paused = true; } };
   const add = (bucket, type, fn) => (handlers[bucket][type] = handlers[bucket][type] || []).push(fn);
   const location = { href, pathname: new URL(href).pathname };
   const documentElement = { appendChild: n => appended.push(n), classList: { contains: n => classes.has(n), toggle: (n, on) => (on ? classes.add(n) : classes.delete(n)) } };
   const document = {
     title: '(2) Mein Video - YouTube',
-    body: { appendChild: n => appended.push(n) },
+    body: { appendChild: attach(null) },
     head: null,
     getElementById: () => null,
     documentElement,
     addEventListener: (t, f) => add('document', t, f),
-    createElement: tag => ({ tagName: tag.toUpperCase(), style: {}, setAttribute() {}, addEventListener() {} }),
-    querySelector: sel => (sel.startsWith('video') ? video : null),
+    createElement: tag => {
+      const listeners = {};
+      return { tagName: tag.toUpperCase(), style: {}, listeners, setAttribute(k, v) { this[k] = v; }, addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); } };
+    },
+    fullscreenElement: null,
+    querySelector: sel => (sel.startsWith('video') ? video : sel === '#movie_player' ? player : null),
     querySelectorAll: () => [],
   };
   const window = {
@@ -40,7 +48,7 @@ function makePage({ role, clickBehavior = 'replace', href = 'https://www.youtube
     scrollTo() {},
   };
   window.window = window;
-  const context = vm.createContext({ window, document, location, URL, setInterval: () => 0, clearInterval() {}, Event: class {}, Date });
+  const context = vm.createContext({ window, document, location, URL, setInterval: () => 0, clearInterval() {}, setTimeout: (fn, ms) => timers.push({ fn, ms, live: true }), clearTimeout: id => { if (timers[id - 1]) timers[id - 1].live = false; }, Event: class {}, Date });
   vm.runInContext(buildPageScript({ role, clickBehavior }), context);
   const fire = (bucket, type, event) => (handlers[bucket][type] || []).forEach(fn => fn(event));
   const anchor = (href, extra = {}) => ({ tagName: 'A', href, getAttribute: name => (name === 'href' ? href : ''), closest: () => null, querySelector: () => null, target: '', ...extra });
@@ -53,7 +61,7 @@ function makePage({ role, clickBehavior = 'replace', href = 'https://www.youtube
     fire('window', 'click', e);
     return e;
   };
-  return { posted, classes, video, window, document, location, fire, anchor, event, click, api: () => window.__shMini };
+  return { posted, classes, video, timers, player, appended, window, document, location, fire, anchor, event, click, api: () => window.__shMini };
 }
 
 test('Rolle browse: Klick auf einen Video-Link wird abgefangen und gemeldet; andere Links, Modifier und fremde Hosts bleiben', () => {
@@ -193,4 +201,135 @@ test('Rolle browse hat keine Player-Befehle; doppelte Einbindung ändert nichts;
   for (const selector of css.split('{').filter((_, i, all) => i < all.length - 1).map(part => part.split('}').pop().trim()).filter(Boolean)) {
     assert.match(selector, /sh-(mini|app)/, `CSS-Regel ohne Stufe: ${selector}`);
   }
+});
+
+// ── X-Knopf zum Verkleinern ──
+
+const shrinkButton = page => page.appended.find(n => n.title === 'Verkleinern (Esc)');
+const move = page => page.fire('document', 'mousemove', page.event(page.document.body));
+const runTimers = page => page.timers.filter(t => t.live).forEach(t => ((t.live = false), t.fn()));
+
+test('X-Knopf: nur in App-füllend und Vollbild sichtbar, erst nach Mausbewegung, im Player-Element, blendet nach 3 s aus', () => {
+  const page = makePage({ role: 'player', href: 'https://www.youtube.com/watch?v=' + A });
+  move(page);
+  assert.equal(shrinkButton(page), undefined, 'Seite (page): kein Knopf');
+  page.api().setMode('mini');
+  move(page);
+  assert.equal(shrinkButton(page), undefined, 'mini: kein Knopf');
+  page.api().setMode('app');
+  assert.equal(shrinkButton(page), undefined, 'ohne Mausbewegung noch nicht erzeugt');
+  move(page);
+  const button = shrinkButton(page);
+  assert.ok(button);
+  assert.equal(button.style.display, 'flex');
+  assert.equal(button.parentNode, page.player, 'hängt im Player-Element');
+  assert.equal(button['aria-label'], 'Verkleinern (Esc)');
+  const hide = page.timers.filter(t => t.live);
+  assert.equal(hide.length, 1);
+  assert.equal(hide[0].ms, 3000);
+  move(page);
+  assert.equal(page.timers.filter(t => t.live).length, 1, 'Bewegung setzt den Zähler zurück');
+  runTimers(page);
+  assert.equal(button.style.display, 'none');
+});
+
+test('X-Knopf: im echten Vollbild (auch aus der Seite) sichtbar und im Vollbild-Element; Moduswechsel und Vollbild-Ende blenden aus', () => {
+  const page = makePage({ role: 'player', href: 'https://www.youtube.com/watch?v=' + A });
+  const fsHost = { appendChild: n => ((n.parentNode = fsHost), page.appended.push(n)) };
+  page.document.fullscreenElement = fsHost;
+  move(page);
+  const button = shrinkButton(page);
+  assert.equal(button.style.display, 'flex');
+  assert.equal(button.parentNode, fsHost);
+  page.fire('document', 'fullscreenchange', {});
+  assert.equal(button.style.display, 'none');
+  page.document.fullscreenElement = null;
+  move(page);
+  assert.equal(button.style.display, 'none', 'kein Vollbild, Stufe page: bleibt aus');
+  page.api().setMode('app');
+  move(page);
+  assert.equal(button.style.display, 'flex');
+  page.api().setMode('mini');
+  assert.equal(button.style.display, 'none');
+});
+
+test('X-Knopf: Klick meldet „shrink“ (nur echte Klicks), blendet aus; Mausereignisse erreichen YouTubes Player nicht', () => {
+  const page = makePage({ role: 'player', href: 'https://www.youtube.com/watch?v=' + A });
+  page.api().setMode('app');
+  move(page);
+  const button = shrinkButton(page);
+  const fake = page.event(button, { isTrusted: false });
+  button.listeners.click.forEach(f => f(fake));
+  assert.deepEqual(page.posted.filter(m => m.type === 'shrink'), []);
+  const real = page.event(button);
+  button.listeners.click.forEach(f => f(real));
+  assert.deepEqual(page.posted.filter(m => m.type === 'shrink'), [{ type: 'shrink' }]);
+  assert.equal(button.style.display, 'none');
+  const down = page.event(button);
+  button.listeners.mousedown.forEach(f => f(down));
+  assert.equal(down.stopped, 1);
+  assert.match(PLAYER_CSS, /ytp-chrome-top[^}]*margin-left/, 'YouTubes Titelzeile weicht dem Knopf aus');
+});
+
+// ── Hover-„+“ in der Titelzeile ──
+
+function cardPage(role = 'browse') {
+  const page = makePage({ role, href: role === 'player' ? 'https://www.youtube.com/watch?v=' + B : 'https://www.youtube.com/' });
+  const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
+  const menu = { getBoundingClientRect: () => rect(300, 200, 40, 40) };
+  const thumb = { getBoundingClientRect: () => rect(0, 0, 340, 190) };
+  const link = href => ({ href, getAttribute: name => (name === 'href' ? href : ''), querySelector: () => thumb });
+  const card = { querySelectorAll: sel => (sel === 'a[href]' ? [link('https://www.youtube.com/watch?v=' + B), link('https://www.youtube.com/watch?v=' + A)] : [menu]), querySelector: () => thumb, parentElement: null, getBoundingClientRect: () => rect(0, 0, 340, 240) };
+  const target = (extra = {}) => ({ closest: sel => (sel.includes('ytd-video-preview') ? null : card), ...extra });
+  const over = t => page.fire('document', 'mouseover', page.event(t));
+  const plusBtn = () => page.appended.find(n => n.title === 'Zur Playlist hinzufügen');
+  return { page, over, plusBtn, target, card };
+}
+
+test('Hover-„+“: sitzt in der Titelzeile links neben dem Drei-Punkte-Menü, runder Akzentknopf, Tooltip, Klick meldet add', () => {
+  const { page, over, plusBtn, target } = cardPage();
+  over(target());
+  const plus = plusBtn();
+  assert.equal(plus.style.display, 'block');
+  assert.equal(plus.style.left, 300 - 28 - 2 + 'px');
+  assert.equal(plus.style.top, 200 + (40 - 28) / 2 + 'px');
+  assert.match(plus.style.cssText, /background:#6c5ce7/);
+  assert.match(plus.style.cssText, /border-radius:50%/);
+  assert.equal(plus['aria-label'], 'Zur Playlist hinzufügen');
+  plus.listeners.mouseenter.forEach(f => f());
+  assert.equal(plus.style.background, '#8b7df0');
+  plus.listeners.mouseleave.forEach(f => f());
+  assert.equal(plus.style.background, '#6c5ce7');
+  plus.listeners.click.forEach(f => f(page.event(plus)));
+  assert.deepEqual(page.posted, [{ type: 'add', id: B, title: '' }]);
+  assert.equal(plus.style.display, 'none');
+});
+
+test('Hover-„+“: Hover-Vorschau (ytd-video-preview) und der Knopf selbst lassen ihn stehen; Zeiger außerhalb einer Kachel blendet aus; Wiedergabeseite überspringt das laufende Video', () => {
+  const { over, plusBtn, target } = cardPage();
+  over(target());
+  const plus = plusBtn();
+  over({ closest: sel => (sel.includes('ytd-video-preview') ? {} : null) });
+  assert.equal(plus.style.display, 'block');
+  over(plus);
+  assert.equal(plus.style.display, 'block');
+  over({ closest: () => null });
+  assert.equal(plus.style.display, 'none');
+  const onWatch = cardPage('player');
+  onWatch.over(onWatch.target());
+  onWatch.page.posted.length = 0;
+  onWatch.plusBtn().listeners.click.forEach(f => f(onWatch.page.event(onWatch.plusBtn())));
+  assert.deepEqual(onWatch.page.posted, [{ type: 'add', id: A, title: '' }], 'nimmt den ersten Link, der nicht das laufende Video B ist');
+});
+
+test('Hover-„+“: ohne erkennbares Menü unter dem Vorschaubild rechts; im Modus mini/app kein Knopf', () => {
+  const { over, plusBtn, target, card } = cardPage();
+  card.querySelectorAll = sel => (sel === 'a[href]' ? [{ href: 'https://www.youtube.com/watch?v=' + A, getAttribute: () => '', querySelector: () => ({}) }] : []);
+  over(target());
+  assert.equal(plusBtn().style.left, 340 - 28 - 4 + 'px');
+  assert.equal(plusBtn().style.top, 190 + 6 + 'px');
+  const p2 = cardPage('player');
+  p2.page.api().setMode('app');
+  p2.over(p2.target());
+  assert.equal(p2.plusBtn(), undefined);
 });

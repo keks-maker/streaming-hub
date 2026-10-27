@@ -326,6 +326,36 @@ test('Exklusivität: andere Wiedergabe beendet das Video, Seiten-Verlassen für 
   assert.equal(t.ctl.getView().stage, 'mini');
 });
 
+test('X-Knopf des Players („shrink“) wirkt wie Esc: App-füllend → Herkunft, Vollbild → Herkunft mit exitFullscreen; sonst nichts', async () => {
+  const t = await setup();
+  t.content.message({ type: 'open', id: A });
+  t.state(A);
+  t.player.message({ type: 'shrink' });
+  assert.equal(t.ctl.getView().stage, 'page', 'Seite: nichts zu verkleinern');
+  t.ctl.actions.appFill();
+  assert.equal(t.ctl.getView().stage, 'app');
+  t.player.message({ type: 'shrink' });
+  assert.equal(t.ctl.getView().stage, 'page');
+  t.ctl.actions.appFill();
+  t.ctl.actions.fullscreen();
+  assert.equal(t.ctl.getView().stage, 'fullscreen');
+  t.player.message({ type: 'shrink' });
+  assert.equal(t.ctl.getView().stage, 'app');
+  assert.ok(t.player.executed.some(code => code.includes('exitFullscreen')));
+});
+
+test('Pausiertes Video in App-füllend bleibt beim Wechsel in einen anderen App-Bereich erhalten (Mini-Player, pausiert)', async () => {
+  const t = await setup();
+  t.content.message({ type: 'open', id: A });
+  t.state(A);
+  t.ctl.actions.appFill();
+  t.state(A, { paused: true });
+  t.ctl.onLeaveArea();
+  assert.equal(t.ctl.getView().stage, 'mini');
+  assert.equal(t.ctl.getView().status, 'paused');
+  assert.equal(t.ctl.getView().videoId, A);
+});
+
 test('Schließen (X) beendet die Wiedergabe; Leiste und Medientasten steuern das kleine Video', async () => {
   const t = await setup();
   t.content.message({ type: 'open', id: A });
