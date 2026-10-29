@@ -322,3 +322,34 @@ test('Main-World-Hook: entfernt Werbe-Kacheln aus Feed-Antworten, Rest und Guide
   assert.deepEqual(JSON.parse(JSON.stringify(ctxJson.parse(JSON.stringify(plain)))), plain);
   assert.deepEqual(ctxJson.parse('[{"adSlotRenderer":{}}]').length, 1); // reine Arrays ohne Feed-Kennzeichen: unberührt
 });
+
+// ── Gleichheit mit dem Hook der Apple-Apps (StreamingHubCore/Resources/youtube-adblock-hook.js) ──
+// Regeln (AD_KEYS, AD_RENDERERS, WRAPPERS, Feed-Filter, Skip-Selektoren, Ausblend-CSS) müssen in beiden Produkten
+// identisch bleiben; der Core-Test (YouTubeAdblockRulesTests) prüft dieselben Auszüge gegen diese Datei.
+const CORE_HOOK = path.join(ROOT, '..', 'StreamingHub-tvOS', 'Sources', 'StreamingHubCore', 'Resources', 'youtube-adblock-hook.js');
+const squash = s => s.replace(/\/\/[^\n]*/g, '').replace(/\s+/g, '');
+const between = (src, from, to) => {
+  const a = src.indexOf(from);
+  const b = src.indexOf(to, a);
+  assert.ok(a >= 0 && b > a, `Abschnitt ${from} … ${to} nicht gefunden`);
+  return squash(src.slice(a, b));
+};
+
+test('Gleichheit mit Core-Hook: Listen, Filterlogik, Skip-Fallback und Ausblend-CSS', { skip: !fs.existsSync(CORE_HOOK) && 'Core-Repo nicht neben dem Desktop-Repo' }, () => {
+  const core = fs.readFileSync(CORE_HOOK, 'utf8');
+  const desktop = read('preload-content.js');
+  // Listen und Filterlogik (von AD_KEYS bis vor JSON.parse-Hook)
+  assert.equal(between(desktop, "const AD_KEYS", 'const parse = JSON.parse'), between(core, "const AD_KEYS", 'const parse = JSON.parse'));
+  // Hooks auf JSON.parse / Response.json
+  assert.equal(between(desktop, 'const parse = JSON.parse', 'try {'), between(core, 'const parse = JSON.parse', 'const hookProperty'));
+  // Skip-/Spul-Fallback
+  assert.equal(between(desktop, 'setInterval(', '}, 400);'), between(core, 'setInterval(', '}, 400);'));
+  // Ausblend-CSS: Desktop-Konstante == Inline-CSS im Core-Hook
+  const css = core.slice(core.indexOf('style.textContent = `') + 21, core.indexOf('`;', core.indexOf('style.textContent')));
+  assert.equal(squash(css), squash(ab.AD_HIDE_CSS));
+  // geschützte Eigenschaften: beide hooken ytInitialPlayerResponse und ytInitialData
+  for (const name of ['ytInitialPlayerResponse', 'ytInitialData']) {
+    assert.ok(desktop.includes(`'${name}'`), `Desktop hookt ${name}`);
+    assert.ok(core.includes(`'${name}'`), `Core hookt ${name}`);
+  }
+});
