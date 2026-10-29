@@ -350,6 +350,13 @@ test('Gleichheit mit Core-Hook: Listen, Filterlogik, Skip-Fallback und Ausblend-
   // geschützte Eigenschaften: beide hooken ytInitialPlayerResponse und ytInitialData
   for (const name of ['ytInitialPlayerResponse', 'ytInitialData']) {
     assert.ok(desktop.includes(`'${name}'`), `Desktop hookt ${name}`);
-    assert.ok(core.includes(`'${name}'`), `Core hookt ${name}`);
+    assert.ok(core.includes(`hookProperty('${name}')`), `Core hookt ${name}`);
+    // Desktop: Setter der Eigenschaft ruft strip(v)
+    const d = desktop.indexOf(`defineProperty(window, '${name}'`);
+    assert.ok(d >= 0, `Desktop definiert ${name}`);
+    assert.match(desktop.slice(d, desktop.indexOf('});', d)), /set\(v\)\s*\{\s*\w+ = strip\(v\);\s*\}/, `Desktop-Setter von ${name} bereinigt per strip(v)`);
   }
+  // Core: gemeinsamer Property-Hook mit strip(v) im Setter
+  const hp = core.indexOf('const hookProperty');
+  assert.match(core.slice(hp, core.indexOf("hookProperty('ytInitialPlayerResponse')")), /set\(v\)\s*\{\s*value = strip\(v\);\s*\}/, 'Core-Setter bereinigt per strip(v)');
 });
