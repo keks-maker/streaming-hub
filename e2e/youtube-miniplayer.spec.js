@@ -116,6 +116,10 @@ test('Neustart: Einstellungen und Playlist bleiben; wartende Einträge zeigen di
   await expect(page.locator('#radioMiniPlayPause')).toHaveAttribute('title', 'Abspielen');
   await expect(page.locator('#youtubeMiniList')).toHaveAttribute('title', 'Playlist anzeigen');
   await expect(page.locator('#youtubeMiniBack')).toBeHidden();
+  const badge = page.locator('#youtubeMiniList .radio-mini-yt-badge');
+  await expect(badge).toHaveText('2');
+  await expect(badge).toBeVisible();
+  await expect(page.locator('#youtubeMiniList')).toHaveAttribute('aria-label', 'Playlist anzeigen, 2 Videos');
   await page.locator('#youtubeMiniList').click();
   await expect(page.locator('#youtubeMiniList')).toHaveAttribute('title', 'Playlist ausblenden');
   const rows = page.locator('.radio-mini-playlist-row');
@@ -127,6 +131,7 @@ test('Neustart: Einstellungen und Playlist bleiben; wartende Einträge zeigen di
   await rows.nth(0).locator('.radio-mini-playlist-remove').click();
   await expect(rows).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => window.electronAPI.getYoutubePlaylist())).toEqual([{ id: A, title: 'Eins' }]);
+  await expect(badge).toHaveText('1');
   // alle Knöpfe der Leiste haben einen Tooltip
   const missing = await page.evaluate(() => [...document.querySelectorAll('#radioMiniPlayer button')].filter(b => !b.title).map(b => b.id || b.className));
   expect(missing).toEqual([]);

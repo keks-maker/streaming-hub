@@ -72,6 +72,24 @@ test('Texte und Fortschritt: Titel, Kanal/Status, Position, Lautstärke begrenzt
   assert.deepEqual([idle.idle, idle.name, idle.subtitle, idle.action, idle.canSeek], [true, 'Playlist', '1 Video in der Playlist', 'start', false]);
 });
 
+test('Modell: Zähler am Playlist-Knopf (Zahl, bei 0 leer), Beschriftung nennt die Anzahl', () => {
+  const none = youtubeMiniPlayerModel(view());
+  assert.deepEqual([none.playlistBadge, none.playlistButtonLabel], ['', 'Playlist anzeigen']);
+  const one = youtubeMiniPlayerModel(view({ playlist: [{ id: A }] }));
+  assert.deepEqual([one.playlistBadge, one.playlistButtonLabel], ['1', 'Playlist anzeigen, 1 Video']);
+  const two = youtubeMiniPlayerModel(view({ stage: 'idle', panelOpen: true, playlist: [{ id: A }, { id: B }] }));
+  assert.deepEqual([two.playlistBadge, two.playlistButtonLabel], ['2', 'Playlist ausblenden, 2 Videos']);
+});
+
+test('Modell: unterbrochenes Video (resume) macht die Leiste im Stufe idle sichtbar, auch bei leerer Playlist; idleHidden verbirgt sie', () => {
+  const resume = { id: A, title: 'Unterbrochen' };
+  const idle = view({ stage: 'idle', resume });
+  assert.equal(isVideoMiniPlayerVisible(idle), true);
+  assert.equal(isVideoMiniPlayerVisible({ ...idle, idleHidden: true }), false);
+  const m = youtubeMiniPlayerModel(idle);
+  assert.deepEqual([m.name, m.subtitle, m.status, m.action, m.playlistBadge], ['Unterbrochen', 'Pausiert', 'paused', 'start', '']);
+});
+
 // ───────── Ansicht ─────────
 
 const STATION = { sourceId: 'a', id: 'one', name: 'Eins', logo: null, genre: 'Pop' };
@@ -170,6 +188,21 @@ test('Ansicht: wartende Playlist ohne Video erscheint nur, wenn Radio und Podcas
   const busy = setup({ yt: waiting, radioState: radioPlaying });
   await tick();
   assert.equal(busy.el.dataset.mode, 'radio');
+});
+
+test('Ansicht: Zähler-Abzeichen am Playlist-Knopf zeigt die Anzahl, bei 0 verborgen und für Screenreader aus', async () => {
+  const { el, set } = setup({ yt: view({ playlist: [{ id: A, title: 'Eins' }, { id: B, title: 'Zwei' }] }) });
+  await tick();
+  const badge = el.byClass('radio-mini-yt-badge')[0];
+  assert.equal(badge.textContent, '2');
+  assert.equal(badge.hidden, false);
+  assert.equal(badge.getAttribute('aria-hidden'), 'true');
+  assert.equal(el.byId('youtubeMiniList').getAttribute('aria-label'), 'Playlist anzeigen, 2 Videos');
+  set(view({ stage: 'idle', playlist: [{ id: A, title: 'Eins' }] }));
+  assert.equal(badge.textContent, '1');
+  set(view());
+  assert.equal(badge.hidden, true);
+  assert.equal(el.byId('youtubeMiniList').getAttribute('aria-label'), 'Playlist anzeigen');
 });
 
 test('Ansicht: Playlist-Feld zeigt Einträge, Klick spielt ab, Entfernen, ▲▼ und Ziehen melden dem Controller', async () => {

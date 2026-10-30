@@ -46,6 +46,7 @@ function createYoutubeMini(deps) {
   let trail = trailModel.createTrail();
   let pendingFrom = '';
   let panelOpen = false;
+  let resume = null; // von einer anderen Wiedergabe beendetes Video { id, title }: nur im Arbeitsspeicher, Play in der Leiste öffnet es wieder
   let idleHidden = false; // eine andere Wiedergabe lief zuletzt: die wartende Playlist-Leiste (Stufe idle) bleibt weg, bis YouTube wieder gebraucht wird
   let view = { title: '', channel: '', position: 0, duration: 0, volume: 1 };
   let slotEl = null;
@@ -67,6 +68,13 @@ function createYoutubeMini(deps) {
       return Promise.resolve(playerView.executeJavaScript(code, gesture)).catch(() => {});
     } catch (_) {
       return Promise.resolve();
+    }
+  };
+  const callContent = code => {
+    try {
+      Promise.resolve(contentView.executeJavaScript(code)).catch(() => {});
+    } catch (_) {
+      /* Webview nicht bereit */
     }
   };
   const callPage = (method, arg) => exec(`window.__shMini && window.__shMini.${method}(${arg === undefined ? '' : JSON.stringify(arg)})`);
@@ -121,10 +129,18 @@ function createYoutubeMini(deps) {
     });
   }
 
+  /** Die Seitenskripte beider Webviews kennen die Playlist-IDs: das Hover-„+“ erscheint für Videos darin blasser. */
+  function pushListed() {
+    const config = { listed: playlist.map(item => item.id) };
+    callContent(`window.__shMini && window.__shMini.setConfig(${JSON.stringify(config)})`);
+    callPage('setConfig', config);
+  }
+
   function setPlaylist(next) {
     if (next === playlist) return false;
     playlist = next;
     persistPlaylist();
+    pushListed();
     emit();
     return true;
   }
@@ -142,10 +158,12 @@ function createYoutubeMini(deps) {
     if (!settings.enabled || !id) return;
     if (!state.isActive(model) && !playlist.length) {
       openVideo({ id, title, stage: 'mini' });
+      pushListed(); // das Seitenskript hat das „+“ vorläufig abgehakt: den tatsächlichen Stand nachliefern
       return;
     }
     if (id === model.videoId) {
       notify('Dieses Video läuft gerade');
+      pushListed();
       return;
     }
     idleHidden = false;
@@ -153,6 +171,7 @@ function createYoutubeMini(deps) {
     const updated = next ? playlistModel.addNext(playlist, entry) : playlistModel.addEntry(playlist, entry);
     if (updated === playlist) {
       notify(playlist.some(item => item.id === id) ? 'Schon in der Playlist' : 'Die Playlist ist voll');
+      pushListed();
       return;
     }
     setPlaylist(updated);
@@ -174,6 +193,7 @@ function createYoutubeMini(deps) {
     const url = settings.enabled ? watchUrlOrEmpty(id) : '';
     if (!url) return false;
     idleHidden = false;
+    resume = null; // ein anderes (oder das vorgemerkte) Video öffnet: die Vormerkung entfällt
     if (hooks.beforePlay) hooks.beforePlay();
     // Das Video verlässt die Playlist, falls es darin stand
     if (playlist.some(item => item.id === id)) setPlaylist(playlistModel.removeEntry(playlist, id));
@@ -190,6 +210,7 @@ function createYoutubeMini(deps) {
   }
 
   function closeVideo() {
+    resume = null;
     if (!state.isActive(model)) return;
     const wasFullscreen = model.stage === 'fullscreen';
     pendingId = '';
@@ -346,11 +367,22 @@ function createYoutubeMini(deps) {
     }
   }
 
+  /** Eine andere Wiedergabe beendet das laufende Video: es wird vorgemerkt (ein beendetes nicht). */
+  function closeForOtherPlayback() {
+    const kept = model.status === 'ended' || !model.videoId ? null : { id: model.videoId, title: view.title };
+    closeVideo();
+    resume = kept;
+  }
+
   // ───────── Aktionen der Leiste ─────────
 
   const actions = {
     playPause(action) {
       if (action === 'start') {
+        if (resume) {
+          openVideo({ id: resume.id, title: resume.title, stage: 'mini' });
+          return undefined;
+        }
         const { next, rest } = playlistModel.takeFirst(playlist);
         if (!next) return undefined;
         setPlaylist(rest);
@@ -451,7 +483,10 @@ function createYoutubeMini(deps) {
     playerView.addEventListener('ipc-message', event => {
       if (event.channel === 'youtube-mini' && event.args && event.args[0]) onPlayerMessage(event.args[0]);
     });
-    playerView.addEventListener('did-finish-load', () => syncMode());
+    playerView.addEventListener('did-finish-load', () => {
+      syncMode();
+      if (playlist.length) pushListed();
+    });
     playerView.addEventListener('did-navigate-in-page', () => syncMode());
     playerView.addEventListener('enter-html-full-screen', () => {
       fullscreenConfirmed = true;
@@ -497,6 +532,9 @@ function createYoutubeMini(deps) {
     contentView.addEventListener('ipc-message', event => {
       if (event.channel === 'youtube-mini' && event.args && event.args[0]) onContentMessage(event.args[0]);
     });
+    contentView.addEventListener('did-finish-load', () => {
+      if (playlist.length) pushListed();
+    });
     contentView.addEventListener('did-navigate', event => onContentNavigated(event.url || ''));
     contentView.addEventListener('did-navigate-in-page', event => {
       if (event.isMainFrame !== false) onContentNavigated(event.url || '');
@@ -528,6 +566,7 @@ function createYoutubeMini(deps) {
       warn('Playlist nicht verfügbar', error);
     }
     ready = true;
+    pushListed();
     emit();
     if (api.onYoutubeContextAction) {
       api.onYoutubeContextAction(payload => {
@@ -551,7 +590,7 @@ function createYoutubeMini(deps) {
       return () => listeners.delete(cb);
     },
     getView() {
-      return { stage: model.stage, status: model.status, videoId: model.videoId, ...view, playlist, panelOpen, idleHidden };
+      return { stage: model.stage, status: model.status, videoId: model.videoId, ...view, playlist, panelOpen, idleHidden, resume };
     },
     getState: () => model,
     getSettings: () => ({ ...settings }),
@@ -600,7 +639,7 @@ function createYoutubeMini(deps) {
       emit();
       if (!state.isActive(model)) return;
       if (isYoutube) leavePlayerPage();
-      else closeVideo();
+      else closeForOtherPlayback();
     },
 
     /** Andere App-Bereiche (Dashboards, TV ...): das Video läuft klein weiter. */
@@ -611,7 +650,7 @@ function createYoutubeMini(deps) {
     /** Eine andere Wiedergabe startet (Streamingdienst, LiveTV, Radio, Podcast, Mediathek, Aufnahme): Video beenden. */
     stopForOtherPlayback() {
       idleHidden = true; // auch die wartende Playlist-Leiste (Stufe idle) verschwindet
-      if (state.isActive(model)) closeVideo();
+      if (state.isActive(model)) closeForOtherPlayback();
       else emit();
     },
 

@@ -169,6 +169,10 @@ function createRadioMiniPlayer(root, options = {}) {
   const ytApp = iconButton(doc, { id: 'youtubeMiniApp', icon: 'appfill', label: 'App-füllend anzeigen', className: 'radio-mini-yt' });
   const ytFull = iconButton(doc, { id: 'youtubeMiniFull', icon: 'fullscreen', label: 'Vollbild', className: 'radio-mini-yt' });
   const ytList = iconButton(doc, { id: 'youtubeMiniList', icon: 'list', label: 'Playlist anzeigen', className: 'radio-mini-yt' });
+  const ytBadge = el(doc, 'span', 'radio-mini-yt-badge');
+  ytBadge.setAttribute('aria-hidden', 'true');
+  ytBadge.hidden = true;
+  ytList.appendChild(ytBadge);
   const ytButtons = [ytBack, ytApp, ytFull, ytList];
   ytButtons.forEach(button => {
     button.hidden = true;
@@ -433,9 +437,10 @@ function createRadioMiniPlayer(root, options = {}) {
       button.title = label;
       button.setAttribute('aria-label', label);
     }
-    const listLabel = model.panelOpen ? model.labels.playlistHide : model.labels.playlistShow;
-    ytList.title = listLabel;
-    ytList.setAttribute('aria-label', listLabel);
+    ytList.title = model.panelOpen ? model.labels.playlistHide : model.labels.playlistShow;
+    ytList.setAttribute('aria-label', model.playlistButtonLabel);
+    ytBadge.textContent = model.playlistBadge;
+    ytBadge.hidden = !model.playlistBadge;
     ytList.setAttribute('aria-expanded', String(model.panelOpen));
     ytList.setAttribute('aria-controls', panel.id);
     setIcon(stop, 'close');

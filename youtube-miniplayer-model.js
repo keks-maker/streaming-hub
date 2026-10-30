@@ -24,12 +24,13 @@ const STATUS_TEXT = { loading: 'Lädt …', paused: 'Pausiert', ended: 'Beendet'
 
 /**
  * Sichtbar, wenn das Video klein läuft (Stufe mini) oder wenn keines läuft, aber Einträge in der Playlist warten
- * (dann startet die Abspielen-Taste den ersten; nicht, nachdem eine andere Wiedergabe das Video beendet hat: idleHidden). Nicht im Vollbild/Player-Vollbild (suppressed).
+ * oder eine andere Wiedergabe ein Video unterbrochen hat (view.resume: dann öffnet die Abspielen-Taste dieses, sonst den ersten Eintrag; nicht, nachdem eine andere Wiedergabe das Video beendet hat: idleHidden). Nicht im Vollbild/Player-Vollbild (suppressed).
  */
 function isVideoMiniPlayerVisible(view, { suppressed = false } = {}) {
   if (!view || suppressed) return false;
   if (view.stage === 'mini') return true;
-  return view.stage === 'idle' && !view.idleHidden && Array.isArray(view.playlist) && view.playlist.length > 0;
+  if (view.stage !== 'idle' || view.idleHidden) return false;
+  return Boolean(view.resume) || (Array.isArray(view.playlist) && view.playlist.length > 0);
 }
 
 /** Wiedergabetaste: laufend/ladend → pause · pausiert/beendet → resume · nichts geladen (Playlist wartet) → start. */
@@ -65,7 +66,7 @@ function countText(count) {
 function youtubeMiniPlayerModel(view, { suppressed = false } = {}) {
   const visible = isVideoMiniPlayerVisible(view, { suppressed });
   if (!visible) {
-    return { visible: false, mode: 'video', idle: true, name: '', subtitle: '', status: 'idle', action: 'start', playPauseLabel: VIDEO_LABELS.play, labels: VIDEO_LABELS, position: 0, duration: 0, canSeek: false, seekMax: 0, seekValue: 0, valueText: '', positionText: '0:00', durationText: '0:00', volume: 0, volumePercent: 0, playlist: [], playlistCount: 0, playlistText: '', panelOpen: false, live: '' };
+    return { visible: false, mode: 'video', idle: true, name: '', subtitle: '', status: 'idle', action: 'start', playPauseLabel: VIDEO_LABELS.play, labels: VIDEO_LABELS, position: 0, duration: 0, canSeek: false, seekMax: 0, seekValue: 0, valueText: '', positionText: '0:00', durationText: '0:00', volume: 0, volumePercent: 0, playlist: [], playlistCount: 0, playlistBadge: '', playlistButtonLabel: VIDEO_LABELS.playlistShow, playlistText: '', panelOpen: false, live: '' };
   }
   const idle = view.stage === 'idle';
   const rows = playlistRows(view.playlist);
@@ -74,9 +75,10 @@ function youtubeMiniPlayerModel(view, { suppressed = false } = {}) {
   const position = duration > 0 ? Math.min(rawPosition, duration) : rawPosition;
   const action = videoPlayPauseAction(view);
   const volume = Number.isFinite(view.volume) ? Math.min(1, Math.max(0, view.volume)) : 1;
-  const status = idle ? 'idle' : view.status || 'loading';
-  const title = idle ? 'Playlist' : view.title || 'YouTube-Video';
-  const subtitle = idle ? countText(rows.length) : [STATUS_TEXT[status], view.channel].filter(Boolean).join(' – ') || 'YouTube';
+  const resuming = idle && Boolean(view.resume);
+  const status = resuming ? 'paused' : idle ? 'idle' : view.status || 'loading';
+  const title = resuming ? view.resume.title || 'YouTube-Video' : idle ? 'Playlist' : view.title || 'YouTube-Video';
+  const subtitle = resuming ? STATUS_TEXT.paused : idle ? countText(rows.length) : [STATUS_TEXT[status], view.channel].filter(Boolean).join(' – ') || 'YouTube';
   return {
     visible: true,
     mode: 'video',
@@ -99,9 +101,11 @@ function youtubeMiniPlayerModel(view, { suppressed = false } = {}) {
     volumePercent: Math.round(volume * 100),
     playlist: rows,
     playlistCount: rows.length,
+    playlistBadge: rows.length > 0 ? String(rows.length) : '',
+    playlistButtonLabel: `${view.panelOpen ? VIDEO_LABELS.playlistHide : VIDEO_LABELS.playlistShow}${rows.length > 0 ? `, ${rows.length === 1 ? '1 Video' : `${rows.length} Videos`}` : ''}`,
     playlistText: countText(rows.length),
     panelOpen: Boolean(view.panelOpen),
-    live: idle ? '' : status === 'paused' ? `${title}: pausiert` : status === 'ended' ? `${title}: beendet` : `${title}: spielt`,
+    live: idle && !resuming ? '' : resuming ? `${title}: pausiert` : status === 'paused' ? `${title}: pausiert` : status === 'ended' ? `${title}: beendet` : `${title}: spielt`,
   };
 }
 

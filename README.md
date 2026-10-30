@@ -372,7 +372,8 @@ Kurz gesagt:
 - **Drei Wege nach oben** – „Zurück zum Video“, „App-füllend anzeigen“, „Vollbild“.
 - **Schließen in Stufen** – `Esc` oder das X über dem Video gehen eine Stufe zurück; das Kreuz in der Leiste beendet die Wiedergabe.
 - **Playlist** – „+“ an Kacheln oder Rechtsklick, Umsortieren per Ziehen, bleibt nach Neustart erhalten.
-- **Immer nur eins** – Radio, Podcast, andere Dienste und YouTube-Video schließen sich gegenseitig aus.
+- **Immer nur eins** – Radio, Podcast, andere Dienste und YouTube-Video schließen sich gegenseitig aus. Ein dadurch beendetes Video merkt die Leiste vor (nur bis zum Beenden der App): Zurück auf YouTube setzt Abspielen es fort.
+- **Zähler und Markierung** – Am Playlist-Knopf der Leiste steht die Anzahl der Einträge. Liegt ein Video schon in der Playlist, zeigt das Hover-„+“ einen Haken.
 - **Ein/Aus** – Einstellungen → Streaming → YouTube.
 
 Im Einzelnen:

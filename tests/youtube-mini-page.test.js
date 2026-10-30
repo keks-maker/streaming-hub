@@ -282,7 +282,7 @@ function cardPage(role = 'browse') {
   const card = { querySelectorAll: sel => (sel === 'a[href]' ? [link('https://www.youtube.com/watch?v=' + B), link('https://www.youtube.com/watch?v=' + A)] : [menu]), querySelector: () => thumb, parentElement: null, getBoundingClientRect: () => rect(0, 0, 340, 240) };
   const target = (extra = {}) => ({ closest: sel => (sel.includes('ytd-video-preview') ? null : card), ...extra });
   const over = t => page.fire('document', 'mouseover', page.event(t));
-  const plusBtn = () => page.appended.find(n => n.title === 'Zur Playlist hinzufügen');
+  const plusBtn = () => page.appended.find(n => n.title === 'Zur Playlist hinzufügen' || n.title === 'In der Playlist');
   return { page, over, plusBtn, target, card };
 }
 
@@ -343,4 +343,31 @@ test('Hover-„+“: ohne erkennbares Menü unter dem Vorschaubild rechts; im Mo
   p2.page.api().setMode('app');
   p2.over(p2.target());
   assert.equal(p2.plusBtn(), undefined);
+});
+
+test('Hover-„+“: liegt das Video schon in der Playlist, zeigt der Knopf einen Haken (Farbe/Hover wie beim Plus); nach Entfernen wieder „+“', () => {
+  for (const role of ['browse', 'player']) {
+    const { page, over, plusBtn, target } = cardPage(role);
+    const other = role === 'player' ? A : B; // Wiedergabeseite überspringt B (laufendes Video), Kachel zeigt dort A
+    page.api().setConfig({ listed: [other] });
+    over(target());
+    const plus = plusBtn();
+    assert.equal(plus.textContent, '\u2713', role);
+    assert.equal(plus.title, 'In der Playlist');
+    assert.equal(plus['aria-label'], 'In der Playlist');
+    plus.listeners.mouseenter.forEach(f => f());
+    assert.equal(plus.style.background, '#8b7df0');
+    plus.listeners.mouseleave.forEach(f => f());
+    // Eintrag entfernt, während der Knopf sichtbar ist: sofort wieder „+“
+    page.api().setConfig({ listed: [] });
+    assert.equal(plus.textContent, '+');
+    assert.equal(plus.title, 'Zur Playlist hinzufügen');
+    assert.equal(plus['aria-label'], 'Zur Playlist hinzufügen');
+    // Klick: beim erneuten Überfahren sofort abgehakt, auch ohne Meldung der App
+    plus.listeners.click.forEach(f => f(page.event(plus)));
+    over(target());
+    assert.equal(plusBtn().textContent, '\u2713');
+    page.api().setConfig({ listed: ['kaputt', 5, null] });
+    assert.equal(plusBtn().textContent, '+', 'ungültige IDs werden verworfen');
+  }
 });

@@ -486,3 +486,68 @@ test('Wartende Playlist-Leiste (Stufe idle): andere Wiedergabe/anderer Dienst bl
   t.content.message({ type: 'add', id: C });
   assert.equal(t.ctl.getView().idleHidden, false);
 });
+
+test('Playlist-IDs gehen an beide Seitenskripte (Start, Änderung); markiert wird dort per setConfig', async () => {
+  const t = await setup({ playlist: [{ id: B, title: 'Zwei' }] });
+  const last = view => view.executed[view.executed.length - 1];
+  assert.match(last(t.content), new RegExp(`setConfig\\(\\{"listed":\\["${B}"\\]\\}\\)`));
+  assert.match(last(t.player), new RegExp(`"listed":\\["${B}"\\]`));
+  t.content.message({ type: 'add', id: C, title: 'Drei' });
+  assert.match(last(t.content), new RegExp(`"listed":\\["${B}","${C}"\\]`));
+  t.ctl.actions.removeEntry(B);
+  assert.match(last(t.content), new RegExp(`"listed":\\["${C}"\\]`));
+  t.ctl.actions.playEntry(C); // Abspielen nimmt den Eintrag aus der Playlist
+  assert.match(last(t.content), /"listed":\[\]/);
+});
+
+test('Plus auf ein Video, das schon in der Playlist liegt, erzeugt kein Duplikat', async () => {
+  const t = await setup({ playlist: [{ id: B, title: 'Zwei' }] });
+  t.content.message({ type: 'add', id: B, title: 'Zwei' });
+  assert.deepEqual(t.ctl.getView().playlist.map(i => i.id), [B]);
+  assert.equal(t.notes[t.notes.length - 1], 'Schon in der Playlist');
+});
+
+test('Unterbrochenes Video: andere Wiedergabe merkt es vor, Play öffnet es wieder (auch bei leerer Playlist), danach läuft die Playlist weiter', async () => {
+  const t = await setup();
+  t.content.message({ type: 'open', id: A, title: 'Mein Video' });
+  t.state(A, { title: 'Mein Video' });
+  t.ctl.onServiceNavigate(false);
+  t.ctl.stopForOtherPlayback();
+  assert.equal(t.ctl.getView().stage, 'idle');
+  assert.deepEqual(t.ctl.getView().resume, { id: A, title: 'Mein Video' });
+  assert.equal(t.ctl.getView().idleHidden, true);
+  t.ctl.onServiceNavigate(true);
+  assert.equal(t.ctl.getView().idleHidden, false);
+  t.ctl.actions.playPause('start');
+  assert.equal(t.player.loaded[t.player.loaded.length - 1], url(A));
+  assert.equal(t.ctl.getView().stage, 'mini');
+  assert.equal(t.ctl.getView().videoId, A);
+  assert.equal(t.ctl.getView().resume, null);
+  assert.equal(t.ctl.getView().playlist.length, 0);
+});
+
+test('Unterbrochenes Video: Vormerkung entfällt bei Schließen, anderem Video und Playlist-Eintrag; ein beendetes wird nicht vorgemerkt; Playlist bleibt unangetastet', async () => {
+  const t = await setup({ playlist: [{ id: C, title: 'Drei' }] });
+  const interrupt = async () => {
+    t.content.message({ type: 'open', id: A, title: 'Eins' });
+    t.state(A, { title: 'Eins' });
+    t.ctl.stopForOtherPlayback();
+    assert.equal(t.ctl.getView().resume.id, A);
+  };
+  await interrupt();
+  t.ctl.actions.close();
+  assert.equal(t.ctl.getView().resume, null);
+  await interrupt();
+  t.content.message({ type: 'open', id: B, title: 'Zwei' });
+  assert.equal(t.ctl.getView().resume, null);
+  t.ctl.close();
+  await interrupt();
+  t.ctl.actions.playEntry(C);
+  assert.equal(t.ctl.getView().resume, null);
+  assert.equal(t.ctl.getView().videoId, C);
+  t.ctl.close();
+  t.content.message({ type: 'open', id: A });
+  t.state(A, { ended: true });
+  t.ctl.stopForOtherPlayback();
+  assert.equal(t.ctl.getView().resume, null);
+});
