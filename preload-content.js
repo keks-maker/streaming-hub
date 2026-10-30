@@ -125,6 +125,15 @@ try {
   const miniState = ipcRenderer.sendSync('youtube-mini:page-state');
   if (miniState && miniState.active === true && typeof miniState.script === 'string' && miniState.script) {
     webFrame.executeJavaScript(miniState.script).catch(() => {});
+    // pagehide: postMessage käme nach dem Entladen nicht mehr an; die letzte Meldung läuft synchron als CustomEvent (Detail: JSON-String)
+    window.addEventListener('__shProgressSync', e => {
+      try {
+        const m = JSON.parse(e.detail).__shProgress;
+        if (m && m.type === 'report') ipcRenderer.send('youtube-progress:report', { id: m.id, t: m.t, d: m.d });
+      } catch (_) {
+        // ungültige Meldung verwerfen
+      }
+    });
     window.addEventListener('message', e => {
       if (e.source !== window || !e.data || typeof e.data !== 'object' || !e.data.__shMini || typeof e.data.__shMini !== 'object') return;
       ipcRenderer.sendToHost('youtube-mini', e.data.__shMini);

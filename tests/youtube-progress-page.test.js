@@ -11,26 +11,39 @@ const { buildProgressScript } = require('../lib/youtube-progress-page.js');
 const A = 'aaaaaaaaaaa';
 const B = 'bbbbbbbbbbb';
 
-function makePage(href, { ready = false } = {}) {
+function makePage(href, { ready = false, extraVideos = [] } = {}) {
   const posted = [];
   const doc = {};
   const win = {};
   const intervals = [];
-  const video = { tagName: 'VIDEO', currentTime: 0, duration: 300, readyState: ready ? 4 : 0, paused: false, ended: false };
+  const video = { tagName: 'VIDEO', closest: () => null, currentTime: 0, duration: 300, readyState: ready ? 4 : 0, paused: false, ended: false };
   let ad = false;
   const location = { href };
   const document = {
     addEventListener: (t, f) => (doc[t] = doc[t] || []).push(f),
     querySelector: sel => (sel.includes('ad-showing') ? (ad ? {} : null) : video),
+    // extraVideos (z. B. Hover-Vorschau) stehen in DOM-Reihenfolge vor dem Hauptvideo
+    querySelectorAll: sel => [...extraVideos, video].filter(v => (v === video ? sel.includes('video') : sel.includes('video'))),
   };
-  const window = { addEventListener: (t, f) => (win[t] = win[t] || []).push(f), postMessage: m => posted.push(JSON.parse(JSON.stringify(m.__shProgress))) };
+  const sync = [];
+  const window = {
+    addEventListener: (t, f) => (win[t] = win[t] || []).push(f),
+    postMessage: m => posted.push(JSON.parse(JSON.stringify(m.__shProgress))),
+    dispatchEvent: e => sync.push(JSON.parse(e.detail).__shProgress),
+  };
+  class CustomEvent {
+    constructor(type, init) {
+      this.type = type;
+      this.detail = init.detail;
+    }
+  }
   window.window = window;
-  const context = vm.createContext({ window, document, location, URL, setInterval: (fn, ms) => intervals.push({ fn, ms }) });
+  const context = vm.createContext({ window, document, location, URL, CustomEvent, setInterval: (fn, ms) => intervals.push({ fn, ms }) });
   vm.runInContext(buildProgressScript(), context);
   const fire = (type, target = video) => (doc[type] || []).forEach(f => f({ target }));
   const tick = ms => intervals.filter(i => i.ms === ms).forEach(i => i.fn());
   return {
-    posted, video, window, location,
+    posted, sync, video, window, location,
     fire, tick,
     pagehide: () => (win.pagehide || []).forEach(f => f()),
     setAd: v => (ad = v),
@@ -155,4 +168,48 @@ test('Skript startet nur einmal je Seite', () => {
   const before = p.posted.length;
   vm.runInContext(buildProgressScript(), vm.createContext({ window: p.window, document: {}, location: p.location, URL, setInterval() {} }));
   assert.equal(p.posted.length, before);
+});
+
+test('Hauptvideo eindeutig: Hover-Vorschau-Video vor dem Hauptvideo in DOM-Reihenfolge wird verworfen', () => {
+  const preview = { tagName: 'VIDEO', closest: sel => (sel.includes('ytd-video-preview') ? {} : null), currentTime: 9, duration: 30, readyState: 4, paused: false, ended: false };
+  const p = makePage(`https://www.youtube.com/watch?v=${A}`, { ready: true, extraVideos: [preview] });
+  p.fire('loadedmetadata');
+  p.video.currentTime = 60;
+  p.fire('pause');
+  assert.deepEqual(p.reports().pop(), { type: 'report', id: A, t: 60, d: 300 });
+  p.fire('pause', preview); // Ereignis der Vorschau zählt nicht
+  assert.equal(p.reports().filter(r => r.d === 30).length, 0);
+});
+
+test('Werbung mit anderer Dauer bei t = Ende löscht keinen Eintrag (kein Report unter der Video-ID)', () => {
+  const p = makePage(`https://www.youtube.com/watch?v=${A}`);
+  p.setAd(true);
+  p.video.duration = 15;
+  p.video.readyState = 4;
+  p.fire('loadedmetadata'); // Werbung: Dauer wird nicht als Hauptvideo festgehalten
+  p.video.currentTime = 15;
+  p.fire('timeupdate');
+  p.fire('ended');
+  p.setAd(false); // Klasse schon weg, Player trägt noch die Werbung (Dauer 15)
+  p.fire('timeupdate');
+  p.fire('ended');
+  p.tick(5000);
+  assert.deepEqual(p.reports(), []);
+  p.video.duration = 300; // Hauptvideo
+  p.video.currentTime = 0;
+  p.fire('loadedmetadata');
+  p.video.currentTime = 12;
+  p.fire('pause');
+  assert.deepEqual(p.reports().pop(), { type: 'report', id: A, t: 12, d: 300 });
+});
+
+test('pagehide: letzte Meldung kommt synchron per CustomEvent (nicht per postMessage)', () => {
+  const p = makePage(`https://www.youtube.com/watch?v=${A}`, { ready: true });
+  p.fire('loadedmetadata');
+  p.video.currentTime = 77;
+  p.fire('timeupdate');
+  const before = p.reports().length;
+  p.pagehide();
+  assert.deepEqual(p.sync, [{ type: 'report', id: A, t: 77, d: 300 }]);
+  assert.equal(p.reports().length, before);
 });
