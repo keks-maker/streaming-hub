@@ -473,3 +473,16 @@ test('Nur http(s) in der Player-Webview; Medienberechtigung erlaubt, alles ander
   t.player.emit('permissionrequest', { permission: 'geolocation', request });
   assert.deepEqual(calls, ['allow', 'deny']);
 });
+
+test('Wartende Playlist-Leiste (Stufe idle): andere Wiedergabe/anderer Dienst blendet sie aus, YouTube/Hinzufügen/Video bringt sie zurück', async () => {
+  const t = await setup({ playlist: [{ id: B, title: 'Zwei' }] });
+  assert.equal(t.ctl.getView().idleHidden, false);
+  t.ctl.stopForOtherPlayback(); // z. B. Disney+ spielt, es läuft kein Video
+  assert.equal(t.ctl.getView().idleHidden, true);
+  t.ctl.onServiceNavigate(true);
+  assert.equal(t.ctl.getView().idleHidden, false);
+  t.ctl.onServiceNavigate(false);
+  assert.equal(t.ctl.getView().idleHidden, true);
+  t.content.message({ type: 'add', id: C });
+  assert.equal(t.ctl.getView().idleHidden, false);
+});

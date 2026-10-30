@@ -131,3 +131,14 @@ test('Neustart: Einstellungen und Playlist bleiben; wartende Einträge zeigen di
   const missing = await page.evaluate(() => [...document.querySelectorAll('#radioMiniPlayer button')].filter(b => !b.title).map(b => b.id || b.className));
   expect(missing).toEqual([]);
 });
+
+test('Anderer Dienst (Disney+): die wartende Playlist-Leiste verschwindet und kommt mit YouTube zurück', async () => {
+  const bar = page.locator('#radioMiniPlayer');
+  await expect(bar).toBeVisible(); // Playlist wartet (Test davor)
+  await page.evaluate(() => document.querySelector('.nav-item[data-section="streaming"]').click());
+  await page.evaluate(() => [...document.querySelectorAll('.dashboard-tile')].find(t => /Disney/.test(t.textContent)).click());
+  await expect(bar).toBeHidden();
+  await page.evaluate(() => document.querySelector('.nav-item[data-section="streaming"]').click());
+  await page.evaluate(() => [...document.querySelectorAll('.dashboard-tile')].find(t => /YouTube/.test(t.textContent)).click());
+  await expect(bar).toBeVisible();
+});

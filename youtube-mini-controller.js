@@ -46,6 +46,7 @@ function createYoutubeMini(deps) {
   let trail = trailModel.createTrail();
   let pendingFrom = '';
   let panelOpen = false;
+  let idleHidden = false; // eine andere Wiedergabe lief zuletzt: die wartende Playlist-Leiste (Stufe idle) bleibt weg, bis YouTube wieder gebraucht wird
   let view = { title: '', channel: '', position: 0, duration: 0, volume: 1 };
   let slotEl = null;
   let slotObserver = null;
@@ -147,6 +148,7 @@ function createYoutubeMini(deps) {
       notify('Dieses Video läuft gerade');
       return;
     }
+    idleHidden = false;
     const entry = { id, title };
     const updated = next ? playlistModel.addNext(playlist, entry) : playlistModel.addEntry(playlist, entry);
     if (updated === playlist) {
@@ -171,6 +173,7 @@ function createYoutubeMini(deps) {
   function openVideo({ id, title = '', stage = 'page' }) {
     const url = settings.enabled ? watchUrlOrEmpty(id) : '';
     if (!url) return false;
+    idleHidden = false;
     if (hooks.beforePlay) hooks.beforePlay();
     // Das Video verlässt die Playlist, falls es darin stand
     if (playlist.some(item => item.id === id)) setPlaylist(playlistModel.removeEntry(playlist, id));
@@ -548,7 +551,7 @@ function createYoutubeMini(deps) {
       return () => listeners.delete(cb);
     },
     getView() {
-      return { stage: model.stage, status: model.status, videoId: model.videoId, ...view, playlist, panelOpen };
+      return { stage: model.stage, status: model.status, videoId: model.videoId, ...view, playlist, panelOpen, idleHidden };
     },
     getState: () => model,
     getSettings: () => ({ ...settings }),
@@ -592,6 +595,9 @@ function createYoutubeMini(deps) {
     onServiceNavigate(isYoutube) {
       trail = trailModel.createTrail();
       pendingFrom = '';
+      if (isYoutube) idleHidden = false;
+      else idleHidden = true;
+      emit();
       if (!state.isActive(model)) return;
       if (isYoutube) leavePlayerPage();
       else closeVideo();
@@ -604,7 +610,9 @@ function createYoutubeMini(deps) {
 
     /** Eine andere Wiedergabe startet (Streamingdienst, LiveTV, Radio, Podcast, Mediathek, Aufnahme): Video beenden. */
     stopForOtherPlayback() {
+      idleHidden = true; // auch die wartende Playlist-Leiste (Stufe idle) verschwindet
       if (state.isActive(model)) closeVideo();
+      else emit();
     },
 
     /** Zurück im YouTube-Bereich. true = behandelt. */

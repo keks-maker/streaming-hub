@@ -20,6 +20,13 @@ const view = (extra = {}) => ({ stage: 'mini', status: 'playing', videoId: A, ti
 
 // ───────── Modell ─────────
 
+test('Playlist-Leiste ohne Video (idle) verschwindet bei idleHidden, ein laufendes Video nicht', () => {
+  const idle = { stage: 'idle', playlist: [{ id: 'aaaaaaaaaaa' }] };
+  assert.equal(isVideoMiniPlayerVisible(idle), true);
+  assert.equal(isVideoMiniPlayerVisible({ ...idle, idleHidden: true }), false);
+  assert.equal(isVideoMiniPlayerVisible({ stage: 'mini', idleHidden: true }), true);
+});
+
 test('Sichtbarkeit: Stufe mini; ohne Video nur, wenn Einträge in der Playlist warten; nicht bei unterdrückter Leiste', () => {
   assert.equal(isVideoMiniPlayerVisible(view()), true);
   assert.equal(isVideoMiniPlayerVisible(view({ stage: 'page' })), false);

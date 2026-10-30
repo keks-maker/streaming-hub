@@ -24,12 +24,12 @@ const STATUS_TEXT = { loading: 'Lädt …', paused: 'Pausiert', ended: 'Beendet'
 
 /**
  * Sichtbar, wenn das Video klein läuft (Stufe mini) oder wenn keines läuft, aber Einträge in der Playlist warten
- * (dann startet die Abspielen-Taste den ersten). Nicht im Vollbild/Player-Vollbild (suppressed).
+ * (dann startet die Abspielen-Taste den ersten; nicht, nachdem eine andere Wiedergabe das Video beendet hat: idleHidden). Nicht im Vollbild/Player-Vollbild (suppressed).
  */
 function isVideoMiniPlayerVisible(view, { suppressed = false } = {}) {
   if (!view || suppressed) return false;
   if (view.stage === 'mini') return true;
-  return view.stage === 'idle' && Array.isArray(view.playlist) && view.playlist.length > 0;
+  return view.stage === 'idle' && !view.idleHidden && Array.isArray(view.playlist) && view.playlist.length > 0;
 }
 
 /** Wiedergabetaste: laufend/ladend → pause · pausiert/beendet → resume · nichts geladen (Playlist wartet) → start. */

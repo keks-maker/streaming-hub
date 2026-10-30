@@ -305,6 +305,17 @@ test('Hover-„+“: sitzt in der Titelzeile links neben dem Drei-Punkte-Menü, 
   assert.equal(plus.style.display, 'none');
 });
 
+test('Hover-„+“: nach dem Klick (Knopf wird versteckt, kein mouseleave) kehrt er in die Akzentfarbe zurück', () => {
+  const { page, over, plusBtn, target } = cardPage();
+  over(target());
+  const plus = plusBtn();
+  plus.listeners.mouseenter.forEach(f => f());
+  assert.equal(plus.style.background, '#8b7df0');
+  plus.listeners.click.forEach(f => f(page.event(plus)));
+  assert.equal(plus.style.display, 'none');
+  assert.equal(plus.style.background, '#6c5ce7');
+});
+
 test('Hover-„+“: Hover-Vorschau (ytd-video-preview) und der Knopf selbst lassen ihn stehen; Zeiger außerhalb einer Kachel blendet aus; Wiedergabeseite überspringt das laufende Video', () => {
   const { over, plusBtn, target } = cardPage();
   over(target());
