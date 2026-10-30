@@ -201,8 +201,8 @@ function loadPreload({ adblockState }) {
 
 test('Preload: Hook nur bei aktivem Zustand, synchron beim Start, CSS per webFrame.insertCSS', () => {
   const off = loadPreload({ adblockState: { active: false, css: '' } });
-  // zweite Abfrage: Mini-Player (lib/youtube-mini-ipc.js); ohne Skript im Zustand passiert dort nichts
-  assert.deepEqual(off.sync, ['youtube-adblock:page-state', 'youtube-mini:page-state']);
+  // weitere Abfragen: Mini-Player (lib/youtube-mini-ipc.js) und Fortschritt (lib/youtube-progress-ipc.js); ohne Skript im Zustand passiert dort nichts
+  assert.deepEqual(off.sync, ['youtube-adblock:page-state', 'youtube-mini:page-state', 'youtube-progress:page-state']);
   assert.equal(off.executed.length, 0);
   assert.equal(off.insertCss.length, 0);
   const none = loadPreload({ adblockState: undefined });

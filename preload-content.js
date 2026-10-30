@@ -134,6 +134,34 @@ try {
   // Mini-Player ist optional: nie den restlichen Preload verhindern
 }
 
+// ── YouTube-Wiedergabefortschritt ──
+// Skript liefert der Main (lib/youtube-progress-ipc.js, page-state), unabhängig vom Mini-Player. Es meldet per window.postMessage
+// ({ __shProgress }); hier wird an den Main weitergereicht (dort validiert) und die gemerkte Position zurückgegeben.
+try {
+  const progressState = ipcRenderer.sendSync('youtube-progress:page-state');
+  if (progressState && progressState.active === true && typeof progressState.script === 'string' && progressState.script) {
+    webFrame.executeJavaScript(progressState.script).catch(() => {});
+    window.addEventListener('message', e => {
+      if (e.source !== window || !e.data || typeof e.data !== 'object' || !e.data.__shProgress || typeof e.data.__shProgress !== 'object') return;
+      const m = e.data.__shProgress;
+      if (m.type === 'report') {
+        ipcRenderer.send('youtube-progress:report', { id: m.id, t: m.t, d: m.d });
+      } else if (m.type === 'need' && typeof m.id === 'string') {
+        ipcRenderer
+          .invoke('youtube-progress:get-position', m.id)
+          .then(position => {
+            if (typeof position === 'number' && position > 0) {
+              return webFrame.executeJavaScript(`window.__shProgressResume&&window.__shProgressResume(${JSON.stringify(m.id)},${position})`);
+            }
+          })
+          .catch(() => {});
+      }
+    });
+  }
+} catch (_) {
+  // Fortschritt ist optional: nie den restlichen Preload verhindern
+}
+
 const script = document.createElement('script');
 script.textContent = `
 (function() {

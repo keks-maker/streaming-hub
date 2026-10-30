@@ -35,6 +35,7 @@ const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
 const { registerYoutubeMini } = require('./lib/youtube-mini-ipc.js');
+const { registerYoutubeProgress } = require('./lib/youtube-progress-ipc.js');
 let youtubeMini = null; // Zugriff auf die Mini-Player-Einstellungen (Kontextmenü der Webviews)
 const { attachWebviewGuest } = require('./lib/webview-guest.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
@@ -840,6 +841,9 @@ app.whenReady().then(() => {
   registerYoutubeAdblock({ ipcMain, session, storage: userStorage, requireMainRenderer, logger });
   // YouTube-Mini-Player: Einstellungen, Playlist, Webview-Rollen und Seitenskript für den Preload
   youtubeMini = registerYoutubeMini({ ipcMain, session, webContents, storage: userStorage, requireMainRenderer, getMainContents: () => mainWindow?.webContents || null, net, logger });
+
+  // YouTube-Wiedergabefortschritt je Video (Format wie iPad), unabhängig vom Mini-Player
+  registerYoutubeProgress({ ipcMain, session, storage: userStorage, getMainContents: () => mainWindow?.webContents || null, logger });
 
   // ── Radio (Konzept §2/§7): Zustand im Main, Audio im unsichtbaren Player-Fenster ──
   // Das Player-Fenster wird erst beim ersten Abspielen erzeugt (show:false), in Tests öffnet sich nichts.
