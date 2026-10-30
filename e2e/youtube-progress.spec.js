@@ -107,3 +107,26 @@ test('Meldung der Seite landet im iPad-Format in youtube-progress.json; gespeich
   await load(B);
   await expect.poll(() => guest('JSON.stringify(window.__sets)'), { timeout: 15_000 }).toBe('[100]');
 });
+
+test('Mini-Player aus: Sync-Meldung beim Verlassen der Seite (pagehide) wird trotzdem gespeichert', async () => {
+  await stop();
+  fs.writeFileSync(path.join(userData, 'youtube-mini-settings.json'), JSON.stringify({ enabled: false }));
+  await start();
+  await load(A);
+  await expect.poll(() => guest('typeof window.__shProgress'), { timeout: 15_000 }).toBe('boolean');
+  expect(await guest('typeof window.__shMini')).toBe('undefined');
+  await page.waitForTimeout(600);
+  const readA = () => {
+    try {
+      const e = JSON.parse(fs.readFileSync(progressFile(), 'utf8')).find(x => x.id === A);
+      return e ? e.position : null;
+    } catch (_) {
+      return null;
+    }
+  };
+  await guest(`window.dispatchEvent(new CustomEvent('__shProgressSync', { detail: JSON.stringify({ __shProgress: { type: 'report', id: '${A}', t: 55, d: 300 } }) })); 'ok'`);
+  await expect.poll(readA, { timeout: 10_000 }).toBe(55);
+  await guest(`window.__fire(66, 'timeupdate')`);
+  await load(B);
+  await expect.poll(readA, { timeout: 10_000 }).toBe(66);
+});
