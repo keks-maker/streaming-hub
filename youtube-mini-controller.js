@@ -129,7 +129,7 @@ function createYoutubeMini(deps) {
     });
   }
 
-  /** Die Seitenskripte beider Webviews kennen die Playlist-IDs: das Hover-„+“ erscheint für Videos darin blasser. */
+  /** Die Seitenskripte beider Webviews kennen die Playlist-IDs: das Hover-„+“ zeigt für Videos darin einen Haken (✓). */
   function pushListed() {
     const config = { listed: playlist.map(item => item.id) };
     callContent(`window.__shMini && window.__shMini.setConfig(${JSON.stringify(config)})`);

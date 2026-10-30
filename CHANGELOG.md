@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.13.1 (2026-10-30) — YouTube: Fortschritt merken, Playlist-Zähler, Haken im Plus
 - Neu (YouTube-Mini-Player): Zähler (rote Kapsel, weiße Zahl) oben rechts am Playlist-Knopf der Leiste, bei 0 verborgen, `aria-hidden`; das `aria-label` nennt die Anzahl (`playlistBadge`, `playlistButtonLabel` in `youtube-miniplayer-model.js`, CSS `.radio-mini-yt-badge`).
 - Neu (YouTube Hover-„+“): Liegt das Video schon in der Playlist, zeigt der Knopf einen Haken „✓“ (Tooltip „In der Playlist“) statt „+“, auch beim erneuten Überfahren; nach Entfernen oder Abspielen wieder „+“. Der Controller meldet die Playlist-IDs per `setConfig({ listed })` an beide Seitenskripte (Start, Änderung, Seitenladen). Ein erneuter Klick erzeugt kein Duplikat (Meldung „Schon in der Playlist“).
 - Neu (YouTube-Mini-Player): Ein durch eine andere Wiedergabe beendetes Video (`stopForOtherPlayback`, `onServiceNavigate(false)`) wird mit id und Titel im Arbeitsspeicher vorgemerkt (`resume`). Zurück auf YouTube zeigt die Leiste es pausiert, auch bei leerer Playlist; Play öffnet es wieder und setzt über den Fortschritt fort. Vormerkung entfällt beim Schließen, bei einem anderen Video oder Playlist-Eintrag; ein beendetes Video wird nicht vorgemerkt.
