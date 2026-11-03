@@ -309,3 +309,29 @@ test('Parser-Slots (mit Zusatzfeldern) gehen unverändert durch setSource → sa
   await loaded.load();
   assert.deepEqual(loaded.range('b1.de', 0, Infinity), before);
 });
+
+test('Alt-Cache: Kanal-Schlüssel werden beim Laden neu normalisiert, Kollisionen vereinigt', async () => {
+  const dir = makeDir();
+  const slot = (start, title) => [start, start + HOUR, title, ''];
+  const raw = {
+    version: CACHE_VERSION,
+    sources: {
+      [URL_A]: {
+        fetchedAt: NOW,
+        sourceIds: ['q1'],
+        icons: [],
+        channels: {
+          'n-tv.de': [slot(NOW, 'A')],
+          'anixe+.de': [slot(NOW, 'B')],
+          'ntv.de': [slot(NOW + HOUR, 'C'), slot(NOW, 'A')],
+        },
+      },
+    },
+  };
+  fs.writeFileSync(path.join(dir, CACHE_FILE), JSON.stringify(raw));
+  const store = createEpgStore({ dir });
+  assert.equal(await store.load(), 1);
+  const ntv = store.range('n-tv.de', NOW - HOUR, NOW + 5 * HOUR);
+  assert.deepEqual(ntv.map(s => s.title), ['A', 'C']);
+  assert.equal(store.range('Anixe+.de', NOW - HOUR, NOW + 5 * HOUR).length, 1);
+});
