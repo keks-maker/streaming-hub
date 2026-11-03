@@ -1,6 +1,7 @@
 # Changelog
 
-## Unreleased — EPG: zweite Quelle für die Standard-TV-Quelle, tolerante Kanal-Zuordnung
+## 0.13.2 (2026-11-03) — EPG: zweite Quelle & tolerante Sender-Zuordnung
+- Behoben: Sender zeigten „Kein EPG verfügbar“, obwohl das EPG als aktuell galt, weil die Datei von iptv-epg.org upstream veraltet war und Kanal-IDs der Quellen nicht exakt zusammenpassten. Maßnahmen siehe unten (zweite Quelle, tolerante Zuordnung, Merge nach Aktualität).
 - Neu (EPG-Quellen): TV-Quellen können neben `epgUrl` weitere EPG-URLs in `epgUrls` (Liste) tragen; `EpgService._configuredUrls` lädt alle, gleiche URLs werden zusammengefasst. Die Standard-Quelle „Deutsche Öffentlich-Rechtliche“ erhält `https://epgshare01.online/epgshare01/epg_ripper_DE1.xml.gz` (aktuell, gzip) zusätzlich zu `iptv-epg.org/files/epg-de.xml`, das teils veraltet ist (ARD/ZDF/arte endeten am 02.11.).
 - Neu (Migration): `lib/tvsources-default-epg.js` (`migrateDefaultEpgUrls`) trägt `epgUrls` einmalig in eine bereits gespeicherte Standard-Quelle (`tvsources.json`) nach, nur wenn deren `epgUrl` noch der Standard ist und das Feld `epgUrls` fehlt; geänderte `epgUrl`, vorhandene (auch leere) `epgUrls` und andere Quellen bleiben unberührt. Wird beim Laden in `loadTvSources` angewandt und gespeichert.
 - Geändert (EpgStore): Zusammenführung mehrerer Quellen je Kanal (`overlapping`). Maßgeblich ist die Quelle, deren Daten für den Kanal am weitesten reichen (bei Gleichstand die zuletzt geladene); Slots anderer Quellen kommen nur hinzu, wo sie keinen maßgeblichen Slot überlappen. Veraltete Daten verdrängen frische nicht mehr und doppeln keine Sendungen, füllen aber Lücken.
