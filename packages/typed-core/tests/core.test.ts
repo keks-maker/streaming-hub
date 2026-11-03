@@ -244,10 +244,10 @@ it('getMediathekForChannel', () => {
 });
 
 it('normalizeTvId', () => {
-  // Einheitliche Semantik wie normalizeEpgId (epg.ts): Suffix ab "@" bis
-  // zum nächsten Punkt entfernen ("ard@hdr.de" → "ard.de"). Reale M3U-IDs
-  // tragen Qualitäts-/Regionssuffixe ohne Punkt ("DasErste.de@HD").
-  expect(normalizeTvId('ARD@some.host')).toBe('ard.host');
+  // Einheitliche Semantik wie normalizeEpgId (epg.ts): Suffix ab "@" bis zum nächsten
+  // Punkt entfernen, Satzzeichen ignorieren, Länderendung (2 Buchstaben) bleibt.
+  expect(normalizeTvId('ARD@some.host')).toBe('ardhost');
+  expect(normalizeTvId('Das.Erste.de')).toBe('daserste.de');
   expect(normalizeTvId('DasErste.de@HD')).toBe('daserste.de');
   expect(normalizeTvId('  ZDF  ')).toBe('zdf');
 });

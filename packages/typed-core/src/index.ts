@@ -65,6 +65,8 @@ export {
   parseXMLTV,
 } from './epg.js';
 
+export { normalizeEpgKey, EPG_KEY_ALIASES } from './epg-key.js';
+
 export {
   computeEpgMarkers,
   selectEpgWindowEntries,

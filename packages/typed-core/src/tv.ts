@@ -1,4 +1,5 @@
 import type { TvChannel, TvSource, ChannelListItem } from './types.js';
+import { normalizeEpgKey } from './epg-key.js';
 
 export interface MediathekMatch {
   serviceId: string;
@@ -17,13 +18,11 @@ export function getMediathekForChannel(tvgIdOrName: string): MediathekMatch | nu
 
 /**
  * Normalisiert TV-Sender-IDs identisch zur EPG-Normalisierung (epg.ts):
- * entfernt das Suffix ab "@" bis zum nächsten Punkt ("ard@hdr.de" → "ard.de").
- * Vorher entfernte der Regex hier alles ab "@" bis zum Zeilenende
- * ("ard@hdr.de" → "ard") – dadurch schlug der EPG-Abgleich zwischen beiden
- * Funktionen fehl.
+ * delegiert an normalizeEpgKey (epg-key.ts): Entities, Groß-/Kleinschreibung, "@Suffix",
+ * Satzzeichen und Alias-Tabelle ("Das.Erste.de" und "DasErste.de@HD" → "daserste.de").
  */
 export function normalizeTvId(id: string): string {
-  return (id || '').replace(/@[^.@]*/g, '').toLowerCase().trim();
+  return normalizeEpgKey(id || '');
 }
 
 export function isFavorite(ch: TvChannel, sources: TvSource[]): boolean {

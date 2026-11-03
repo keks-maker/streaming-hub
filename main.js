@@ -265,6 +265,12 @@ const { updateServiceInList } = require('./lib/service-update.js');
 const { applyServiceIcon } = require('./lib/service-icon.js');
 const { applyFavoriteOrder, setSourceFavorites } = require('./lib/settings-channel-logic.js');
 const { adoptHeaderEpgUrl } = require('./lib/tvsources-header-epg.js');
+const {
+  DEFAULT_TV_SOURCE_ID,
+  DEFAULT_PRIMARY_EPG_URL,
+  DEFAULT_EXTRA_EPG_URL,
+  migrateDefaultEpgUrls,
+} = require('./lib/tvsources-default-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
 const { resolveUpdateApiBase, DEFAULT_UPDATE_API_BASE } = require('./lib/update-base.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
@@ -441,17 +447,22 @@ function broadcastServices() {
 function loadTvSources() {
   const defaults = [
     {
-      id: 'deutsche-oeffentlich-rechtliche',
+      id: DEFAULT_TV_SOURCE_ID,
       name: 'Deutsche Öffentlich-Rechtliche',
       url: 'https://iptv-org.github.io/iptv/countries/de.m3u',
       type: 'url',
       color: '#a78bfa',
-      epgUrl: 'https://iptv-epg.org/files/epg-de.xml',
+      epgUrl: DEFAULT_PRIMARY_EPG_URL,
+      epgUrls: [DEFAULT_EXTRA_EPG_URL],
       sortOrder: [],
     },
   ];
   try {
-    return userStorage.readJson('tvSources', defaults);
+    const stored = userStorage.readJson('tvSources', defaults);
+    // Bestehende Standard-Quelle bekommt die zusätzliche EPG-Quelle einmalig nachgetragen
+    const { sources, changed } = migrateDefaultEpgUrls(stored);
+    if (changed) userStorage.writeJson('tvSources', sources);
+    return sources;
   } catch (error) {
     logger.warn('TV-Quellen konnten nicht geladen werden:', error.message);
     return defaults;
@@ -813,7 +824,7 @@ app.whenReady().then(() => {
   try {
     epgService = new EpgService({
       dir: app.getPath('userData'),
-      getSources: () => loadTvSources().map(({ id, name, epgUrl }) => ({ id, name, epgUrl })),
+      getSources: () => loadTvSources().map(({ id, name, epgUrl, epgUrls }) => ({ id, name, epgUrl, epgUrls })),
       logger,
       // Isolierte Testläufe (STREAMING_HUB_USER_DATA, E2E) laden nicht automatisch
       // aus dem Netz; STREAMING_HUB_EPG_REFRESH=on schaltet es dort wieder ein.

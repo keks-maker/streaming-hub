@@ -62,7 +62,7 @@ test('resolveNowNext: Fortschreibung abgelaufener Sendungen', () => {
 test('channelEpgKey/normEpgKey/chunk', () => {
   assert.equal(adapter.normEpgKey('  ARD.de@SD '), 'ard.de');
   assert.equal(adapter.channelEpgKey({ tvgId: 'ZDF.de@HD', name: 'x' }), 'zdf.de');
-  assert.equal(adapter.channelEpgKey({ tvgId: '', name: 'Das Erste' }), 'das erste');
+  assert.equal(adapter.channelEpgKey({ tvgId: '', name: 'Das Erste' }), 'daserste');
   assert.equal(adapter.channelEpgKey(null), '');
   assert.deepEqual(adapter.chunk([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
   assert.equal(adapter.NOW_NEXT_CHUNK, 600);
@@ -77,4 +77,44 @@ test('Verdrahtung: Renderer nutzt Main-APIs statt Download/Index; Fremdtexte nic
   const preload = fs.readFileSync(path.join(ROOT, 'preload.js'), 'utf-8');
   assert.ok(!/fetch-epg|fetchEPG/.test(preload));
   for (const f of ['eslint.config.js', '.eslintrc.json']) assert.ok(!/tvEpgIndex/.test(fs.readFileSync(path.join(ROOT, f), 'utf-8')), f);
+});
+
+test('normEpgKey: tolerante Zuordnung (Schreibweise, Entities, Suffix, Punkte, Alias) und Idempotenz', () => {
+  const k = adapter.normEpgKey;
+  // m3u-tvg-id vs. epgshare01 DE1
+  assert.equal(k('DasErste.de@HD'), 'daserste.de');
+  assert.equal(k('Das.Erste.de'), 'daserste.de');
+  assert.equal(k('kabeleins.de@SD'), k('kabel.eins.de'));
+  assert.equal(k('ARDalpha.de@SD'), k('ARD.alpha.de'));
+  assert.equal(k('ARD-alpha.de'), k('ARD.alpha.de'));
+  assert.equal(k('ZDFneo.de@HD'), k('zdf_neo.de'));
+  assert.equal(k('Home.&amp;.Garden.TV.de'), k('Home&Garden TV.de'));
+  assert.equal(k('BayernM&#xFC;nchen.de'), 'bayernmunchen.de');
+  assert.equal(k('ANIXE+.de'), k('AnixePlus.de@SD'));
+  // Länderendung bleibt unterscheidend
+  assert.notEqual(k('RTL.de'), k('RTL.at'));
+  assert.equal(k(''), '');
+  assert.equal(k(null), '');
+  assert.equal(k('...@HD'), '');
+  // Aliase
+  assert.equal(k('hrfernsehen.de@HD'), k('hr.de'));
+  assert.equal(k('BRFernsehen.de@Nord'), k('BR.de'));
+  assert.equal(k('SWRFernsehenBadenWurttemberg.de@SD'), k('SWRSR.de'));
+  assert.equal(k('RTLSuper.de@HD'), k('SuperRTL.de'));
+  // Idempotenz (Main normalisiert bereits normalisierte Renderer-Schlüssel erneut)
+  for (const id of ['Das.Erste.de', 'DasErste.de@HD', 'hrfernsehen.de', 'Home.&amp;.Garden.TV.de', 'Das Erste', 'ANIXE+.de', 'ARD.host']) {
+    assert.equal(k(k(id)), k(id), id);
+  }
+});
+
+test('normEpgKey: Renderer, Main-Store und typed-core bilden denselben Schlüssel', () => {
+  const core = require('@streaming-hub/typed-core');
+  const { channelKey } = require('../lib/epg/EpgStore.js');
+  assert.deepEqual(Object.keys(core.EPG_KEY_ALIASES).filter(a => core.EPG_KEY_ALIASES[a] in core.EPG_KEY_ALIASES), []);
+  for (const id of ['Das.Erste.de', 'DasErste.de@HD', 'hrfernsehen.de@SD', 'Home.&amp;.Garden.TV.de', 'Das Erste HD']) {
+    const key = adapter.normEpgKey(id);
+    assert.equal(channelKey(id), key, id);
+    assert.equal(core.normalizeTvId(id), key, id);
+    assert.equal(core.normalizeEpgKey(id), key, id);
+  }
 });

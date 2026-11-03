@@ -1,4 +1,5 @@
 import type { EpgEntry } from './types.js';
+import { normalizeEpgKey } from './epg-key.js';
 
 export function parseEpgTime(timeStr: string): Date {
   const m = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{2})(\d{2})/);
@@ -82,5 +83,5 @@ export function parseXMLTV(xml: string): EpgEntry[] {
 }
 
 function normalizeEpgId(id: string): string {
-  return id.replace(/@[^.@]*/g, '').toLowerCase().trim();
+  return normalizeEpgKey(id);
 }
