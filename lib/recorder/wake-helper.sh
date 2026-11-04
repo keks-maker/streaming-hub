@@ -1,5 +1,7 @@
 PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
+LC_ALL=C
+export LC_ALL
 umask 077
 set -f
 UID_=$1; APP_PID=$2; TOKEN=$3; PMSET=$4; BASE=$5
