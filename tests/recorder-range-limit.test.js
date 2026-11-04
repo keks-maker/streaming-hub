@@ -40,7 +40,9 @@ fs.writeFileSync(path.join(dir, segName), Buffer.alloc(2048));
 let existing = '';
 try { existing = fs.readFileSync(playlist, 'utf-8'); } catch (_) {}
 fs.writeFileSync(playlist, existing + '#EXTINF:' + DUR + ',\\n' + segName + '\\n');
-if (MODE === 'finish' || MODE === 'finish-gap') setTimeout(() => process.exit(0), 150);
+if (MODE === 'finish-retry') process.stderr.write('[hls @ 0x1] Failed to open segment 20 of playlist 0\\n'.repeat(3));
+if (MODE === 'finish-lost') process.stderr.write('[hls @ 0x1] Failed to open segment 20 of playlist 0\\n[hls @ 0x1] Segment 20 of playlist 0 failed too many times, skipping\\n');
+if (['finish', 'finish-gap', 'finish-retry', 'finish-lost'].includes(MODE)) setTimeout(() => process.exit(0), 150);
 else if (MODE === 'die') setTimeout(() => process.exit(1), 150);
 else {
   process.on('SIGINT', () => { fs.appendFileSync(playlist, '#EXT-X-ENDLIST\\n'); process.exit(0); });
@@ -182,6 +184,17 @@ test('E1/E3: Lückensignal des Demuxers (auch über Chunk-Grenzen) = range-inter
   job.start();
   const payload = await done;
   assert.equal(payload.meta.stopReason, 'range-interrupted');
+});
+
+test('Segment-Wiederholung mit späterem Erfolg bleibt stop-at, endgültiger Verlust = range-interrupted', async () => {
+  const retry = makeJob('finish-retry', { limitSec: 600 }, '600.0');
+  const retryDone = whenDone(retry.job);
+  retry.job.start();
+  assert.equal((await retryDone).meta.stopReason, 'stop-at');
+  const lost = makeJob('finish-lost', { limitSec: 600 }, '600.0');
+  const lostDone = whenDone(lost.job);
+  lost.job.start();
+  assert.equal((await lostDone).meta.stopReason, 'range-interrupted');
 });
 
 test('Gegenprobe: lückenlose Aufnahme mit voller Dauer bleibt stop-at', async () => {
