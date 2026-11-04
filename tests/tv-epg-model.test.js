@@ -129,13 +129,13 @@ const LIVE = { epgTitle: 'Live-Sendung', epgStopMs: at('2230') };
 test('resolveShowOverride: laufende Sendung = Autostopp an ihrem Ende, Titel aus dem Request', () => {
   const r = resolveShowOverride(
     { untilEpgEnd: true, epgTitleOverride: ' Film ', epgStartMsOverride: at('2100'), epgEndMsOverride: at('2300') }, LIVE, NOW);
-  assert.deepEqual(r, { epgTitle: 'Film', epgStopMs: at('2300'), rangeDurationSec: null });
+  assert.deepEqual(r, { epgTitle: 'Film', epgStopMs: at('2300'), rangeDurationSec: null, showStartMs: at('2100') });
 });
 
 test('resolveShowOverride: beendete Sendung = Dauer statt Uhr-Stopp', () => {
   const r = resolveShowOverride(
     { untilEpgEnd: true, epgTitleOverride: 'Nachrichten', epgStartMsOverride: at('2000'), epgEndMsOverride: at('2100') }, LIVE, NOW);
-  assert.deepEqual(r, { epgTitle: 'Nachrichten', epgStopMs: null, rangeDurationSec: 3600 });
+  assert.deepEqual(r, { epgTitle: 'Nachrichten', epgStopMs: null, rangeDurationSec: 3600, showStartMs: at('2000') });
 });
 
 test('resolveShowOverride: ungültige Angaben fallen auf die Live-Werte zurück', () => {
@@ -147,9 +147,9 @@ test('resolveShowOverride: ungültige Angaben fallen auf die Live-Werte zurück'
     { epgTitleOverride: null, epgEndMsOverride: 0 },
   ];
   for (const p of bads) {
-    assert.deepEqual(resolveShowOverride({ untilEpgEnd: true, ...p }, LIVE, NOW), { epgTitle: 'Live-Sendung', epgStopMs: at('2230'), rangeDurationSec: null }, JSON.stringify(p));
+    assert.deepEqual(resolveShowOverride({ untilEpgEnd: true, ...p }, LIVE, NOW), { epgTitle: 'Live-Sendung', epgStopMs: at('2230'), rangeDurationSec: null, showStartMs: null }, JSON.stringify(p));
   }
-  assert.deepEqual(resolveShowOverride(null, LIVE, NOW), { epgTitle: 'Live-Sendung', epgStopMs: at('2230'), rangeDurationSec: null });
+  assert.deepEqual(resolveShowOverride(null, LIVE, NOW), { epgTitle: 'Live-Sendung', epgStopMs: at('2230'), rangeDurationSec: null, showStartMs: null });
 });
 
 test('resolveShowOverride: beendete Sendung ohne gültigen Start oder mit unplausibler Dauer = Live-Werte', () => {

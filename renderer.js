@@ -358,6 +358,7 @@ async function startRecordingFromRequest({
   untilEpgEnd = false,
   epgStopMs = null,
   rangeDurationSec = null,
+  showStartMs = null,
   startOffsetSec = 0,
 } = {}) {
   const ch = channelId ? tvChannels.find(c => c.id === channelId) : null;
@@ -377,6 +378,8 @@ async function startRecordingFromRequest({
   if (untilEpgEnd && !request.stopAt && Number.isFinite(rangeDurationSec) && rangeDurationSec > 0) {
     request.rangeDurationSec = Math.ceil(rangeDurationSec);
   }
+  // Absoluter Sendungsstart: der Recorder bestimmt den Startpunkt beim Spawn (Wartezeit/Limit-Dialog verschieben nichts).
+  if (untilEpgEnd && Number.isFinite(showStartMs) && showStartMs > 0) request.showStartMs = Math.floor(showStartMs);
   let result = await window.electronAPI.startRecording(request);
   if (result?.code === 'PARALLEL_LIMIT') {
     const override = await askRecordingLimitOverride(result);
@@ -3504,6 +3507,7 @@ tvView.addEventListener('ipc-message', e => {
         untilEpgEnd: !!e.args[0].payload?.untilEpgEnd,
         epgStopMs: show.epgStopMs,
         rangeDurationSec: show.rangeDurationSec,
+        showStartMs: show.showStartMs,
         startOffsetSec,
       }).catch(err => showTvToast('Aufnahme konnte nicht gestartet werden: ' + (err?.message || err)));
     } else if (e.args[0].action === 'recording-stop') {

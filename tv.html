@@ -52,7 +52,7 @@
     .tv-epg-bar .epg-sep { color:#475569; margin:0 14px; }
     /* EPG-Leiste im DVR-Modus: Sendung an der Wiedergabezeit, Fortschritt, Zeitversatz */
     .tv-epg-bar .epg-behind {
-      display:inline-block; vertical-align:middle; margin-right:18px; padding:2px 18px;
+      display:table; margin:0 auto 6px; padding:2px 18px;
       font-size:32px; font-weight:600; color:#f0f0f5; border-radius:999px;
       background:rgba(124,58,237,0.5);
     }
@@ -1009,8 +1009,14 @@
         var text = TvEpgModel.hoverText(epgEntries, wallMs);
         if (!text) { hideScrubHover(); return; }
         scrubHoverTip.textContent = text;
-        scrubHoverTip.style.left = (pct * 100) + '%';
         scrubHoverTip.style.display = 'block';
+        // Am Rand nicht aus dem Fenster ragen lassen (Mitte der Sprechblase bleibt im sichtbaren Bereich)
+        var barRect = scrubBar.getBoundingClientRect();
+        var half = scrubHoverTip.offsetWidth / 2;
+        var px = ev.clientX - barRect.left;
+        var minPx = half + 4 - barRect.left;
+        var maxPx = window.innerWidth - barRect.left - half - 4;
+        scrubHoverTip.style.left = Math.max(minPx, Math.min(maxPx, px)) + 'px';
       });
       scrubTrack.addEventListener('mouseleave', hideScrubHover);
       scrubTrack.addEventListener('mousedown', hideScrubHover);

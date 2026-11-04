@@ -14,25 +14,30 @@ const http = require('node:http');
 const { execFileSync } = require('node:child_process');
 const { RecordJob } = require('../lib/recorder/RecordJob.js');
 const { validateRecordingRequest } = require('../lib/recorder/RecorderService.js');
+const { computeRangeSeek } = require('../lib/recorder/dvr-seek.js');
 
 const FAKE_DIR = path.join(os.tmpdir(), `recorder-range-fake-${process.pid}`);
 
-// mode: 'finish' (Exit 0 nach einem Segment), 'die' (Exit 1 nach einem Segment), 'log-args' (schreibt Argumente, bleibt aktiv)
+// mode: 'finish' (Exit 0 nach einem Segment), 'die' (Exit 1 nach einem Segment), 'segv' (SIGSEGV ohne Material),
+// 'die-empty' (Exit 1 ohne Material), sonst: schreibt Argumente und bleibt aktiv. __DUR__ = EXTINF-Dauer des Segments.
 const FAKE = `#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const args = process.argv.slice(2);
 if (args[0] === '-version') { console.log('ffmpeg version 7.0.2-static'); process.exit(0); }
 const MODE = '__MODE__';
+const DUR = '__DUR__';
 const segPattern = args[args.indexOf('-hls_segment_filename') + 1];
 const playlist = args[args.length - 1];
 const dir = path.dirname(playlist);
 fs.appendFileSync(path.join(dir, 'args.log'), JSON.stringify(args) + '\\n');
+if (MODE === 'segv') process.kill(process.pid, 'SIGSEGV');
+if (MODE === 'die-empty') process.exit(1);
 const segName = path.basename(segPattern).replace('%05d', '00000');
 fs.writeFileSync(path.join(dir, segName), Buffer.alloc(2048));
 let existing = '';
 try { existing = fs.readFileSync(playlist, 'utf-8'); } catch (_) {}
-fs.writeFileSync(playlist, existing + '#EXTINF:1.0,\\n' + segName + '\\n');
+fs.writeFileSync(playlist, existing + '#EXTINF:' + DUR + ',\\n' + segName + '\\n');
 if (MODE === 'finish') setTimeout(() => process.exit(0), 150);
 else if (MODE === 'die') setTimeout(() => process.exit(1), 150);
 else {
@@ -41,15 +46,15 @@ else {
 }
 `;
 
-function fakeFfmpeg(mode) {
+function fakeFfmpeg(mode, dur = '1.0') {
   fs.mkdirSync(FAKE_DIR, { recursive: true });
-  const file = path.join(FAKE_DIR, `fake-${mode}.js`);
-  fs.writeFileSync(file, FAKE.replace('__MODE__', mode), { mode: 0o755 });
+  const file = path.join(FAKE_DIR, `fake-${mode}-${dur}.js`);
+  fs.writeFileSync(file, FAKE.replace('__MODE__', mode).replace('__DUR__', dur), { mode: 0o755 });
   return file;
 }
 
 let counter = 0;
-function makeJob(mode, extra = {}) {
+function makeJob(mode, extra = {}, dur = '1.0') {
   counter += 1;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `rec-range-${counter}-`));
   const recId = `rec_20260930_r${String(counter).padStart(2, '0')}x`;
@@ -57,7 +62,7 @@ function makeJob(mode, extra = {}) {
     recId,
     sourceUrl: 'https://stream.example/live.m3u8',
     dir,
-    ffmpegPath: fakeFfmpeg(mode),
+    ffmpegPath: fakeFfmpeg(mode, dur),
     meta: { id: recId, channelId: 'c', channelName: 'C', epgTitle: 'Sendung', status: 'recording', sourceUrl: 'https://stream.example/live.m3u8' },
     timing: { firstAttemptMinRunMs: 50, retryBaseDelayMs: 50 },
     ...extra,
@@ -78,7 +83,7 @@ function ffmpegArgsLog(dir) {
 }
 
 test('limitSec: ffmpeg bekommt -t; Exit 0 beendet die Aufnahme als Sendungsende (kein Reconnect)', async () => {
-  const { job, dir } = makeJob('finish', { limitSec: 120 });
+  const { job, dir } = makeJob('finish', { limitSec: 120 }, '120.0');
   const autoStops = [];
   job.on('auto-stop', e => autoStops.push(e.reason));
   const done = whenDone(job);
@@ -131,13 +136,140 @@ test('limitSec: nie erfolgreich gestarteter Stream bleibt ein harter Fehler (fai
   assert.equal(payload.meta.status, 'failed');
 });
 
+test('F1: Exit 0 mit zu wenig Material (Server-/Segmentausfall, ENDLIST) = range-interrupted, nicht stop-at', async () => {
+  const { job } = makeJob('finish', { limitSec: 100 }, '16.0');
+  const done = whenDone(job);
+  job.start();
+  const payload = await done;
+  assert.equal(payload.meta.stopReason, 'range-interrupted');
+  assert.equal(payload.meta.status, 'remux-pending');
+});
+
+test('F1/W1: Toleranz - fast vollständiges Material gilt als komplett, 83 von 100 s nicht', async () => {
+  const ok = makeJob('finish', { limitSec: 100 }, '98.0');
+  const okDone = whenDone(ok.job);
+  ok.job.start();
+  assert.equal((await okDone).meta.stopReason, 'stop-at');
+  const gap = makeJob('finish', { limitSec: 100 }, '83.0');
+  const gapDone = whenDone(gap.job);
+  gap.job.start();
+  assert.equal((await gapDone).meta.stopReason, 'range-interrupted');
+});
+
+test('F3: früher Abbruch (unter der Mindestlaufzeit) mit verwertbarem Material = range-interrupted, nicht failed', async () => {
+  const { job } = makeJob('die', { limitSec: 120, timing: { firstAttemptMinRunMs: 5000, retryBaseDelayMs: 50 } }, '10.0');
+  const done = whenDone(job);
+  job.start();
+  const payload = await done;
+  assert.equal(payload.meta.status, 'remux-pending');
+  assert.equal(payload.meta.stopReason, 'range-interrupted');
+});
+
+test('begrenzte Aufnahme ohne Material = failed (kein Reconnect)', async () => {
+  const { job, dir } = makeJob('die-empty', { limitSec: 120 });
+  const done = whenDone(job);
+  job.start();
+  const payload = await done;
+  assert.equal(payload.meta.status, 'failed');
+  assert.equal(ffmpegArgsLog(dir).length, 1);
+});
+
+const PDT = ms => new Date(ms).toISOString();
+const START_MS = Date.UTC(2026, 8, 10, 20, 0, 0);
+function pdtPlaylist(count = 30, withPdt = true) {
+  const lines = ['#EXTM3U', '#EXT-X-VERSION:3', '#EXT-X-TARGETDURATION:2', '#EXT-X-MEDIA-SEQUENCE:100'];
+  for (let i = 0; i < count; i += 1) {
+    if (withPdt && i === 0) lines.push(`#EXT-X-PROGRAM-DATE-TIME:${PDT(START_MS)}`);
+    lines.push('#EXTINF:2.0,', `s${i}.ts`);
+  }
+  return lines.join('\n') + '\n';
+}
+
+test('computeRangeSeek: Segment und Rest aus dem PDT, außerhalb des Fensters, ohne PDT', () => {
+  const plan = computeRangeSeek(pdtPlaylist(), START_MS + 25000);
+  assert.equal(plan.segmentIndex, 12);
+  assert.equal(plan.liveStartIndex, 12 - 30);
+  assert.equal(plan.residualSec, 1);
+  assert.equal(plan.withinWindow, true);
+  assert.equal(computeRangeSeek(pdtPlaylist(), START_MS - 5000).withinWindow, false);
+  assert.equal(computeRangeSeek(pdtPlaylist(30, false), START_MS + 25000), null);
+  assert.equal(computeRangeSeek('#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nv.m3u8\n', START_MS), null);
+});
+
+test('F4: Startpunkt kommt aus dem PDT beim Spawn, nicht aus dem (veralteten) Rückstand', async () => {
+  const { job, dir } = makeJob('hold', {
+    limitSec: 100, showStartMs: START_MS + 25000, startOffsetSec: 9999,
+    fetchPlaylist: async () => pdtPlaylist(),
+  });
+  job.on('auto-stop', () => {});
+  job.start();
+  await new Promise(r => setTimeout(r, 400));
+  const args = ffmpegArgsLog(dir)[0];
+  assert.equal(args[args.indexOf('-live_start_index') + 1], '-18');
+  assert.equal(args[args.indexOf('-t') + 1], '101', 'Dauer + Rest-Seek 1 s');
+  assert.ok(!args.includes('-ss'));
+  await job.stop({ reason: 'abort' });
+});
+
+test('F2: begrenzte Aufnahme ohne PDT oder außerhalb des Fensters schlägt klar fehl, ffmpeg startet nie', async () => {
+  for (const [playlist, start] of [[pdtPlaylist(30, false), START_MS + 25000], [pdtPlaylist(), START_MS - 60000]]) {
+    const { job, dir } = makeJob('hold', {
+      limitSec: 100, showStartMs: start, startOffsetSec: 600, fetchPlaylist: async () => playlist,
+    });
+    const done = whenDone(job);
+    job.start();
+    const payload = await done;
+    assert.equal(payload.meta.status, 'failed');
+    assert.match(payload.meta.lastError, /Startpunkt im DVR-Fenster nicht bestimmbar/);
+    assert.ok(!fs.existsSync(path.join(dir, 'args.log')), 'kein Legacy-Seek, kein Live-Start');
+  }
+  const failing = makeJob('hold', { limitSec: 100, showStartMs: START_MS, fetchPlaylist: async () => { throw new Error('offline'); } });
+  const d = whenDone(failing.job);
+  failing.job.start();
+  assert.equal((await d).meta.status, 'failed');
+});
+
+test('F2: SIGSEGV bei begrenzter Aufnahme baut die Seek-Argumente nicht ab (kein Legacy-Seek, kein Live-Start)', async () => {
+  const { job, dir } = makeJob('segv', {
+    limitSec: 100, showStartMs: START_MS + 25000, fetchPlaylist: async () => pdtPlaylist(),
+  });
+  const done = whenDone(job);
+  job.start();
+  const payload = await done;
+  assert.equal(payload.meta.status, 'failed');
+  assert.equal(ffmpegArgsLog(dir).length, 1);
+});
+
+test('laufende Sendung (ohne limitSec): PDT-Plan wenn möglich, sonst bisheriger Rückstand', async () => {
+  const withPdt = makeJob('hold', { showStartMs: START_MS + 25000, startOffsetSec: 9999, fetchPlaylist: async () => pdtPlaylist() });
+  withPdt.job.start();
+  await new Promise(r => setTimeout(r, 400));
+  const a = ffmpegArgsLog(withPdt.dir)[0];
+  assert.equal(a[a.indexOf('-live_start_index') + 1], '-18');
+  assert.ok(!a.includes('-t'));
+  await withPdt.job.stop({ reason: 'abort' });
+  const noPdt = makeJob('hold', { showStartMs: START_MS, startOffsetSec: 20, fetchPlaylist: async () => pdtPlaylist(30, false) });
+  noPdt.job.start();
+  await new Promise(r => setTimeout(r, 400));
+  const b = ffmpegArgsLog(noPdt.dir)[0];
+  assert.equal(b[b.indexOf('-live_start_index') + 1], String(-(20 / 2)), 'Rückstand 20 s = 10 Segmente von hinten');
+  await noPdt.job.stop({ reason: 'abort' });
+});
+
 test('validateRecordingRequest: rangeDurationSec wird validiert', () => {
   const base = { sourceUrl: 'https://x.example/a.m3u8', channelId: 'c', channelName: 'C' };
   assert.equal(validateRecordingRequest(base).rangeDurationSec, null);
-  assert.equal(validateRecordingRequest({ ...base, rangeDurationSec: 1800.2 }).rangeDurationSec, 1801);
+  assert.equal(validateRecordingRequest({ ...base, showStartMs: Date.now() - 1000, rangeDurationSec: 1800.2 }).rangeDurationSec, 1801);
+  const showStartMs = Date.now() - 3600 * 1000;
+  assert.equal(validateRecordingRequest({ ...base, showStartMs }).showStartMs, showStartMs);
+  assert.equal(validateRecordingRequest({ ...base, showStartMs, rangeDurationSec: 60 }).rangeDurationSec, 60);
   for (const bad of [0, -5, 'abc', Infinity, 13 * 3600]) {
-    assert.throws(() => validateRecordingRequest({ ...base, rangeDurationSec: bad }), /Sendungsdauer/, String(bad));
+    assert.throws(() => validateRecordingRequest({ ...base, showStartMs, rangeDurationSec: bad }), /Sendungsdauer/, String(bad));
   }
+  for (const bad of ['x', Infinity, Date.now() - 48 * 3600 * 1000]) {
+    assert.throws(() => validateRecordingRequest({ ...base, showStartMs: bad }), /Sendungsstart/, String(bad));
+  }
+  assert.throws(() => validateRecordingRequest({ ...base, rangeDurationSec: 60 }), /benötigt einen Sendungsstart/);
 });
 
 // ── Echter ffmpeg ──
@@ -168,7 +300,10 @@ test('echter ffmpeg: Sendung aus dem Verlauf, Länge und Inhalt stimmen, fertig 
       '-sc_threshold', '0', '-c:a', 'aac', '-f', 'hls', '-hls_time', '2', '-hls_list_size', '0',
       '-hls_flags', 'omit_endlist+program_date_time', '-hls_segment_filename', path.join(src, 'seg_%05d.ts'),
       path.join(src, 'live.m3u8')], { timeout: 60000 });
+    let blockFrom = Infinity; // Segmente ab dieser Nummer liefern 404 (Ausfall mitten in der Sendung)
     const server = http.createServer((req, res) => {
+      const segNo = /seg_(\d+)\.ts/.exec(req.url);
+      if (segNo && Number(segNo[1]) >= blockFrom) { res.writeHead(404).end(); return; }
       fs.readFile(path.join(src, path.basename(req.url)), (err, data) => {
         if (err) { res.writeHead(404).end(); return; }
         res.writeHead(200).end(data);
@@ -177,9 +312,10 @@ test('echter ffmpeg: Sendung aus dem Verlauf, Länge und Inhalt stimmen, fertig 
     await new Promise(r => server.listen(0, '127.0.0.1', r));
     try {
       // Sendung: 35 s vor der Live-Kante begonnen, 7 s lang (nicht segmentgenau: 1 s nach dem Segmentanfang)
+      const pdt0 = Date.parse(/#EXT-X-PROGRAM-DATE-TIME:(\S+)/.exec(fs.readFileSync(path.join(src, 'live.m3u8'), 'utf-8'))[1]);
       const job = new RecordJob({
         recId: 'rec_20260930_real1', sourceUrl: `http://127.0.0.1:${server.address().port}/live.m3u8`, dir: rec,
-        ffmpegPath: ffmpeg, expectedSegmentSec: 2, startOffsetSec: 35, limitSec: 7,
+        ffmpegPath: ffmpeg, expectedSegmentSec: 2, showStartMs: pdt0 + 25000, limitSec: 7,
         meta: { id: 'rec_20260930_real1', channelId: 'c', channelName: 'C', epgTitle: 'Sendung', status: 'recording', sourceUrl: 'x' },
       });
       const t0 = Date.now();
@@ -201,6 +337,22 @@ test('echter ffmpeg: Sendung aus dem Verlauf, Länge und Inhalt stimmen, fertig 
       const first = md5(['-i', path.join(rec, 'index.m3u8')]);
       assert.equal(first, md5(['-i', path.join(src, 'seg_00012.ts')]), 'Erstes Bild = Segment 12 (Verlauf, nicht Live-Kante)');
       assert.ok(fs.readFileSync(path.join(rec, 'index.m3u8'), 'utf-8').includes('#EXT-X-ENDLIST'));
+
+      // Ausfall mitten in der Sendung (Segmente ab 16 liefern 404): ffmpeg endet mit Exit 0, Material fehlt
+      blockFrom = 16;
+      const rec2 = path.join(base, 'rec2');
+      fs.mkdirSync(rec2);
+      const job2 = new RecordJob({
+        recId: 'rec_20260930_real2', sourceUrl: `http://127.0.0.1:${server.address().port}/live.m3u8`, dir: rec2,
+        ffmpegPath: ffmpeg, expectedSegmentSec: 2, showStartMs: pdt0 + 25000, limitSec: 30,
+        meta: { id: 'rec_20260930_real2', channelId: 'c', channelName: 'C', epgTitle: 'Sendung', status: 'recording', sourceUrl: 'x' },
+      });
+      const done2 = whenDone(job2);
+      job2.start();
+      const p2 = await done2;
+      assert.equal(p2.meta.stopReason, 'range-interrupted', 'unvollständig, kein stop-at');
+      assert.equal(p2.meta.status, 'remux-pending');
+      assert.ok(p2.meta.durationSec > 0 && p2.meta.durationSec < 20);
     } finally {
       server.close();
       fs.rmSync(base, { recursive: true, force: true });
