@@ -31,6 +31,7 @@ const {
   isProbablyNetworkPath,
 } = require('./lib/recorder/ui-model.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
+const { resolveShowOverride } = require('./lib/recorder/show-override.js');
 const { createDashboardHub } = require('./dashboard-hub-view.js');
 const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
@@ -356,6 +357,7 @@ async function startRecordingFromRequest({
   epgDescription,
   untilEpgEnd = false,
   epgStopMs = null,
+  rangeDurationSec = null,
   startOffsetSec = 0,
 } = {}) {
   const ch = channelId ? tvChannels.find(c => c.id === channelId) : null;
@@ -371,6 +373,10 @@ async function startRecordingFromRequest({
     startOffsetSec: Number.isFinite(startOffsetSec) && startOffsetSec > 0 ? Math.floor(startOffsetSec) : 0,
   };
   if (untilEpgEnd && Number.isFinite(epgStopMs) && epgStopMs > Date.now()) request.stopAt = Math.floor(epgStopMs);
+  // Sendung schon beendet: Aufnahme aus dem DVR-Fenster, Ende per Länge (ffmpeg liest alte Segmente schneller als Echtzeit).
+  if (untilEpgEnd && !request.stopAt && Number.isFinite(rangeDurationSec) && rangeDurationSec > 0) {
+    request.rangeDurationSec = Math.ceil(rangeDurationSec);
+  }
   let result = await window.electronAPI.startRecording(request);
   if (result?.code === 'PARALLEL_LIMIT') {
     const override = await askRecordingLimitOverride(result);
@@ -2738,6 +2744,7 @@ function recordingStatusText(meta) {
     if (meta.stopReason === 'disk-full') return 'Fertig — beendet: Speicher voll';
     if (meta.stopReason === 'max-duration') return 'Fertig — beendet: Höchstdauer erreicht';
     if (meta.stopReason === 'storage-lost') return 'Fertig — beendet: Speicherort nicht erreichbar';
+    if (meta.stopReason === 'range-interrupted') return 'Fertig — Sendung nur teilweise aufgenommen';
     return 'Fertig';
   }
   if (meta.status === 'aborted') return 'Abgebrochen';
@@ -3477,18 +3484,26 @@ tvView.addEventListener('ipc-message', e => {
     else if (e.args[0].action === 'recording-start') {
       const ch = tvChannels.find(c => c.id === tvActiveChannelId);
       if (!ch) return;
-      const epgStopMs = currentEpgStopMs(epgListForChannel(ch), Date.now());
+      const liveEpgStopMs = currentEpgStopMs(epgListForChannel(ch), Date.now());
       // Karte t_f36663be, Item 2 (Option D = B + C): tv.html liefert den
       // DVR-Rückstand (startOffsetSec, aus der Scrub-/EPG-Position) im Request
       // mit. 0/undefined = Live-Head (Bestandsverhalten).
       const rawOffset = Number(e.args[0].payload?.startOffsetSec);
       const startOffsetSec = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
+      // Sendung an der Wiedergabeposition (tv.html): Titel/Ende/Dauer validiert übernehmen,
+      // sonst die Live-Werte (Uhrzeit-Sendung).
+      const show = resolveShowOverride(
+        e.args[0].payload,
+        { epgTitle: currentEpgTitle(ch), epgStopMs: liveEpgStopMs },
+        Date.now(),
+      );
       startRecordingFromRequest({
         channelId: ch.id,
         channelName: ch.name,
-        epgTitle: currentEpgTitle(ch),
+        epgTitle: show.epgTitle,
         untilEpgEnd: !!e.args[0].payload?.untilEpgEnd,
-        epgStopMs,
+        epgStopMs: show.epgStopMs,
+        rangeDurationSec: show.rangeDurationSec,
         startOffsetSec,
       }).catch(err => showTvToast('Aufnahme konnte nicht gestartet werden: ' + (err?.message || err)));
     } else if (e.args[0].action === 'recording-stop') {
@@ -4164,7 +4179,7 @@ window.electronAPI.onRecordingAutoStopped?.(data => {
   const name = data.channelName || 'Aufnahme';
   if (data.reason === 'disk-full' || data.reason === 'storage-lost') {
     showTvToast(`Aufnahme „${name}“ beendet: ${data.message}. Sie bleibt abspielbar.`);
-  } else if (data.reason === 'max-duration') {
+  } else if (data.reason === 'max-duration' || data.reason === 'range-interrupted') {
     showTvToast(`Aufnahme „${name}“ beendet: ${data.message}.`);
   }
 });

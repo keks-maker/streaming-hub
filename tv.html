@@ -50,6 +50,20 @@
     .tv-epg-bar .epg-title { color:#e2e8f0; }
     .tv-epg-bar .epg-next { color:#64748b; font-size:40px; }
     .tv-epg-bar .epg-sep { color:#475569; margin:0 14px; }
+    /* EPG-Leiste im DVR-Modus: Sendung an der Wiedergabezeit, Fortschritt, Zeitversatz */
+    .tv-epg-bar .epg-behind {
+      display:inline-block; vertical-align:middle; margin-right:18px; padding:2px 18px;
+      font-size:32px; font-weight:600; color:#f0f0f5; border-radius:999px;
+      background:rgba(124,58,237,0.5);
+    }
+    .tv-epg-bar .epg-noinfo { color:#94a3b8; }
+    .tv-epg-bar .epg-progress {
+      display:block; height:6px; margin:10px auto 0; max-width:60%;
+      background:rgba(255,255,255,0.15); border-radius:3px; overflow:hidden;
+    }
+    .tv-epg-bar .epg-progress-fill {
+      display:block; height:100%; width:0; background:#a78bfa; border-radius:3px;
+    }
 
     /* Controls bar */
     .tv-controls {
@@ -197,6 +211,14 @@
       pointer-events: none;
     }
     .tv-scrub-marker:hover .tv-scrub-tooltip { visibility: visible; opacity: 1; }
+    /* Hover-Vorschau auf der Scrub-Leiste: Sendung an der Mausposition (ohne zu spulen) */
+    .tv-scrub-hover-tip {
+      display: none;
+      position: absolute; bottom: 24px; transform: translateX(-50%);
+      background: #1e1e2a; border: 1px solid rgba(255,255,255,0.15);
+      color: #f0f0f5; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+      white-space: nowrap; z-index: 5; pointer-events: none;
+    }
     .tv-live-badge { margin-left: 10px; display: none; }
     .tv-live-badge.visible { display: inline-flex; }
 
@@ -364,6 +386,7 @@
            So kann der Ticker style.left in-place aktualisieren, ohne Hit-Testing
            oder Hover zu stören. -->
       <div id="tvScrubMarkers" style="position:absolute; left:0; right:0; top:0; height:100%; pointer-events:none;"></div>
+      <div class="tv-scrub-hover-tip" id="tvScrubHoverTip"></div>
     </div>
     <div class="tv-controls-top">
       <input class="tv-progress" id="tvProgress" type="range" min="0" max="100" value="0">
@@ -454,6 +477,7 @@
 
   <div class="tv-error" id="tvError"></div>
 
+  <script src="tv-epg-model.js"></script>
   <script>
     (function() {
       const video = document.getElementById('tvVideo');
@@ -484,6 +508,7 @@
       const scrubPlayed = document.getElementById('tvScrubPlayed');
       const scrubDrag = document.getElementById('tvScrubDrag');
       const scrubMarkersEl = document.getElementById('tvScrubMarkers');
+      const scrubHoverTip = document.getElementById('tvScrubHoverTip');
       const liveBtn = document.getElementById('tvLiveBtn');
       const liveBadge = document.getElementById('tvLiveBadge');
       const rewindBtn = document.getElementById('tvRewindBtn');
@@ -597,44 +622,105 @@
       }
 
       // ── EPG update (ohne Rest des Channels zu berühren) ──
+      // Host-Leiste (Uhrzeit-Sendung). Im DVR-Modus mit PDT-Anker und EPG-Einträgen
+      // gehört die Leiste dem Wiedergabezeit-Pfad (renderDvrEpgBar): die 30-s-
+      // epg-update-Nachricht überschreibt sie dann nicht. Ohne DVR unverändert.
+      var lastHostEpg = null;      // letzte Host-Daten (Rückfall, wenn DVR endet)
+      var epgBarDvrOwned = false;  // Leiste zeigt gerade die Wiedergabezeit-Sendung
+      var epgBarDvrKey = '';
+      var epgProgressFill = null;
       function updateEpgBar(epg, start, end, next) {
-        if (!epg) {
+        lastHostEpg = { epg: epg, start: start, end: end, next: next };
+        if (dvrEpgActive()) { renderDvrEpgBar(); return; }
+        renderHostEpgBar();
+      }
+      function renderHostEpgBar() {
+        epgBarDvrOwned = false;
+        epgBarDvrKey = '';
+        epgProgressFill = null;
+        var h = lastHostEpg;
+        if (!h || !h.epg) {
+          epgBar.replaceChildren();
           epgBar.style.display = 'none';
           return;
         }
         epgBar.replaceChildren();
-        function addText(className, text) {
-          var node = document.createElement('span');
-          node.className = className;
-          node.textContent = text || '';
-          epgBar.appendChild(node);
-        }
-        addText('epg-time', start);
-        addText('epg-sep', '–');
-        addText('epg-time', end);
-        addText('epg-sep', '·');
-        addText('epg-title', epg);
-        if (next) {
-          addText('epg-sep', '|');
-          addText('epg-next', next);
+        addEpgText('epg-time', h.start);
+        addEpgText('epg-sep', '–');
+        addEpgText('epg-time', h.end);
+        addEpgText('epg-sep', '·');
+        addEpgText('epg-title', h.epg);
+        if (h.next) {
+          addEpgText('epg-sep', '|');
+          addEpgText('epg-next', h.next);
         }
         epgBar.style.display = 'block';
+      }
+      function addEpgText(className, text) {
+        var node = document.createElement('span');
+        node.className = className;
+        node.textContent = text || '';
+        epgBar.appendChild(node);
+        return node;
+      }
+
+      // DVR-Modus: EPG-Leiste folgt der Wiedergabeposition (Modell: tv-epg-model.js)
+      function currentEpgRef() {
+        return TvEpgModel.referenceTime({
+          dvrEnabled: dvrState.enabled,
+          anchor: pdtAnchor,
+          currentTime: video.currentTime,
+          entryCount: epgEntries.length,
+        });
+      }
+      function dvrEpgActive() { return currentEpgRef().playback; }
+      function renderDvrEpgBar() {
+        var ref = currentEpgRef();
+        if (!ref.playback) {
+          if (epgBarDvrOwned) renderHostEpgBar();
+          return;
+        }
+        var behindSec = dvrState.windowEnd - video.currentTime;
+        var model = TvEpgModel.describeBar({
+          entries: epgEntries, refMs: ref.ms, behindSec: behindSec, isLive: dvrState.isLive,
+        });
+        var key = [model.noInfo, model.startText, model.endText, model.title, model.nextText, model.behindText].join('\u0001');
+        if (!epgBarDvrOwned || key !== epgBarDvrKey) {
+          epgBarDvrOwned = true;
+          epgBarDvrKey = key;
+          epgBar.replaceChildren();
+          if (model.behindText) addEpgText('epg-behind', 'zeitversetzt ' + model.behindText);
+          if (model.noInfo) {
+            addEpgText('epg-title epg-noinfo', model.title);
+          } else {
+            addEpgText('epg-time', model.startText);
+            addEpgText('epg-sep', '–');
+            addEpgText('epg-time', model.endText);
+            addEpgText('epg-sep', '·');
+            addEpgText('epg-title', model.title);
+          }
+          if (model.nextText) {
+            addEpgText('epg-sep', '|');
+            addEpgText('epg-next', model.nextText);
+          }
+          var track = document.createElement('span');
+          track.className = 'epg-progress';
+          epgProgressFill = document.createElement('span');
+          epgProgressFill.className = 'epg-progress-fill';
+          track.appendChild(epgProgressFill);
+          epgBar.appendChild(track);
+          epgBar.style.display = 'block';
+        }
+        if (epgProgressFill) {
+          epgProgressFill.parentNode.style.display = model.progress === null ? 'none' : '';
+          epgProgressFill.style.width = ((model.progress || 0) * 100).toFixed(1) + '%';
+        }
       }
 
       // ── EPG-Polling: Host um aktuelle EPG-Daten bitten ──
       var epgPollTimer = null;
       // parseEpgTime (XMLTV "20260908143000 +0200" → Date) — lokal, entspricht typed-core epg.ts
-      function parseEpgTime(timeStr) {
-        var m = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{2})(\d{2})/);
-        if (m) {
-          var utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
-          var tzOffset = (+m[7]) * 60 + (+m[8]);
-          return new Date(utc - tzOffset * 60000);
-        }
-        var m2 = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
-        if (!m2) return new Date(0);
-        return new Date(Date.UTC(+m2[1], +m2[2] - 1, +m2[3], +m2[4], +m2[5], +m2[6]));
-      }
+      function parseEpgTime(timeStr) { return TvEpgModel.parseEpgTime(timeStr); }
       function startEpgPolling() {
         stopEpgPolling();
         epgPollTimer = setInterval(function() {
@@ -668,6 +754,10 @@
         scrubMarkersEl.innerHTML = '';
         // U1: Legacy-Bar wieder sichtbar lassen (Klasse nur im DVR-Modus aktiv)
         document.documentElement.classList.remove('tv-dvr-mode');
+        scrubHoverTip.style.display = 'none';
+        // Keine Sendung der Wiedergabezeit stehen lassen: zurück zur Host-Leiste
+        // (Kanalwechsel überschreibt sie unmittelbar danach mit den neuen Daten).
+        if (epgBarDvrOwned) renderHostEpgBar();
       }
 
       // Aus LevelDetails (LEVEL_LOADED/LEVEL_UPDATED): DVR-Fenster lesen.
@@ -837,6 +927,8 @@
         video.currentTime = mediaSec;
         updateLiveUi();
         renderScrub();
+        // Der 250-ms-Tick ruht beim Ziehen: die Leiste läuft hier sofort mit.
+        renderDvrEpgBar();
       }
 
       function goLive() {
@@ -850,6 +942,7 @@
         if (video.paused) video.play();
         updateLiveUi();
         renderScrub();
+        renderDvrEpgBar();
       }
 
       function renderScrub() {
@@ -902,6 +995,25 @@
         document.addEventListener('mousemove', moveHandler);
         document.addEventListener('mouseup', upHandler);
       });
+      // Hover-Vorschau: Sendung und Uhrzeit an der Mausposition, ohne zu spulen.
+      // Marker haben einen eigenen Tooltip (U3) und liegen in einer anderen Ebene —
+      // dieser Handler greift nur auf dem Track und fasst die Marker nicht an.
+      function hideScrubHover() { scrubHoverTip.style.display = 'none'; }
+      scrubTrack.addEventListener('mousemove', function(ev) {
+        if (!dvrState.enabled || dvrState.dragging || pdtAnchor == null || !epgEntries.length) { hideScrubHover(); return; }
+        var rect = scrubTrack.getBoundingClientRect();
+        if (!(rect.width > 0)) { hideScrubHover(); return; }
+        var pct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+        var mediaSec = dvrState.windowStart + pct * (dvrState.windowEnd - dvrState.windowStart);
+        var wallMs = mediaSecToWallSec(mediaSec) * 1000;
+        var text = TvEpgModel.hoverText(epgEntries, wallMs);
+        if (!text) { hideScrubHover(); return; }
+        scrubHoverTip.textContent = text;
+        scrubHoverTip.style.left = (pct * 100) + '%';
+        scrubHoverTip.style.display = 'block';
+      });
+      scrubTrack.addEventListener('mouseleave', hideScrubHover);
+      scrubTrack.addEventListener('mousedown', hideScrubHover);
       // U3: Hover-Schutzfenster. pointerover/-out bubbeln vom Marker durch den
       // pointer-events:none-Container (der Listener überlebt Marker-Rebuilds).
       // Solange der Schutz aktiv ist, friert syncDvrMarkers Rebuilds ein;
@@ -940,6 +1052,7 @@
           dvrState.isLive = video.currentTime >= dvrState.windowEnd - 30;
           if (wasLive !== dvrState.isLive) updateLiveUi();
           renderScrub();
+          renderDvrEpgBar();
         }
       }, 250);
 
@@ -1288,7 +1401,12 @@
           : 0;
         if (dvrDelta < 30) return; // disabled-Fall (pointer-events fängt das,
         // aber defensiv: kein Off-Chance-Start am Live-Bild)
-        sendRecordingRequest('start', { startOffsetSec: dvrDelta });
+        // Titel = Sendung an der Bildposition (nicht die Live-Sendung)
+        var shownShow = findCurrentEpgShow();
+        sendRecordingRequest('start', {
+          startOffsetSec: dvrDelta,
+          epgTitleOverride: shownShow && shownShow.title ? shownShow.title : null,
+        });
       });
       // Karte t_f36663be, Option 2 „Aktuell angezeigte Sendung aufnehmen“:
       // EPG-Startzeit der laufenden Sendung als DVR-Rückstand; Autostopp
@@ -1299,15 +1417,14 @@
       // zeigt den Fallback-Text als Hinweiszeile. Der Out-of-Window-Gate
       // greift NUR, wenn der EPG-Sendungsanfang wirklich außerhalb des
       // DVR-Fensters liegt (nicht bei DVR-Rückstand ≤ Fenster).
+      // Sendung der EPG-Leiste: im DVR-Modus an der Wiedergabezeit, sonst nach Uhrzeit.
       function findCurrentEpgShow() {
-        var nowMs = Date.now();
-        for (var ei = 0; ei < epgEntries.length; ei++) {
-          var ent = epgEntries[ei];
-          var sMs = parseEpgTime(ent.start).getTime();
-          var eMs = parseEpgTime(ent.stop).getTime();
-          if (sMs <= nowMs && eMs > nowMs) return { startMs: sMs, stopMs: eMs, title: ent.title };
-        }
-        return null;
+        return TvEpgModel.findShowAt(epgEntries, currentEpgRef().ms).current;
+      }
+      // Wanduhrzeit der Live-Kante (Bezug des DVR-Rückstands): PDT-genau, sonst Uhrzeit.
+      function liveEdgeWallMs() {
+        var edge = pdtAnchor != null && dvrState.enabled ? mediaSecToWallSec(dvrState.windowEnd) * 1000 : NaN;
+        return isFinite(edge) ? edge : Date.now();
       }
       function formatRecMin(sec) {
         if (!isFinite(sec) || sec <= 0) return '0:00';
@@ -1324,7 +1441,7 @@
           updateRecMenuItems();
           return;
         }
-        var offsetSec = Math.max(0, Math.round((Date.now() - show.startMs) / 1000));
+        var offsetSec = Math.max(0, Math.round((liveEdgeWallMs() - show.startMs) / 1000));
         // DVR-Fenster-Check (Meldung 3, wortgleich — nur bei echtem
         // Out-of-Window!): als Hinweiszeile im Drei-Optionen-Dialog.
         var windowDepth = dvrState.enabled ? (dvrState.windowEnd - dvrState.windowStart) : 0;
@@ -1342,6 +1459,7 @@
           startOffsetSec: offsetSec,
           epgTitleOverride: show.title || null,
           untilEpgEnd: true,
+          epgStartMsOverride: show.startMs,
           epgEndMsOverride: show.stopMs,
         });
       });
@@ -1752,6 +1870,9 @@
             epgEntries = [];
             recomputeDvrMarkers();
           }
+          // Die Host-Leiste (Uhrzeit) darf die Wiedergabezeit-Sendung nicht überschreiben;
+          // mit neuen Einträgen sofort neu zeichnen.
+          renderDvrEpgBar();
           var epgStopMs = null;
           if (epgEntries.length && typeof parseEpgTime === 'function') {
             // parseEpgTime ist erst später im Script definiert (Function-Hoisting
