@@ -121,7 +121,8 @@ test('FIX E: Phase-Bridge stopping/done von renderer.js an tv.html', () => {
 
 test('FIX E: MP4-Fertig-Meldung (done → completed) als Abschluss-Feedback', () => {
   assert.ok(
-    rendererJs.includes("showTvToast('Aufnahme beendet — MP4 bereit: '"),
+    rendererJs.includes('recordingDoneToast(data.meta)') &&
+      require('../lib/recorder/ui-model.js').recordingDoneToast({ epgTitle: 'X' }).text.startsWith('Aufnahme beendet — MP4 bereit: '),
     'Fertig-Meldung fehlt',
   );
 });

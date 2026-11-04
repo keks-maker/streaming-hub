@@ -27,6 +27,7 @@ const { createPodcastPlaybackView } = require('./settings-podcast-playback.js');
 const { orderFavoriteChannels } = require('./lib/settings-channel-logic.js');
 const {
   formatDuration,
+  recordingDoneToast,
   currentEpgStopMs,
   isProbablyNetworkPath,
 } = require('./lib/recorder/ui-model.js');
@@ -191,7 +192,7 @@ function buildEpgContextForChannel(ch, now = new Date()) {
 }
 
 /** Kleine Einblendung (Inline-Meldung im tvView-Bereich). */
-function showTvToast(message) {
+function showTvToast(message, durationMs = 4000) {
   try {
     const host = document.getElementById('tvView');
     let toast = document.getElementById('tvRecToast');
@@ -210,7 +211,7 @@ function showTvToast(message) {
     clearTimeout(showTvToast._timer);
     showTvToast._timer = setTimeout(() => {
       toast.style.opacity = '0';
-    }, 4000);
+    }, durationMs);
   } catch (_e) {
     logger.warn('showTvToast fehlgeschlagen:', _e?.message || _e);
   }
@@ -4183,8 +4184,11 @@ window.electronAPI.onRecordingAutoStopped?.(data => {
   const name = data.channelName || 'Aufnahme';
   if (data.reason === 'disk-full' || data.reason === 'storage-lost') {
     showTvToast(`Aufnahme „${name}“ beendet: ${data.message}. Sie bleibt abspielbar.`);
-  } else if (data.reason === 'max-duration' || data.reason === 'range-interrupted') {
+  } else if (data.reason === 'max-duration') {
     showTvToast(`Aufnahme „${name}“ beendet: ${data.message}.`);
+  } else if (data.reason === 'range-interrupted') {
+    // Der Hinweis steht in der "MP4 bereit"-Meldung (recordingDoneToast), die sonst diese überschriebe.
+    logger.warn('[recorder] Sendungsaufnahme unvollständig:', data.message || '');
   }
 });
 // Planung: live aktualisieren (Liste „Geplant“) und Hinweise (Spätstart, verpasst, fehlgeschlagen) zeigen
@@ -4205,7 +4209,8 @@ window.electronAPI.onRecordingChanged(data => {
   // der Beenden-Chip geht mit dieser Meldung in den normalen Zustand über.
   const status = data?.meta?.status;
   if (status === 'completed') {
-    showTvToast('Aufnahme beendet — MP4 bereit: ' + (data.meta?.epgTitle || data.meta?.channelName || 'Aufnahme'));
+    const done = recordingDoneToast(data.meta);
+    showTvToast(done.text, done.durationMs);
   } else if (status === 'failed') {
     showTvToast('Aufnahme fehlgeschlagen: ' + (data.meta?.lastError || 'unbekannter Fehler'));
   }

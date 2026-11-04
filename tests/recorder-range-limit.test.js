@@ -15,6 +15,7 @@ const { execFileSync } = require('node:child_process');
 const { RecordJob } = require('../lib/recorder/RecordJob.js');
 const { validateRecordingRequest } = require('../lib/recorder/RecorderService.js');
 const { computeRangeSeek } = require('../lib/recorder/dvr-seek.js');
+const { recordingDoneToast } = require('../lib/recorder/ui-model.js');
 
 const FAKE_DIR = path.join(os.tmpdir(), `recorder-range-fake-${process.pid}`);
 
@@ -33,12 +34,13 @@ const dir = path.dirname(playlist);
 fs.appendFileSync(path.join(dir, 'args.log'), JSON.stringify(args) + '\\n');
 if (MODE === 'segv') process.kill(process.pid, 'SIGSEGV');
 if (MODE === 'die-empty') process.exit(1);
+if (MODE === 'finish-gap') { process.stderr.write('[hls @ 0x1] skipping 3 segments ah'); setTimeout(() => process.stderr.write('ead, expired from playlists\\n'), 20); }
 const segName = path.basename(segPattern).replace('%05d', '00000');
 fs.writeFileSync(path.join(dir, segName), Buffer.alloc(2048));
 let existing = '';
 try { existing = fs.readFileSync(playlist, 'utf-8'); } catch (_) {}
 fs.writeFileSync(playlist, existing + '#EXTINF:' + DUR + ',\\n' + segName + '\\n');
-if (MODE === 'finish') setTimeout(() => process.exit(0), 150);
+if (MODE === 'finish' || MODE === 'finish-gap') setTimeout(() => process.exit(0), 150);
 else if (MODE === 'die') setTimeout(() => process.exit(1), 150);
 else {
   process.on('SIGINT', () => { fs.appendFileSync(playlist, '#EXT-X-ENDLIST\\n'); process.exit(0); });
@@ -70,9 +72,9 @@ function makeJob(mode, extra = {}, dur = '1.0') {
   return { job, dir };
 }
 
-function whenDone(job) {
+function whenDone(job, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('Job endete nicht')), 15000);
+    const t = setTimeout(() => reject(new Error('Job endete nicht')), timeoutMs);
     job.once('stopped', p => { clearTimeout(t); resolve(p); });
     job.once('failed', p => { clearTimeout(t); resolve(p); });
   });
@@ -172,6 +174,31 @@ test('begrenzte Aufnahme ohne Material = failed (kein Reconnect)', async () => {
   const payload = await done;
   assert.equal(payload.meta.status, 'failed');
   assert.equal(ffmpegArgsLog(dir).length, 1);
+});
+
+test('E1/E3: Lückensignal des Demuxers (auch über Chunk-Grenzen) = range-interrupted, trotz voller Dauer und Exit 0', async () => {
+  const { job } = makeJob('finish-gap', { limitSec: 600 }, '600.0');
+  const done = whenDone(job);
+  job.start();
+  const payload = await done;
+  assert.equal(payload.meta.stopReason, 'range-interrupted');
+});
+
+test('Gegenprobe: lückenlose Aufnahme mit voller Dauer bleibt stop-at', async () => {
+  const { job } = makeJob('finish', { limitSec: 600 }, '600.0');
+  const done = whenDone(job);
+  job.start();
+  assert.equal((await done).meta.stopReason, 'stop-at');
+});
+
+test('E2: unvollständige Aufnahme trägt den Hinweis in der Fertig-Meldung, lange sichtbar', () => {
+  const partial = recordingDoneToast({ epgTitle: 'Film', stopReason: 'range-interrupted' });
+  assert.match(partial.text, /Film.*nur teilweise aufgenommen.*MP4 bereit/);
+  assert.ok(partial.durationMs >= 8000);
+  const normal = recordingDoneToast({ channelName: 'Das Erste', stopReason: 'stop-at' });
+  assert.equal(normal.text, 'Aufnahme beendet — MP4 bereit: Das Erste');
+  assert.equal(normal.durationMs, 4000);
+  assert.equal(recordingDoneToast(null).text, 'Aufnahme beendet — MP4 bereit: Aufnahme');
 });
 
 const PDT = ms => new Date(ms).toISOString();
@@ -353,6 +380,55 @@ test('echter ffmpeg: Sendung aus dem Verlauf, Länge und Inhalt stimmen, fertig 
       assert.equal(p2.meta.stopReason, 'range-interrupted', 'unvollständig, kein stop-at');
       assert.equal(p2.meta.status, 'remux-pending');
       assert.ok(p2.meta.durationSec > 0 && p2.meta.durationSec < 20);
+    } finally {
+      server.close();
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+test('echter ffmpeg: zu langsames Lesen (Segmente laufen aus der Playlist) = range-interrupted, lückenloses Lesen = stop-at',
+  { skip: !ffmpeg && 'kein ffmpeg gefunden' }, async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-range-slow-'));
+    execFileSync(ffmpeg, ['-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=160x90:rate=25', '-f', 'lavfi', '-i', 'sine=frequency=440',
+      '-t', '90', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', '25', '-keyint_min', '25', '-sc_threshold', '0',
+      '-c:a', 'aac', '-f', 'segment', '-segment_time', '1', '-segment_format', 'mpegts', path.join(base, 's%05d.ts')]);
+    // Live-Fenster von 6 Segmenten (1 s), Kante startet bei Segment 40 und wandert in Echtzeit
+    const t0 = Date.now();
+    const edge = () => 40 + Math.floor((Date.now() - t0) / 1000);
+    const pdtBase = t0 - 41 * 1000;
+    let throttleMs = 0;
+    const server = http.createServer((req, res) => {
+      if (req.url.endsWith('.m3u8')) {
+        const e = edge();
+        let m = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:1\n#EXT-X-MEDIA-SEQUENCE:${e - 5}\n`;
+        for (let i = e - 5; i <= e; i += 1) {
+          m += `#EXT-X-PROGRAM-DATE-TIME:${new Date(pdtBase + i * 1000).toISOString()}\n#EXTINF:1.000000,\ns${String(i).padStart(5, '0')}.ts\n`;
+        }
+        res.writeHead(200).end(m);
+        return;
+      }
+      setTimeout(() => fs.readFile(path.join(base, path.basename(req.url)), (err, d) => {
+        if (err) { res.writeHead(404).end(); return; }
+        res.writeHead(200).end(d);
+      }), throttleMs);
+    });
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const run = async (name, ms) => {
+      throttleMs = ms;
+      const dir = path.join(base, name);
+      fs.mkdirSync(dir);
+      const job = new RecordJob({
+        recId: `rec_20260930_${name}`, sourceUrl: `http://127.0.0.1:${server.address().port}/live.m3u8`, dir,
+        ffmpegPath: ffmpeg, expectedSegmentSec: 1, showStartMs: pdtBase + (edge() - 4) * 1000, limitSec: 12,
+        meta: { id: `rec_20260930_${name}`, channelId: 'c', channelName: 'C', epgTitle: 'S', status: 'recording', sourceUrl: 'x' },
+      });
+      const done = whenDone(job, 60000);
+      job.start();
+      return (await done).meta.stopReason;
+    };
+    try {
+      assert.equal(await run('slow', 1500), 'range-interrupted');
+      assert.equal(await run('fast', 400), 'stop-at');
     } finally {
       server.close();
       fs.rmSync(base, { recursive: true, force: true });
