@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "build:schemas": "ts-json-schema-generator --path 'src/**/*.ts' --type '*' --out dist/schemas.json",
+    "build:schemas": "ts-json-schema-generator --path \"src/**/*.ts\" --type \"*\" --out dist/schemas.json",
     "build:all": "npm run build && npm run build:schemas",
     "test": "vitest run",
     "test:watch": "vitest"
