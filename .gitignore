@@ -24,3 +24,7 @@ release-linux/
 
 # Symlink-Variante (Worktrees) ebenfalls ignorieren
 node_modules
+
+# Spike-Ausgaben (neu erzeugbar)
+scripts/spike-*/out/
+scripts/spike-*/*.log
