@@ -20,7 +20,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | 6. Startseite „Läuft gerade“ | Desktop | `design/umbau` | offen | – |
 | 7. Einstellungen gruppieren | Desktop | `design/umbau` | offen | – |
 | 8. Restliche Bereiche angleichen | Desktop | `design/umbau` | offen | – |
-| A1. `DesignTokens.swift` in `StreamingHubCore` | Apple | offen | offen (nach 0b) | – |
+| A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift` | Apple | offen | offen (nach 0b) | – |
 | A2. Hellwerte iPad angleichen | Apple | offen | offen | – |
 | A3. Radien und Schrift | Apple | offen | offen | – |
 | A4. TV-Vorschau-Verzögerung 350 ms | Apple | offen | offen | – |
@@ -71,7 +71,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 
 ## Apple (nach 0b und Desktop-Schritt 1)
 
-- **A1. `StreamingHubCore/DesignTokens.swift`:** dynamische Farben je Systemstil (Muster `EpgTheme.dyn`), Namen wie CSS in camelCase (`surface0`, `areaLiveTV` …), beide Werte je Token. `EpgTheme` und `EpgDarkPalette` gehen darin auf; feste Farben in Swift (`Color(red:)`, `hex()`, Systemfarben, `.accentColor`) schrittweise auf Tokens umstellen. Kein Asset-Katalog.
+- **A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift`:** dynamische Farben je Systemstil (Muster `EpgTheme.dyn`), Namen wie CSS in camelCase (`surface0`, `areaLiveTV` …), beide Werte je Token. `EpgTheme` und `EpgDarkPalette` gehen darin auf; feste Farben in Swift (`Color(red:)`, `hex()`, Systemfarben, `.accentColor`) schrittweise auf Tokens umstellen. Kein Asset-Katalog.
 - **A2. Hellwerte iPad angleichen:** Radio, Podcasts und Mediathek (Navigation und Kacheln) auf die `area-*`-Hellwerte (Ist erreichen auf Weiß nur 3,8 bis 4,2 : 1); Startkacheln beider Apps auf `area-*`; YouTube auf `area-streaming`; Navigationshintergrund `surface-nav`/`border-nav`.
 - **A3. Radien und Schrift:** iPad-Startkachel 28 → 24, Platten 16, Podcast-Cover fester Radius statt 16 % der Größe; Schrift-Stufen (`title` 48 auf dem iPad, Zuordnung `iPadType`), Apple TV mit Faktor 1,5 bis 2; Abstände 6/10/14/20/28 auf Stufen.
 - **A4. TV-Vorschau-Verzögerung 350 ms:** Fokus startet die Vorschau erst nach 350 ms (Ist: sofort, `Sources/StreamingHubTV/Views/Shell/TVLiveTVHubView.swift:206-220`), wie am Desktop.

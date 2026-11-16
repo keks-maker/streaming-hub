@@ -10,7 +10,7 @@ Tests und Selbstchecks starten die App nur im Hintergrund: `STREAMING_HUB_USER_D
 ## Design
 
 - Verbindlich ist `docs/DESIGN.md` (Original nur in diesem Repo; das Apple-Repo verweist per `../streaming-hub/docs/DESIGN.md`). Vor jeder UI-Änderung lesen. Umbau in Schritten laut `docs/design-umbau-plan.md`, neue Sessions starten damit.
-- Keine neuen Farbwerte, Radien, Abstände oder Schriftgrößen. Nur Tokens aus DESIGN.md (Desktop: CSS-Variablen, Swift: `StreamingHubCore/DesignTokens.swift`).
+- Keine neuen Farbwerte, Radien, Abstände oder Schriftgrößen. Nur Tokens aus DESIGN.md (Desktop: CSS-Variablen, Swift: `Sources/StreamingHubCore/Utils/DesignTokens.swift`).
 - Fehlt ein Token: nicht erfinden, sondern nachfragen und DESIGN.md ergänzen.
 - Neue Ansichten bestehen nur aus Komponenten des Katalogs.
 - Icons nur laut Zuordnungstabelle in DESIGN.md: Lucide auf dem Desktop, SF Symbols auf iPad und Apple TV. Keine Emojis, keine Schriftzeichen als Icons.

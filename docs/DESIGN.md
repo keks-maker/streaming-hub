@@ -27,7 +27,7 @@ Der heutige Look bleibt; modernisiert wird durch Konsequenz, nicht durch einen n
 
 ## Design-Tokens
 
-Ein Token hat überall denselben Namen: in CSS als Variable in kebab-case (`--surface-1`), in Swift als Eigenschaft in camelCase (`surface1`). Die Swift-Tokens liegen in **`StreamingHubCore/DesignTokens.swift`** als dynamische Farben (je Systemstil, Muster `EpgTheme.dyn`), nicht im Asset-Katalog; die Asset-Kataloge enthalten keine Farben, und iPad, Apple TV und TopShelf nutzen dieselbe Datei. `EpgTheme` und `EpgDarkPalette` gehen darin auf.
+Ein Token hat überall denselben Namen: in CSS als Variable in kebab-case (`--surface-1`), in Swift als Eigenschaft in camelCase (`surface1`). Die Swift-Tokens liegen in **`Sources/StreamingHubCore/Utils/DesignTokens.swift`** als dynamische Farben (je Systemstil, Muster `EpgTheme.dyn`), nicht im Asset-Katalog; die Asset-Kataloge enthalten keine Farben, und iPad, Apple TV und TopShelf nutzen dieselbe Datei. `EpgTheme` und `EpgDarkPalette` gehen darin auf.
 
 Jedes Farb-Token hat einen Wert für Dunkel und einen für Hell: in CSS per `light-dark()`, in Swift als dynamische Farbe. Ein Token ohne beide Werte ist unvollständig (Apple TV nutzt nur den Dunkelwert, bleibt aber im Token-Satz vollständig).
 
