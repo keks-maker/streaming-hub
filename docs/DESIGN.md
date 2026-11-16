@@ -104,10 +104,25 @@ Jeder Bereich hat genau eine Farbe. Sie ersetzt Farbnamen wie `--violet`, `--vio
 | `status-ok` | Erfolg | #22c55e / #126b34 (`--ok`) |
 | `status-warn` | Warnung | #fbbf24 / #a04a08 (`--warn`) |
 | `status-error` | Fehler | #ef4444 / #c62828 (`--err`) |
+| `status-danger` | Destruktive Aktion (Löschen, Abmelden), Alias auf `status-error`; Ist Apple TV: festes `.red` (`Sources/StreamingHubTV/Views/Shell/TVSettingsComponents.swift:130`), bei Fokus #BF1A1A auf weißer Fläche | wie `status-error` |
 
 ### EPG-Genrefarben
 
 Die Apple-Apps haben neun Genrefarben mit Hell- und Dunkelwert (`Sources/StreamingHubCore/Utils/EpgTokens.swift`, `Sources/StreamingHubiPad/iPadEpgTheme.swift`), die Desktop-App eigene Werte. Sie werden als Token-Gruppe `genre-*` übernommen; die Werte legt Plan Schritt 8 fest. Die EPG-Flächen der Apple-Apps (surface #12121B, surface2 #191925, line .16) werden auf `surface-1`, `surface-2` und `border-strong` abgebildet.
+
+### Merklistenfarben
+
+Apple TV bietet für YouTube-Merklisten zehn feste Farben (`Sources/StreamingHubTV/YouTube/TVMerklistenHub.swift:104-113`, `MerklisteColor.color`). Sie werden als Token-Gruppe `list-*` übernommen, wie bei den Genrefarben mit Hell- und Dunkelwert. Ist (nur Dunkelwert, TV ist fest dunkel; RGB 0 bis 1 im Code):
+
+| Token | Ist (dunkel) | Token | Ist (dunkel) |
+| --- | --- | --- | --- |
+| `list-red` | .93 / .27 / .27 | `list-blue` | .20 / .50 / .96 |
+| `list-orange` | .98 / .55 / .13 | `list-indigo` | .36 / .34 / .84 |
+| `list-yellow` | .98 / .80 / .14 | `list-purple` | .62 / .40 / .95 |
+| `list-green` | .24 / .74 / .38 | `list-pink` | .95 / .36 / .63 |
+| `list-teal` | .13 / .70 / .72 | `list-gray` | .56 / .58 / .62 |
+
+Die Hellwerte legt der Apple-Schritt A1 fest (Kontrastziel wie bei `area-*`), sobald Merklisten auf dem iPad oder Desktop vorkommen; bis dahin gilt der Dunkelwert.
 
 ### Radien, Abstände, Schrift, Bewegung
 
@@ -162,11 +177,14 @@ Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansi
 - Fokus: Desktop und iPad `focus-ring` (nicht mehr die Bereichsfarbe). Apple TV behält den eigenen TV-Fokusstil (weiße Fläche, schwarze Schrift, Vergrößerung 1,06).
 - Aufnahme-Punkt am LiveTV-Eintrag bleibt (`status-rec`).
 - Auf dem iPad heißt der Streaming-Bereich YouTube (Label bleibt, Farbe `area-streaming`), weil DRM-Dienste dort nicht möglich sind.
+- Apple TV hat ebenfalls einen YouTube-Bereich (`Sources/StreamingHubTV/Views/Shell/TVNavigation.swift:15, 43, 61`, Symbol `play.rectangle.fill`, Ist-Farbe #FF5A5A, hinter `YOUTUBE_NATIVE`). Wie am iPad: Farbe `area-streaming`, Label „YouTube“.
 
 ### Mini-Player
 
 - Eine gemeinsame Leiste unten für Video (YouTube), Radio und Podcasts (Ist auf Desktop und iPad, Vorrang Video vor Podcast vor Radio): Cover oder Senderlogo, Titel, Quelle, Play/Pause, Fortschritt bei Podcasts. Akzent in der Farbe der Quelle.
 - Apple TV hat dieselbe feste Leiste für Radio und Podcast (Ist, Entscheidung A6).
+- **YouTube-Variante (Apple TV):** Video läuft als schwebendes Eckfenster (400 × 225, Standard unten rechts) statt in der Leiste (`Sources/StreamingHubTV/YouTube/TVYouTubeMini.swift`). Es nutzt dieselbe Player-Instanz, reserviert keinen Platz, ist nicht fokussierbar und weicht dem Fokus aus: Berührt das fokussierte Element das Fenster, wechselt es in die am weitesten entfernte Ecke und kehrt in die Heimecke unten rechts zurück, sobald sie frei ist (`Sources/StreamingHubCore/Services/YouTubeMiniCorner.swift`, nur Geometrie; Ecken `bottomTrailing`, `bottomLeading`, `topTrailing`, `topLeading`). Steht unten die Radio-/Podcast-Leiste, liegen die unteren Ecken darüber. Bedienung: „Jetzt läuft“ (Auswählen = Vollbild, Langdruck = Menü), Play/Pause der Fernbedienung steuert das Fenster.
+- **Einmal-Hinweis:** Am Mini-Fenster erscheint die ersten drei Male fünf Sekunden lang „Nach oben zu „Jetzt läuft“ · Play/Pause halten = Vollbild“ (`Sources/StreamingHubCore/Services/YouTubeMiniHint.swift`, Zähler in UserDefaults). Gilt nur für Apple TV; Desktop und iPad nutzen die gemeinsame Leiste.
 
 ### „Läuft gerade“ (Startseite)
 
@@ -192,7 +210,9 @@ Zwei Varianten derselben Komponente, beide mit `radius-md`, Titel und Meta darun
 | Podcasts | `mic.fill` | `mic` |
 | Mediatheken | `play.rectangle` | `square-play` |
 | Streaming | `play.tv` | `monitor-play` |
-| YouTube (iPad) | `play.rectangle.fill`; Markenlogo bleibt Bild | – |
+| YouTube (iPad, Apple TV) | `play.rectangle.fill`; Markenlogo bleibt Bild | – |
+| Leerzustand Konto („Keine Konto-Inhalte“) | `tray` (Apple TV, `TVYouTubeAccountViews.swift:164`) | `inbox` |
+| Playlist-Platzhalter ohne Vorschaubild | `list.bullet.rectangle` (Apple TV, `TVYouTubeAccountViews.swift:228`) | `list-video` |
 | Start | `house` | `house` |
 | Einstellungen | `gearshape` | `settings` |
 | Verlauf | `clock` | `clock` |
@@ -234,8 +254,8 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 | Navigation | Schwebende Pille oben | Tab-Leiste oben im selben Pillen-Look | Tab-Leiste oben, Bereichsfarbe für den aktiven Eintrag |
 | Schrift | Stufen wie oben | Stufen wie oben | Faktor 1,5 bis 2 |
 | Hell/Dunkel | folgt dem System | folgt dem System | **fest dunkel** (Ausnahme: Fernsehen im dunklen Raum, Video im Mittelpunkt); Tokens trotzdem mit beiden Werten |
-| Mini-Player | Leiste unten (Video, Radio, Podcast) | Leiste unten (Video, Radio, Podcast) | Leiste unten (Radio, Podcast); „Läuft gerade“ zusätzlich |
-| Bereiche | LiveTV, Radio, Streaming, Mediatheken, Podcasts, Einstellungen | wie Desktop; Streaming = YouTube | wie Desktop ohne Streaming (auf main) |
+| Mini-Player | Leiste unten (Video, Radio, Podcast) | Leiste unten (Video, Radio, Podcast) Leiste unten (Radio, Podcast); YouTube als schwebendes Eckfenster; „Läuft gerade“ zusätzlich |
+| Bereiche | LiveTV, Radio, Streaming, Mediatheken, Podcasts, Einstellungen | wie Desktop; Streaming = YouTube wie Desktop; Streaming = YouTube (hinter `YOUTUBE_NATIVE`) |
 | Mindestgröße Bedienelemente | Maus, keine Vorgabe | 44 pt | durch Fokus geregelt |
 | Tastenkürzel | wie heute | Hardware-Tastatur: dieselben Kürzel | Fernbedienung |
 
@@ -243,7 +263,8 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 
 - Lucide-Namen gegen die eingesetzte Version prüfen; Motive ohne klares Pendant: „Kein Sender / kein Signal“ (SF `antenna.radiowaves.left.and.right.slash`, `tv.slash`), Sprung zurück/vor (kollidiert motivisch mit `rotate-cw` für Neu laden).
 - Ob die Start-PNGs des Desktops Emoji-Grafiken sind (Plan Schritt 2).
-- Werte der `genre-*`-Token (Plan Schritt 8).
+- Werte der `genre-*`-Token (Plan Schritt 8) und Hellwerte der `list-*`-Token (Plan A1).
+- Apple-TV-Player-Seitenspalte (`Sources/StreamingHubTV/YouTube/TVPlayerInfoViews.swift`): Schrift 20 bis 34 pt auf die TV-Stufen (Faktor 1,5 bis 2) bringen, Eckradius `cornerRadius: 28` (Z. 38) auf `radius-xl` × TV-Faktor (Plan A3).
 
 ## Regeln für Claude Code
 

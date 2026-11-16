@@ -1,6 +1,6 @@
 # Design-Umbau: Plan und Status
 
-Stand: 2026-11-16. Vorgabe: `docs/DESIGN.md` (nur im Desktop-Repo). Neue Sessions starten mit diesem Dokument und der Vorgabe.
+Stand: 2026-11-16. Der Abgleich mit dem Apple-Repo basierte auf `main` vor dem YouTube-Merge; Nachtrag auf Stand `931bacf`. Vorgabe: `docs/DESIGN.md` (nur im Desktop-Repo). Neue Sessions starten mit diesem Dokument und der Vorgabe.
 
 **Arbeitsweise:** Ein Schritt pro Commit, Commit-Präfix `design(<schritt>): …` (z. B. `design(1): Tokens bereinigen`). Jeder Schritt läuft über dev und qa; App nach jedem Schritt im Hintergrund starten und in Hell und Dunkel prüfen. Token-Änderungen gelten für alle drei Apps und werden im Commit vermerkt. Push nach `main` nach QA-OK; Tag und Release nur nach ausdrücklicher Freigabe.
 
@@ -11,7 +11,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | Schritt | Repo | Branch | Status | Commit |
 | --- | --- | --- | --- | --- |
 | 0a. `DESIGN.md`, Umbauplan, Design-Regeln in `CLAUDE.md` | Desktop | `design/umbau` | erledigt | `375436a` |
-| 0b. `docs/ipad-desktop-angleichung.md` durch Verweis auf `../streaming-hub/docs/DESIGN.md` ersetzen; Designabschnitt in `CLAUDE.md`; Funktions-Merkpunkte (LiveTV-Aufbau, Einstellungen, Podcasts) in ein Funktionsdokument verschieben | Apple | offen | **wartet, bis `feature/tvos-youtube` gemergt ist** | – |
+| 0b. `docs/ipad-desktop-angleichung.md` durch Verweis auf `../streaming-hub/docs/DESIGN.md` ersetzen; Designabschnitt in `CLAUDE.md`; Funktions-Merkpunkte (LiveTV-Aufbau, Einstellungen, Podcasts) in ein Funktionsdokument verschieben | Apple | `design/umbau` (Apple-Repo) | erledigt; Nachtrags-Commit im Apple-Repo folgt (Hash trägt der Orchestrator nach) | `b667845` |
 | 1. Tokens bereinigen | Desktop | `design/umbau` | offen | – |
 | 2. Icon-Set einführen | Desktop | `design/umbau` | offen | – |
 | 3. Texte aufräumen | Desktop | `design/umbau` | offen | – |
@@ -71,9 +71,9 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 
 ## Apple (nach 0b und Desktop-Schritt 1)
 
-- **A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift`:** dynamische Farben je Systemstil (Muster `EpgTheme.dyn`), Namen wie CSS in camelCase (`surface0`, `areaLiveTV` …), beide Werte je Token. `EpgTheme` und `EpgDarkPalette` gehen darin auf; feste Farben in Swift (`Color(red:)`, `hex()`, Systemfarben, `.accentColor`) schrittweise auf Tokens umstellen. Kein Asset-Katalog.
-- **A2. Hellwerte iPad angleichen:** Radio, Podcasts und Mediathek (Navigation und Kacheln) auf die `area-*`-Hellwerte (Ist erreichen auf Weiß nur 3,8 bis 4,2 : 1); Startkacheln beider Apps auf `area-*`; YouTube auf `area-streaming`; Navigationshintergrund `surface-nav`/`border-nav`.
-- **A3. Radien und Schrift:** iPad-Startkachel 28 → 24, Platten 16, Podcast-Cover fester Radius statt 16 % der Größe; Schrift-Stufen (`title` 48 auf dem iPad, Zuordnung `iPadType`), Apple TV mit Faktor 1,5 bis 2; Abstände 6/10/14/20/28 auf Stufen.
+- **A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift`:** dynamische Farben je Systemstil (Muster `EpgTheme.dyn`), Namen wie CSS in camelCase (`surface0`, `areaLiveTV` …), beide Werte je Token. `EpgTheme` und `EpgDarkPalette` gehen darin auf; feste Farben in Swift (`Color(red:)`, `hex()`, Systemfarben, `.accentColor`) schrittweise auf Tokens umstellen; neue Tokens `list-*` (Merklistenfarben, `TVMerklistenHub.swift:104-113`) und `status-danger` (Alias auf `status-error`, `TVSettingsComponents.swift:130`). Kein Asset-Katalog.
+- **A2. Hellwerte iPad angleichen:** Radio, Podcasts und Mediathek (Navigation und Kacheln) auf die `area-*`-Hellwerte (Ist erreichen auf Weiß nur 3,8 bis 4,2 : 1); Startkacheln beider Apps auf `area-*` (Fundstelle Apple TV: feste Kachelfarben `Sources/StreamingHubTV/Views/Shell/TVStartScreen.swift:33-41`, inkl. YouTube); YouTube auf `area-streaming`; Navigationshintergrund `surface-nav`/`border-nav`.
+- **A3. Radien und Schrift:** iPad-Startkachel 28 → 24, Platten 16, Podcast-Cover fester Radius statt 16 % der Größe; Schrift-Stufen (`title` 48 auf dem iPad, Zuordnung `iPadType`), Apple TV mit Faktor 1,5 bis 2; TV-Player-Seitenspalte (`Sources/StreamingHubTV/YouTube/TVPlayerInfoViews.swift`, Schrift 20 bis 34 pt, `cornerRadius: 28` Z. 38) auf TV-Stufen und `radius-xl` × TV-Faktor; Abstände 6/10/14/20/28 auf Stufen.
 - **A4. TV-Vorschau-Verzögerung 350 ms:** Fokus startet die Vorschau erst nach 350 ms (Ist: sofort, `Sources/StreamingHubTV/Views/Shell/TVLiveTVHubView.swift:206-220`), wie am Desktop.
 - **A5. Texte und Komponenten:** „Bereich öffnen“ entfernen, Senderkachel iPad ohne LIVE-Badge und „Sender öffnen“, Fortschritt in `area-livetv` statt System-Blau, Icon-Zuordnung (u. a. `plus.circle` → `plus`, `books.vertical` → `play.rectangle`), „Läuft gerade“.
 - Apple TV bleibt fest dunkel (Ausnahme laut DESIGN.md).
