@@ -12,7 +12,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | --- | --- | --- | --- | --- |
 | 0a. `DESIGN.md`, Umbauplan, Design-Regeln in `CLAUDE.md` | Desktop | `design/umbau` | erledigt | `375436a` |
 | 0b. `docs/ipad-desktop-angleichung.md` durch Verweis auf `../streaming-hub/docs/DESIGN.md` ersetzen; Designabschnitt in `CLAUDE.md`; Funktions-Merkpunkte bleiben dort unter „Nicht-Design-Themen“, überholte Design-Aussagen einzeln markiert | Apple | `design/umbau` (Apple-Repo) | erledigt | `b667845`, `f2d54f9`, `f363ff8` |
-| 1. Tokens bereinigen | Desktop | `design/umbau` | erledigt (QA ausstehend) | 19e0bd6 |
+| 1. Tokens bereinigen | Desktop | `design/umbau` | erledigt (QA bestanden) | 19e0bd6 |
 | 2. Icon-Set einführen | Desktop | `design/umbau` | offen | – |
 | 3. Texte aufräumen | Desktop | `design/umbau` | offen | – |
 | 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` | offen | – |
@@ -32,8 +32,8 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 ### Schritt 1: Tokens bereinigen (`styles.css`, `:root`)
 - Tokens laut DESIGN.md anlegen: Flächen (inkl. `surface-nav`), Text, `border`, `border-strong`, `border-nav`, `focus-ring`, `area-*`, `status-*`, Radien, Abstände, Bewegung; `light-dark()` wie heute.
 - Nur Variablen mit identischem Wert (Spalte „Ersetzt“ in DESIGN.md) als Alias auf die neuen umbiegen; abweichende Variablen bleiben unverändert und folgen in Schritt 4. Verwendungen schrittweise umstellen, Aliase entfernen. Startkachel-Farben (`renderer.js:1020-1026`) und Navigationsfarben (`styles.css:3720-3725`) auf `area-*` umstellen.
-- `--nav-bg` bleibt auf `.overlay-bar` (theme-literal) mit Wert `surface-nav`; `--icon-bg` und `--active-glow` aus `renderer.js` ebenfalls auf Tokens beziehen.
-- Radien auf Tokens: Kachel 18 → 16, Navigationseintrag 14 → 12; 4, 10, 18 und 999 px je Fall einer Stufe zuordnen.
+- `--nav-bg` bleibt auf `.overlay-bar` (theme-literal) mit Wert `surface-nav`; `--icon-bg` und `--active-glow` stehen in `styles.css` (~1767/1771) und laufen über `--accent` (kein Eingriff nötig).
+- Radien auf Tokens: Kachel 18 → 16 (nur Basisregel; Bereichskachel bleibt `radius-xl` 24), Navigationseintrag 14 → 12; 4, 10, 18 und 999 px je Fall einer Stufe zuordnen.
 - Feste Farben außerhalb von `:root` ersetzen. Ausnahme: Kachel-Illustrationen (theme-literal), diese in `--illu-*`-Tokens ziehen.
 - `title`: `clamp(30px, 4vw, 54px)` bleibt.
 - Abnahme: Hell und Dunkel sehen aus wie vorher (bis auf die genannten Radien); Hex-Suche außerhalb von `:root` und Illustrationen ergibt nichts.
