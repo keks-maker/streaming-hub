@@ -11,7 +11,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | Schritt | Repo | Branch | Status | Commit |
 | --- | --- | --- | --- | --- |
 | 0a. `DESIGN.md`, Umbauplan, Design-Regeln in `CLAUDE.md` | Desktop | `design/umbau` | erledigt | `375436a` |
-| 0b. `docs/ipad-desktop-angleichung.md` durch Verweis auf `../streaming-hub/docs/DESIGN.md` ersetzen; Designabschnitt in `CLAUDE.md`; Funktions-Merkpunkte bleiben dort unter „Nicht-Design-Themen“, überholte Design-Aussagen einzeln markiert | Apple | `design/umbau` (Apple-Repo) | erledigt | `b667845`, `f2d54f9` |
+| 0b. `docs/ipad-desktop-angleichung.md` durch Verweis auf `../streaming-hub/docs/DESIGN.md` ersetzen; Designabschnitt in `CLAUDE.md`; Funktions-Merkpunkte bleiben dort unter „Nicht-Design-Themen“, überholte Design-Aussagen einzeln markiert | Apple | `design/umbau` (Apple-Repo) | erledigt | `b667845`, `f2d54f9`, `f363ff8` |
 | 1. Tokens bereinigen | Desktop | `design/umbau` | offen | – |
 | 2. Icon-Set einführen | Desktop | `design/umbau` | offen | – |
 | 3. Texte aufräumen | Desktop | `design/umbau` | offen | – |
