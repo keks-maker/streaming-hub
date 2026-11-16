@@ -10,12 +10,12 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 
 | Schritt | Repo | Branch | Status | Commit |
 | --- | --- | --- | --- | --- |
-| 0a. `DESIGN.md`, Umbauplan, Design-Regeln in `CLAUDE.md` | Desktop | `design/umbau` | erledigt | dieser Commit (`design(0a)`) |
+| 0a. `DESIGN.md`, Umbauplan, Design-Regeln in `CLAUDE.md` | Desktop | `design/umbau` | erledigt | `375436a` |
 | 0b. `docs/ipad-desktop-angleichung.md` durch Verweis auf `../streaming-hub/docs/DESIGN.md` ersetzen; Designabschnitt in `CLAUDE.md`; Funktions-Merkpunkte (LiveTV-Aufbau, Einstellungen, Podcasts) in ein Funktionsdokument verschieben | Apple | offen | **wartet, bis `feature/tvos-youtube` gemergt ist** | – |
 | 1. Tokens bereinigen | Desktop | `design/umbau` | offen | – |
 | 2. Icon-Set einführen | Desktop | `design/umbau` | offen | – |
 | 3. Texte aufräumen | Desktop | `design/umbau` | offen | – |
-| 4. Text-Stufen | Desktop | `design/umbau` | offen | – |
+| 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` | offen | – |
 | 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` | offen | – |
 | 6. Startseite „Läuft gerade“ | Desktop | `design/umbau` | offen | – |
 | 7. Einstellungen gruppieren | Desktop | `design/umbau` | offen | – |
@@ -31,7 +31,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 
 ### Schritt 1: Tokens bereinigen (`styles.css`, `:root`)
 - Tokens laut DESIGN.md anlegen: Flächen (inkl. `surface-nav`), Text, `border`, `border-strong`, `border-nav`, `focus-ring`, `area-*`, `status-*`, Radien, Abstände, Bewegung; `light-dark()` wie heute.
-- Alte Variablen als Alias auf die neuen umbiegen, Verwendungen schrittweise umstellen, Aliase entfernen. Startkachel-Farben (`renderer.js:1020-1026`) und Navigationsfarben (`styles.css:3720-3725`) auf `area-*` umstellen.
+- Nur Variablen mit identischem Wert (Spalte „Ersetzt“ in DESIGN.md) als Alias auf die neuen umbiegen; abweichende Variablen bleiben unverändert und folgen in Schritt 4. Verwendungen schrittweise umstellen, Aliase entfernen. Startkachel-Farben (`renderer.js:1020-1026`) und Navigationsfarben (`styles.css:3720-3725`) auf `area-*` umstellen.
 - `--nav-bg` bleibt auf `.overlay-bar` (theme-literal) mit Wert `surface-nav`; `--icon-bg` und `--active-glow` aus `renderer.js` ebenfalls auf Tokens beziehen.
 - Radien auf Tokens: Kachel 18 → 16, Navigationseintrag 14 → 12; 4, 10, 18 und 999 px je Fall einer Stufe zuordnen.
 - Feste Farben außerhalb von `:root` ersetzen. Ausnahme: Kachel-Illustrationen (theme-literal), diese in `--illu-*`-Tokens ziehen.
@@ -47,9 +47,10 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - Entfernen: „Bereich öffnen“ (Startseite), „Streaming“ und „Öffnen“ (Dienstkacheln), „Sender öffnen“ und LIVE-Badge (LiveTV-Kacheln).
 - Barrierefreiheit: Kachel bekommt ein `aria-label` („LiveTV öffnen“).
 
-### Schritt 4: Text-Stufen
+### Schritt 4: Text-Stufen und Flächen vereinheitlichen
 - `text-secondary` auf die neuen Werte (dunkel .70, hell .78).
-- Abnahme: alle Texte erfüllen das Kontrastziel in Hell und Dunkel.
+- Flächen vereinheitlichen: die abweichenden Variablen aus DESIGN.md (Abschnitt „Abweichende Variablen“: `--bg-dash`, `--bg-content`, `--c-card2`, `--surface-card`, `--c-glass-panel`, `--c-field`, `--c-modal-glass`, `--c-pop`, `--media-scrim`) auf `surface-0` bis `surface-3` bzw. `scrim` umstellen. Sichtbare Änderung, bewusst.
+- Abnahme: alle Texte erfüllen das Kontrastziel in Hell und Dunkel; Unterschied der vereinheitlichten Flächen in Hell und Dunkel per Screenshot geprüft.
 
 ### Schritt 5: Fokus-Ring und Bereichsfarbe durchziehen
 - Fokus-Ring `focus-ring` (2 px, `text-primary`) statt Bereichsfarbe: ändert die Fokusfarbe der Navigation (`styles.css:3743`, `--nav-c`) und der Mediathek (`styles.css:3792`, `--md-accent`).
@@ -73,7 +74,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - **A1. `StreamingHubCore/DesignTokens.swift`:** dynamische Farben je Systemstil (Muster `EpgTheme.dyn`), Namen wie CSS in camelCase (`surface0`, `areaLiveTV` …), beide Werte je Token. `EpgTheme` und `EpgDarkPalette` gehen darin auf; feste Farben in Swift (`Color(red:)`, `hex()`, Systemfarben, `.accentColor`) schrittweise auf Tokens umstellen. Kein Asset-Katalog.
 - **A2. Hellwerte iPad angleichen:** Radio, Podcasts und Mediathek (Navigation und Kacheln) auf die `area-*`-Hellwerte (Ist erreichen auf Weiß nur 3,8 bis 4,2 : 1); Startkacheln beider Apps auf `area-*`; YouTube auf `area-streaming`; Navigationshintergrund `surface-nav`/`border-nav`.
 - **A3. Radien und Schrift:** iPad-Startkachel 28 → 24, Platten 16, Podcast-Cover fester Radius statt 16 % der Größe; Schrift-Stufen (`title` 48 auf dem iPad, Zuordnung `iPadType`), Apple TV mit Faktor 1,5 bis 2; Abstände 6/10/14/20/28 auf Stufen.
-- **A4. TV-Vorschau-Verzögerung 350 ms:** Fokus startet die Vorschau erst nach 350 ms (Ist: sofort, `TVLiveTVHubView.swift:206-220`), wie am Desktop.
+- **A4. TV-Vorschau-Verzögerung 350 ms:** Fokus startet die Vorschau erst nach 350 ms (Ist: sofort, `Sources/StreamingHubTV/Views/Shell/TVLiveTVHubView.swift:206-220`), wie am Desktop.
 - **A5. Texte und Komponenten:** „Bereich öffnen“ entfernen, Senderkachel iPad ohne LIVE-Badge und „Sender öffnen“, Fortschritt in `area-livetv` statt System-Blau, Icon-Zuordnung (u. a. `plus.circle` → `plus`, `books.vertical` → `play.rectangle`), „Läuft gerade“.
 - Apple TV bleibt fest dunkel (Ausnahme laut DESIGN.md).
 

@@ -33,16 +33,32 @@ Jedes Farb-Token hat einen Wert für Dunkel und einen für Hell: in CSS per `lig
 
 ### Flächen
 
-Vier Stufen plus Navigation ersetzen die heute rund zehn Flächen-Variablen. Die alten Namen bleiben zunächst als Alias auf die neuen bestehen.
+Vier Stufen plus Navigation ersetzen die heute rund zehn Flächen-Variablen. Die alten Namen mit identischem Wert bleiben zunächst als Alias auf die neuen bestehen.
 
-| Token | Zweck | Dunkel | Hell | Ersetzt (Ist) |
+| Token | Zweck | Dunkel | Hell | Ersetzt (Ist, identischer Wert) |
 | --- | --- | --- | --- | --- |
-| `surface-0` | Seite | #0a0a0f (Ist) | #f3f5f8 (Ist) | `--bg`, `--bg-dash`, `--bg-content` |
-| `surface-1` | Karte, Kachel | #11151d (Ist) | #ffffff (Vorschlag) | `--c-card`, `--c-card2`, `--surface-card` |
-| `surface-2` | Panel, Eingabefeld | rgba(22,27,38,.78) (Ist) | rgba(255,255,255,.9) (Ist) | `--c-panel`, `--c-glass-panel`, `--c-field` |
-| `surface-3` | Dialog, Popup | #12121a (Ist) | #ffffff (Vorschlag) | `--c-modal`, `--c-modal-glass`, `--c-pop` |
+| `surface-0` | Seite | #0a0a0f (Ist) | #f3f5f8 (Ist) | `--bg` |
+| `surface-1` | Karte, Kachel | #11151d (Ist) | #ffffff (Ist) | `--c-card` |
+| `surface-2` | Panel, Eingabefeld | rgba(22,27,38,.78) (Ist) | rgba(255,255,255,.9) (Ist) | `--c-panel` |
+| `surface-3` | Dialog, Popup | #12121a (Ist) | #ffffff (Ist) | `--c-modal` |
 | `surface-nav` | Navigationsleiste | #171717 (Ist, alle drei Apps) | #ffffff (Ist) | `--nav-bg` |
-| `scrim` | Abdunkelung über Bild/Video | rgba(0,0,0,.6) (Ist) | rgba(20,28,48,.42) (Ist) | `--scrim`, `--media-scrim` |
+| `scrim` | Abdunkelung über Bild/Video | rgba(0,0,0,.6) (Ist) | rgba(20,28,48,.42) (Ist) | `--scrim` |
+
+**Abweichende Variablen.** Schritt 1 biegt nur Variablen mit identischem Wert um (Spalte oben). Die folgenden haben andere Werte; sie bleiben in Schritt 1 unverändert und werden in Schritt 4 („Text-Stufen und Flächen vereinheitlichen“) bewusst auf das genannte Token gebracht (sichtbare Änderung, in Hell und Dunkel per Screenshot geprüft):
+
+| Variable | Ist-Wert (Dunkel / Hell) | Ziel-Token |
+| --- | --- | --- |
+| `--bg-dash` | #090b10 / #f3f5f8 | `surface-0` |
+| `--bg-content` | #0b0e15 / #eef1f6 | `surface-0` |
+| `--c-card2` | #171b25 / #ffffff | `surface-1` |
+| `--surface-card` | rgba(255,255,255,.04) / rgba(255,255,255,.8) | `surface-1` |
+| `--c-glass-panel` | rgba(18,18,26,.85) / rgba(255,255,255,.95) | `surface-2` |
+| `--c-field` | #161b26 / #ffffff | `surface-2` |
+| `--c-modal-glass` | rgba(17,21,29,.96) / rgba(255,255,255,.97) | `surface-3` |
+| `--c-pop` | #1a1a2e / #ffffff | `surface-3` |
+| `--media-scrim` | rgba(10,10,15,.78), ohne Hell/Dunkel | `scrim` |
+
+Abweichung: Ist-Wert wie in der Tabelle, wird in Schritt 4 bewusst auf das Ziel-Token vereinheitlicht. Einzelfälle, bei denen die Abweichung gewollt ist (z. B. `--c-field` als deckendes Eingabefeld), entscheidet dev in Schritt 4 und vermerkt sie hier.
 
 `surface-nav` ist deckend und neutral, `surface-2` durchscheinend und bläulich; deshalb zwei Tokens (Entscheidung A5). Der Rand der Navigation ist `border-nav`.
 
@@ -91,7 +107,7 @@ Jeder Bereich hat genau eine Farbe. Sie ersetzt Farbnamen wie `--violet`, `--vio
 
 ### EPG-Genrefarben
 
-Die Apple-Apps haben neun Genrefarben mit Hell- und Dunkelwert (`Core/Utils/EpgTokens.swift`, `iPad/iPadEpgTheme.swift`), die Desktop-App eigene Werte. Sie werden als Token-Gruppe `genre-*` übernommen; die Werte legt Plan Schritt 8 fest. Die EPG-Flächen der Apple-Apps (surface #12121B, surface2 #191925, line .16) werden auf `surface-1`, `surface-2` und `border-strong` abgebildet.
+Die Apple-Apps haben neun Genrefarben mit Hell- und Dunkelwert (`Sources/StreamingHubCore/Utils/EpgTokens.swift`, `Sources/StreamingHubiPad/iPadEpgTheme.swift`), die Desktop-App eigene Werte. Sie werden als Token-Gruppe `genre-*` übernommen; die Werte legt Plan Schritt 8 fest. Die EPG-Flächen der Apple-Apps (surface #12121B, surface2 #191925, line .16) werden auf `surface-1`, `surface-2` und `border-strong` abgebildet.
 
 ### Radien, Abstände, Schrift, Bewegung
 
@@ -140,7 +156,7 @@ Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansi
 
 ### Navigation
 
-- Ist-Stand ist Vorgabe: die Navigationsleiste im Apple-Design (`styles.css` ab Zeile 3709, `iPadNavigation.swift`, `TVNavigation.swift`). Aktiver Eintrag mit Bereichsfarbe und Unterstrich.
+- Ist-Stand ist Vorgabe: die Navigationsleiste im Apple-Design (`styles.css` ab Zeile 3709, `Sources/StreamingHubiPad/iPadNavigation.swift`, `Sources/StreamingHubTV/Views/Shell/TVNavigation.swift`). Aktiver Eintrag mit Bereichsfarbe und Unterstrich.
 - Tokens: `surface-nav`, `border-nav`, `area-*`; Eintrag `radius-md`, Leiste `radius-full`. `--nav-bg` bleibt auf `.overlay-bar` im „theme-literal“-Block gesetzt, Wert `surface-nav`.
 - Die Bereichs-Icons der Desktop-Navigation sind schon Inline-SVG; sie werden an die Zuordnung angeglichen.
 - Fokus: Desktop und iPad `focus-ring` (nicht mehr die Bereichsfarbe). Apple TV behält den eigenen TV-Fokusstil (weiße Fläche, schwarze Schrift, Vergrößerung 1,06).
