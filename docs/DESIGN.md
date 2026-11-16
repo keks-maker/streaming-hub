@@ -254,8 +254,8 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 | Navigation | Schwebende Pille oben | Tab-Leiste oben im selben Pillen-Look | Tab-Leiste oben, Bereichsfarbe für den aktiven Eintrag |
 | Schrift | Stufen wie oben | Stufen wie oben | Faktor 1,5 bis 2 |
 | Hell/Dunkel | folgt dem System | folgt dem System | **fest dunkel** (Ausnahme: Fernsehen im dunklen Raum, Video im Mittelpunkt); Tokens trotzdem mit beiden Werten |
-| Mini-Player | Leiste unten (Video, Radio, Podcast) | Leiste unten (Video, Radio, Podcast) Leiste unten (Radio, Podcast); YouTube als schwebendes Eckfenster; „Läuft gerade“ zusätzlich |
-| Bereiche | LiveTV, Radio, Streaming, Mediatheken, Podcasts, Einstellungen | wie Desktop; Streaming = YouTube wie Desktop; Streaming = YouTube (hinter `YOUTUBE_NATIVE`) |
+| Mini-Player | Leiste unten (Video, Radio, Podcast) | Leiste unten (Video, Radio, Podcast) | Leiste unten (Radio, Podcast); YouTube als schwebendes Eckfenster; „Läuft gerade“ zusätzlich |
+| Bereiche | LiveTV, Radio, Streaming, Mediatheken, Podcasts, Einstellungen | wie Desktop; Streaming = YouTube | wie Desktop; Streaming = YouTube (hinter `YOUTUBE_NATIVE`) |
 | Mindestgröße Bedienelemente | Maus, keine Vorgabe | 44 pt | durch Fokus geregelt |
 | Tastenkürzel | wie heute | Hardware-Tastatur: dieselben Kürzel | Fernbedienung |
 
