@@ -2,7 +2,7 @@
 
 Stand: 2026-11-16. Der Abgleich mit dem Apple-Repo basierte auf `main` vor dem YouTube-Merge; Nachtrag auf Stand `931bacf`. Vorgabe: `docs/DESIGN.md` (nur im Desktop-Repo). Neue Sessions starten mit diesem Dokument und der Vorgabe.
 
-**Arbeitsweise:** Ein Schritt pro Commit, Commit-Präfix `design(<schritt>): …` (z. B. `design(1): Tokens bereinigen`). Jeder Schritt läuft über dev und qa; App nach jedem Schritt im Hintergrund starten und in Hell und Dunkel prüfen. Token-Änderungen gelten für alle drei Apps und werden im Commit vermerkt. Push nach `main` nach QA-OK; Tag und Release nur nach ausdrücklicher Freigabe.
+**Arbeitsweise:** Ein Schritt pro Commit, Commit-Präfix `design(<schritt>): …` (z. B. `design(1): Tokens bereinigen`). Jeder Schritt läuft über dev und qa; App nach jedem Schritt im Hintergrund starten und in Hell und Dunkel prüfen. Token-Änderungen gelten für alle drei Apps und werden im Commit vermerkt. Push, Merge nach `main`, Tag und Release nur nach ausdrücklicher Freigabe des Users.
 
 Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-tvOS` (Branch je Schritt, von `main`).
 
