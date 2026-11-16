@@ -127,7 +127,7 @@ test.describe('Podcast-Oberfläche', () => {
     expect(order.slice(0, 3)).toEqual(['livetv', 'radio', 'podcasts']);
     const colors = await page.locator('.dashboard-section-tile').evaluateAll(els => Object.fromEntries(els.map(e => [e.dataset.section, e.style.getPropertyValue('--tile-color').trim()])));
     expect(colors.podcasts).not.toBe(colors.livetv);
-    expect(colors.podcasts).toBe('#5af2a6');
+    expect(colors.podcasts).toBe('var(--area-podcast)');
     await shot(page, 'startseite');
     await openPodcasts(page);
     await expect(page.locator('#overlayLocation')).toHaveText('Podcasts');

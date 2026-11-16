@@ -637,7 +637,7 @@ function requireWebviewRenderer(event) {
   }
 }
 
-// Fensterhintergrund passend zum Systemdesign (Farben = --bg in styles.css), damit vor dem ersten Zeichnen nichts aufblitzt
+// Fensterhintergrund passend zum Systemdesign (Farben = --surface-0 in styles.css), damit vor dem ersten Zeichnen nichts aufblitzt
 function windowBackground() {
   return nativeTheme.shouldUseDarkColors ? '#0a0a0f' : '#f3f5f8';
 }

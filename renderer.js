@@ -1017,13 +1017,13 @@ function renderStartDashboard() {
   mediathekHub.hideArea();
   dashboardEmpty.style.display = 'none';
   const sections = [
-    { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: '#8b5cf6' },
-    { key: 'radio', label: 'Radio', icon: 'radio-icon.png', color: '#f59e0b' },
-    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: '#5af2a6' },
-    { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: '#e50914' },
-    { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: '#0ea5e9' },
+    { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: 'var(--area-livetv)' },
+    { key: 'radio', label: 'Radio', icon: 'radio-icon.png', color: 'var(--area-radio)' },
+    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: 'var(--area-podcast)' },
+    { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: 'var(--area-streaming)' },
+    { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: 'var(--area-mediathek)' },
     // 3.6b: keine Kachel „Aufnahmen“ mehr (wie der NavBar-Eintrag, P21); der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
-    { key: 'settings', label: 'Einstellungen', icon: null, color: '#64748b' },
+    { key: 'settings', label: 'Einstellungen', icon: null, color: 'var(--area-settings)' },
   ];
   sections.forEach(section => {
     const tile = document.createElement('button');

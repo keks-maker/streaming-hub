@@ -498,7 +498,7 @@ test('Genre: alle Gruppen aus lib/epg/genre.js haben eine Beschriftung und ein F
   const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
   const tokens = themeCss.collectTokens(['styles.css']);
   for (const scheme of ['dark', 'light']) {
-    const base = themeCss.resolve('var(--bg)', tokens, scheme);
+    const base = themeCss.resolve('var(--surface-0)', tokens, scheme);
     const surfaces = ['--epg-surface', '--epg-surface-2', '--epg-block'].map(name => themeCss.resolve(`var(${name})`, tokens, scheme));
     for (const group of Object.keys(GENRES)) {
       assert.ok(`--g-${group}` in tokens, `Token --g-${group}`);
