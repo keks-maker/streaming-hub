@@ -3036,7 +3036,8 @@ body.epg-open .overlay-bar { z-index: 105; }
 .settings-dashboard .dashboard-grid > .settings-panel { width:100%; max-width:none; background:var(--surface-2); border:1px solid color-mix(in srgb, var(--ink) calc(var(--k) * 10%), transparent); }
 /* Einstellungen: feste Höhe unter der Navigationsleiste; Seitenleiste und Inhalt scrollen selbst, die Seite nie. */
 .dashboard-view.settings-dashboard { display:flex; flex-direction:column; overflow:hidden; padding-top:var(--settings-top); padding-bottom:var(--space-4); }
-.settings-dashboard .dashboard-header { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); margin:0; white-space:nowrap; }
+.settings-dashboard .dashboard-header { flex:0 0 auto; width:100%; max-width:1180px; margin:0 auto 16px; }
+.settings-dashboard .dashboard-title { font-size:clamp(30px,4vw,48px); }
 .settings-dashboard .settings-panel-host { flex:1 1 auto; min-height:0; width:100%; max-width:1180px; margin:0 auto; }
 .settings-dashboard .settings-panel-host > .settings-panel { height:100%; }
 .overlay-location { display:none; }
@@ -3180,6 +3181,10 @@ body.epg-open .overlay-bar { z-index: 105; }
 @media (max-width: 760px) {
   .settings-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; gap: 14px; padding: 14px; overflow-y: auto; }
   .settings-content { overflow-y: visible; }
+  .dashboard-view.settings-dashboard { overflow-y:auto; }
+  .settings-dashboard .settings-panel-host { flex:0 0 auto; min-height:auto; }
+  .settings-dashboard .settings-panel-host > .settings-panel { height:auto; }
+  .settings-shell, .settings-nav, .settings-content { height:auto; min-height:auto; }
   .settings-nav { flex-direction: row; flex-wrap: wrap; overflow: visible; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
   .settings-nav-section { display: contents; }
   .settings-nav-heading { flex-basis: 100%; margin-top: 4px; padding: 0; }
