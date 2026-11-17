@@ -19,7 +19,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` | erledigt (QA ausstehend) | siehe git log |
 | 6. Startseite „Läuft gerade“ | Desktop | `design/umbau` | offen | – |
 | 7. Einstellungen gruppieren | Desktop | `design/umbau` | offen | – |
-| 8. Restliche Bereiche angleichen | Desktop | `design/umbau` | offen | – |
+| 8. Restliche Bereiche angleichen | Desktop | `design/umbau` | 8a erledigt (Mini-Player, Cover-Raster, Bildkarte; QA ausstehend), Rest offen | `design(8)` 8a |
 | A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift` | Apple | offen | offen (nach 0b) | – |
 | A2. Hellwerte iPad angleichen | Apple | offen | offen | – |
 | A3. Radien und Schrift | Apple | offen | offen | – |
@@ -69,8 +69,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - Umsetzung: `settings-view.js` (alle Gruppen immer offen, `h2` je Gruppe, `tablist` je Gruppe mit `aria-labelledby`), Seitentitel in `index.html` ohne Präfix, Streaming-Eintrag „Dienste“, Allgemein-Eintrag „Sicherung“. Gruppenreihenfolge unverändert (Allgemein, LiveTV, Radio, Podcasts, Streaming, Mediatheken), damit Home/Pfeiltasten wie vorher laufen. „Downloads: …“-Einträge der Mediatheken bleiben (Unterthema, keine Gruppe).
 
 ### Schritt 8: Restliche Bereiche angleichen
-- Mini-Player: Video, Radio und Podcast nutzen schon eine Leiste (`radio-miniplayer-view.js`); nur Optik und Tokens prüfen.
-- Cover-Raster (Podcasts, quadratisch) und Bildkarte 16:9 (Mediatheken) nach Katalog.
+- 8a, erledigt (QA ausstehend): Mini-Player (`--mini-c` je Modus) sowie Cover-Raster und Bildkarte auf Tokens; Details und Ausnahmen in DESIGN.md (Mini-Player, Cover-Raster und Bildkarte).
 - EPG: Raster, Liste und Details auf Tokens; `genre-*`-Token-Werte festlegen.
 - Verlauf-Overlay (Farbpunkt je Zeile als Komponente beschreiben), Dialoge und Fehlerzustände auf Komponenten und Texte prüfen.
 - Danach: README-Screenshots erneuern, kurzes GIF der Hover-Vorschau.
