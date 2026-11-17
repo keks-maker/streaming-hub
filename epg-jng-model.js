@@ -15,8 +15,8 @@ const WINDOW_MS = 12 * 60 * 60 * 1000;
 /** Nach dieser Zeit werden die Sendungen des Fensters neu abgerufen (das Fenster ist dann aufgebraucht). */
 const RELOAD_AFTER_MS = 60 * 60 * 1000;
 /** Zeilenhöhe: breit = eine Zeile mit drei Zellen; schmal (< 900 px) = Sender und drei Zellen untereinander. */
-const ROW_HEIGHT_WIDE = 84;
-const ROW_HEIGHT_NARROW = 250;
+const ROW_HEIGHT_WIDE = 112;
+const ROW_HEIGHT_NARROW = 312;
 
 /** Schmales Layout bei Fensterbreite unter der Schwelle der Startansicht „Automatisch“ (900 px). */
 function isNarrow(widthPx) {

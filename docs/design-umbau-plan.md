@@ -25,7 +25,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | A3. Radien und Schrift | Apple | offen | offen | – |
 | A4. TV-Vorschau-Verzögerung 350 ms | Apple | offen | offen | – |
 | A5. Texte und Komponenten (Apple) | Apple | offen | offen | – |
-| S. Senderkachel mit Vorschaubild | Desktop, später Apple | `design/umbau` | S1 erledigt und abgenommen; S2 erledigt (EPG-Bild im Main geladen, JPEG-Cache `epg-images/`, `epg-image:get`; QA ausstehend); S3 erledigt am Desktop (Branch `design/jetzt-gleich`, QA ausstehend): EPG „Jetzt & Gleich“ nutzt die Senderkachel (Baustein `livetv-tile.js`, `epg-jng-tile-dom.js`), „Danach“-Zeilen, runder Aufnahme-Knopf; Apple-Umsetzung offen | `design(S)` S1, S2, S3 |
+| S. Senderkachel mit Vorschaubild | Desktop, später Apple | `design/umbau` | S1 erledigt und abgenommen; S2 erledigt (EPG-Bild im Main geladen, JPEG-Cache `epg-images/`, `epg-image:get`; QA ausstehend); S3 (Jetzt & Gleich als Senderkachel) verworfen, Entscheidung 2026-11-17: Spaltenansicht bleibt, größer und im neuen Design (Zeile 112 px, Bild 96 × 54, Logo-Plakette 56 px; Branch `design/jetzt-gleich`, QA ausstehend); Baustein `livetv-tile.js` bleibt für die LiveTV-Favoriten; Apple-Umsetzung offen | `design(S)` S1, S2 |
 
 ## Desktop
 

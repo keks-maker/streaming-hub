@@ -635,12 +635,12 @@ test.describe('Programmführer 3.5 (Großfixture 438 Kanäle × 10 Tage, „Alle
     await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Gruppe Gerade');
     await expect
       .poll(async () => page.evaluate(() => window.document.getElementById('epgJngItems').offsetHeight), { timeout: 30_000 })
-      .toBe(219 * 84);
+      .toBe(219 * 112);
     await page.locator('#epgSenderMenu').click();
     await page.locator('.epg-menu-item', { hasText: 'Alle Sender' }).click();
     await expect
       .poll(async () => page.evaluate(() => window.document.getElementById('epgJngItems').offsetHeight), { timeout: 30_000 })
-      .toBe(438 * 84);
+      .toBe(438 * 112);
     // Suche über alle Sender
     await page.locator('#epgModeList').click();
     await page.locator('#epgSearchInput').fill('krimi');

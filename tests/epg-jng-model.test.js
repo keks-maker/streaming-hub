@@ -135,6 +135,9 @@ test('Layout: schmal unter 900 px Fensterbreite (899 schmal, 900 breit), feste Z
   assert.equal(jng.rowHeight(false), jng.ROW_HEIGHT_WIDE);
   assert.equal(jng.rowHeight(true), jng.ROW_HEIGHT_NARROW);
   assert.ok(jng.ROW_HEIGHT_NARROW > jng.ROW_HEIGHT_WIDE);
+  // größer als die frühere Ansicht (84/250 px): Zeile fasst das Vorschaubild 96 × 54 samt Innenrand
+  assert.ok(jng.ROW_HEIGHT_WIDE >= 54 + 2 * 16);
+  assert.ok(jng.ROW_HEIGHT_NARROW >= 56 + 3 * 70);
 });
 
 test('Marker/Toggle: Zellen nutzen dieselbe Slot-Form und Toggle-Logik wie Liste, Raster und Kanalansicht', () => {
