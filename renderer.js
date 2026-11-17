@@ -745,16 +745,27 @@ window.podcasts.player.onState(next => {
 });
 // ── Startseite „Läuft gerade“ (Design-Umbau Schritt 6): Karten aus Aufnahmen, Radio, Podcast-Hörzustand und Verlauf ──
 const runningNowRoot = document.getElementById('runningNow');
+const runningNowFetch = { stale: true, sourcesStale: true, data: null, sources: null };
 const runningNowView = createRunningNow(runningNowRoot, {
   isShown: () => dashboardView.style.display !== 'none' && dashboardView.classList.contains('start-page'),
   collect: async () => {
     const api = window.electronAPI;
-    const [recordings, sources, radioSettings, history] = await Promise.all([
-      api.listRecordings().catch(() => []),
-      window.radio.getSources().catch(() => []),
-      window.radio.getSettings().catch(() => null),
-      api.getHistory().catch(() => []),
-    ]);
+    // Abrufe nur bei inhaltlich relevanten Ereignissen (runningNowFetch.stale); Fortschritts-Updates nutzen den Zwischenspeicher
+    if (runningNowFetch.stale || !runningNowFetch.data) {
+      runningNowFetch.stale = false;
+      const [recordings, radioSettings, history] = await Promise.all([
+        api.listRecordings().catch(() => []),
+        window.radio.getSettings().catch(() => null),
+        api.getHistory().catch(() => []),
+      ]);
+      if (runningNowFetch.sourcesStale || !runningNowFetch.sources) {
+        runningNowFetch.sourcesStale = false;
+        runningNowFetch.sources = await window.radio.getSources().catch(() => []);
+      }
+      runningNowFetch.data = { recordings, radioSettings, history };
+    }
+    const { recordings, radioSettings, history } = runningNowFetch.data;
+    const sources = runningNowFetch.sources;
     const podcast = podcastHub.data.snapshot();
     return {
       recordings,
@@ -781,9 +792,33 @@ const runningNowView = createRunningNow(runningNowRoot, {
     }
   },
 });
-window.electronAPI.onRecordingChanged(() => runningNowView.schedule());
-window.radio.onState(() => runningNowView.schedule());
-window.podcasts.player.onState(() => runningNowView.schedule());
+// Schlüssel eines Wiedergabezustands ohne Fortschritt: nur Wechsel von Medium/Sender/Episode/Status laden neu
+const runningNowStateKey = state => (state ? [state.status, state.episode && state.episode.podcastId, state.episode && state.episode.episodeId, state.station && state.station.sourceId, state.station && state.station.id].join('|') : '');
+const runningNowRefetch = () => {
+  runningNowFetch.stale = true;
+  runningNowView.schedule();
+};
+let runningNowRadioKey = '';
+let runningNowPodcastKey = '';
+window.electronAPI.onRecordingChanged(runningNowRefetch);
+window.radio.onSourcesChanged(() => {
+  runningNowFetch.sourcesStale = true;
+  runningNowRefetch();
+});
+window.radio.onState(state => {
+  const key = runningNowStateKey(state);
+  if (key === runningNowRadioKey) return;
+  runningNowRadioKey = key;
+  runningNowRefetch();
+});
+window.podcasts.player.onState(state => {
+  const key = runningNowStateKey(state);
+  if (key === runningNowPodcastKey) runningNowView.schedule();
+  else {
+    runningNowPodcastKey = key;
+    runningNowRefetch();
+  }
+});
 podcastHub.data.subscribe(() => runningNowView.schedule());
 
 async function pausePodcastForVideo() {
@@ -1096,6 +1131,8 @@ function renderStartDashboard() {
   overlayBar.classList.add('start-page');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   placeUpdateButton(dashboardUpdateSlot, true);
+  runningNowFetch.stale = true;
+  runningNowFetch.sourcesStale = true;
   runningNowView.show();
 }
 

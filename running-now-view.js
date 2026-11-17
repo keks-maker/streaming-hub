@@ -20,31 +20,47 @@ function buildCard(doc, card, onAction) {
   const button = el(doc, 'button', `running-card running-card-${card.kind}`);
   button.type = 'button';
   button.dataset.kind = card.kind;
-  button.dataset.area = card.area;
-  button.setAttribute('aria-label', cardAriaLabel(card));
   const plate = el(doc, 'span', 'running-card-icon');
   plate.setAttribute('aria-hidden', 'true');
-  plate.appendChild(Icons.createIcon(doc, card.icon));
   const body = el(doc, 'span', 'running-card-body');
-  const title = el(doc, 'span', 'running-card-title', card.title);
-  const sub = el(doc, 'span', 'running-card-sub', card.subtitle);
-  body.append(title, sub);
+  body.append(el(doc, 'span', 'running-card-title'), el(doc, 'span', 'running-card-sub'));
   button.append(plate, body);
-  if (card.live) {
-    const badge = el(doc, 'span', 'running-card-live', 'LIVE');
+  button.addEventListener('click', () => onAction(button.runningAction));
+  updateCard(doc, button, card);
+  return button;
+}
+
+/** Aktualisiert eine bestehende Karte in place (Fokus bleibt erhalten): Texte, Icon, LIVE-Badge, Fortschritt, Aktion. */
+function updateCard(doc, button, card) {
+  button.runningAction = card.action;
+  button.dataset.area = card.area;
+  button.setAttribute('aria-label', cardAriaLabel(card));
+  const plate = button.querySelector('.running-card-icon');
+  if (plate.dataset.icon !== card.icon) {
+    plate.dataset.icon = card.icon;
+    plate.textContent = '';
+    plate.appendChild(Icons.createIcon(doc, card.icon));
+  }
+  const title = button.querySelector('.running-card-title');
+  const sub = button.querySelector('.running-card-sub');
+  if (title.textContent !== card.title) title.textContent = card.title;
+  if (sub.textContent !== card.subtitle) sub.textContent = card.subtitle;
+  let badge = button.querySelector('.running-card-live');
+  if (card.live && !badge) {
+    badge = el(doc, 'span', 'running-card-live', 'LIVE');
     badge.setAttribute('aria-hidden', 'true');
     button.appendChild(badge);
-  }
+  } else if (!card.live && badge) badge.remove();
+  let bar = button.querySelector('.running-card-progress');
   if (card.progress > 0) {
-    const bar = el(doc, 'span', 'running-card-progress');
-    bar.setAttribute('aria-hidden', 'true');
-    const fill = el(doc, 'span', '');
-    fill.style.width = `${(card.progress * 100).toFixed(1)}%`;
-    bar.appendChild(fill);
-    button.appendChild(bar);
-  }
-  button.addEventListener('click', () => onAction(card.action));
-  return button;
+    if (!bar) {
+      bar = el(doc, 'span', 'running-card-progress');
+      bar.setAttribute('aria-hidden', 'true');
+      bar.appendChild(el(doc, 'span', ''));
+      button.appendChild(bar);
+    }
+    bar.firstChild.style.width = `${(card.progress * 100).toFixed(1)}%`;
+  } else if (bar) bar.remove();
 }
 
 /**
@@ -58,14 +74,23 @@ function createRunningNow(root, options = {}) {
   let visible = false;
   let timer = null;
   let seq = 0;
-  let signature = '';
 
   function paint(cards) {
-    const next = JSON.stringify(cards);
-    if (next === signature) return;
-    signature = next;
-    list.textContent = '';
-    cards.forEach(card => list.appendChild(buildCard(doc, card, onAction)));
+    const keys = cards.map(card => card.kind).join(',');
+    const existing = [...list.children];
+    if (keys === existing.map(node => node.dataset.kind).join(',')) {
+      cards.forEach((card, i) => updateCard(doc, existing[i], card));
+    } else {
+      // Kartenmenge/-reihenfolge geändert: neu aufbauen, Fokus nach kind wiederherstellen
+      const active = doc.activeElement;
+      const focusedKind = active && list.contains(active) ? active.dataset.kind : null;
+      list.textContent = '';
+      cards.forEach(card => list.appendChild(buildCard(doc, card, onAction)));
+      if (focusedKind) {
+        const target = [...list.children].find(node => node.dataset.kind === focusedKind);
+        if (target) target.focus();
+      }
+    }
     root.hidden = cards.length === 0;
   }
 
@@ -102,7 +127,6 @@ function createRunningNow(root, options = {}) {
     seq += 1;
     if (timer) timers.clearTimeout(timer);
     timer = null;
-    signature = '';
     list.textContent = '';
     root.hidden = true;
   }

@@ -169,6 +169,13 @@ function createSettingsView(panel, options = {}) {
     return [...tabs.values()].filter(t => t.getClientRects().length > 0);
   }
 
+  /** Nur die Seitenleiste scrollen (nicht die äußere Seite, sonst rutscht die Leiste unter die Navigationsleiste). */
+  function revealInNav(tab) {
+    const top = tab.getBoundingClientRect().top - navEl.getBoundingClientRect().top + navEl.scrollTop;
+    if (top < navEl.scrollTop) navEl.scrollTop = top;
+    else if (top + tab.offsetHeight > navEl.scrollTop + navEl.clientHeight) navEl.scrollTop = top + tab.offsetHeight - navEl.clientHeight;
+  }
+
   function showPage(requested, { remember = true } = {}) {
     const page = resolvePage(requested, readStoredPage(options.storage), nav);
     currentPage = page;
@@ -181,7 +188,7 @@ function createSettingsView(panel, options = {}) {
       btn.tabIndex = selected ? 0 : -1;
     });
     const selectedTab = tabs.get(page);
-    if (selectedTab && typeof selectedTab.scrollIntoView === 'function') selectedTab.scrollIntoView({ block: 'nearest' });
+    if (selectedTab) revealInNav(selectedTab);
     placeAddForm(page);
     if (remember) writeStoredPage(page, options.storage);
     if (typeof options.onShow === 'function') options.onShow(page);

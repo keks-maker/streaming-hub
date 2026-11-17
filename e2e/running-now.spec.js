@@ -78,6 +78,15 @@ test.describe('Startseite „Läuft gerade“: mit Zustand', () => {
     const outline = await cards.nth(0).evaluate(el => getComputedStyle(el).outlineStyle + ' ' + getComputedStyle(el).outlineWidth);
     expect(outline).toBe('solid 2px');
     if (SHOTS) await shotBoth(page, SHOTS, 'start-inhalt');
+    // Zustandsupdate bei fokussierter Karte: Karte wird in place aktualisiert, Fokus bleibt (kein Neuaufbau der Liste)
+    await cards.nth(0).focus();
+    const station0 = { sourceId: radioSource.id, id: radioStation.id, name: radioStation.name };
+    await ctx.electronApp.evaluate(({ BrowserWindow }, st) => {
+      BrowserWindow.getAllWindows()[0].webContents.send('radio:state', { status: 'playing', station: st });
+    }, station0);
+    await expect(cards.nth(0)).toContainText('Läuft');
+    await expect(cards.nth(0)).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement.dataset.kind)).toBe('radio');
     // Enter auf der Verlaufskarte (LiveTV-Sender) wechselt in die Wiedergabe: Startseite weg
     await cards.nth(1).focus();
     await page.keyboard.press('Enter');

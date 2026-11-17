@@ -3079,8 +3079,8 @@ body.epg-open .overlay-bar { z-index: 105; }
   flex-direction: column;
   gap: var(--space-4);
   position: sticky;
-  top: 0;
-  max-height: calc(100vh - 160px);
+  top: 96px; /* = padding-top von .dashboard-view: Leiste klebt unter der Navigationsleiste */
+  max-height: calc(100vh - 96px - 48px - 20px); /* Leistenabstand oben, Seitenrand unten + Shell-Padding */
   overflow-y: auto;
 }
 .settings-nav-section { --nav-section-c: var(--area-settings); display: flex; flex-direction: column; gap: 2px; }
@@ -4106,7 +4106,7 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
 .running-card:hover { border-color: var(--card-area); }
 .running-card-icon { display: grid; flex: none; width: 40px; height: 40px; place-items: center; color: var(--card-area); background: color-mix(in srgb, var(--card-area) 16%, var(--surface-1)); border-radius: var(--radius-md); }
 .running-card-icon .ic { width: 20px; height: 20px; display: block; }
-.running-card-rec .running-card-icon { color: var(--status-rec); }
+.running-card-recording .running-card-icon { color: var(--status-rec); background: color-mix(in srgb, var(--status-rec) 16%, var(--surface-1)); }
 .running-card-body { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
 .running-card-title, .running-card-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .running-card-title { font-size: 14px; font-weight: 600; }
