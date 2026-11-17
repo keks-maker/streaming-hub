@@ -32,7 +32,7 @@ const shot = async (page, name) => {
 };
 
 async function gotoStart(page) {
-  await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+  await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
 }
 
 async function openRadioDashboard(page) {

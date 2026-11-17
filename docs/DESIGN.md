@@ -205,6 +205,7 @@ Zweigeteilt (Mockup in `docs/design-umbau-plan.md`, Spec dort), Kachel `radius-m
 - Die Bereichs-Icons der Desktop-Navigation sind schon Inline-SVG; sie werden an die Zuordnung angeglichen.
 - Fokus: Desktop und iPad `focus-ring` (nicht mehr die Bereichsfarbe). Apple TV behält den eigenen TV-Fokusstil (weiße Fläche, schwarze Schrift, Vergrößerung 1,06).
 - Aufnahme-Punkt am LiveTV-Eintrag bleibt (`status-rec`).
+- „Start“ ist der erste Eintrag der Desktop-Leiste (Icon `house`, Farbe `accent`, gleiches Bauteil wie die Bereiche, ohne Trennstrich). Er springt zur Startseite (Klick oder Strg+Umsch+H); auf der Startseite ist die Leiste ausgeblendet, daher hat „Start“ keinen aktiven Zustand. Das iPad hat den Eintrag schon (`iPadNavigation.swift`, `home`, `house`): kein Abgleich nötig.
 - Auf dem iPad heißt der Streaming-Bereich YouTube (Label bleibt, Farbe `area-streaming`), weil DRM-Dienste dort nicht möglich sind.
 - Apple TV hat ebenfalls einen YouTube-Bereich (`Sources/StreamingHubTV/Views/Shell/TVNavigation.swift:15, 43, 61`, Symbol `play.rectangle.fill`, Ist-Farbe #FF5A5A, hinter `YOUTUBE_NATIVE`). Wie am iPad: Farbe `area-streaming`, Label „YouTube“.
 

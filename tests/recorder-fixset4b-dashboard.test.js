@@ -64,8 +64,8 @@ test('FIX 3c: showDashboard behandelt recording als Dashboard-Gruppe (kein Overl
     'dashboardView recordings-dashboard-Klassen-Toggle fehlt',
   );
   assert.ok(
-    /groupKey === 'recording'[\s\S]{0,40}\? 'Aufnahmen'/.test(rendererJs),
-    'overlayLocation/Title-Zweig für recording fehlt',
+    /isRecording\s*\? 'Aufnahmen'/.test(rendererJs),
+    'Title-Zweig für recording fehlt',
   );
   assert.ok(
     rendererJs.includes('renderRecordingDashboard()'),

@@ -585,24 +585,6 @@ body {
 
 /* Active border/glow is generated dynamically in renderer.js */
 
-.overlay-location {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  margin-right: 16px;
-  flex-shrink: 0;
-  -webkit-app-region: no-drag;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  user-select: none;
-  align-self: flex-start;
-  margin-top: 5px;
-}
-.overlay-location:hover {
-  transform: scale(1.15);
-}
-
 /* ── Zurück-Button ── */
 /* Nebenan der Standort-Anzeige, unsichtbar solange die Historie leer ist
    (renderer.js setzt display:none). Folgt dem Hover-/Kompakt-Verhalten
@@ -2993,7 +2975,6 @@ body.epg-open .overlay-bar { z-index: 105; }
 }
 .overlay-bar.nav-collapsed:not(.is-fullscreen) .overlay-actions,
 .overlay-bar.is-fullscreen .overlay-actions { display: none !important; }
-.overlay-location { display:none !important; }
 .nav-reveal-hint { display:block; position:absolute; left:50%; bottom:-18px; transform:translateX(-50%); width:44px; height:18px; color:var(--nav-text); font-size:14px; line-height:16px; text-align:center; background:color-mix(in srgb, var(--surface-nav) 60%, transparent); border:1px solid var(--border-nav); border-top:0; border-radius:0 0 10px 10px; }
 .overlay-bar:not(.nav-collapsed):not(.is-fullscreen) .overlay-nav { opacity:1; pointer-events:auto; transform:translateX(-50%); }
 .overlay-bar.nav-collapsed:not(.is-fullscreen) {
@@ -3063,7 +3044,6 @@ body.epg-open .overlay-bar { z-index: 105; }
 .settings-dashboard .dashboard-title { font-size:clamp(30px,4vw,54px); }
 .settings-dashboard .settings-panel-host { flex:1 1 auto; min-height:0; width:100%; max-width:1180px; margin:0 auto; }
 .settings-dashboard .settings-panel-host > .settings-panel { height:100%; }
-.overlay-location { display:none; }
 .content-area { min-height:100vh; background:radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--area-c, var(--accent)) 22%, transparent), transparent 34%), radial-gradient(circle at 82% 78%, var(--glow-cyan), transparent 30%), var(--surface-0); }
 .content-view,.tv-view { top:0; height:100%; }
 .dashboard-view { padding-top:148px; background:transparent; }
@@ -3836,6 +3816,7 @@ body:has(.radio-miniplayer:not([hidden])) .content-area { min-height:0; }
   --nav-btn-bg: light-dark(rgba(0,0,0,.06), rgba(255,255,255,.08));
   --nav-btn-fg: light-dark(rgba(0,0,0,.7), rgba(255,255,255,.8));
 }
+.overlay-bar [data-section="start"] { --nav-c: var(--accent); }
 .overlay-bar [data-section="livetv"] { --nav-c: var(--area-livetv); }
 .overlay-bar [data-section="radio"] { --nav-c: var(--area-radio); }
 .overlay-bar [data-section="podcasts"] { --nav-c: var(--area-podcast); }

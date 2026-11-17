@@ -85,7 +85,7 @@ test.describe('Senderkachel mit EPG-Bild', () => {
   });
 
   test('Bild erscheint, Fehler und falscher Typ fallen auf den Verlauf zurück, ohne Logo Anfangsbuchstabe, Cache verkleinert', async () => {
-    await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+    await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
     await page.locator('.dashboard-section-tile[data-section="livetv"]').click();
     await expect(page.locator('#dashboardHub')).toBeVisible();
     const tile = name => page.locator('#dashboardGrid .dashboard-tv-tile').filter({ has: page.locator('.tv-tile-title, .tv-tile-meta', { hasText: new RegExp(`^${name}`) }) });
@@ -116,7 +116,7 @@ test.describe('Senderkachel mit EPG-Bild', () => {
     expect(fs.statSync(path.join(dir, files[0])).size).toBeLessThan(fs.statSync(path.join(workDir, 'big.jpg')).size);
     // Zweites Rendern lädt nicht erneut aus dem Netz
     const before = hits.filter(u => u.startsWith('/img/ok.jpg')).length;
-    await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+    await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
     await page.locator('.dashboard-section-tile[data-section="livetv"]').click();
     await expect(tile('Mit Bild').locator('.tv-tile-still.has-image')).toHaveCount(1, { timeout: 10_000 });
     expect(hits.filter(u => u.startsWith('/img/ok.jpg')).length).toBe(before);

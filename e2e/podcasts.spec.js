@@ -83,7 +83,7 @@ function startServer(tone) {
 }
 
 async function openPodcasts(page) {
-  await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+  await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
   await page.locator('.dashboard-section-tile[data-section="podcasts"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Podcasts');
   await expect(page.locator('#podcastDashboard')).toBeVisible();
@@ -130,10 +130,10 @@ test.describe('Podcast-Oberfläche', () => {
     expect(colors.podcasts).toBe('var(--area-podcast)');
     await shot(page, 'startseite');
     await openPodcasts(page);
-    await expect(page.locator('#overlayLocation')).toHaveText('Podcasts');
+    await expect(page.locator('#overlayNav .nav-section-item.active')).toHaveText('Podcasts');
     await expect(page.locator('#dashboardEyebrow')).toHaveText('Deine Podcasts');
     const navOrder = await page.locator('#overlayNav .nav-section-item').evaluateAll(els => els.map(e => e.dataset.section));
-    expect(navOrder.slice(0, 3)).toEqual(['livetv', 'radio', 'podcasts']);
+    expect(navOrder.slice(0, 4)).toEqual(['start', 'livetv', 'radio', 'podcasts']);
     await expect(page.locator('#overlayNav .nav-section-item[data-section="podcasts"]')).toHaveClass(/active/);
     await expect(page.locator('#podcastEmpty')).toBeVisible();
     await expect(page.locator('#podcastEmptySearch')).toBeVisible();

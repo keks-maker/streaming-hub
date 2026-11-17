@@ -33,7 +33,7 @@ async function check(name) {
 }
 
 async function goStart() {
-  await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+  await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
   await expect(page.locator('#dashboardView')).toBeVisible();
 }
 
