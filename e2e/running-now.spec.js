@@ -1,6 +1,6 @@
 'use strict';
 
-// E2E: Startseite „Läuft gerade“ (Design-Umbau Schritt 6) — Leiste bei frischem Profil ausgeblendet; mit gestelltem Zustand
+// E2E: Startseite „Fortsetzen“ (Design-Umbau Schritt 6) — Leiste bei frischem Profil ausgeblendet; mit gestelltem Zustand
 // (zuletzt gehörter Radiosender über die Radio-Einstellungen, Verlaufseintrag über die Verlaufs-API) sichtbar, per Tastatur
 // bedienbar. Kein Netz, Fenster im Hintergrund (launchApp). Screenshots (optional): RUNNING_NOW_SHOTS=<Verzeichnis>.
 const { test, expect } = require('@playwright/test');
@@ -25,7 +25,7 @@ const launch = seed => {
   return launchApp({ prefix: 'streaming-hub-e2e-runningnow-', epgXml, channels: [{ id: 'E2E.de', name: 'E2E Kanal' }], favorites: ['E2E.de'], seed });
 };
 
-test.describe('Startseite „Läuft gerade“: frisches Profil', () => {
+test.describe('Startseite „Fortsetzen“: frisches Profil', () => {
   let ctx;
   test.beforeAll(async () => {
     ctx = await launch(null);
@@ -44,7 +44,7 @@ test.describe('Startseite „Läuft gerade“: frisches Profil', () => {
   });
 });
 
-test.describe('Startseite „Läuft gerade“: mit Zustand', () => {
+test.describe('Startseite „Fortsetzen“: mit Zustand', () => {
   let ctx;
   let page;
   test.beforeAll(async () => {
@@ -64,7 +64,7 @@ test.describe('Startseite „Läuft gerade“: mit Zustand', () => {
     await page.locator('#dashboardView').waitFor();
     const strip = page.locator('#runningNow');
     await expect(strip).toBeVisible();
-    await expect(strip.getByRole('heading', { name: 'Läuft gerade' })).toBeVisible();
+    await expect(strip.getByRole('heading', { name: 'Fortsetzen' })).toBeVisible();
     const cards = strip.locator('.running-card');
     await expect(cards).toHaveCount(2);
     await expect(cards.nth(0)).toHaveAttribute('data-kind', 'radio');
@@ -95,7 +95,7 @@ test.describe('Startseite „Läuft gerade“: mit Zustand', () => {
   });
 });
 
-test.describe('Startseite „Läuft gerade“: Verlaufseintrag öffnet die gespeicherte Adresse', () => {
+test.describe('Startseite „Fortsetzen“: Verlaufseintrag öffnet die gespeicherte Adresse', () => {
   let server;
   let ctx;
   let page;

@@ -1,4 +1,4 @@
-// Startseite „Läuft gerade“ (Design-Umbau Schritt 6): Leiste mit bis zu vier kleinen Karten unter den Bereichskacheln.
+// Startseite „Fortsetzen“ (Design-Umbau Schritt 6): Leiste mit bis zu vier kleinen Karten unter den Bereichskacheln.
 // Dünne Ansicht: die Auswahl liefert running-now-model.js, die Daten und Klick-Ziele kommen aus renderer.js (options).
 // Texte nur per textContent; leer = Leiste ausgeblendet (kein Platzhaltertext).
 
@@ -65,7 +65,7 @@ function updateCard(doc, button, card) {
 
 /**
  * options: { collect() → Eingabe für runningNowCards (async), onAction(action), isShown() (Startseite sichtbar), timers (Tests) }
- * root: <section id="runningNow">; die Überschrift „Läuft gerade“ steht im Gerüst (index.html).
+ * root: <section id="runningNow">; die Überschrift „Fortsetzen“ steht im Gerüst (index.html).
  */
 function createRunningNow(root, options = {}) {
   const { collect, onAction, isShown = () => true, timers = { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: handle => clearTimeout(handle) } } = options;

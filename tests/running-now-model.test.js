@@ -1,6 +1,6 @@
 'use strict';
 
-// Tests: Startseite „Läuft gerade“ (Design-Umbau Schritt 6) — Auswahl, Reihenfolge und Leerfall der Karten.
+// Tests: Startseite „Fortsetzen“ (Design-Umbau Schritt 6) — Auswahl, Reihenfolge und Leerfall der Karten.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,6 +35,7 @@ test('Aufnahme: nur status recording; mehrere werden zu einer Karte', () => {
   assert.equal(one.title, 'Tagesschau');
   assert.match(one.subtitle, /Das Erste/);
   assert.deepEqual(one.action, { type: 'recordings' });
+  assert.equal(one.live, true);
   assert.equal(recordingCard([{ status: 'recording', channelName: 'A' }, { status: 'recording', channelName: 'B' }]).title, '2 Aufnahmen');
 });
 

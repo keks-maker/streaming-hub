@@ -1,4 +1,4 @@
-// Startseite „Läuft gerade“ (Design-Umbau Schritt 6): Auswahl und Reihenfolge der kleinen Karten. Reine Funktionen ohne
+// Startseite „Fortsetzen“ (Design-Umbau Schritt 6): Auswahl und Reihenfolge der kleinen Karten. Reine Funktionen ohne
 // DOM und IPC; die Ansicht (running-now-view.js) rendert das Ergebnis. Datenquellen sind vorhandene Renderer-Zustände:
 // recording:list, Radio-Zustand und -Einstellungen, Podcast-Daten (Hörzustand je Episode) und der Verlauf.
 
@@ -13,7 +13,7 @@ const PODCAST_ACTIVE = ['loading', 'playing', 'paused'];
 
 const text = value => (typeof value === 'string' ? value.trim() : '');
 
-/** Gespeicherte Adresse eines Verlaufseintrags (nur http/https), sonst ''. Gilt für „Läuft gerade“ und das Verlauf-Overlay. */
+/** Gespeicherte Adresse eines Verlaufseintrags (nur http/https), sonst ''. Gilt für „Fortsetzen“ und das Verlauf-Overlay. */
 function historyEntryUrl(entry) {
   const raw = text(entry && entry.url);
   if (!raw || raw.length > 2048) return '';
@@ -35,12 +35,12 @@ function recordingCard(recordings) {
   const running = (Array.isArray(recordings) ? recordings : []).filter(rec => rec && rec.status === 'recording');
   if (!running.length) return null;
   if (running.length > 1) {
-    return { kind: 'recording', area: 'livetv', icon: 'circle-dot', title: `${running.length} Aufnahmen`, subtitle: 'laufen gerade', live: false, rec: true, progress: null, active: true, action: { type: 'recordings' } };
+    return { kind: 'recording', area: 'livetv', icon: 'circle-dot', title: `${running.length} Aufnahmen`, subtitle: 'laufen gerade', live: true, rec: true, progress: null, active: true, action: { type: 'recordings' } };
   }
   const rec = running[0];
   const channel = text(rec.channelName);
   const title = text(rec.epgTitle) || channel || 'Aufnahme';
-  return { kind: 'recording', area: 'livetv', icon: 'circle-dot', title, subtitle: channel && channel !== title ? `Aufnahme · ${channel}` : 'Aufnahme läuft', live: false, rec: true, progress: null, active: true, action: { type: 'recordings' } };
+  return { kind: 'recording', area: 'livetv', icon: 'circle-dot', title, subtitle: channel && channel !== title ? `Aufnahme · ${channel}` : 'Aufnahme läuft', live: true, rec: true, progress: null, active: true, action: { type: 'recordings' } };
 }
 
 /** Radio: der aktuelle Sender (lädt, spielt, pausiert) sonst der zuletzt gehörte. */

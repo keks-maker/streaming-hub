@@ -4123,7 +4123,7 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .theme-dark-scope:focus-visible, .dashboard-section-tile:focus-visible, .dashboard-tv-tile.is-previewing:focus-visible { outline-color: var(--focus-ring-page); } /* Ring richtet sich nach der Seite, nicht nach der lokal dunklen Kachel */
 
-/* Startseite „Läuft gerade“ (Design-Umbau Schritt 6): Leiste unter den Bereichskacheln, Karten nach DESIGN.md (Komponente „Läuft gerade“) */
+/* Startseite „Fortsetzen“ (Design-Umbau Schritt 6): Leiste unter den Bereichskacheln, Karten nach DESIGN.md (Komponente „Fortsetzen“) */
 .running-now { max-width: 1480px; margin: var(--space-5) auto 0; }
 .running-now[hidden] { display: none; }
 .running-now-title { margin: 0 0 var(--space-3); color: var(--text-secondary); font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }

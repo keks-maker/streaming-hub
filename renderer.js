@@ -745,7 +745,7 @@ window.podcasts.player.onState(next => {
   podcastPreviousStatus = next && next.status;
   podcastLatestState = next;
 });
-// ── Startseite „Läuft gerade“ (Design-Umbau Schritt 6): Karten aus Aufnahmen, Radio, Podcast-Hörzustand und Verlauf ──
+// ── Startseite „Fortsetzen“ (Design-Umbau Schritt 6): Karten aus Aufnahmen, Radio, Podcast-Hörzustand und Verlauf ──
 const runningNowRoot = document.getElementById('runningNow');
 const runningNowFetch = { stale: true, sourcesStale: true, data: null, sources: null };
 const runningNowView = createRunningNow(runningNowRoot, {
@@ -777,7 +777,7 @@ const runningNowView = createRunningNow(runningNowRoot, {
     };
   },
   onAction: action => {
-    const fail = error => logger.warn('Läuft gerade: Aktion fehlgeschlagen:', error && error.message ? error.message : error);
+    const fail = error => logger.warn('Fortsetzen: Aktion fehlgeschlagen:', error && error.message ? error.message : error);
     if (action.type === 'recordings') showDashboard('recording');
     else if (action.type === 'radio-open') showDashboard('radio');
     else if (action.type === 'radio-play') window.radio.play(action.key).catch(fail);

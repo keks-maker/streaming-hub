@@ -214,9 +214,10 @@ Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansi
 - **YouTube-Variante (Apple TV):** Video läuft als schwebendes Eckfenster (400 × 225, Standard unten rechts) statt in der Leiste (`Sources/StreamingHubTV/YouTube/TVYouTubeMini.swift`). Es nutzt dieselbe Player-Instanz, reserviert keinen Platz, ist nicht fokussierbar und weicht dem Fokus aus: Berührt das fokussierte Element das Fenster, wechselt es in die am weitesten entfernte Ecke und kehrt in die Heimecke unten rechts zurück, sobald sie frei ist (`Sources/StreamingHubCore/Services/YouTubeMiniCorner.swift`, nur Geometrie; Ecken `bottomTrailing`, `bottomLeading`, `topTrailing`, `topLeading`). Steht unten die Radio-/Podcast-Leiste, liegen die unteren Ecken darüber. Bedienung: „Jetzt läuft“ (Auswählen = Vollbild, Langdruck = Menü), Play/Pause der Fernbedienung steuert das Fenster.
 - **Einmal-Hinweis:** Am Mini-Fenster erscheint die ersten drei Male fünf Sekunden lang „Nach oben zu „Jetzt läuft“ · Play/Pause halten = Vollbild“ (`Sources/StreamingHubCore/Services/YouTubeMiniHint.swift`, Zähler in UserDefaults). Gilt nur für Apple TV; Desktop und iPad nutzen die gemeinsame Leiste.
 
-### „Läuft gerade“ (Startseite)
+### „Fortsetzen“ (Startseite)
 
 - Neue Leiste unter den Bereichskacheln mit bis zu vier kleinen Karten: zuletzt gehörter Radiosender, laufende Aufnahme, Weiterschauen bzw. Weiterhören aus dem Verlauf.
+- Zeigt zuletzt Gehörtes und Gesehenes zum Fortsetzen sowie laufende Aufnahmen; eine laufende Aufnahme trägt das LIVE-Badge (`status-live`, `radius-xs`). Vorher hieß die Leiste „Läuft gerade“.
 - Leer, wenn nichts da ist; kein Platzhaltertext. Gilt für alle Plattformen, auf Apple TV zusätzlich zur Mini-Player-Leiste.
 
 ### Cover-Raster und Bildkarte
@@ -273,7 +274,7 @@ Zwei Varianten derselben Komponente, beide mit `radius-md`, Titel und Meta darun
 
 ### Badges und Zustände
 
-- LIVE (`status-live`, `radius-xs`) nur, wo Live- und Abrufinhalte gemischt sind, z. B. in „Läuft gerade“ oder der Suche.
+- LIVE (`status-live`, `radius-xs`) nur, wo Live- und Abrufinhalte gemischt sind, z. B. in „Fortsetzen“ oder der Suche.
 - Fehler auf Kacheln: Icon und ein kurzer Satz, was passiert ist und was hilft. Leere Bereiche: eine Einladung mit Aktion statt „Noch keine Einträge“.
 
 ### Dialog (Desktop, Schritt 8b)
@@ -321,7 +322,7 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 | Navigation | Schwebende Pille oben | Tab-Leiste oben im selben Pillen-Look | Tab-Leiste oben, Bereichsfarbe für den aktiven Eintrag |
 | Schrift | Stufen wie oben | Stufen wie oben | Faktor 1,5 bis 2 |
 | Hell/Dunkel | folgt dem System | folgt dem System | **fest dunkel** (Ausnahme: Fernsehen im dunklen Raum, Video im Mittelpunkt); Tokens trotzdem mit beiden Werten |
-| Mini-Player | Leiste unten (Video, Radio, Podcast) | Leiste unten (Video, Radio, Podcast) | Leiste unten (Radio, Podcast); YouTube als schwebendes Eckfenster; „Läuft gerade“ zusätzlich |
+| Mini-Player | Leiste unten (Video, Radio, Podcast) | Leiste unten (Video, Radio, Podcast) | Leiste unten (Radio, Podcast); YouTube als schwebendes Eckfenster; „Fortsetzen“ zusätzlich |
 | Bereiche | LiveTV, Radio, Streaming, Mediatheken, Podcasts, Einstellungen | wie Desktop; Streaming = YouTube | wie Desktop; Streaming = YouTube (hinter `YOUTUBE_NATIVE`) |
 | Mindestgröße Bedienelemente | Maus, keine Vorgabe | 44 pt | durch Fokus geregelt |
 | Tastenkürzel | wie heute | Hardware-Tastatur: dieselben Kürzel | Fernbedienung |

@@ -17,7 +17,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | 3. Texte aufräumen | Desktop | `design/umbau` | erledigt (QA bestanden) | 8d21214 |
 | 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` | erledigt (QA ausstehend) | a0cda0d |
 | 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` | erledigt (QA ausstehend) | siehe git log |
-| 6. Startseite „Läuft gerade“ | Desktop | `design/umbau` | offen | – |
+| 6. Startseite „Fortsetzen“ | Desktop | `design/umbau` | offen | – |
 | 7. Einstellungen gruppieren | Desktop | `design/umbau` | offen | – |
 | 8. Restliche Bereiche angleichen | Desktop | `design/umbau` | 8a erledigt (Mini-Player, Cover-Raster, Bildkarte; QA ausstehend), Rest offen | `design(8)` 8a |
 | A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift` | Apple | offen | offen (nach 0b) | – |
@@ -58,7 +58,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - Fokus-Ring `focus-ring` (2 px, `text-primary`) statt Bereichsfarbe: ändert die Fokusfarbe der Navigation (`styles.css:3743`, `--nav-c`) und der Mediathek (`styles.css:3792`, `--md-accent`).
 - Bereichsfarbe: Navigation ist fertig. Offen: Schimmer hinter der Überschrift, Fortschrittslinien und Equalizer in der Farbe des Bereichs; Senderkachel-Farbe von Quellenfarbe auf `area-livetv`.
 
-### Schritt 6: Startseite „Läuft gerade“
+### Schritt 6: Startseite „Fortsetzen“
 - Status: erledigt (QA ausstehend). Commit `73c0c2e`.
 - Leiste unter den Bereichskacheln aus Verlauf, Radio-Status und laufenden Aufnahmen; leer, wenn nichts da ist.
 - Umsetzung: `running-now-model.js` (Auswahl, Reihenfolge), `running-now-view.js`, Verdrahtung in `renderer.js`. Eine Karte je Quelle (Aufnahme, Radio, Podcast, Verlauf), laufende zuerst. Quellen: `recording:list` + `recording:changed`, Radio-Zustand/-Einstellungen (`lastStation`), Podcast-Hörzustand (`podcastHub.data`, Player-Zustand), `get-history`. Weggelassen: Mediathek-„Weiterschauen“ (nur über Netzabruf der Hub-Daten, nicht ohne neues IPC/Netz auf der Startseite).
