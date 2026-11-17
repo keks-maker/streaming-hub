@@ -78,6 +78,15 @@ function el(tag, className, text) {
   return node;
 }
 
+/**
+ * Statussymbol der EPG-Zeile: ok nur nach einer Aktion, die etwas bewirkt hat; warn, wenn die Statusinfo
+ * Fehler meldet („EPG: 1 Fehler“); kein Symbol bei Fehlermeldung (Text rot), ohne Meldung oder ohne Änderung.
+ */
+function epgStatusKind({ message, isError, neutral, infoText }) {
+  if (!message || isError || neutral) return '';
+  return /Fehler/i.test(infoText || '') ? 'warn' : 'ok';
+}
+
 function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, getEpgInfo }) {
   const sourcesHost = root.querySelector('#settingsTvSourceList');
   const addHost = root.querySelector('#settingsTvSourceAdd');
@@ -287,7 +296,7 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
         e.preventDefault();
         const updates = buildSourceUpdates(src, { name: src.name, url: src.url, epgUrl: epgInput.value });
         if (!Object.keys(updates).length) {
-          setEpgStatus('Keine Änderung');
+          setEpgStatus('Keine Änderung', false, true);
           return;
         }
         save.disabled = true;
@@ -305,8 +314,10 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
   }
 
   let epgMessage = '';
-  function setEpgStatus(message, isError = false) {
+  let epgNeutral = false;
+  function setEpgStatus(message, isError = false, neutral = false) {
     epgMessage = message || '';
+    epgNeutral = Boolean(neutral);
     epgStatus.classList.toggle('error', Boolean(isError));
     updateEpgInfo();
   }
@@ -318,8 +329,8 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
     const loaded = formatLoadedAt(info.loadedAt);
     if (loaded) parts.push(`Letzter Abruf: ${loaded}`);
     const text = parts.filter(Boolean).join(' · ');
-    const ok = Boolean(epgMessage) && !epgStatus.classList.contains('error');
-    Icons.setStatusContent(epgStatus, ok ? 'ok' : '', text);
+    const kind = epgStatusKind({ message: epgMessage, isError: epgStatus.classList.contains('error'), neutral: epgNeutral, infoText: info.text });
+    Icons.setStatusContent(epgStatus, kind, text);
     if (epgRefreshBtn) epgRefreshBtn.disabled = Boolean(info.busy);
   }
 
@@ -361,4 +372,4 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
   return { render, updateEpgInfo };
 }
 
-module.exports = { detectSourceType, buildNewSource, buildSourceUpdates, formatIpcError, formatLoadedAt, createTvSourcesView };
+module.exports = { epgStatusKind, detectSourceType, buildNewSource, buildSourceUpdates, formatIpcError, formatLoadedAt, createTvSourcesView };

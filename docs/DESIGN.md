@@ -33,7 +33,7 @@ Jedes Farb-Token hat einen Wert für Dunkel und einen für Hell: in CSS per `lig
 
 ### Flächen
 
-Vier Stufen plus Navigation ersetzen die heute rund zehn Flächen-Variablen. Die alten Namen mit identischem Wert bleiben zunächst als Alias auf die neuen bestehen.
+Vier Stufen plus Navigation ersetzen die früheren rund zehn Flächen-Variablen; alte Namen sind entfernt.
 
 | Token | Zweck | Dunkel | Hell | Ersetzt (Ist, identischer Wert) |
 | --- | --- | --- | --- | --- |
@@ -43,40 +43,40 @@ Vier Stufen plus Navigation ersetzen die heute rund zehn Flächen-Variablen. Die
 | `surface-3` | Dialog, Popup | #12121a (Ist) | #ffffff (Ist) | `--c-modal` |
 | `surface-nav` | Navigationsleiste | #171717 (Ist, alle drei Apps) | #ffffff (Ist) | `--nav-bg` |
 | `scrim` | Abdunkelung über Bild/Video | rgba(0,0,0,.6) (Ist) | rgba(20,28,48,.42) (Ist) | `--scrim` |
+| `scrim-media` | Pille/Knopf hinter weißem Symbol auf Bild | rgba(10,10,15,.78) (Ist) | wie Dunkel (Ist, Ausnahme) | `--media-scrim` |
+| `scrim-media-strong` | Wie `scrim-media`, Hover und Toast | rgba(10,10,15,.95) (Ist) | wie Dunkel (Ist, Ausnahme) | `--media-scrim-strong` |
 
-**Abweichende Variablen.** Schritt 1 biegt nur Variablen mit identischem Wert um (Spalte oben). Die folgenden haben andere Werte; sie bleiben in Schritt 1 unverändert und werden in Schritt 4 („Text-Stufen und Flächen vereinheitlichen“) bewusst auf das genannte Token gebracht (sichtbare Änderung, in Hell und Dunkel per Screenshot geprüft):
+**Abweichende Variablen (Schritt 4, erledigt).** Die neun Variablen mit anderem Ist-Wert sind auf die Ziel-Token umgestellt und aus `:root` entfernt (sichtbare Änderung: Flächen überall gleich, Hell und Dunkel per Screenshot geprüft):
 
-| Variable | Ist-Wert (Dunkel / Hell) | Ziel-Token |
-| --- | --- | --- |
-| `--bg-dash` | #090b10 / #f3f5f8 | `surface-0` |
-| `--bg-content` | #0b0e15 / #eef1f6 | `surface-0` |
-| `--c-card2` | #171b25 / #ffffff | `surface-1` |
-| `--surface-card` | rgba(255,255,255,.04) / rgba(255,255,255,.8) | `surface-1` |
-| `--c-glass-panel` | rgba(18,18,26,.85) / rgba(255,255,255,.95) | `surface-2` |
-| `--c-field` | #161b26 / #ffffff | `surface-2` |
-| `--c-modal-glass` | rgba(17,21,29,.96) / rgba(255,255,255,.97) | `surface-3` |
-| `--c-pop` | #1a1a2e / #ffffff | `surface-3` |
-| `--media-scrim` | rgba(10,10,15,.78), ohne Hell/Dunkel | `scrim` |
+| Alte Variable | Ziel-Token |
+| --- | --- |
+| `--bg-dash`, `--bg-content` | `surface-0` |
+| `--c-card2`, `--surface-card` | `surface-1` |
+| `--c-glass-panel`, `--c-field` | `surface-2` |
+| `--c-modal-glass`, `--c-pop` | `surface-3` |
+| `--media-scrim` (+ `-strong`) | **Ausnahme:** Token `scrim-media` (+ `scrim-media-strong`), siehe unten |
 
-Abweichung: Ist-Wert wie in der Tabelle, wird in Schritt 4 bewusst auf das Ziel-Token vereinheitlicht. Einzelfälle, bei denen die Abweichung gewollt ist (z. B. `--c-field` als deckendes Eingabefeld), entscheidet dev in Schritt 4 und vermerkt sie hier.
+Begründete Ausnahme `scrim-media`: rgba(10,10,15,.78) bzw. .95 (Ist), in beiden Designs gleich. Es liegt hinter weißen Symbolen und Beschriftungen auf Bildern (Pillen, Info-/Stern-Knöpfe, Abo-Marke, Rück-Knopf, Toast) und braucht deshalb in Hell dieselbe Dunkelheit wie in Dunkel. `scrim` (hell .42 bläulich) würde dort die Lesbarkeit weißer Symbole auf hellen Bildern verschlechtern. Es wird mehrfach gebraucht, daher ein eigenes Token statt Alias; `scrim` bleibt für Abdunkelung ganzer Flächen (Senderkachel-Vorschaubild, Dialog-Hintergrund).
+
+Beobachtungen der Vereinheitlichung: Die Karten der Einstellungen (`--surface-card`, vorher 4 % Weiß, durchscheinend) sind jetzt deckend (`surface-1`) und blenden den Farbschimmer des Hintergrunds nicht mehr durch; die Glas-Dialoge (Verlauf, Aufnahmen, Kürzel) behalten `backdrop-filter: blur`, sind in Dunkel aber leicht durchsichtiger (.78 statt .85) und in Hell etwas weniger deckend (.9 statt .95); Dialoge und Popups sind deckend (`surface-3`).
 
 `surface-nav` ist deckend und neutral, `surface-2` durchscheinend und bläulich; deshalb zwei Tokens (Entscheidung A5). Der Rand der Navigation ist `border-nav`.
 
 ### Text und Ränder
 
-Kontrast: nachgerechnet nach WCAG-Formel auf `surface-0` (dunkel / hell).
+Kontrast: nachgerechnet nach WCAG-Formel (Schritt 4, Stand 2026-11-17) gegen jede Fläche, auf der der Text steht (`surface-0` bis `surface-3`, `surface-nav`; halbtransparente Flächen über `surface-0` gemischt). Angegeben ist der Mindestwert über alle fünf Flächen (dunkel / hell); die Werte auf `surface-0` stehen in Klammern. Geprüft von `tests/theme-contrast.test.js`.
 
-| Token | Zweck | Dunkel | Hell | Kontrast |
+| Token | Zweck | Dunkel | Hell | Kontrast min. (auf `surface-0`) |
 | --- | --- | --- | --- | --- |
-| `text-primary` | Überschriften, Titel | #f0f0f5 (Ist) | #14161c (Ist) | 17,4 : 1 / 16,6 : 1 |
-| `text-secondary` | Untertitel, Meta | rgba(240,240,245,.70) (Entscheidung, Ist .55) | rgba(20,22,28,.78) (Entscheidung, Ist .68) | 8,6 : 1 / 8,5 : 1 |
-| `text-muted` | Hinweise, Platzhalter | rgba(240,240,245,.50) (Ist) | rgba(20,22,28,.60) (Ist) | 4,8 : 1 / 4,6 : 1 |
+| `text-primary` | Überschriften, Titel | #f0f0f5 (Ist) | #14161c (Ist) | 15,7 : 1 / 16,6 : 1 (17,4 / 16,6) |
+| `text-secondary` | Untertitel, Meta | rgba(240,240,245,.70) (Entscheidung, umgesetzt; Ist .55) | rgba(20,22,28,.78) (Entscheidung, umgesetzt; Ist .68) | 8,2 : 1 / 8,5 : 1 (8,6 / 8,5) |
+| `text-muted` | Hinweise, Platzhalter | rgba(240,240,245,.50) (Ist) | rgba(20,22,28,.60) (Ist) | 4,76 : 1 / 4,59 : 1 (4,8 / 4,6) |
 | `border` | Standardrand | rgba(255,255,255,.07) (Ist) | rgba(20,22,28,.13) (Ist) | – |
 | `border-strong` | Hover | rgba(255,255,255,.16) (Ist) | rgba(20,22,28,.26) (Ist) | – |
 | `border-nav` | Rand der Navigation | rgba(255,255,255,.14) (Ist) | rgba(0,0,0,.12) (Ist) | – |
 | `focus-ring` | Fokusring, 2 px | = `text-primary` (Entscheidung) | = `text-primary` (Entscheidung) | wie `text-primary` |
 
-`text-muted` bleibt auf dem Ist-Wert, weil das die Untergrenze für 4,5 : 1 ist. `text-secondary` wird heller bzw. dunkler, damit sich beide Stufen sichtbar unterscheiden (altes `--text-dim` .55 vs. `text-muted` .50 kaum unterscheidbar).
+`text-muted` bleibt auf dem Ist-Wert, weil das die Untergrenze für 4,5 : 1 ist (kleinster Wert 4,59 : 1, hell auf `surface-0`). `text-secondary` ist heller bzw. dunkler als das frühere `--text-dim`, damit sich beide Stufen sichtbar unterscheiden (.55 vs. .50 war kaum unterscheidbar); `--text-dim` ist entfernt, alle 79 Verwendungen stehen auf `text-secondary`.
 
 ### Bereichsfarben
 
@@ -273,7 +273,7 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 - Werte der `genre-*`-Token (Plan Schritt 8) und Hellwerte der `list-*`-Token (Plan A1).
 - Schritt 1 (Desktop, Stand `design(1)`): Werte ohne Token, nach `:root` verschoben bzw. belassen, Zuordnung offen. Farben: Navigation `--nav-shadow`, `--nav-text`, `--nav-btn-bg`, `--nav-btn-fg` (Vorschlag: `text-secondary` bzw. `surface-2` ableiten); EPG-Palette `--epg-*` (Vorschlag: `surface-1`/`surface-2`/`border-strong`, Blockfarben neu), `--g-*` (= `genre-*`, Schritt 8); Mediathek `--md-btn-bg`, `--md-btn-ink`, `--md-bg`, `--md-dialog`, `--md-surface`, `--md-surface2`, `--md-line`, `--md-text`, `--md-dim`, `--md-amber`, `--md-amber-ink`, `--md-danger` (Vorschlag: `surface-0` bis `surface-3`, `text-primary`, `text-secondary`, `status-*`; Schritt 4); übrige Altnamen in `:root` (`--ink`, `--violet`, `--accent-glow`, `--glass*`, `--icon-plate`, `--scrim-strong`, `--amber-*`, `--green-*`, `--media-*`, `--video-*` usw.). Inline-Farben in JS: `radio-dashboard-view.js:90` (`--tile-color` #f59e0b, Vorschlag `area-radio`, Schritt 5), Dienst-Standardfarbe #6c5ce7 (`renderer.js`, = `accent`, Datenwert), `hsl(var(--h) …)`-Verläufe für Cover-Platzhalter (`styles.css:2310`, `:2737`; kein fester Wert). Weitere feste Farben in JS: `mediathek-home-view.js:302` (Rückfall #1ab8e0, Vorschlag `area-mediatheken`), `mediathek-format.js:7` (`SOURCE_COLORS` ard #3a8dde, zdf #f08a3c, arte #e8602c; Senderfarben als Datenwerte, Vorschlag belassen), `settings-tv-sources.js:7` (`DEFAULT_COLOR` #a78bfa) und `settings-tv-channels.js:522` (Rückfall #a78bfa; Vorschlag beide `area-livetv`). `--md-text` hat denselben Wert wie `text-primary` (`styles.css:3863`; kann Alias werden).
 - Schritt 1: Radien ohne Stufe, unverändert belassen (sichtbar sonst anders): 10 px (25x), 4 px (12x), 14 px (7x; Navigationseintrag ist schon `radius-md`), 18 px (6x: Dialoge, Leerzustand, Hub-Karte), 2/3/5/9/11/20/22 px, 99 px (Vorschlag `radius-full`), Einzel-Ecken (`10px 0 0 10px` usw.). Vorschlag: 4/5 → `xs`, 9/10/11 → `sm` oder `md`, 14 → `md`, 18/20 → `lg`, 22 → `xl`. Außerdem: Die Kachel `.dashboard-tile` zeigt wegen der späteren Regel (`styles.css:3055`, Regel mit `min-height:220px`) 24 px, nicht 18. Entschieden: Bereichskachel `radius-xl` 24; die tote Basisregel (`styles.css:2889`) steht ebenfalls auf `radius-xl` (keine sichtbare Änderung).
-- Schritt 1: Tokens ohne Verwendung bis zu ihrem Schritt: `text-secondary` (Schritt 4), `focus-ring` (Schritt 5), `status-danger`, `space-*`, `motion-fast`, `motion-crossfade`.
+- Schritt 1: Tokens ohne Verwendung bis zu ihrem Schritt: `focus-ring` (Schritt 5), `status-danger`, `space-*`, `motion-fast`, `motion-crossfade`.
 - Apple-TV-Player-Seitenspalte (`Sources/StreamingHubTV/YouTube/TVPlayerInfoViews.swift`): Schrift 20 bis 34 pt auf die TV-Stufen (Faktor 1,5 bis 2) bringen, Eckradius `cornerRadius: 28` (Z. 38) auf `radius-xl` × TV-Faktor (Plan A3).
 
 ## Regeln für Claude Code

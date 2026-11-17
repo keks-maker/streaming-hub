@@ -213,7 +213,7 @@ function showTvToast(message, durationMs = 4000) {
       toast.id = 'tvRecToast';
       toast.style.cssText =
         'position:absolute;left:50%;bottom:96px;transform:translateX(-50%);' +
-        'background:var(--media-scrim-strong);color:var(--media-ink);padding:10px 18px;border-radius:10px;' +
+        'background:var(--scrim-media-strong);color:var(--media-ink);padding:10px 18px;border-radius:10px;' +
         'font-size:14px;z-index:40;pointer-events:none;max-width:70%;text-align:center;';
       if (host && host.parentElement) host.parentElement.appendChild(toast);
       else document.body.appendChild(toast);

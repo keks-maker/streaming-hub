@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { detectSourceType, buildNewSource, buildSourceUpdates, formatIpcError, formatLoadedAt } = require('../settings-tv-sources.js');
+const { epgStatusKind, detectSourceType, buildNewSource, buildSourceUpdates, formatIpcError, formatLoadedAt } = require('../settings-tv-sources.js');
 const validation = require('../lib/input-validation.js');
 
 const original = {
@@ -83,4 +83,12 @@ test('formatIpcError: Invalid URL wird verständlich, Electron-Präfix entfällt
     'Quellenname ist ungültig',
   );
   assert.equal(formatIpcError('einfacher Text'), 'einfacher Text');
+});
+
+test('epgStatusKind: ok nur nach wirksamer Aktion, warn bei Fehlern in der Statusinfo, sonst kein Symbol', () => {
+  assert.equal(epgStatusKind({ message: 'EPG-URL gespeichert', infoText: '5 Sender geladen · EPG: 12 Kanäle' }), 'ok');
+  assert.equal(epgStatusKind({ message: 'EPG-URL gespeichert', infoText: '5 Sender geladen · EPG: 1 Fehler' }), 'warn');
+  assert.equal(epgStatusKind({ message: 'Keine Änderung', neutral: true, infoText: '' }), '');
+  assert.equal(epgStatusKind({ message: 'Netzwerkfehler', isError: true, infoText: '' }), '');
+  assert.equal(epgStatusKind({ message: '', infoText: 'EPG: 1 Fehler' }), '');
 });

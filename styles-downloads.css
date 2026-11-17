@@ -87,7 +87,7 @@
 .mediathek-select-totals { margin:14px 0 0; font-size:14px; font-weight:600; }
 
 /* Einstellungen ▸ Mediatheken ▸ Downloads */
-.settings-field-note { margin:2px 0 6px; font-size:12px; color:var(--text-dim); }
+.settings-field-note { margin:2px 0 6px; font-size:12px; color:var(--text-secondary); }
 .settings-field-note:empty { display:none; }
 .settings-field-note.error { color:var(--err-soft); }
 .settings-root-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:4px; }
@@ -119,7 +119,7 @@
 [id^="settingsMediathekDl-"] .tv-mode-label:first-child { margin-top:0; }
 
 /* Serien-Abos „Neue Folgen automatisch laden“ */
-.mediathek-sub-badge { position:absolute; top:6px; left:6px; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:var(--media-scrim); color:var(--md-accent); pointer-events:none; }
+.mediathek-sub-badge { position:absolute; top:6px; left:6px; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:var(--scrim-media); color:var(--md-accent); pointer-events:none; }
 .mediathek-auto-btn.is-on { color:var(--md-accent); border-color:var(--md-accent); }
 .mediathek-switch.is-on { color:var(--md-accent); border-color:var(--md-accent); background:color-mix(in srgb,var(--md-accent) 16%,transparent); }
 .mediathek-sub-item.is-paused .mediathek-thumb { filter:grayscale(1) brightness(.7); }

@@ -19,10 +19,10 @@ function color(name, scheme) {
 // [Vordergrund, Fläche, Mindestkontrast, Seitenhintergrund für Transparenz]
 const TEXT = 4.5;
 const UI = 3;
-const SURFACES = ['--surface-0', '--bg-dash', '--bg-content', '--surface-3', '--c-modal-glass', '--c-glass-panel', '--c-pop', '--surface-1', '--c-card2', '--surface-2', '--c-field', '--epg-surface', '--epg-surface-2'];
+const SURFACES = ['--surface-0', '--surface-3', '--surface-1', '--surface-2', '--surface-nav', '--epg-surface', '--epg-surface-2'];
 const PAIRS = [];
 for (const s of SURFACES) {
-  PAIRS.push(['--text-primary', s, TEXT], ['--text-dim', s, TEXT], ['--text-muted', s, TEXT]);
+  PAIRS.push(['--text-primary', s, TEXT], ['--text-secondary', s, TEXT], ['--text-muted', s, TEXT]);
   for (const t of ['--violet', '--status-rec', '--status-warn', '--status-ok', '--status-error', '--err-soft', '--green-soft', '--green-accent', '--orange-play']) PAIRS.push([t, s, TEXT]);
 }
 PAIRS.push(
@@ -32,7 +32,7 @@ PAIRS.push(
   ['--text-primary', '--epg-dayhead', TEXT], ['--text-primary', '--epg-flag', TEXT], ['--text-primary', '--epg-chan-hover', TEXT],
   ['--rec-text', '--epg-surface', TEXT], ['--epg-accent-light', '--epg-surface', TEXT],
   ['--on-accent', '--accent', TEXT], ['--on-accent', '--green-strong', TEXT], ['--on-rec', '--status-rec', TEXT],
-  ['--amber-ink', '--amber-fill', TEXT], ['--media-ink', '--media-scrim', TEXT], ['--media-ink', '--media-scrim-strong', TEXT],
+  ['--amber-ink', '--amber-fill', TEXT], ['--media-ink', '--scrim-media', TEXT], ['--media-ink', '--scrim-media-strong', TEXT],
   ['--mark-ink', '--mark-bg', TEXT], ['--err-text', '--player-err-bg', TEXT],
   // Mediathek
   ...['--md-bg', '--md-surface', '--md-surface2', '--md-dialog'].flatMap(s => [['--md-text', s, TEXT], ['--md-dim', s, TEXT], ['--md-accent', s, TEXT], ['--md-danger', s, TEXT], ['--md-amber', s, TEXT]]),
@@ -70,7 +70,7 @@ for (const scheme of ['dark', 'light']) {
 }
 
 test('Hell und Dunkel unterscheiden sich bei allen Hintergrund- und Text-Tokens', () => {
-  for (const name of ['--surface-0', '--bg-dash', '--surface-3', '--surface-1', '--text-primary', '--text-dim', '--epg-surface', '--md-bg', '--surface-nav']) {
+  for (const name of ['--surface-0', '--surface-3', '--surface-1', '--text-primary', '--text-secondary', '--epg-surface', '--md-bg', '--surface-nav']) {
     assert.notDeepEqual(color(name, 'light'), color(name, 'dark'), `${name} ist in beiden Designs gleich`);
   }
 });
