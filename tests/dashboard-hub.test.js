@@ -132,6 +132,9 @@ class FakeNode {
     this.children = [];
     this._text = String(value);
   }
+  get content() {
+    return { firstChild: new FakeNode('svg', this.ownerDocument) }; // <template> für Icons
+  }
   append(...nodes) {
     nodes.forEach(n => this.children.push(n));
   }

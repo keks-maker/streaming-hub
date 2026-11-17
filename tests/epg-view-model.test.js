@@ -341,12 +341,13 @@ test('rowPhase: vergangen, läuft (Fortschritt, noch N min), kommend', () => {
 test('toggleState: Aufnehmen ↔ Abbrechen ↔ Stoppen; laufend/vorbei bleiben „Aufnehmen“ (Meldung beim Klick)', () => {
   const future = { start: NOW + HOUR, stop: NOW + 2 * HOUR };
   assert.deepEqual(model.toggleState({ row: future, marker: null, nowMs: NOW }), {
-    kind: 'record', label: '● Aufnehmen', disabled: false, hint: '', verdict: 'future',
+    kind: 'record', icon: 'circle-dot', label: 'Aufnehmen', disabled: false, hint: '', verdict: 'future',
   });
-  assert.equal(model.toggleState({ row: future, marker: { state: 'scheduled', ids: ['sch_1'] }, nowMs: NOW }).label, '✕ Aufnahme abbrechen');
+  assert.equal(model.toggleState({ row: future, marker: { state: 'scheduled', ids: ['sch_1'] }, nowMs: NOW }).label, 'Aufnahme abbrechen');
+  assert.equal(model.toggleState({ row: future, marker: { state: 'scheduled', ids: ['sch_1'] }, nowMs: NOW }).icon, 'x');
   assert.equal(model.toggleState({ row: future, marker: { state: 'scheduled', ids: ['sch_1'] }, nowMs: NOW }).kind, 'cancel');
   const stop = model.toggleState({ row: future, marker: { state: 'recording', ids: ['rec_1'] }, nowMs: NOW });
-  assert.deepEqual([stop.kind, stop.label], ['stop', '■ Aufnahme stoppen']);
+  assert.deepEqual([stop.kind, stop.label], ['stop', 'Aufnahme stoppen']);
   const running = model.toggleState({ row: { start: NOW - HOUR, stop: NOW + HOUR }, marker: null, nowMs: NOW });
   assert.deepEqual([running.kind, running.disabled, running.verdict], ['record', false, 'running']);
   const past = model.toggleState({ row: { start: NOW - 3 * HOUR, stop: NOW - HOUR }, marker: null, nowMs: NOW });

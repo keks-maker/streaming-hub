@@ -76,7 +76,7 @@ function createMediathekPlaybackView(root, { mediathek, logger = null } = {}) {
     try {
       const result = await mediathek.setSettings({ [key]: select.value });
       show(result.settings);
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       select.value = current && current[key] ? current[key] : FIELDS.find(field => field.key === key).options[0].value;
       setStatus(statusEl, formatIpcError(error), true);

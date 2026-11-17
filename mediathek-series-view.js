@@ -5,6 +5,7 @@
 
 const { createSeriesPage } = require('./mediathek-series-model.js');
 const { sourceBadge, imageSrc, subtitleText, minutesText, fskText, seriesFsk } = require('./mediathek-format.js');
+const Icons = require('./icons.js');
 const { el, button, createThumb, setIcon, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG } = require('./mediathek-cards.js');
 const { downloadIcon, AUTO_SVG } = require('./mediathek-download-icons.js');
 const { stateLabel } = require('./mediathek-downloads-model.js');
@@ -130,8 +131,9 @@ function createMediathekSeriesView(root, ctx) {
     const icon = el(doc, 'span');
     icon.setAttribute('aria-hidden', 'true');
     setIcon(icon, downloadIcon('none'));
-    toggle.append(icon, el(doc, 'span', '', 'Laden'), el(doc, 'span', 'mediathek-caret', '▾'));
+    toggle.append(icon, el(doc, 'span', '', 'Laden'), el(doc, 'span', 'mediathek-caret'));
     toggle.lastChild.setAttribute('aria-hidden', 'true');
+    toggle.lastChild.appendChild(Icons.createIcon(doc, 'chevron-down'));
     toggle.addEventListener('click', () => {
       menuOpen = !menuOpen;
       toggle.setAttribute('aria-expanded', String(menuOpen));

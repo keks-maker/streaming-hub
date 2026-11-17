@@ -333,6 +333,10 @@
       display: none;
     }
     .tv-rec-menu.open { display: block; }
+    .ic { width: 1em; height: 1em; flex: none; vertical-align: -.125em; pointer-events: none; }
+    .ic-fill { fill: currentColor; }
+    .ic-lead { margin-right: .4em; }
+    .ic-slot { display: inline-flex; align-items: center; margin-right: .4em; line-height: 0; }
     .tv-rec-menu-item {
       display: block; width: 100%; text-align: left;
       background: transparent; border: none; color: #e2e8f0;
@@ -464,9 +468,9 @@
        Aufnahmen (REC-Chip öffnet im Verwalten-Modus, Stop-Klick pro Eintrag;
        im Stopp-Übergang: „Wird beendet…“-Feedback). -->
   <div class="tv-rec-menu" id="tvRecMenu">
-    <button class="tv-rec-menu-item" id="tvRecStartAtPosition">⏺ Ab Bildposition starten</button>
-    <button class="tv-rec-menu-item" id="tvRecStartShow">⏺ Aktuell angezeigte Sendung aufnehmen</button>
-    <button class="tv-rec-menu-item" id="tvRecStartUntilEnd">⏺ Bis zum Ende der Sendung</button>
+    <button class="tv-rec-menu-item" id="tvRecStartAtPosition"><span class="ic-slot" data-icon="circle-dot"></span>Ab Bildposition starten</button>
+    <button class="tv-rec-menu-item" id="tvRecStartShow"><span class="ic-slot" data-icon="circle-dot"></span>Aktuell angezeigte Sendung aufnehmen</button>
+    <button class="tv-rec-menu-item" id="tvRecStartUntilEnd"><span class="ic-slot" data-icon="circle-dot"></span>Bis zum Ende der Sendung</button>
     <div id="tvRecEntries"></div>
     <div class="tv-rec-menu-note" id="tvRecMenuNote"></div>
   </div>
@@ -478,6 +482,7 @@
   <div class="tv-error" id="tvError"></div>
 
   <script src="tv-epg-model.js"></script>
+  <script src="icons.js"></script>
   <script>
     (function() {
       const video = document.getElementById('tvVideo');
@@ -1079,6 +1084,13 @@
       const recChannelEl = document.getElementById('tvRecChannel');
       const recTitleEl = document.getElementById('tvRecTitle');
       const recMenu = document.getElementById('tvRecMenu');
+      // Icon + Text für Einträge des Aufnahme-Menüs (Lucide über icons.js)
+      function setRecLabel(node, iconName, text) {
+        node.textContent = '';
+        node.appendChild(window.Icons.createIcon(document, iconName, { cls: 'ic-lead' }));
+        node.appendChild(document.createTextNode(text));
+      }
+      document.querySelectorAll('[data-icon]').forEach(function(n) { n.appendChild(window.Icons.createIcon(document, n.dataset.icon)); });
       const recStartUntilEndBtn = document.getElementById('tvRecStartUntilEnd');
       // Karte t_f36663be + Fix-Set 9: die Start-Optionen (GENAU DREI)
       const recStartAtPositionBtn = document.getElementById('tvRecStartAtPosition');
@@ -1291,11 +1303,11 @@
           if (dvrDelta >= 30) {
             recStartAtPositionBtn.classList.remove('tv-rec-disabled');
             recStartAtPositionBtn.title = '';
-            recStartAtPositionBtn.textContent = '⏺ Ab Bildposition starten (Startet ' +
-              formatRecTime(dvrDelta) + ' zurück)';
+            setRecLabel(recStartAtPositionBtn, 'circle-dot', 'Ab Bildposition starten (Startet ' +
+              formatRecTime(dvrDelta) + ' zurück)');
           } else {
             recStartAtPositionBtn.classList.add('tv-rec-disabled');
-            recStartAtPositionBtn.textContent = '⏺ Ab Bildposition starten';
+            setRecLabel(recStartAtPositionBtn, 'circle-dot', 'Ab Bildposition starten');
             recStartAtPositionBtn.title = 'Bereits am Live-Bild';
           }
           // Option 3 braucht das EPG-Sendeende für den Auto-Stopp — ohne EPG
@@ -1316,8 +1328,8 @@
         list.forEach(function(a) {
           var entry = document.createElement('button');
           entry.className = 'tv-rec-menu-item recording';
-          entry.textContent = '⏹ ' + (a.channelName || 'Kanal') +
-            (a.epgTitle ? ' — ' + a.epgTitle : '') + ' · ' + formatRecTime(recElapsedSec(a)) + ' beenden';
+          setRecLabel(entry, 'square', (a.channelName || 'Kanal') +
+            (a.epgTitle ? ' — ' + a.epgTitle : '') + ' · ' + formatRecTime(recElapsedSec(a)) + ' beenden');
           entry.title = 'Aufnahme auf „' + (a.channelName || 'diesem Kanal') + '" stoppen';
           entry.addEventListener('click', function(ev) {
             ev.stopPropagation();
@@ -1330,13 +1342,13 @@
           var a = (recordingStatus.active || []).find(function(x) { return x.recId === id; }) || {};
           var entry = document.createElement('div');
           entry.className = 'tv-rec-menu-item recording tv-rec-stopping';
-          entry.textContent = '◌ ' + (a.channelName || 'Kanal') + ' — Aufnahme wird beendet…';
+          setRecLabel(entry, 'circle', (a.channelName || 'Kanal') + ' — Aufnahme wird beendet…');
           recMenuEntries.appendChild(entry);
         });
 
         recMenuNote.textContent = '';
         if (activeHere && modus === 'start') {
-          recMenuNote.textContent = '● REC ' + formatRecTime(recElapsedSec(activeHere)) +
+          recMenuNote.textContent = 'REC ' + formatRecTime(recElapsedSec(activeHere)) +
             ' · ' + (activeHere.channelName || 'Kanal') + (activeHere.epgTitle ? ' — ' + activeHere.epgTitle : '');
         } else if (modus === 'start' && (recordingStatus.active || []).length && !activeHere) {
           recMenuNote.textContent = 'Es läuft bereits eine andere Aufnahme.';

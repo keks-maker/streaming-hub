@@ -10,7 +10,8 @@
 const grid = require('./lib/epg-grid.js');
 const model = require('./epg-grid-model.js');
 const viewModel = require('./epg-view-model.js');
-const { h, createChannelLogo } = require('./epg-dom.js');
+const { h, createChannelLogo, setMarkerDot } = require('./epg-dom.js');
+const Icons = require('./icons.js');
 const { genreLabel } = require('./epg-genres.js');
 
 const FETCH_DEBOUNCE_MS = 120;
@@ -211,7 +212,7 @@ function createGridView(deps) {
     refs.barFill.style.width = `${percent}%`;
     refs.timeEl.textContent = `${viewModel.clock(entry.row.start)}${info.minutesLeft ? ` · noch ${info.minutesLeft} min` : ''}`;
     refs.marker.dataset.state = marker ? (marker.stopping ? 'stopping' : marker.state) : '';
-    refs.marker.textContent = marker ? '●' : '';
+    setMarkerDot(refs.marker, !!marker);
     refs.marker.title = !marker ? '' : marker.stopping ? 'Aufnahme wird beendet' : marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant';
   }
 
@@ -231,8 +232,7 @@ function createGridView(deps) {
     entry.refs.text.style.maxWidth = shift ? `calc(100% - ${shift + (hasRec ? 30 : 0)}px)` : '';
   }
 
-  const REC_SYMBOL = { record: '●', cancel: '✕', stop: '■', stopping: '■' };
-  const REC_WIDTH = 28;
+    const REC_WIDTH = 28;
 
   /** Kleiner Toggle rechts im Block: nur bei geplanter/laufender Aufnahme und ausreichend breitem Block. */
   function updateRec(row, blockEntry, rowIndex, nowMs, marker) {
@@ -261,12 +261,11 @@ function createGridView(deps) {
     const sig = `${toggle.kind}|${toggle.disabled}`;
     if (rec.sig === sig) return;
     rec.sig = sig;
-    rec.el.textContent = REC_SYMBOL[toggle.kind];
+    Icons.setIconOnly(rec.el, toggle.icon);
     rec.el.dataset.kind = toggle.kind;
     rec.el.disabled = toggle.disabled;
-    const plain = toggle.label.replace(/^[●✕■]\s*/, '');
-    rec.el.title = toggle.hint || plain;
-    rec.el.setAttribute('aria-label', `${plain}: ${row.title}`);
+    rec.el.title = toggle.hint || toggle.label;
+    rec.el.setAttribute('aria-label', `${toggle.label}: ${row.title}`);
   }
 
   function currentWindow() {

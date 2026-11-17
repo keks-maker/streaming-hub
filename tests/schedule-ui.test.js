@@ -114,7 +114,7 @@ test('Renderer: Planungs-Code rendert EPG-Daten nie über innerHTML', () => {
 });
 
 test('Renderer: Zukunfts-Regel im EPG-Detail — Button immer sichtbar, Meldungen ersetzen den Dialog', () => {
-  assert.match(epgViewModelJs, /LABEL_RECORD = '● Aufnehmen'/);
+  assert.match(epgViewModelJs, /LABEL_RECORD = 'Aufnehmen'/);
   assert.match(rendererJs, /recordProgramme: programme => handleEpgRecordClick\(programme\)/);
   const fn = rendererJs.slice(rendererJs.indexOf('function handleEpgRecordClick'), rendererJs.indexOf('let recSchedulePending'));
   assert.match(fn, /classifyProgramme/);

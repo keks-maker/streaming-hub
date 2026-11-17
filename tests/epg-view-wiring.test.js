@@ -178,7 +178,7 @@ test('Abnahme 3.4 (1): Raster — Marker pulsiert, der Stopp-Knopf rechts ist st
   assert.ok(!/\.epg-block-rec[^{]*\{[^}]*animation/.test(css), 'kein .epg-block-rec pulsiert');
   assert.match(css, /\.epg-marker\[data-state="recording"\] \{[^}]*animation: epgPulse/);
   assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.epg-marker\[data-state="recording"\] \{ animation: none; \}/);
-  assert.match(read('epg-grid-view.js'), /stop: '■'/);
+  assert.match(read('epg-view-model.js'), /ICON_STOP = 'square'/);
 });
 
 test('Abnahme 3.4 (2): Stopp — Rückmeldung, Zwischenzustand und Marker-Filter über einen gemeinsamen Pfad', () => {

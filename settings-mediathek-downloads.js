@@ -23,8 +23,8 @@ function createMediathekDownloadsSettings(roots, { downloads, logger = null, onS
     node.classList.toggle('error', Boolean(isError));
   }
 
-  function status(page, text, isError = false) {
-    if (statuses[page]) setStatus(statuses[page], text, isError);
+  function status(page, text, state = false) {
+    if (statuses[page]) setStatus(statuses[page], text, state);
   }
 
   function describedBy(control, ...nodes) {
@@ -44,7 +44,7 @@ function createMediathekDownloadsSettings(roots, { downloads, logger = null, onS
       show(result);
       const clamps = model.clampMessages(result);
       for (const key of Object.keys(patch)) note(key, clamps[key] || '');
-      status(page, Object.keys(clamps).length ? '✓ Gespeichert, ein Wert wurde angepasst' : '✓ Gespeichert');
+      status(page, Object.keys(clamps).length ? 'Gespeichert, ein Wert wurde angepasst' : 'Gespeichert', 'ok');
       if (onSaved) onSaved(result);
       return result;
     } catch (error) {

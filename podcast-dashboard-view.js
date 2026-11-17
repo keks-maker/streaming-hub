@@ -228,7 +228,7 @@ function createPodcastDashboard(root, ctx) {
     if (tile.selected) entry.button.setAttribute('aria-current', 'true');
     else entry.button.removeAttribute('aria-current');
     entry.button.tabIndex = tile.selected ? 0 : -1; // Pfeiltasten wandern durch die Liste, Tab verlässt sie
-    entry.cover.update({ url: tile.cover, initial: tile.initial });
+    entry.cover.update({ url: tile.cover, initial: tile.initial, icon: tile.icon });
     entry.badge.hidden = tile.newCount === 0;
     entry.badge.textContent = tile.badgeText;
     entry.badge.title = tile.badgeLabel;
@@ -240,7 +240,7 @@ function createPodcastDashboard(root, ctx) {
   }
 
   function renderShows(allEntry, shows) {
-    const tilesModel = [{ ...allEntry, cover: null, initial: '☰', error: false, errorText: '' }, ...shows];
+    const tilesModel = [{ ...allEntry, cover: null, initial: '', icon: 'menu', error: false, errorText: '' }, ...shows];
     const signature = tilesModel.map(tile => tile.id).join('\n');
     if (signature !== tilesSignature) {
       tilesSignature = signature;

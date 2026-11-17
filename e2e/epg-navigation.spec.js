@@ -103,8 +103,8 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(page.locator('.epg-header .epg-seg-btn')).toHaveText(['Liste', 'Raster', 'Jetzt & Gleich']);
     expect(await activeMode(page)).toBe('epgModeList');
     await expect(page.locator('#epgSearchInput')).toBeVisible();
-    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Favoriten ▾');
-    await expect(page.locator('#epgMoreMenu')).toHaveText('Mehr ▾');
+    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Favoriten');
+    await expect(page.locator('#epgMoreMenu')).toHaveText('Mehr');
     // Genre-Chips (3.6): „Alle“ + neun Gruppen
     await expect(page.locator('#epgGenreChips .epg-chip')).toHaveCount(10);
   });
@@ -267,7 +267,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await page.locator('#recScheduleConfirm').click();
     await expect(page.locator('#recScheduleOverlay')).not.toHaveClass(/open/);
     await expect(next.locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    await expect(next.locator('.epg-toggle')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(next.locator('.epg-toggle')).toHaveText('Aufnahme abbrechen');
     expect(await scheduledEntries()).toHaveLength(1);
     // Marker rot, geplant statisch (keine Animation)
     const style = await next.locator('.epg-marker').evaluate(el => {
@@ -284,7 +284,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(page.locator('#epgConfirm')).toBeVisible();
     await page.locator('#epgConfirmYes').click();
     await expect(next.locator('.epg-marker')).toHaveAttribute('data-state', '');
-    await expect(next.locator('.epg-toggle')).toHaveText('● Aufnehmen');
+    await expect(next.locator('.epg-toggle')).toHaveText('Aufnehmen');
     expect(await scheduledEntries()).toHaveLength(0);
   });
 
@@ -323,22 +323,22 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
   test('Senderauswahl: Favoriten (Standard) → Alle Sender → Gruppe; wirkt in Liste, Raster und Jetzt & Gleich; Moduswechsel behält die Auswahl', async () => {
     await page.locator('#epgModeList').click();
     await expect(listRow('Fuellkanal Krimi')).toHaveCount(0);
-    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Favoriten ▾');
+    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Favoriten');
     await page.locator('#epgSenderMenu').click();
     const items = await page.locator('.epg-menu-item').allInnerTexts();
     expect(items.join('|')).toMatch(/Favoriten.*Alle Sender.*Alpha.*Beta/s);
     await expect(page.locator('.epg-menu-item', { hasText: 'Favoriten' })).toHaveAttribute('aria-checked', 'true');
     await page.locator('.epg-menu-item', { hasText: 'Alle Sender' }).click();
-    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Alle Sender ▾');
+    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Alle Sender');
     await expect(listRow('Fuellkanal Krimi')).toHaveCount(1);
     await page.locator('#epgModeGrid').click();
     await expect(page.locator('.epg-grid-chan-btn', { hasText: 'Füllkanal' })).toBeVisible();
     await page.locator('#epgModeJng').click();
     await expect(jngRow('Füllkanal')).toBeVisible();
-    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Alle Sender ▾');
+    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Alle Sender');
     // Gruppe Beta: nur Füllkanal (Ohne EPG Kanal hat kein EPG und bleibt ausgeblendet)
     await pickSender('Beta');
-    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Gruppe Beta ▾');
+    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Gruppe Beta');
     await expect(page.locator('.epg-jrow')).toHaveCount(1);
     await expect(jngRow('Füllkanal')).toBeVisible();
     await page.locator('#epgModeList').click();
@@ -633,7 +633,7 @@ test.describe('Programmführer 3.5 (Großfixture 438 Kanäle × 10 Tage, „Alle
   test('Gruppe filtert 438 → 219 Sender in allen Modi; Suche über alle Sender: Treffer, Sprung < 300 ms, begrenzter DOM', async () => {
     await page.locator('#epgSenderMenu').click();
     await page.locator('.epg-menu-item[data-value="Gerade"]').click();
-    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Gruppe Gerade ▾');
+    await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Gruppe Gerade');
     await expect
       .poll(async () => page.evaluate(() => window.document.getElementById('epgJngItems').offsetHeight), { timeout: 30_000 })
       .toBe(219 * 84);

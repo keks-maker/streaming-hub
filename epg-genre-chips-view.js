@@ -8,6 +8,7 @@
 
 const filterModel = require('./epg-genre-filter-model.js');
 const { h } = require('./epg-dom.js');
+const Icons = require('./icons.js');
 const { genreLabel } = require('./epg-genres.js');
 
 /** deps: onToggle(genre), onClear() */
@@ -17,7 +18,8 @@ function createGenreChips(deps) {
   const nodes = [allBtn];
   for (const genre of filterModel.ORDER) {
     const label = genreLabel(genre);
-    const x = h('span', { className: 'epg-chip-x', text: '✕', attrs: { 'aria-hidden': 'true' } });
+    const x = h('span', { className: 'epg-chip-x', attrs: { 'aria-hidden': 'true' } });
+    x.appendChild(Icons.createIcon(document, 'x'));
     const btn = h('button', { className: 'epg-chip', type: 'button', attrs: { 'aria-pressed': 'false' } }, [
       h('span', { className: 'epg-chip-dot', attrs: { 'aria-hidden': 'true' } }),
       h('span', { className: 'epg-chip-label', text: label }),

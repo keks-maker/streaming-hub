@@ -15,6 +15,18 @@ const {
 const logger = require('./logger.js');
 const epgAdapter = require('./lib/epg/renderer-adapter.js');
 const { createSettingsView } = require('./settings-view.js');
+const Icons = require('./icons.js');
+
+const NETWORK_PATH_WARNING = 'Netzwerkpfad erkannt: Aufnahmequalität hängt von der Verbindung ab. Bei Verbindungsabbruch versucht die App, den Stream wiederzufinden.';
+
+/** Warnzeile mit Icon (leer → Text leeren). */
+function setWarningText(node, text) {
+  if (text) Icons.setStatusContent(node, 'warn', text);
+  else node.textContent = '';
+}
+
+// Statische Icons aus index.html (<span data-icon="name">) einsetzen
+document.querySelectorAll('[data-icon]').forEach(node => node.replaceChildren(Icons.createIcon(document, node.dataset.icon)));
 const { createEpgView } = require('./epg-view.js');
 const { createTvSourcesView } = require('./settings-tv-sources.js');
 const { createTvChannelsView } = require('./settings-tv-channels.js');
@@ -1017,13 +1029,13 @@ function renderStartDashboard() {
   mediathekHub.hideArea();
   dashboardEmpty.style.display = 'none';
   const sections = [
-    { key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: 'var(--area-livetv)' },
-    { key: 'radio', label: 'Radio', icon: 'radio-icon.png', color: 'var(--area-radio)' },
-    { key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: 'var(--area-podcast)' },
-    { key: 'streaming', label: 'Streaming', icon: 'netflix.png', color: 'var(--area-streaming)' },
-    { key: 'mediathek', label: 'Mediatheken', icon: 'ard.png', color: 'var(--area-mediathek)' },
+    { key: 'livetv', label: 'LiveTV', icon: 'tv-minimal', color: 'var(--area-livetv)' },
+    { key: 'radio', label: 'Radio', icon: 'radio', color: 'var(--area-radio)' },
+    { key: 'podcasts', label: 'Podcasts', icon: 'mic', color: 'var(--area-podcast)' },
+    { key: 'streaming', label: 'Streaming', icon: null, logo: 'netflix.png', color: 'var(--area-streaming)' },
+    { key: 'mediathek', label: 'Mediatheken', icon: null, logo: 'ard.png', color: 'var(--area-mediathek)' },
     // 3.6b: keine Kachel „Aufnahmen“ mehr (wie der NavBar-Eintrag, P21); der Bereich ist über die Karte im LiveTV-Dashboard erreichbar.
-    { key: 'settings', label: 'Einstellungen', icon: null, color: 'var(--area-settings)' },
+    { key: 'settings', label: 'Einstellungen', icon: 'settings', color: 'var(--area-settings)' },
   ];
   sections.forEach(section => {
     const tile = document.createElement('button');
@@ -1031,7 +1043,7 @@ function renderStartDashboard() {
     tile.type = 'button';
     tile.dataset.section = section.key;
     tile.style.setProperty('--tile-color', section.color);
-    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.icon ? `<img src="assets/icons/${section.icon}" alt="">` : '⚙'}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
+    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.logo ? `<img src="assets/icons/${section.logo}" alt="">` : Icons.iconSvg(section.icon)}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
     tile.addEventListener('click', () => {
       overlayBar.classList.remove('nav-collapsed');
       showDashboard(section.key);
@@ -1194,14 +1206,13 @@ function getIconSrc(svc) {
   }
 }
 
-const NAV_SVG_ATTRS = 'viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"';
 const NAV_ICONS = {
-  livetv: `<svg ${NAV_SVG_ATTRS}><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
-  radio: `<svg ${NAV_SVG_ATTRS}><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>`,
-  podcasts: `<svg ${NAV_SVG_ATTRS}><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`,
-  streaming: `<svg ${NAV_SVG_ATTRS}><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5v4l3.5-2z" fill="currentColor"/><path d="M8 21h8"/></svg>`,
-  mediathek: `<svg ${NAV_SVG_ATTRS}><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 9.5v5l4.5-2.5z"/></svg>`,
-  settings: `<svg ${NAV_SVG_ATTRS}><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>`,
+  livetv: Icons.iconSvg('tv-minimal'),
+  radio: Icons.iconSvg('radio'),
+  podcasts: Icons.iconSvg('mic'),
+  streaming: Icons.iconSvg('monitor-play'),
+  mediathek: Icons.iconSvg('square-play'),
+  settings: Icons.iconSvg('settings'),
 };
 
 function renderNav() {
@@ -1476,8 +1487,8 @@ function renderSettingsServices() {
       row.innerHTML = `
         <img class="service-row-icon" alt="" style="background:${color}33;border-color:${color}66">
         <span class="service-row-name">${escapeHtml(svc.name)}</span>
-        <button class="service-row-edit" data-id="${escapeHtml(svc.id)}" title="Bearbeiten" aria-label="Bearbeiten">&#9998;</button>
-        <button class="service-row-remove" data-id="${escapeHtml(svc.id)}" title="Entfernen">&times;</button>
+        <button class="service-row-edit" data-id="${escapeHtml(svc.id)}" title="Bearbeiten" aria-label="Bearbeiten">${Icons.iconSvg('pencil')}</button>
+        <button class="service-row-remove" data-id="${escapeHtml(svc.id)}" title="Entfernen" aria-label="Entfernen">${Icons.iconSvg('x')}</button>
       `;
       if (iconSrc) row.querySelector('.service-row-icon').src = iconSrc;
       row.querySelector('.service-row-edit').addEventListener('click', () => startEditSettingsService(svc));
@@ -1527,9 +1538,7 @@ async function loadRecordingSettingsUi() {
     recPathInput.value = info.root;
     recPathHint.textContent = describeStorageRoot(info);
     recPathWarn.style.display = info.network ? '' : 'none';
-    recPathWarn.textContent = info.network
-      ? '⚠ Netzwerkpfad erkannt: Aufnahmequalität hängt von der Verbindung ab. Bei Verbindungsabbruch versucht die App, den Stream wiederzufinden.'
-      : '';
+    setWarningText(recPathWarn, info.network ? NETWORK_PATH_WARNING : '');
   } catch (e) {
     recPathHint.textContent = 'Speicherort konnte nicht geladen werden: ' + (e?.message || e);
   }
@@ -1705,7 +1714,7 @@ function applyRecordingLimitsToUi(settings) {
   recBufferAfterInput.value = String(settings.bufferAfterMin ?? 5);
   recLateStartInput.checked = settings.lateStart !== false;
   const warn = settings.reserveWarning || '';
-  recReserveWarn.textContent = warn ? '⚠ ' + warn : '';
+  setWarningText(recReserveWarn, warn);
   recReserveWarn.style.display = warn ? '' : 'none';
 }
 
@@ -1713,7 +1722,7 @@ async function loadRecordingLimitsUi() {
   try {
     applyRecordingLimitsToUi(await window.electronAPI.getRecordingSettings());
   } catch (e) {
-    setSettingsStatus('✕ Aufnahme-Einstellungen konnten nicht geladen werden: ' + (e?.message || e));
+    setSettingsStatus('Aufnahme-Einstellungen konnten nicht geladen werden: ' + (e?.message || e), 'error');
   }
 }
 
@@ -1736,13 +1745,10 @@ async function saveRecordingLimits() {
     patch.lateStart = recLateStartInput.checked;
     const saved = await window.electronAPI.setRecordingSettings(patch);
     applyRecordingLimitsToUi(saved);
-    setSettingsStatus(
-      saved.reserveBelowMinimum
-        ? `⚠ ${saved.reserveWarning} — ${saved.minReserveMB} MB wurden eingetragen und gespeichert.`
-        : '✓ Aufnahme-Einstellungen gespeichert',
-    );
+    if (saved.reserveBelowMinimum) setSettingsStatus(`${saved.reserveWarning} — ${saved.minReserveMB} MB wurden eingetragen und gespeichert.`, 'warn');
+    else setSettingsStatus('Aufnahme-Einstellungen gespeichert', 'ok');
   } catch (e) {
-    setSettingsStatus('✕ ' + (e?.message || e));
+    setSettingsStatus(String(e?.message || e), 'error');
   } finally {
     recLimitsSaveBtn.disabled = false;
   }
@@ -1803,11 +1809,11 @@ recWakeEnableBtn.addEventListener('click', async () => {
     const result = await window.electronAPI.enableWake();
     applyWakeStatus(result.status);
     if (!result.ok && !result.cancelled) {
-      recWakeError.textContent = '⚠ ' + (result.error || 'Aufwecken konnte nicht aktiviert werden');
+      setWarningText(recWakeError, result.error || 'Aufwecken konnte nicht aktiviert werden');
       recWakeError.style.display = '';
     }
   } catch (e) {
-    recWakeError.textContent = '⚠ ' + (e?.message || e);
+    setWarningText(recWakeError, String(e?.message || e));
     recWakeError.style.display = '';
   } finally {
     recWakeEnableBtn.disabled = false;
@@ -1818,7 +1824,7 @@ recWakeDisableBtn.addEventListener('click', async () => {
   try {
     applyWakeStatus((await window.electronAPI.disableWake()).status);
   } catch (e) {
-    recWakeError.textContent = '⚠ ' + (e?.message || e);
+    setWarningText(recWakeError, String(e?.message || e));
     recWakeError.style.display = '';
   } finally {
     recWakeDisableBtn.disabled = false;
@@ -1867,12 +1873,10 @@ async function saveRecordingStorageRoot(newRoot) {
     recPathInput.value = info.root;
     recPathHint.textContent = describeStorageRoot(info);
     recPathWarn.style.display = info.network ? '' : 'none';
-    recPathWarn.textContent = info.network
-      ? '⚠ Netzwerkpfad erkannt: Aufnahmequalität hängt von der Verbindung ab. Bei Verbindungsabbruch versucht die App, den Stream wiederzufinden.'
-      : '';
-    setSettingsStatus('✓ Speicherort übernommen: ' + info.root);
+    setWarningText(recPathWarn, info.network ? NETWORK_PATH_WARNING : '');
+    setSettingsStatus('Speicherort übernommen: ' + info.root, 'ok');
   } catch (e) {
-    setSettingsStatus('✕ ' + (e?.message || e));
+    setSettingsStatus(String(e?.message || e), 'error');
   } finally {
     recPathSaveBtn.disabled = false;
   }
@@ -1883,7 +1887,7 @@ recPathPickBtn.addEventListener('click', async () => {
     const picked = await window.electronAPI.pickRecordingFolder();
     if (picked) recPathInput.value = picked;
   } catch (e) {
-    setSettingsStatus('✕ ' + (e?.message || e));
+    setSettingsStatus(String(e?.message || e), 'error');
   }
 });
 recPathSaveBtn.addEventListener('click', () => {
@@ -1897,7 +1901,7 @@ recPathResetBtn.addEventListener('click', async () => {
     const def = await window.electronAPI.getDefaultRecordingRoot();
     if (def) saveRecordingStorageRoot(def);
   } catch (e) {
-    setSettingsStatus('✕ ' + (e?.message || e));
+    setSettingsStatus(String(e?.message || e), 'error');
   }
 });
 
@@ -1989,7 +1993,7 @@ function saveSettingsService() {
     settingsAddForm.style.display = 'none';
   }).catch(error => {
     const reason = String(error?.message || error || '').replace(/^Error invoking remote method '[^']*': (Error: )?/, '');
-    settingsServiceError.textContent = '⚠ ' + (reason || 'Dienst konnte nicht gespeichert werden');
+    setWarningText(settingsServiceError, reason || 'Dienst konnte nicht gespeichert werden');
     settingsServiceError.style.display = '';
   });
 }
@@ -2820,7 +2824,7 @@ function renderRecordingsInto(listEl) {
 
       const playBtn = document.createElement('button');
       playBtn.className = 'recording-entry-btn';
-      playBtn.textContent = '▶ Wiedergabe';
+      Icons.setIconText(playBtn, 'play', 'Wiedergabe', { filled: true });
       // Zurückgestellter Remux („Speicher knapp“): HLS-Zwischenform bleibt abspielbar
       const playable =
         meta.status === 'completed' ||
@@ -2832,7 +2836,7 @@ function renderRecordingsInto(listEl) {
 
       const stopBtn = document.createElement('button');
       stopBtn.className = 'recording-entry-btn';
-      stopBtn.textContent = '⏹ Stoppen';
+      Icons.setIconText(stopBtn, 'square', 'Stoppen', { filled: true });
       stopBtn.style.display = meta.status === 'recording' ? '' : 'none';
       if (meta.status === 'recording') {
         stopBtn.addEventListener('click', () => {
@@ -2892,7 +2896,7 @@ function renderRecordingDashboard() {
   refresh.className = 'recordings-refresh';
   refresh.id = 'recordingsRefresh';
   refresh.title = 'Aktualisieren';
-  refresh.textContent = '↻';
+  Icons.setIconOnly(refresh, 'rotate-cw', 'Aktualisieren');
   refresh.addEventListener('click', () => {
     scheduleEditingId = null;
     renderRecordingDashboard();
@@ -4021,8 +4025,8 @@ const settingsStatus = document.getElementById('settingsStatus');
 const backupBtn = document.getElementById('backupBtn');
 const restoreBtn = document.getElementById('restoreBtn');
 
-function setSettingsStatus(message) {
-  if (settingsStatus) settingsStatus.textContent = message;
+function setSettingsStatus(message, kind) {
+  if (settingsStatus) Icons.setStatusContent(settingsStatus, kind, message);
 }
 
 
@@ -4040,7 +4044,7 @@ backupBtn.addEventListener('click', async () => {
   settingsStatus.textContent = 'Speichere…';
   const result = await window.electronAPI.backupSettings();
   if (result.success) {
-    settingsStatus.textContent = '✓ Backup gespeichert';
+    Icons.setStatusContent(settingsStatus, 'ok', 'Backup gespeichert');
   } else {
     settingsStatus.textContent = 'Abgebrochen';
   }
@@ -4055,9 +4059,9 @@ restoreBtn.addEventListener('click', async () => {
   settingsStatus.textContent = 'Stelle wieder her…';
   const result = await window.electronAPI.restoreSettings();
   if (result.success) {
-    settingsStatus.textContent = '✓ Backup eingespielt';
+    Icons.setStatusContent(settingsStatus, 'ok', 'Backup eingespielt');
   } else if (result.error) {
-    settingsStatus.textContent = '✗ Fehler: ' + result.error;
+    Icons.setStatusContent(settingsStatus, 'error', 'Fehler: ' + result.error);
   } else {
     settingsStatus.textContent = 'Abgebrochen';
   }

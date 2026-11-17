@@ -12,7 +12,8 @@
 'use strict';
 
 const model = require('./epg-view-model.js');
-const { h } = require('./epg-dom.js');
+const { h, setMarkerDot } = require('./epg-dom.js');
+const Icons = require('./icons.js');
 const { genreLabel } = require('./epg-genres.js');
 const detailModel = require('./epg-detail-model.js');
 const gridModel = require('./epg-grid-model.js');
@@ -111,14 +112,14 @@ function updateRowNode(entry, row, { nowMs, marker, selected, flag = '' }) {
     refs.flag.textContent = flag === 'now' ? 'Jetzt' : flag === 'next' ? 'Nächste' : '';
   }
   refs.marker.dataset.state = marker ? (marker.stopping ? 'stopping' : marker.state) : '';
-  refs.marker.textContent = marker ? '●' : '';
+  setMarkerDot(refs.marker, !!marker);
   refs.marker.title = markerTitle(marker);
   refs.marker.setAttribute('aria-label', refs.marker.title);
   // Vergangene Sendungen: statt des Buttons „vorbei“ (wie im Mockup); die Zukunftsregel-Meldung bleibt im Detail
   const pastOnly = info.phase === 'past' && toggle.kind === 'record';
   refs.toggle.hidden = pastOnly;
   refs.pastNote.hidden = !pastOnly;
-  refs.toggle.textContent = toggle.label;
+  Icons.setIconText(refs.toggle, toggle.icon, toggle.label);
   refs.toggle.dataset.kind = toggle.kind;
   refs.toggle.disabled = toggle.disabled;
   refs.toggle.title = toggle.hint;
@@ -128,7 +129,7 @@ function updateRowNode(entry, row, { nowMs, marker, selected, flag = '' }) {
   }
   refs.toggle.setAttribute(
     'aria-label',
-    `${toggle.label.replace(/^[●✕■]\s*/, '')}: ${row.title} (${senderName(row)}, ${model.clock(row.start)})`,
+    `${toggle.label}: ${row.title} (${senderName(row)}, ${model.clock(row.start)})`,
   );
   return true;
 }

@@ -6,7 +6,7 @@
 
 const { filterItems, resolveFilter, activeSources, searchFilter, buildRows, resumeCard, SEARCH_DEBOUNCE_MS } = require('./mediathek-hub-model.js');
 const { sourceBadge } = require('./mediathek-format.js');
-const { el, button, createEntryCard, createCardFactory, createRow, appendToRow, setIcon } = require('./mediathek-cards.js');
+const { el, button, iconButton, createEntryCard, createCardFactory, createRow, appendToRow, setIcon } = require('./mediathek-cards.js');
 
 const SEARCH_SVG =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
@@ -40,7 +40,7 @@ function createMediathekHome(root, ctx) {
   input.autocomplete = 'off';
   input.spellcheck = false;
   input.maxLength = 200;
-  const clear = button(doc, 'mediathek-search-clear', '×', () => setQuery('', { focus: true }), 'Suche löschen');
+  const clear = iconButton(doc, 'mediathek-search-clear', 'circle-x', () => setQuery('', { focus: true }), 'Suche löschen');
   clear.hidden = true;
   field.append(icon, input, clear);
   const refresh = button(doc, 'mediathek-tool-btn', '', () => ctx.reload(), 'Mediatheken aktualisieren');

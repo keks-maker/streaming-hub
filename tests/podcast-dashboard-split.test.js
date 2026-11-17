@@ -121,8 +121,8 @@ test('Verdrahtung: Suchansicht zeigt Vorschläge nur ohne Suchbegriff; Overlay/K
   const css = read('styles.css');
   assert.match(css, /\.podcast-overlay \{[^}]*z-index:125/);
   assert.match(css, /\.podcast-split \{ display:grid/);
-  assert.match(read('renderer.js'), /key: 'podcasts', label: 'Podcasts', icon: 'podcast-icon.png', color: 'var\(--area-podcast\)'/);
-  assert.match(read('renderer.js'), /key: 'livetv', label: 'LiveTV', icon: 'tv-icon.png', color: 'var\(--area-livetv\)'/, 'LiveTV unverändert');
+  assert.match(read('renderer.js'), /key: 'podcasts', label: 'Podcasts', icon: 'mic', color: 'var\(--area-podcast\)'/);
+  assert.match(read('renderer.js'), /key: 'livetv', label: 'LiveTV', icon: 'tv-minimal', color: 'var\(--area-livetv\)'/, 'LiveTV unverändert');
   for (const file of ['podcast-episode-overlay-view.js', 'podcast-dashboard-view.js', 'podcast-suggestions-view.js', 'podcast-episode-list-view.js', 'podcast-shownotes-view.js']) {
     const code = read(file);
     assert.doesNotMatch(code.replace(/innerHTML = (icon|ICON_[A-Z]+); \/\/ statisches SVG/g, ''), /innerHTML|insertAdjacentHTML|outerHTML|document\.write/, `${file}: kein HTML aus Feeds`);
@@ -136,7 +136,7 @@ test('Farben: Podcasts-Akzent ist auch bei Rot-Grün-/Blau-Gelb-Schwäche von al
   const renderer = fs.readFileSync(path.join(__dirname, '..', 'renderer.js'), 'utf8');
   // Startkacheln nutzen area-* (Kachel = .theme-dark-scope, also der Dunkelwert aus :root)
   const areaDark = name => fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8').match(new RegExp(`--${name}: light-dark\\(#[0-9A-Fa-f]{6}, (#[0-9A-Fa-f]{6})\\)`))[1].toLowerCase();
-  const colors = Object.fromEntries([...renderer.matchAll(/\{ key: '(\w+)', label: '[^']*', icon: [^,]*, color: 'var\(--(area-[a-z]+)\)' \}/gi)].map(m => [m[1], areaDark(m[2])]));
+  const colors = Object.fromEntries([...renderer.matchAll(/\{ key: '(\w+)', label: '[^']*', icon: [^,]*, (?:logo: '[^']*', )?color: 'var\(--(area-[a-z]+)\)' \}/gi)].map(m => [m[1], areaDark(m[2])]));
   assert.ok(colors.podcasts && colors.livetv && colors.radio && colors.streaming && colors.mediathek);
   const MATRIX = {
     normal: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],

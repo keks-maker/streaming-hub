@@ -7,6 +7,7 @@
 'use strict';
 
 const { h } = require('./epg-dom.js');
+const Icons = require('./icons.js');
 
 /** options: { id, label, ariaLabel, align: 'left' | 'right', onOpen() — baut den Inhalt (panel) auf }. */
 function createMenu({ id, label, ariaLabel, align = 'right', onOpen }) {
@@ -14,9 +15,12 @@ function createMenu({ id, label, ariaLabel, align = 'right', onOpen }) {
     className: 'epg-btn epg-menu-btn',
     id,
     type: 'button',
-    text: label,
     attrs: { 'aria-haspopup': 'true', 'aria-expanded': 'false', 'aria-label': ariaLabel },
   });
+  const labelText = text => {
+    button.replaceChildren(document.createTextNode(text), Icons.createIcon(document, 'chevron-down', { cls: 'ic-trail' }));
+  };
+  labelText(label);
   const panel = h('div', { className: 'epg-menu-panel', id: `${id}Panel`, hidden: true, attrs: { role: 'group', 'aria-label': ariaLabel } });
   panel.dataset.align = align;
   const wrap = h('div', { className: 'epg-menu' }, [button, panel]);
@@ -54,9 +58,7 @@ function createMenu({ id, label, ariaLabel, align = 'right', onOpen }) {
     open,
     close,
     isOpen: () => opened,
-    setLabel: text => {
-      button.textContent = text;
-    },
+    setLabel: labelText,
   };
 }
 

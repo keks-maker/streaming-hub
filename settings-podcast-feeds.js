@@ -101,7 +101,7 @@ function createPodcastFeedsView(root, { podcasts, logger = null, now = () => Dat
     const title = (addModel.getState().preview || {}).title;
     const result = await addModel.confirm();
     if (!result) return;
-    setStatus(statusEl, `✓ „${title}“ abonniert`);
+    setStatus(statusEl, `„${title}“ abonniert`, 'ok');
     await refresh();
     focusNode(input);
   });
@@ -137,7 +137,7 @@ function createPodcastFeedsView(root, { podcasts, logger = null, now = () => Dat
     try {
       await podcasts.unsubscribe(sub.id);
       setSubs(await podcasts.list());
-      setStatus(statusEl, `✓ „${sub.title}“ abbestellt`);
+      setStatus(statusEl, `„${sub.title}“ abbestellt`, 'ok');
       focusNode(input);
     } catch (error) {
       setStatus(statusEl, formatIpcError(error) || 'Abbestellen nicht möglich', true);

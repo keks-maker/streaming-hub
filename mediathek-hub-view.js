@@ -17,6 +17,7 @@ const { createMediathekDownloadsView } = require('./mediathek-downloads-view.js'
 const { createMediathekDownloadDialogs } = require('./mediathek-download-dialogs-view.js');
 const { createSubscriptionDialogs } = require('./mediathek-subscription-dialogs-view.js');
 const { updateSubscriptionBadge } = require('./mediathek-cards.js');
+const Icons = require('./icons.js');
 
 const HOME = { view: 'home' };
 const DEFAULT_SETTINGS = { sources: { ard: true, zdf: true, arte: true }, quality: 'auto', audioLanguage: 'de', subtitles: 'off' };
@@ -79,7 +80,7 @@ function createMediathekHub(root, options = {}) {
   const bannerClose = doc.createElement('button');
   bannerClose.type = 'button';
   bannerClose.className = 'mediathek-banner-close';
-  bannerClose.textContent = '×';
+  bannerClose.appendChild(Icons.createIcon(doc, 'x'));
   bannerClose.setAttribute('aria-label', 'Meldung schließen');
   banner.append(bannerText, bannerClose);
   let bannerTimer = null;

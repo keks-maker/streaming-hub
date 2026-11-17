@@ -42,6 +42,18 @@ class FakeNode {
     this.children = [];
     this._text = String(value);
   }
+  replaceChildren(...nodes) {
+    this.children.forEach(c => (c.parent = null));
+    this.children = [];
+    this._text = '';
+    nodes.forEach(n => this.appendChild(n));
+  }
+  /** <template>.content: das Fake liefert genau ein SVG-Knoten-Platzhalter für Icons (innerHTML bleibt als Quelltext erhalten). */
+  get content() {
+    const svg = new FakeNode('svg', this.ownerDocument);
+    svg.source = this.innerHTML;
+    return { firstChild: svg };
+  }
   append(...nodes) {
     nodes.forEach(n => this.appendChild(n));
   }

@@ -6,6 +6,7 @@
 'use strict';
 
 const { episodeOverlayModel } = require('./podcast-overlay-model.js');
+const Icons = require('./icons.js');
 const { playEpisodeItem } = require('./podcast-episode-list-view.js');
 const { createCover } = require('./podcast-cover-view.js');
 const { renderShownotes } = require('./podcast-shownotes-view.js');
@@ -42,7 +43,7 @@ function createEpisodeOverlay(doc, ctx) {
   closeBtn.id = 'podcastOverlayClose';
   closeBtn.setAttribute('aria-label', 'Schließen');
   closeBtn.title = 'Schließen (Esc)';
-  closeBtn.textContent = '×';
+  closeBtn.appendChild(Icons.createIcon(doc, 'x'));
 
   const head = el(doc, 'header', 'podcast-dialog-head');
   const cover = createCover(doc, { podcasts, className: 'podcast-cover-large' });

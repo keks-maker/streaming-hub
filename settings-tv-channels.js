@@ -23,6 +23,7 @@ const {
   paginate,
 } = require('./lib/settings-channel-logic.js');
 const { formatIpcError } = require('./settings-tv-sources.js');
+const Icons = require('./icons.js');
 const { channelLogoError } = require('./lib/input-validation.js');
 
 const PAGE_SIZE = 50;
@@ -79,9 +80,10 @@ function createTvChannelsView({
     lastListHtml: null,
   };
 
-  function setStatus(message, isError = false) {
-    statusEl.textContent = message || '';
-    statusEl.classList.toggle('error', Boolean(isError));
+  /** state: true/'error' (Fehlerfarbe), 'ok' (Haken), sonst neutral. */
+  function setStatus(message, state = false) {
+    Icons.setStatusContent(statusEl, state === 'ok' ? 'ok' : '', message);
+    statusEl.classList.toggle('error', state === true || state === 'error');
   }
 
   function sourcesById() {
@@ -197,7 +199,7 @@ function createTvChannelsView({
       await api.updateTvSource(source.id, { channelOverrides: merged });
       source.channelOverrides = merged;
       state.open = null;
-      setStatus('✓ Sender gespeichert');
+      setStatus('Sender gespeichert', 'ok');
       await reload();
     } catch (e) {
       setStatus(formatIpcError(e), true);
@@ -278,10 +280,10 @@ function createTvChannelsView({
       if (!index) {
         epgBadge.textContent = '(EPG nicht geladen)';
       } else if (value && index.has(normEpgId(value))) {
-        epgBadge.textContent = '✓ EPG gefunden';
+        Icons.setIconText(epgBadge, 'check', 'EPG gefunden');
         epgBadge.classList.add('ok');
       } else {
-        epgBadge.textContent = '✗ kein EPG-Eintrag';
+        Icons.setIconText(epgBadge, 'x', 'kein EPG-Eintrag');
         epgBadge.classList.add('missing');
       }
     }
@@ -529,7 +531,8 @@ function createTvChannelsView({
     const meta = el('div', 'settings-chan-meta');
     const index = getEpgIndex();
     const epgOk = Boolean(index && ch.tvgId && index.has(normEpgId(ch.tvgId)));
-    const epg = el('span', `settings-chan-epg ${epgOk ? 'ok' : 'missing'}`, epgOk ? '✓ EPG' : '✗ EPG');
+    const epg = el('span', `settings-chan-epg ${epgOk ? 'ok' : 'missing'}`);
+    Icons.setIconText(epg, epgOk ? 'check' : 'x', 'EPG');
     epg.title = ch.tvgId ? `tvg-id: ${ch.tvgId}` : 'Keine tvg-id';
     meta.appendChild(epg);
     meta.appendChild(el('span', 'settings-chan-tvgid', ch.tvgId || 'keine tvg-id'));
@@ -542,7 +545,8 @@ function createTvChannelsView({
 
     const actions = el('div', 'settings-chan-actions');
     const fav = isFav(ch, sourcesMap);
-    const star = el('button', `settings-chan-fav${fav ? ' active' : ''}`, fav ? '★' : '☆');
+    const star = el('button', `settings-chan-fav${fav ? ' active' : ''}`);
+    Icons.setIconOnly(star, 'star', fav ? 'Favorit entfernen' : 'Als Favorit markieren', { filled: fav });
     star.type = 'button';
     star.dataset.action = 'fav';
     star.setAttribute('aria-pressed', String(fav));
@@ -631,14 +635,16 @@ function createTvChannelsView({
   function renderPager(info) {
     pagerHost.innerHTML = '';
     if (info.pages <= 1) return;
-    const prev = el('button', 'settings-action-btn', '‹ Zurück');
+    const prev = el('button', 'settings-action-btn');
+    Icons.setIconText(prev, 'chevron-left', 'Zurück');
     prev.type = 'button';
     prev.disabled = info.page === 0;
     prev.addEventListener('click', () => {
       state.page = info.page - 1;
       render();
     });
-    const next = el('button', 'settings-action-btn', 'Weiter ›');
+    const next = el('button', 'settings-action-btn');
+    next.append('Weiter', Icons.createIcon(document, 'chevron-right', { cls: 'ic-trail' }));
     next.type = 'button';
     next.disabled = info.page >= info.pages - 1;
     next.addEventListener('click', () => {

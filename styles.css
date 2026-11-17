@@ -4056,3 +4056,30 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
 .radio-mini-playlist-remove { flex:none; width:26px; height:26px; color:var(--text-dim); font-size:18px; line-height:1; background:none; border:1px solid transparent; border-radius:50%; cursor:pointer; }
 .radio-mini-playlist-remove:hover,.radio-mini-playlist-remove:focus-visible { color:var(--text-primary); background:var(--glass-hover); border-color:var(--border-strong); outline:none; }
 @media (max-width:760px) { .radio-mini-video { width:112px; height:63px; } .radio-miniplayer[data-mode="video"] { flex-wrap:wrap; } .radio-mini-playlist { right:10px; } }
+
+/* Icon-Set (Lucide, icons.js): Inline-SVG mit currentColor, Größe über font-size/Breite am Elternelement */
+.ic { width:1em; height:1em; flex:none; vertical-align:-.125em; pointer-events:none; }
+.ic-fill { fill:currentColor; }
+.ic-status { vertical-align:-.15em; }
+.ic-slot { display:inline-flex; align-items:center; justify-content:center; line-height:0; }
+.overlay-bar .nav-section-icon svg { width:22px; height:22px; }
+.overlay-bar .back-btn .ic { width:14px; height:14px; }
+.overlay-bar .overlay-actions .add-btn .ic { width:16px; height:16px; }
+.dashboard-player-close .ic { width:22px; height:22px; }
+.history-close .ic { width:16px; height:16px; }
+.nav-reveal-hint .ic-slot { height:100%; }
+.error-reload-btn .ic { margin-right:4px; }
+.ic-lead { margin-right:.4em; }
+.ic-trail { margin-left:.35em; }
+.mediathek-dialog-close .ic, .mediathek-player-close .ic, .mediathek-banner-close .ic, .mediathek-search-clear .ic { width:18px; height:18px; }
+.mediathek-remove-btn .ic { width:14px; height:14px; }
+.settings-add-dienst-btn .ic { width:16px; height:16px; }
+.podcast-dialog-close .ic { width:20px; height:20px; }
+.radio-mini-playlist-remove .ic { width:14px; height:14px; }
+.settings-nav-group-chevron .ic { width:12px; height:12px; display:block; }
+.service-row-edit .ic, .service-row-remove .ic { width:14px; height:14px; }
+.tv-file-btn .ic { width:16px; height:16px; }
+.settings-chan-fav .ic { width:16px; height:16px; }
+.recordings-refresh .ic { width:16px; height:16px; }
+.hub-card-chevron .ic { width:22px; height:22px; display:block; }
+.epg-close-btn .ic, .epg-detail-close .ic { width:18px; height:18px; }

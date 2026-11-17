@@ -6,6 +6,7 @@
 // Persistenz ausschließlich über window.radio; die Quellen kommen per radio:get-sources und radio:sources-changed.
 
 const model = require('./settings-radio-stations-model.js');
+const Icons = require('./icons.js');
 const { paginate } = require('./lib/settings-channel-logic.js');
 const { el, appendStationLogo, statusLine, setStatus, labelledField, textInput, button, focusNode, findAll, childList, formatIpcError } = require('./settings-radio-dom.js');
 
@@ -163,7 +164,7 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
   function applyPreviewState(btn) {
     const station = { sourceId: btn.dataset.sourceId, id: btn.dataset.stationId };
     const active = isPreviewing(station);
-    btn.textContent = active ? '■' : '▶';
+    btn.replaceChildren(Icons.createIcon(btn.ownerDocument, active ? 'square' : 'play', { filled: true }));
     btn.setAttribute('aria-pressed', String(active));
     btn.setAttribute('aria-label', `${btn.dataset.name}: ${active ? 'Vorhören beenden' : 'vorhören'}`);
     btn.title = active ? 'Vorhören beenden' : 'Vorhören';
@@ -209,7 +210,7 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
       const sources = await radio.setOverride({ sourceId: open.sourceId, stationId: open.stationId }, model.buildOverridePatch(open.draft, open.original));
       state.open = null;
       state.restoreFocus = { key: open.key, action: 'edit' };
-      setStatus(statusEl, '✓ Sender gespeichert');
+      setStatus(statusEl, 'Sender gespeichert', 'ok');
       setSources(sources);
       render();
     } catch (error) {
@@ -224,7 +225,7 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
       const sources = await radio.clearOverride({ sourceId: open.sourceId, stationId: open.stationId });
       state.open = null;
       state.restoreFocus = { key: open.key, action: 'edit' };
-      setStatus(statusEl, '✓ Auf Original zurückgesetzt');
+      setStatus(statusEl, 'Auf Original zurückgesetzt', 'ok');
       setSources(sources);
       render();
     } catch (error) {
@@ -319,7 +320,8 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
     head.appendChild(info);
 
     const actions = el(doc, 'div', 'settings-chan-actions');
-    const star = button(doc, `settings-chan-fav${station.favorite ? ' active' : ''}`, station.favorite ? '★' : '☆', 'fav');
+    const star = button(doc, `settings-chan-fav${station.favorite ? ' active' : ''}`, '', 'fav');
+    star.appendChild(Icons.createIcon(doc, 'star', { filled: Boolean(station.favorite) }));
     star.setAttribute('aria-pressed', String(station.favorite));
     star.setAttribute('aria-label', `${station.name}: ${station.favorite ? 'aus Favoriten entfernen' : 'zu Favoriten hinzufügen'}`);
     star.addEventListener('click', () => toggleFavorite(station));
@@ -365,7 +367,7 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
       actions.appendChild(handle);
     }
 
-    const preview = button(doc, 'settings-chan-move settings-radio-preview', '▶', 'preview');
+    const preview = button(doc, 'settings-chan-move settings-radio-preview', '', 'preview');
     preview.dataset.sourceId = station.sourceId;
     preview.dataset.stationId = station.id;
     preview.dataset.name = station.name;
@@ -493,8 +495,10 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
   function renderPager(info) {
     pagerEl.textContent = '';
     if (info.pages <= 1) return;
-    const mk = (text, page, disabled) => {
-      const b = button(doc, 'settings-action-btn', text);
+    const mk = (text, page, disabled, iconName) => {
+      const b = button(doc, 'settings-action-btn', '');
+      if (iconName === 'chevron-left') b.append(Icons.createIcon(doc, iconName, { cls: 'ic-lead' }), doc.createTextNode(text));
+      else b.append(doc.createTextNode(text), Icons.createIcon(doc, iconName, { cls: 'ic-trail' }));
       b.disabled = disabled;
       b.addEventListener('click', () => {
         state.page = page;
@@ -502,7 +506,7 @@ function createRadioStationsView(root, { radio, logger = null, onEditCustom = nu
       });
       return b;
     };
-    pagerEl.append(mk('‹ Zurück', info.page - 1, info.page === 0), el(doc, 'span', 'settings-chan-pageinfo', `Seite ${info.page + 1} von ${info.pages}`), mk('Weiter ›', info.page + 1, info.page >= info.pages - 1));
+    pagerEl.append(mk('Zurück', info.page - 1, info.page === 0, 'chevron-left'), el(doc, 'span', 'settings-chan-pageinfo', `Seite ${info.page + 1} von ${info.pages}`), mk('Weiter', info.page + 1, info.page >= info.pages - 1, 'chevron-right'));
   }
 
   search.addEventListener('input', () => {

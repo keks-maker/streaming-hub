@@ -173,7 +173,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(page.locator('#epgDetailInfo')).toContainText('45 min'); // Metazeile (3.6): Genre · Jahr · Dauer · Episode
     await expect(page.locator('#epgDetailMeta')).toContainText('E2E Kanal');
     await expect(page.locator('#epgDetailDesc')).toHaveText('Beschreibung & Details zu Folgesendung');
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('● Aufnehmen');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnehmen');
     await expect(page.locator('#epgDetailWatchBtn')).toBeVisible();
     // Fokus-Falle: Tab wandert nur durch Bedienelemente des Modals
     for (let i = 0; i < 6; i += 1) {
@@ -217,7 +217,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
 
     // Marker ● und Toggle „✕ Aufnahme abbrechen“ — ohne Neuöffnen
     await expect(upcoming.locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    await expect(upcoming.locator('.epg-toggle')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(upcoming.locator('.epg-toggle')).toHaveText('Aufnahme abbrechen');
     expect(await scheduledEntries()).toHaveLength(1);
 
     // Abbrechen: Rückfrage; Esc verwirft sie (Eintrag bleibt), „Ja, abbrechen“ sagt ab
@@ -231,7 +231,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await upcoming.locator('.epg-toggle').click();
     await page.locator('#epgConfirmYes').click();
     await expect(upcoming.locator('.epg-marker')).toHaveAttribute('data-state', '');
-    await expect(upcoming.locator('.epg-toggle')).toHaveText('● Aufnehmen');
+    await expect(upcoming.locator('.epg-toggle')).toHaveText('Aufnehmen');
     expect(await scheduledEntries()).toHaveLength(0);
   });
 
@@ -241,8 +241,8 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(page.locator('#recScheduleOverlay')).toHaveClass(/open/);
     await page.locator('#recScheduleConfirm').click();
     await expect(page.locator('#epgDetailNotice')).toContainText('Aufnahme geplant: Kommende Sendung');
-    await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant ✓');
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnahme abbrechen');
     await expect(row('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
     // abbrechen (Rückfrage im Modal)
     await page.locator('#epgDetailRecordBtn').click();
@@ -252,7 +252,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(page.locator('#epgDetailBackdrop')).toBeVisible();
     await page.locator('#epgDetailRecordBtn').click();
     await page.locator('#epgConfirmYes').click();
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('● Aufnehmen');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnehmen');
     await expect(page.locator('#epgDetailPlanned')).toBeHidden();
     expect(await scheduledEntries()).toHaveLength(0);
     // erneut planen und über „Zur Geplant-Liste“ springen
@@ -289,10 +289,10 @@ test.describe('Programmführer (kleine Fixture)', () => {
       },
     );
     await expect(row('Folgesendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    await expect(row('Folgesendung').locator('.epg-toggle')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(row('Folgesendung').locator('.epg-toggle')).toHaveText('Aufnahme abbrechen');
     await page.evaluate(id => window.electronAPI.removeSchedule(id), added.entry.id);
     await expect(row('Folgesendung').locator('.epg-marker')).toHaveAttribute('data-state', '');
-    await expect(row('Folgesendung').locator('.epg-toggle')).toHaveText('● Aufnehmen');
+    await expect(row('Folgesendung').locator('.epg-toggle')).toHaveText('Aufnehmen');
   });
 
   test('Titel mit literalem „&amp;lt;“ bleibt unverändert: Liste, Detail, Planungsdialog und Eintrag (kein Doppel-Decode)', async () => {
@@ -312,10 +312,10 @@ test.describe('Programmführer (kleine Fixture)', () => {
     expect(entries[0].title).toBe(literal);
     expect(entries[0].description).toContain(literal);
     // abbrechen, damit nachfolgende Tests sauber starten
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnahme abbrechen');
     await page.locator('#epgDetailRecordBtn').click();
     await page.locator('#epgConfirmYes').click();
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('● Aufnehmen');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnehmen');
     await page.locator('#epgDetailClose').click();
   });
 
@@ -324,7 +324,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(page.locator('.epg-daytab.active')).toHaveText('Morgen');
     const before = await page.evaluate(() => window.document.getElementById('epgList').scrollTop);
     await page.locator('#epgRefreshBtn').click();
-    await expect(page.locator('#epgRefreshBtn')).toHaveText('↻ Aktualisieren');
+    await expect(page.locator('#epgRefreshBtn')).toHaveText('Aktualisieren');
     await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
     await expect(page.locator('.epg-daytab.active')).toHaveText('Morgen');
     const after = await page.evaluate(() => window.document.getElementById('epgList').scrollTop);
@@ -545,7 +545,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(page.locator('#epgDetailBackdrop')).toBeVisible();
     await expect(page.locator('#epgDetailTitle')).toHaveText('Folgesendung');
     await expect(page.locator('#epgDetailInfo')).toContainText('45 min'); // Metazeile (3.6): Genre · Jahr · Dauer · Episode
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('● Aufnehmen');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnehmen');
     await page.keyboard.press('Escape');
     await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
     await expect(page.locator('#epgGrid')).toBeVisible();
@@ -573,8 +573,8 @@ test.describe('Programmführer (kleine Fixture)', () => {
     });
     expect(markerStyle).toEqual({ color: 'rgb(255, 93, 93)', animation: 'none' }); // geplant: rot, statisch
     await block('Kommende Sendung').click();
-    await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant ✓');
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnahme abbrechen');
     await page.keyboard.press('Escape');
     await page.evaluate(id => window.electronAPI.removeSchedule(id), added.entry.id);
     await expect(block('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', '');
@@ -585,7 +585,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await page.locator('#recScheduleConfirm').click();
     await expect(page.locator('#epgDetailNotice')).toContainText('Aufnahme geplant: Folgesendung');
     await expect(block('Folgesendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnahme abbrechen');
     await page.locator('#epgDetailRecordBtn').click();
     await page.locator('#epgConfirmYes').click();
     await expect(block('Folgesendung').locator('.epg-marker')).toHaveAttribute('data-state', '');
@@ -609,14 +609,16 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(block('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
     const id = await block('Kommende Sendung').getAttribute('data-block-key');
     const rec = page.locator(`.epg-block-rec[data-rec-key="${id}"]`);
-    await expect(rec).toHaveText('✕');
+    await expect(rec).toHaveAttribute('data-kind', 'cancel');
+    await expect(rec).toHaveAttribute('aria-label', /Aufnahme abbrechen/);
     await expect(page.locator('.epg-block-rec')).toHaveCount(1);
     // Abbrechen mit Rückfrage entfernt den Toggle wieder
     await rec.click();
     await expect(page.locator('#epgConfirm')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.locator('#epgConfirm')).toBeHidden();
-    await expect(rec).toHaveText('✕');
+    await expect(rec).toHaveAttribute('data-kind', 'cancel');
+    await expect(rec).toHaveAttribute('aria-label', /Aufnahme abbrechen/);
     await rec.click();
     await page.locator('#epgConfirmYes').click();
     await expect(page.locator('.epg-block-rec')).toHaveCount(0);
@@ -718,7 +720,8 @@ test.describe('Programmführer (kleine Fixture)', () => {
     const live = block('Laufende Sendung');
     await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', 'recording');
     const rec = page.locator(`.epg-block-rec[data-rec-key="${await live.getAttribute('data-block-key')}"]`);
-    await expect(rec).toHaveText('■');
+    await expect(rec).toHaveAttribute('data-kind', 'stop');
+    await expect(rec).toHaveAttribute('aria-label', /Aufnahme stoppen/);
     await expect(rec).toHaveAttribute('data-kind', 'stop');
     const anim = el => window.getComputedStyle(el).animationName;
     expect(await live.locator('.epg-marker').evaluate(anim)).toBe('epgPulse');
@@ -745,11 +748,11 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await installFakeRecording('fail', slots.running);
     const live = row('Laufende Sendung');
     await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', 'recording');
-    await expect(live.locator('.epg-toggle')).toHaveText('■ Aufnahme stoppen');
+    await expect(live.locator('.epg-toggle')).toHaveText('Aufnahme stoppen');
     await live.locator('.epg-toggle').click();
     await page.locator('#epgConfirmYes').click();
     await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', 'stopping');
-    await expect(live.locator('.epg-toggle')).toHaveText('■ Wird beendet …');
+    await expect(live.locator('.epg-toggle')).toHaveText('Wird beendet …');
     await expect(live.locator('.epg-toggle')).toBeDisabled();
     await expect(live.locator('.epg-marker')).toHaveAttribute('data-state', '');
     await expect(page.locator('#epgToast')).toContainText('Aufnahme beendet, die Nachbearbeitung ist fehlgeschlagen: Remux fehlgeschlagen');
@@ -1111,7 +1114,7 @@ test.describe('Kanalansicht (kleine Fixture)', () => {
     await page.locator('#recScheduleConfirm').click();
     await expect(dialog).not.toHaveClass(/open/);
     await expect(upcoming.locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    await expect(upcoming.locator('.epg-toggle')).toHaveText('✕ Aufnahme abbrechen');
+    await expect(upcoming.locator('.epg-toggle')).toHaveText('Aufnahme abbrechen');
     expect(await scheduledEntries()).toHaveLength(1);
     // Marker ist rot und statisch
     expect(await upcoming.locator('.epg-marker').evaluate(el => {
@@ -1129,7 +1132,7 @@ test.describe('Kanalansicht (kleine Fixture)', () => {
     await upcoming.locator('.epg-toggle').click();
     await page.locator('#epgConfirmYes').click();
     await expect(upcoming.locator('.epg-marker')).toHaveAttribute('data-state', '');
-    await expect(upcoming.locator('.epg-toggle')).toHaveText('● Aufnehmen');
+    await expect(upcoming.locator('.epg-toggle')).toHaveText('Aufnehmen');
     expect(await scheduledEntries()).toHaveLength(0);
     // Marker live: Planung im Main (schedule:changed) erscheint ohne Neuöffnen
     const iso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -1179,7 +1182,7 @@ test.describe('Kanalansicht (kleine Fixture)', () => {
     );
     const row = crow('Laufende Show');
     await expect(row.locator('.epg-marker')).toHaveAttribute('data-state', 'recording');
-    await expect(row.locator('.epg-toggle')).toHaveText('■ Aufnahme stoppen');
+    await expect(row.locator('.epg-toggle')).toHaveText('Aufnahme stoppen');
     expect(await row.locator('.epg-marker').evaluate(el => window.getComputedStyle(el).animationName)).toBe('epgPulse');
     await row.locator('.epg-toggle').click();
     await expect(page.locator('#epgConfirmText')).toHaveText('Laufende Aufnahme „Laufende Show“ stoppen? Die bisher aufgenommene Zeit bleibt erhalten.');
@@ -1191,7 +1194,7 @@ test.describe('Kanalansicht (kleine Fixture)', () => {
       for (const win of BrowserWindow.getAllWindows()) win.webContents.send('schedule:changed', {});
     });
     await expect(row.locator('.epg-marker')).toHaveAttribute('data-state', '');
-    await expect(row.locator('.epg-toggle')).toHaveText('● Aufnehmen');
+    await expect(row.locator('.epg-toggle')).toHaveText('Aufnehmen');
   });
 
   test('P9: „+ Weitere Tage“ zeigt Tage jenseits der 8-Tage-Grenze: Hinweis sichtbar, Aufnehmen deaktiviert, kein Dialog', async () => {
@@ -1310,7 +1313,7 @@ test.describe('Kanalansicht (kleine Fixture)', () => {
     await expect(page.locator('#epgChannelState')).toContainText('Spätkanal');
     await expect(page.locator('#epgChannelList')).toBeHidden();
     await page.locator('#epgChannelState .epg-state-btn', { hasText: 'Jetzt aktualisieren' }).click();
-    await expect(page.locator('#epgRefreshBtn')).toHaveText('↻ Aktualisieren');
+    await expect(page.locator('#epgRefreshBtn')).toHaveText('Aktualisieren');
     await expect(page.locator('#epgChannel')).toHaveAttribute('data-state', 'no-programmes');
     await expect(page.locator('#epgChannelNow')).toHaveText('Gerade keine Sendung im EPG');
     await page.keyboard.press('Escape');
@@ -1325,7 +1328,7 @@ test.describe('Kanalansicht (kleine Fixture)', () => {
     await expect(page.locator('.epg-daytab.active')).toHaveText('Morgen');
     const before = await page.locator('#epgChannelList').evaluate(el => el.scrollTop);
     await page.locator('#epgRefreshBtn').click();
-    await expect(page.locator('#epgRefreshBtn')).toHaveText('↻ Aktualisieren');
+    await expect(page.locator('#epgRefreshBtn')).toHaveText('Aktualisieren');
     await expect(page.locator('#epgChannel')).toHaveAttribute('data-state', 'ready');
     await expect(page.locator('.epg-daytab.active')).toHaveText('Morgen');
     const after = await page.locator('#epgChannelList').evaluate(el => el.scrollTop);

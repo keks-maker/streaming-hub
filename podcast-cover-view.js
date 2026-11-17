@@ -5,6 +5,7 @@
 'use strict';
 
 const { coverKind } = require('./podcast-format.js');
+const Icons = require('./icons.js');
 
 /** Auflösung einer Cover-Adresse zu einer ladbaren URL: https → unverändert, http → data:-URL vom Main, sonst null. */
 async function resolveCoverSource(podcasts, url) {
@@ -32,8 +33,16 @@ function createCover(doc, { podcasts, className = '' } = {}) {
   let image = null;
 
   /** Setzt Cover-Adresse und Initialen; unveränderte Adresse lädt nicht erneut. */
-  function update({ url, initial }) {
-    if (fallback.textContent !== initial) fallback.textContent = initial || '?';
+  function update({ url, initial, icon }) {
+    if (icon) {
+      if (fallback.dataset.icon !== icon) {
+        fallback.dataset.icon = icon;
+        fallback.replaceChildren(Icons.createIcon(doc, icon));
+      }
+    } else if (fallback.dataset.icon || fallback.textContent !== initial) {
+      delete fallback.dataset.icon;
+      fallback.textContent = initial || '?';
+    }
     const next = url || null;
     if (next === currentUrl) return;
     currentUrl = next;

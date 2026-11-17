@@ -5,7 +5,7 @@
 // den Fortschritt gedrosselt an den Verlauf. Menüs für Qualität, Ton und Untertitel erscheinen nur, wenn der Stream Auswahl bietet.
 
 const model = require('./mediathek-player-model.js');
-const { el, button } = require('./mediathek-cards.js');
+const { el, button, iconButton } = require('./mediathek-cards.js');
 const { fskText } = require('./mediathek-format.js');
 
 const MEDIA_ERRORS = {
@@ -235,7 +235,7 @@ function createMediathekPlayer(host, ctx) {
     video.setAttribute('aria-label', play.entry.title);
 
     const bar = el(doc, 'div', 'mediathek-player-bar');
-    const closeBtn = button(doc, 'mediathek-player-close', '×', () => close(), 'Wiedergabe schließen');
+    const closeBtn = iconButton(doc, 'mediathek-player-close', 'x', () => close(), 'Wiedergabe schließen');
     closeBtn.id = 'mediathekPlayerClose';
     const title = el(doc, 'span', 'mediathek-player-title', play.entry.title);
     const menus = el(doc, 'div', 'mediathek-player-menus');

@@ -4,7 +4,7 @@
 // (Serie) und – bei gesperrten Beiträgen – „Auf der Webseite öffnen“. Fokusfalle, Esc schließt, Fokus kehrt zurück.
 
 const { detailInfo } = require('./mediathek-detail-model.js');
-const { el, button, setIcon, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG } = require('./mediathek-cards.js');
+const { el, button, iconButton, setIcon, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG } = require('./mediathek-cards.js');
 const { downloadIcon } = require('./mediathek-download-icons.js');
 
 const FOCUSABLE = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
@@ -57,7 +57,7 @@ function createMediathekDetail(host, ctx) {
     const dialog = backdrop.querySelector('.mediathek-dialog');
     dialog.textContent = '';
 
-    const closeBtn = button(doc, 'mediathek-dialog-close', '×', () => close(), 'Schließen');
+    const closeBtn = iconButton(doc, 'mediathek-dialog-close', 'x', () => close(), 'Schließen');
     closeBtn.dataset.action = 'close';
     dialog.appendChild(closeBtn);
     dialog.appendChild(el(doc, 'p', 'mediathek-eyebrow', info.kicker));

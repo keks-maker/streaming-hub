@@ -14,6 +14,7 @@
 const model = require('./epg-channel-model.js');
 const { createRowNode, updateRowNode } = require('./epg-row-dom.js');
 const { h, createChannelLogo } = require('./epg-dom.js');
+const Icons = require('./icons.js');
 
 /** „Jetzt“ steht beim Anspringen auf dieser Höhe des Viewports. */
 const NOW_ANCHOR_RATIO = 0.3;
@@ -38,7 +39,8 @@ function createChannelView(deps) {
   let marks = { running: null, next: null };
   let stateKind = 'ready';
 
-  const backBtn = h('button', { className: 'epg-btn epg-channel-back', id: 'epgChannelBack', type: 'button', text: '← Alle Sender' });
+  const backBtn = h('button', { className: 'epg-btn epg-channel-back', id: 'epgChannelBack', type: 'button' });
+  Icons.setIconText(backBtn, 'arrow-left', 'Alle Sender');
   backBtn.title = 'Zurück zur Übersicht (Esc)';
   const logoHost = h('span', { className: 'epg-channel-logo-host' });
   const nameEl = h('h2', { className: 'epg-channel-name', id: 'epgChannelName' });

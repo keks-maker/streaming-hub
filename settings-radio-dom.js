@@ -4,6 +4,7 @@
 // den DOM, nie über innerHTML. Funktionen nehmen das Dokument entgegen, damit die Seiten ohne Browser testbar sind.
 
 const { formatIpcError } = require('./settings-tv-sources.js');
+const Icons = require('./icons.js');
 const { safeLogoUrl, stationInitial } = require('./radio-dashboard-model.js');
 
 function el(doc, tag, className, text) {
@@ -43,9 +44,10 @@ function statusLine(doc, id) {
   return node;
 }
 
-function setStatus(node, message, isError = false) {
-  node.textContent = message || '';
-  node.classList.toggle('error', Boolean(isError));
+/** state: true/'error' (Fehlerfarbe), 'ok' (Haken), sonst neutral. */
+function setStatus(node, message, state = false) {
+  Icons.setStatusContent(node, state === 'ok' ? 'ok' : '', message);
+  node.classList.toggle('error', state === true || state === 'error');
 }
 
 /** Beschriftetes Feld mit optionaler Fehlermeldung (aria-describedby auf die Meldung). */

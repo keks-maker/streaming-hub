@@ -4,6 +4,8 @@
 // merged Updates per Spread, favorites/sortOrder/channelOverrides bleiben erhalten,
 // solange sie nicht mitgesendet werden.
 
+const Icons = require('./icons.js');
+
 const DEFAULT_COLOR = '#a78bfa';
 
 // Dateipfad (lokal) oder URL? Gleiche Heuristik wie das bisherige TV-Modal.
@@ -85,10 +87,11 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
   const epgRefreshBtn = root.querySelector('#settingsEpgRefreshBtn');
   let editingId = null;
 
-  function setStatus(message, isError = false) {
+  /** state: true/'error' (Fehlerfarbe), 'ok' (Haken), sonst neutral. */
+  function setStatus(message, state = false) {
     if (!sourcesStatus) return;
-    sourcesStatus.textContent = message || '';
-    sourcesStatus.classList.toggle('error', Boolean(isError));
+    Icons.setStatusContent(sourcesStatus, state === 'ok' ? 'ok' : '', message);
+    sourcesStatus.classList.toggle('error', state === true || state === 'error');
   }
 
   const errorMessage = formatIpcError;
@@ -121,7 +124,8 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
     nameInput.name = 'name';
     const urlInput = input('text', source?.url, 'https://example.com/playlist.m3u', 'tv-url-input');
     urlInput.name = 'url';
-    const fileBtn = el('button', 'tv-file-btn', '📁');
+    const fileBtn = el('button', 'tv-file-btn');
+    fileBtn.appendChild(Icons.createIcon(document, 'folder'));
     fileBtn.type = 'button';
     fileBtn.title = 'Lokale Datei auswählen';
     fileBtn.setAttribute('aria-label', 'Lokale M3U-Datei auswählen');
@@ -207,7 +211,7 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
             }
             if (Object.keys(updates).length) await api.updateTvSource(src.id, updates);
             editingId = null;
-            setStatus('✓ Quelle gespeichert');
+            setStatus('Quelle gespeichert', 'ok');
             render();
           },
         }),
@@ -238,7 +242,7 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
       if (!confirm(`Quelle "${src.name}" entfernen?\nFavoriten und Sender-Anpassungen dieser Quelle gehen verloren.`)) return;
       try {
         await api.removeTvSource(src.id);
-        setStatus('✓ Quelle entfernt');
+        setStatus('Quelle entfernt', 'ok');
       } catch (e) {
         setStatus(errorMessage(e), true);
       }
@@ -289,7 +293,7 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
         save.disabled = true;
         try {
           await api.updateTvSource(src.id, updates);
-          setEpgStatus('✓ EPG-URL gespeichert');
+          setEpgStatus('EPG-URL gespeichert');
         } catch (err) {
           setEpgStatus(errorMessage(err), true);
         } finally {
@@ -336,7 +340,7 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
         }
         await api.addTvSource(source);
         addHost.querySelector('form').reset();
-        setStatus('✓ Quelle hinzugefügt');
+        setStatus('Quelle hinzugefügt', 'ok');
       },
     }),
   );

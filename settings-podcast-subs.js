@@ -71,7 +71,7 @@ function createPodcastSubsView(root, { podcasts, logger = null, now = () => Date
     state.restoreFocus = focus || null;
     try {
       setSubs(await podcasts.reorder({ order }));
-      setStatus(statusEl, '✓ Reihenfolge gespeichert');
+      setStatus(statusEl, 'Reihenfolge gespeichert', 'ok');
     } catch (error) {
       fail(error, 'Reihenfolge konnte nicht gespeichert werden');
     }
@@ -82,7 +82,7 @@ function createPodcastSubsView(root, { podcasts, logger = null, now = () => Date
     try {
       await podcasts.unsubscribe(sub.id);
       setSubs(await podcasts.list());
-      setStatus(statusEl, `✓ „${sub.title}“ abbestellt`);
+      setStatus(statusEl, `„${sub.title}“ abbestellt`, 'ok');
       state.restoreFocus = { field: 'list' };
       render();
     } catch (error) {
@@ -101,7 +101,8 @@ function createPodcastSubsView(root, { podcasts, logger = null, now = () => Date
       if (result && result.ok === false) setStatus(statusEl, result.error || 'Aktualisierung nicht möglich', true);
       else {
         const failed = result && result.failed ? result.failed : 0;
-        setStatus(statusEl, failed ? `Geprüft, ${failed} ${failed === 1 ? 'Abo hat' : 'Abos haben'} einen Fehler.` : '✓ Alle Abos geprüft');
+        if (failed) setStatus(statusEl, `Geprüft, ${failed} ${failed === 1 ? 'Abo hat' : 'Abos haben'} einen Fehler.`);
+        else setStatus(statusEl, 'Alle Abos geprüft', 'ok');
       }
     } catch (error) {
       setStatus(statusEl, formatIpcError(error) || 'Aktualisierung nicht möglich', true);
@@ -146,7 +147,7 @@ function createPodcastSubsView(root, { podcasts, logger = null, now = () => Date
     try {
       await podcasts.setOverride({ id: sub.id, ...patch });
       setSubs(await podcasts.list());
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
       closeForm({ id: sub.id, action: 'edit' });
     } catch (error) {
       form.busy = false;

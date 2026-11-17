@@ -8,11 +8,13 @@
 
 const searchModel = require('./epg-search-model.js');
 const { h } = require('./epg-dom.js');
+const Icons = require('./icons.js');
 
 /** deps: onPick(row), onClose() */
 function createSearchView(deps) {
   const summary = h('span', { className: 'epg-search-summary', attrs: { 'aria-live': 'polite' } });
-  const closeBtn = h('button', { className: 'epg-btn epg-search-close', id: 'epgSearchClose', type: 'button', text: '✕ Suche schließen (Esc)' });
+  const closeBtn = h('button', { className: 'epg-btn epg-search-close', id: 'epgSearchClose', type: 'button' });
+  Icons.setIconText(closeBtn, 'x', 'Suche schließen (Esc)');
   const headRow = h('div', { className: 'epg-search-head' }, [summary, closeBtn]);
   const list = h('div', { className: 'epg-search-list', id: 'epgSearchList', attrs: { role: 'list', 'aria-label': 'Suchergebnisse' } });
   const note = h('p', { className: 'epg-search-note', id: 'epgSearchNote', attrs: { role: 'status' } });

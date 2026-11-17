@@ -14,6 +14,7 @@
 const { miniPlayerModel, podcastMiniPlayerModel, rateLabel, formatClock, PODCAST_RATES, SEEK_KEY_SECONDS } = require('./radio-miniplayer-model.js');
 const { youtubeMiniPlayerModel } = require('./youtube-miniplayer-model.js');
 const { attachDragReorder, createMoveButtons } = require('./settings-reorder-dom.js');
+const Icons = require('./icons.js');
 
 const SVG_OPEN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">';
 const ICONS = {
@@ -394,7 +395,7 @@ function createRadioMiniPlayer(root, options = {}) {
       const remove = doc.createElement('button');
       remove.type = 'button';
       remove.className = 'radio-mini-playlist-remove';
-      remove.textContent = '×';
+      remove.appendChild(Icons.createIcon(doc, 'x'));
       remove.title = 'Entfernen';
       remove.setAttribute('aria-label', item.removeLabel);
       remove.addEventListener('click', () => actions.removeEntry(item.id));

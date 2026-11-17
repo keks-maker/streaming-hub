@@ -8,7 +8,7 @@ const options = require('./mediathek-download-options-model.js');
 const selectModel = require('./mediathek-download-select-model.js');
 const { entryForIpc } = require('./mediathek-hub-model.js');
 const { subtitleText, fskText } = require('./mediathek-format.js');
-const { el, button } = require('./mediathek-cards.js');
+const { el, button, iconButton } = require('./mediathek-cards.js');
 
 const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
@@ -192,7 +192,7 @@ function createMediathekDownloadDialogs(ctx) {
     function render() {
       const hadFocus = dialog.contains(doc.activeElement) ? doc.activeElement.id : '';
       dialog.textContent = '';
-      const closeBtn = button(doc, 'mediathek-dialog-close', '×', () => modal.close(), 'Schließen');
+      const closeBtn = iconButton(doc, 'mediathek-dialog-close', 'x', () => modal.close(), 'Schließen');
       dialog.appendChild(closeBtn);
       dialog.append(...titleBlock(doc, 'Download-Optionen', 'mediathekDlOptionsTitle', [entry.title, subtitleText(entry)].filter(Boolean).join(' · '), entry.fsk));
 
@@ -358,7 +358,7 @@ function createMediathekDownloadDialogs(ctx) {
       const scroll = dialog.querySelector('.mediathek-select-scroll');
       const scrollTop = scroll ? scroll.scrollTop : 0;
       dialog.textContent = '';
-      dialog.appendChild(button(doc, 'mediathek-dialog-close', '×', () => modal.close(), 'Schließen'));
+      dialog.appendChild(iconButton(doc, 'mediathek-dialog-close', 'x', () => modal.close(), 'Schließen'));
       dialog.append(...titleBlock(doc, 'Folgen laden', 'mediathekDlSelectTitle', series.title));
 
       const tools = el(doc, 'div', 'mediathek-select-tools');

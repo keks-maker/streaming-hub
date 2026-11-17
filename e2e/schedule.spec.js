@@ -204,8 +204,8 @@ test('Planungsdialog: Vorbelegung, Hinweis, Esc verwirft, Planen legt den Eintra
   await expect(dialog).not.toHaveClass(/open/);
   await expect(page.locator('#epgDetailNotice')).toContainText('Aufnahme geplant: Kommende Sendung');
   // Marker und Toggle ziehen live nach (schedule:changed): „Aufnahme geplant ✓“ + „✕ Aufnahme abbrechen“
-  await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant ✓');
-  await expect(page.locator('#epgDetailRecordBtn')).toHaveText('✕ Aufnahme abbrechen');
+  await expect(page.locator('#epgDetailPlanned')).toContainText('Aufnahme geplant');
+  await expect(page.locator('#epgDetailRecordBtn')).toHaveText('Aufnahme abbrechen');
   const list = await page.evaluate(() => window.electronAPI.listSchedules());
   expect(list).toHaveLength(1);
   expect(list[0].state).toBe('scheduled');

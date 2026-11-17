@@ -42,7 +42,7 @@ function createMediathekSourcesView(root, { mediathek, logger = null } = {}) {
     try {
       const result = await mediathek.setSettings({ sources: { [id]: wanted } });
       show(result.settings);
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       input.checked = !wanted;
       setStatus(statusEl, formatIpcError(error), true);

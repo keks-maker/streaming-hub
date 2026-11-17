@@ -2,6 +2,8 @@
 // Reine Shell: Navigation, Seitenwechsel, Merken der letzten Seite.
 // Die Funktionslogik der einzelnen Optionen bleibt in renderer.js.
 
+const Icons = require('./icons.js');
+
 const STORAGE_KEY = 'settingsPage';
 const DEFAULT_PAGE = 'general';
 
@@ -139,7 +141,7 @@ function createSettingsView(panel, options = {}) {
       header.type = 'button';
       header.className = 'settings-nav-group';
       header.setAttribute('aria-expanded', 'false');
-      header.innerHTML = '<span></span><span class="settings-nav-group-chevron" aria-hidden="true">▸</span>';
+      header.innerHTML = `<span></span><span class="settings-nav-group-chevron" aria-hidden="true">${Icons.iconSvg('chevron-right')}</span>`;
       header.firstChild.textContent = entry.label;
       const list = document.createElement('div');
       list.className = 'settings-nav-children';

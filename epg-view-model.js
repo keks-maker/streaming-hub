@@ -34,10 +34,14 @@ const PLAN_DAYS = 7;
 const PLAN_MAX_AHEAD_MS = 8 * 24 * 60 * 60 * 1000;
 
 const MSG_TOO_FAR = 'Planung nur bis 8 Tage im Voraus';
-const LABEL_RECORD = '● Aufnehmen';
-const LABEL_CANCEL = '✕ Aufnahme abbrechen';
-const LABEL_STOP = '■ Aufnahme stoppen';
-const LABEL_STOPPING = '■ Wird beendet …';
+const LABEL_RECORD = 'Aufnehmen';
+const LABEL_CANCEL = 'Aufnahme abbrechen';
+const LABEL_STOP = 'Aufnahme stoppen';
+const LABEL_STOPPING = 'Wird beendet …';
+// Lucide-Icon je Zustand (Zuordnung in docs/DESIGN.md): Aufnahme, Abbrechen (Schließen), Stopp
+const ICON_RECORD = 'circle-dot';
+const ICON_CANCEL = 'x';
+const ICON_STOP = 'square';
 
 const MAX_KEY_LENGTH = 200;
 
@@ -372,26 +376,26 @@ function rowPhase(row, nowMs) {
 /**
  * Zustand des einheitlichen Toggles einer Sendung.
  *   marker: Ergebnis von grid.matchMarkers (null | {state, ids})
- *   record: „● Aufnehmen“ (Zukunftsregel greift beim Klick im bestehenden Weg; > 8 Tage voraus
+ *   record: „Aufnehmen“ mit circle-dot (Zukunftsregel greift beim Klick im bestehenden Weg; > 8 Tage voraus
  *           ist der Button deaktiviert, P9)
- *   cancel: „✕ Aufnahme abbrechen“ (geplant, mit Rückfrage)
- *   stop:   „■ Aufnahme stoppen“ (laufend, immer mit Rückfrage)
+ *   cancel: „Aufnahme abbrechen“ mit x (geplant, mit Rückfrage)
+ *   stop:   „Aufnahme stoppen“ mit square (laufend, immer mit Rückfrage)
  */
 function toggleState({ row, marker, nowMs }) {
   if (marker && marker.state === 'recording' && marker.stopping) {
-    return { kind: 'stopping', label: LABEL_STOPPING, disabled: true, hint: '', verdict: null };
+    return { kind: 'stopping', icon: ICON_STOP, label: LABEL_STOPPING, disabled: true, hint: '', verdict: null };
   }
   if (marker && marker.state === 'recording') {
-    return { kind: 'stop', label: LABEL_STOP, disabled: false, hint: '', verdict: null };
+    return { kind: 'stop', icon: ICON_STOP, label: LABEL_STOP, disabled: false, hint: '', verdict: null };
   }
   if (marker && marker.state === 'scheduled') {
-    return { kind: 'cancel', label: LABEL_CANCEL, disabled: false, hint: '', verdict: null };
+    return { kind: 'cancel', icon: ICON_CANCEL, label: LABEL_CANCEL, disabled: false, hint: '', verdict: null };
   }
   const verdict = scheduleUi.classifyProgramme(row.start, row.stop, nowMs);
   if (verdict.state === 'future' && row.start > nowMs + PLAN_MAX_AHEAD_MS) {
-    return { kind: 'record', label: LABEL_RECORD, disabled: true, hint: MSG_TOO_FAR, verdict: verdict.state };
+    return { kind: 'record', icon: ICON_RECORD, label: LABEL_RECORD, disabled: true, hint: MSG_TOO_FAR, verdict: verdict.state };
   }
-  return { kind: 'record', label: LABEL_RECORD, disabled: false, hint: '', verdict: verdict.state };
+  return { kind: 'record', icon: ICON_RECORD, label: LABEL_RECORD, disabled: false, hint: '', verdict: verdict.state };
 }
 
 /**

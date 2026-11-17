@@ -5,6 +5,7 @@
 
 const { sourceBadge, genreNoun, sourceColor, subtitleText, minutesText, fskText, imageSrc, initials, placeholderHue } = require('./mediathek-format.js');
 const { AUTO_SVG } = require('./mediathek-download-icons.js');
+const Icons = require('./icons.js');
 
 function el(doc, tag, className, text) {
   const node = doc.createElement(tag);
@@ -21,11 +22,16 @@ function button(doc, className, text, onClick, label) {
   return node;
 }
 
-const STAR_SVG =
-  '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg>';
-const STAR_OUTLINE_SVG =
-  '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg>';
-const PLAY_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
+const STAR_SVG = Icons.iconSvg('star', { filled: true, size: 16 });
+const STAR_OUTLINE_SVG = Icons.iconSvg('star', { size: 16 });
+const PLAY_SVG = Icons.iconSvg('play', { filled: true, size: 15 });
+
+/** Schaltfläche, die nur ein Icon zeigt (aria-label trägt die Beschriftung). */
+function iconButton(doc, className, iconName, onClick, label) {
+  const node = button(doc, className, '', onClick, label);
+  node.appendChild(Icons.createIcon(doc, iconName));
+  return node;
+}
 
 function setIcon(node, svg) {
   node.innerHTML = svg; // statisches SVG, keine Nutzerdaten
@@ -107,7 +113,7 @@ function createEntryCard(doc, entry, options = {}) {
     card.appendChild(info);
   }
   if (options.onRemove) {
-    const remove = button(doc, 'mediathek-remove-btn', '×', () => options.onRemove(), `${entry.title} aus Weiterschauen entfernen`);
+    const remove = iconButton(doc, 'mediathek-remove-btn', 'x', () => options.onRemove(), `${entry.title} aus Weiterschauen entfernen`);
     card.appendChild(remove);
   }
   return card;
@@ -225,4 +231,4 @@ function appendToRow(list, card) {
   else list.appendChild(card);
 }
 
-module.exports = { el, button, setIcon, pill, createThumb, createEntryCard, createSeriesCard, createGenreCard, createRow, appendToRow, createCardFactory, updateStar, updateSubscriptionBadge, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG };
+module.exports = { el, button, iconButton, setIcon, pill, createThumb, createEntryCard, createSeriesCard, createGenreCard, createRow, appendToRow, createCardFactory, updateStar, updateSubscriptionBadge, PLAY_SVG, STAR_SVG, STAR_OUTLINE_SVG };

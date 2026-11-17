@@ -141,7 +141,7 @@ function createPodcastPlaybackView(root, { podcasts, logger = null, onOpenRadioP
   async function save(key, value, control) {
     try {
       show(await podcasts.setSettings({ [key]: value }));
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       if (state.settings) show(state.settings); // Anzeige auf den gespeicherten Stand zurück
       else if (control && control.type === 'checkbox') control.checked = !value;
@@ -156,7 +156,7 @@ function createPodcastPlaybackView(root, { podcasts, logger = null, onOpenRadioP
   slider.addEventListener('change', async () => {
     try {
       await podcasts.player.setVolume(Number(slider.value) / 100);
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       setStatus(statusEl, formatIpcError(error) || 'Lautstärke konnte nicht gespeichert werden', true);
     }

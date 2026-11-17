@@ -20,6 +20,7 @@
 'use strict';
 
 const grid = require('./lib/epg-grid.js');
+const Icons = require('./icons.js');
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const model = require('./epg-view-model.js');
 const gridModel = require('./epg-grid-model.js');
@@ -145,15 +146,15 @@ function createEpgView(root, deps) {
     id: 'epgRefreshBtn',
     type: 'button',
     attrs: { title: 'EPG-Cache jetzt aktualisieren' },
-    text: '↻ Aktualisieren',
   });
+  Icons.setIconText(refreshBtn, 'rotate-cw', 'Aktualisieren');
   const closeBtn = h('button', {
     className: 'epg-close-btn',
     id: 'epgCloseBtn',
     type: 'button',
     attrs: { 'aria-label': 'Programmführer schließen' },
-    text: '×',
   });
+  Icons.setIconOnly(closeBtn, 'x');
   const modeListBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeList', type: 'button', text: 'Liste' });
   const modeGridBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeGrid', type: 'button', text: 'Raster' });
   const modeJngBtn = h('button', { className: 'epg-seg-btn', id: 'epgModeJng', type: 'button', text: 'Jetzt & Gleich' });
@@ -187,8 +188,8 @@ function createEpgView(root, deps) {
   const gridTools = h('div', { className: 'epg-grid-tools', id: 'epgGridTools', hidden: true }, [jump2015Btn, jump2200Btn, zoomSeg]);
   // Schnellfilter-Leiste (F3): Tages-Tabs | Genre-Chips | Sender ▾ | Mehr ▾
   const chips = createGenreChips({ onToggle: genre => applyGenres(genreFilter.toggle(genre)), onClear: () => applyGenres([]) });
-  const senderMenu = createMenu({ id: 'epgSenderMenu', label: 'Sender: Favoriten ▾', ariaLabel: 'Sender wählen', align: 'right', onOpen: panel => renderSenderMenu(panel) });
-  const moreMenu = createMenu({ id: 'epgMoreMenu', label: 'Mehr ▾', ariaLabel: 'Weitere Optionen', align: 'right', onOpen: () => syncMoreMenu() });
+  const senderMenu = createMenu({ id: 'epgSenderMenu', label: 'Sender: Favoriten', ariaLabel: 'Sender wählen', align: 'right', onOpen: panel => renderSenderMenu(panel) });
+  const moreMenu = createMenu({ id: 'epgMoreMenu', label: 'Mehr', ariaLabel: 'Weitere Optionen', align: 'right', onOpen: () => syncMoreMenu() });
   const menus = [senderMenu, moreMenu];
   const optDesc = h('input', { id: 'epgOptDesc', type: 'checkbox' });
   const optHide = h('input', { id: 'epgOptHideNoEpg', type: 'checkbox' });
@@ -276,8 +277,8 @@ function createEpgView(root, deps) {
     id: 'epgDetailClose',
     type: 'button',
     attrs: { 'aria-label': 'Schließen' },
-    text: '×',
   });
+  Icons.setIconOnly(dClose, 'x');
   const dMeta = h('div', { className: 'epg-detail-meta', id: 'epgDetailMeta' });
   // Poster, Metazeile, Besetzung, Untertitel/Altersfreigabe (oben) und „Läuft auch“ (unten) — epg-detail-view.js
   const detailView = createDetailView({ metaEl: dMeta, now, onPickAlso: row => pickAlsoRow(row) });
@@ -602,7 +603,7 @@ function createEpgView(root, deps) {
   }
 
   function updateMenuLabels() {
-    senderMenu.setLabel(`Sender: ${selectionText()} ▾`);
+    senderMenu.setLabel(`Sender: ${selectionText()}`);
     senderMenu.button.title = selectionModel.selectionLabel(viewState.selection, sourceList());
   }
 
@@ -1520,14 +1521,18 @@ function createEpgView(root, deps) {
     const row = modalRow;
     const marker = markerFor(row);
     const toggle = model.toggleState({ row, marker, nowMs: now() });
-    dToggle.textContent = toggle.label;
+    Icons.setIconText(dToggle, toggle.icon, toggle.label);
     dToggle.dataset.kind = toggle.kind;
     dToggle.disabled = toggle.disabled;
     dHint.textContent = toggle.hint;
     dHint.hidden = !toggle.hint;
     dPlanned.hidden = !marker;
     if (marker) {
-      dPlannedText.textContent = marker.state === 'recording' ? 'Aufnahme läuft' : 'Aufnahme geplant ✓';
+      if (marker.state === 'recording') dPlannedText.textContent = 'Aufnahme läuft';
+      else {
+        dPlannedText.textContent = 'Aufnahme geplant';
+        dPlannedText.appendChild(Icons.createIcon(document, 'check', { cls: 'ic-trail' }));
+      }
       dPlannedLink.hidden = marker.state !== 'scheduled';
     }
   }
@@ -1998,7 +2003,7 @@ function createEpgView(root, deps) {
     if (refreshing) return;
     refreshing = true;
     refreshBtn.disabled = true;
-    refreshBtn.textContent = '↻ Aktualisiere …';
+    Icons.setIconText(refreshBtn, 'rotate-cw', 'Aktualisiere …');
     try {
       status = await api.refreshEpgCache();
       renderStand();
@@ -2008,7 +2013,7 @@ function createEpgView(root, deps) {
     } finally {
       refreshing = false;
       refreshBtn.disabled = false;
-      refreshBtn.textContent = '↻ Aktualisieren';
+      Icons.setIconText(refreshBtn, 'rotate-cw', 'Aktualisieren');
     }
     if (isOpen) loadAll({ initial: false });
   }

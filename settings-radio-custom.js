@@ -212,7 +212,7 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
       state.form = null;
       await refresh();
       state.restoreFocus = { key: null, action: 'add' };
-      setStatus(statusEl, `✓ Sender ${verb}`);
+      setStatus(statusEl, `Sender ${verb}`, 'ok');
       render();
     } catch (error) {
       // Fehlertext des Main (z. B. ungültige URL) steht am Formular, nicht nur im Status
@@ -227,7 +227,7 @@ function createRadioCustomView(root, { radio, logger = null } = {}) {
       setSources(await radio.removeCustom(id));
       state.confirmRemove = null;
       state.restoreFocus = { key: null, action: 'add' };
-      setStatus(statusEl, '✓ Sender gelöscht');
+      setStatus(statusEl, 'Sender gelöscht', 'ok');
       render();
     } catch (error) {
       fail(error);

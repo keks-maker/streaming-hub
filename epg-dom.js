@@ -4,6 +4,7 @@
 'use strict';
 
 const gridModel = require('./epg-grid-model.js');
+const Icons = require('./icons.js');
 
 function h(tag, props = {}, children = []) {
   const el = document.createElement(tag);
@@ -15,6 +16,12 @@ function h(tag, props = {}, children = []) {
   for (const [name, value] of Object.entries(props.attrs || {})) el.setAttribute(name, value);
   for (const child of children) el.appendChild(child);
   return el;
+}
+
+/** Aufnahme-Marker (Punkt) in einen Block/eine Zeile setzen oder leeren. */
+function setMarkerDot(node, active) {
+  if (active) Icons.setIconOnly(node, 'circle', null, { filled: true });
+  else node.textContent = '';
 }
 
 function getFocusable(container) {
@@ -66,4 +73,4 @@ function createChannelLogo({ name, channel, sanitizeLogoUrl, extraClass = '' }) 
   return logo;
 }
 
-module.exports = { h, getFocusable, trapTab, createChannelLogo };
+module.exports = { h, getFocusable, trapTab, createChannelLogo, setMarkerDot };

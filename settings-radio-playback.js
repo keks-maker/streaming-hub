@@ -149,7 +149,7 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   async function saveTrayScrollMode(wanted) {
     try {
       show(await radio.setSettings({ trayScrollMode: wanted }));
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       modeSelect.value = state.settings && state.settings.trayScrollMode ? state.settings.trayScrollMode : DEFAULT_TRAY_SCROLL_MODE;
       setStatus(statusEl, formatIpcError(error), true);
@@ -159,7 +159,7 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   async function saveTrayDisplay(wanted) {
     try {
       show(await radio.setSettings({ trayDisplay: wanted }));
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       showTrayDisplay(state.settings && state.settings.trayDisplay);
       setStatus(statusEl, formatIpcError(error), true);
@@ -179,7 +179,7 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
     const wanted = input.checked;
     try {
       show(await radio.setSettings({ [key]: wanted }));
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       input.checked = !wanted;
       setStatus(statusEl, formatIpcError(error), true);
@@ -193,7 +193,7 @@ function createRadioPlaybackView(root, { radio, logger = null } = {}) {
   slider.addEventListener('change', async () => {
     try {
       await radio.setVolume(Number(slider.value) / 100);
-      setStatus(statusEl, '✓ Gespeichert');
+      setStatus(statusEl, 'Gespeichert', 'ok');
     } catch (error) {
       setStatus(statusEl, formatIpcError(error), true);
     }

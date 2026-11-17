@@ -8,6 +8,7 @@
 'use strict';
 
 const { recordingsCardModel, epgCardModel } = require('./dashboard-hub-model.js');
+const Icons = require('./icons.js');
 
 const ICON_EPG =
   '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="20"/></svg>';
@@ -38,8 +39,9 @@ function buildCard(doc, { key, id, title, iconSvg, onOpen }) {
   const status = el(doc, 'p', 'hub-card-status');
   const hint = el(doc, 'p', 'hub-card-hint');
   body.append(heading, status, hint);
-  const chevron = el(doc, 'span', 'hub-card-chevron', '›');
+  const chevron = el(doc, 'span', 'hub-card-chevron');
   chevron.setAttribute('aria-hidden', 'true');
+  chevron.appendChild(Icons.createIcon(doc, 'chevron-right'));
   card.append(icon, body, chevron);
   return { card, status, hint };
 }

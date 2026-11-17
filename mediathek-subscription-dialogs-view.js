@@ -6,7 +6,7 @@
 
 const options = require('./mediathek-download-options-model.js');
 const model = require('./mediathek-subscriptions-model.js');
-const { el, button } = require('./mediathek-cards.js');
+const { el, button, iconButton } = require('./mediathek-cards.js');
 const { openModal, field, titleBlock } = require('./mediathek-download-dialogs-view.js');
 
 /** Auswahl-Felder für die Optionen des Abos (Vorbelegung: globale Einstellungen, überlagert von den Optionen des Abos). */
@@ -110,7 +110,7 @@ function createSubscriptionDialogs(ctx) {
     function render() {
       const hadFocus = dialog.contains(doc.activeElement) ? doc.activeElement.id : '';
       dialog.textContent = '';
-      dialog.appendChild(button(doc, 'mediathek-dialog-close', '×', () => modal.close(), 'Schließen'));
+      dialog.appendChild(iconButton(doc, 'mediathek-dialog-close', 'x', () => modal.close(), 'Schließen'));
       dialog.append(...titleBlock(doc, 'Neue Folgen automatisch laden', 'mediathekSubTitle', series.title));
       dialog.appendChild(el(doc, 'p', 'mediathek-dialog-desc', 'Die App prüft regelmäßig, ob es neue Folgen gibt, und lädt sie. Das klappt nur, solange die App läuft.'));
 
@@ -197,7 +197,7 @@ function createSubscriptionDialogs(ctx) {
     function render() {
       const hadFocus = dialog.contains(doc.activeElement) ? doc.activeElement.id : '';
       dialog.textContent = '';
-      dialog.appendChild(button(doc, 'mediathek-dialog-close', '×', () => modal.close(), 'Schließen'));
+      dialog.appendChild(iconButton(doc, 'mediathek-dialog-close', 'x', () => modal.close(), 'Schließen'));
       dialog.append(...titleBlock(doc, 'Abo-Optionen', 'mediathekSubOptTitle', sub.title));
       dialog.appendChild(el(doc, 'p', 'mediathek-dialog-desc', 'Diese Optionen gelten für alle Folgen, die dieses Abo künftig lädt.'));
       dialog.appendChild(optionFields(form, () => {}));
