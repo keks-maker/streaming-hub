@@ -52,6 +52,9 @@
   --mark-ink: #111111;
   --overlay-h: 64px;
   --overlay-compact-h: 24px;
+  --overlay-top: 24px;
+  --overlay-bar-h: 68px;
+  --settings-top: calc(var(--overlay-top) + var(--overlay-bar-h) + var(--space-4));
   --toolbar-h: 44px;
   /* Design-Tokens nach docs/DESIGN.md (Dunkel/Hell per light-dark) */
   --surface-0: light-dark(#f3f5f8, #0a0a0f);
@@ -2916,11 +2919,11 @@ body.epg-open .overlay-bar { z-index: 105; }
 
 .overlay-bar {
   position: fixed;
-  top: 24px;
+  top: var(--overlay-top);
   left: 50%;
   z-index: 90;
   width: min(920px, calc(100vw - 48px));
-  height: 68px;
+  height: var(--overlay-bar-h);
   padding: 8px 14px;
   transform: translateX(-50%);
   background: var(--nav-bg);
@@ -3031,7 +3034,11 @@ body.epg-open .overlay-bar { z-index: 105; }
 .settings-dashboard .dashboard-grid { display:block; max-width:1180px; }
 .recordings-dashboard .dashboard-grid { display:block; max-width:1000px; }
 .settings-dashboard .dashboard-grid > .settings-panel { width:100%; max-width:none; background:var(--surface-2); border:1px solid color-mix(in srgb, var(--ink) calc(var(--k) * 10%), transparent); }
-.settings-dashboard .dashboard-view { overflow:auto; }
+/* Einstellungen: feste Höhe unter der Navigationsleiste; Seitenleiste und Inhalt scrollen selbst, die Seite nie. */
+.dashboard-view.settings-dashboard { display:flex; flex-direction:column; overflow:hidden; padding-top:var(--settings-top); padding-bottom:var(--space-4); }
+.settings-dashboard .dashboard-header { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); margin:0; white-space:nowrap; }
+.settings-dashboard .settings-panel-host { flex:1 1 auto; min-height:0; width:100%; max-width:1180px; margin:0 auto; }
+.settings-dashboard .settings-panel-host > .settings-panel { height:100%; }
 .overlay-location { display:none; }
 .content-area { min-height:100vh; background:radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--area-c, var(--accent)) 22%, transparent), transparent 34%), radial-gradient(circle at 82% 78%, var(--glow-cyan), transparent 30%), var(--surface-0); }
 .content-view,.tv-view { top:0; height:100%; }
@@ -3044,6 +3051,7 @@ body.epg-open .overlay-bar { z-index: 105; }
 .dashboard-tile-icon { width:76px; height:76px; border-radius:22px; background:var(--icon-plate); }
 .modal,.shortcuts-panel { border-radius:var(--radius-xl); box-shadow:0 26px 90px color-mix(in srgb, var(--shadow) 52%, transparent), inset 0 1px 0 color-mix(in srgb, var(--ink) calc(var(--k) * 6%), transparent); }
 @media (max-width:700px) {
+  :root { --overlay-top: 12px; }
   .overlay-bar { top:12px; width:calc(100vw - 24px); border-radius:18px; }
   .nav-section-item { min-width:0; padding:0 10px; }
   .nav-section-label { display:none; }
@@ -3072,15 +3080,17 @@ body.epg-open .overlay-bar { z-index: 105; }
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 24px;
   padding: 20px;
-  align-items: start;
+  align-items: stretch;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  box-sizing: border-box;
 }
+.settings-content { min-height: 0; overflow-y: auto; }
 .settings-nav {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  position: sticky;
-  top: 96px; /* = padding-top von .dashboard-view: Leiste klebt unter der Navigationsleiste */
-  max-height: calc(100vh - 96px - 48px - 20px); /* Leistenabstand oben, Seitenrand unten + Shell-Padding */
+  min-height: 0;
   overflow-y: auto;
 }
 .settings-nav-section { --nav-section-c: var(--area-settings); display: flex; flex-direction: column; gap: 2px; }
@@ -3168,8 +3178,9 @@ body.epg-open .overlay-bar { z-index: 105; }
   text-align: center;
 }
 @media (max-width: 760px) {
-  .settings-shell { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
-  .settings-nav { flex-direction: row; flex-wrap: wrap; position: static; max-height: none; overflow: visible; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .settings-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; gap: 14px; padding: 14px; overflow-y: auto; }
+  .settings-content { overflow-y: visible; }
+  .settings-nav { flex-direction: row; flex-wrap: wrap; overflow: visible; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
   .settings-nav-section { display: contents; }
   .settings-nav-heading { flex-basis: 100%; margin-top: 4px; padding: 0; }
   .settings-nav-item { width: auto; padding: 7px 12px; }

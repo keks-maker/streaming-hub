@@ -93,6 +93,7 @@ function resolvePage(requested, stored, nav = SETTINGS_NAV) {
 function createSettingsView(panel, options = {}) {
   const nav = options.nav || SETTINGS_NAV;
   const navEl = panel.querySelector('#settingsNav');
+  const contentEl = panel.querySelector('.settings-content');
   const pageEls = new Map();
   panel.querySelectorAll('[data-settings-page]').forEach(el => {
     pageEls.set(el.dataset.settingsPage, el);
@@ -169,7 +170,7 @@ function createSettingsView(panel, options = {}) {
     return [...tabs.values()].filter(t => t.getClientRects().length > 0);
   }
 
-  /** Nur die Seitenleiste scrollen (nicht die äußere Seite, sonst rutscht die Leiste unter die Navigationsleiste). */
+  /** Nur die Seitenleiste scrollen; die Seite selbst scrollt in den Einstellungen nicht (feste Höhe, siehe styles.css). */
   function revealInNav(tab) {
     const top = tab.getBoundingClientRect().top - navEl.getBoundingClientRect().top + navEl.scrollTop;
     if (top < navEl.scrollTop) navEl.scrollTop = top;
@@ -188,7 +189,12 @@ function createSettingsView(panel, options = {}) {
       btn.tabIndex = selected ? 0 : -1;
     });
     const selectedTab = tabs.get(page);
-    if (selectedTab) revealInNav(selectedTab);
+    if (selectedTab) {
+      revealInNav(selectedTab);
+      // Nach dem Layout erneut (beim ersten Öffnen hat die Seitenleiste noch keine Höhe).
+      requestAnimationFrame(() => revealInNav(selectedTab));
+    }
+    if (contentEl) contentEl.scrollTop = 0;
     placeAddForm(page);
     if (remember) writeStoredPage(page, options.storage);
     if (typeof options.onShow === 'function') options.onShow(page);

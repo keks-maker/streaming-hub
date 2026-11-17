@@ -149,6 +149,8 @@ Die Hellwerte legt der Apple-Schritt A1 fest (Kontrastziel wie bei `area-*`), so
   Faktor Apple TV: 1,5 bis 2. Zuordnung iPad `iPadType` (Systemstile) → Stufen: `pageTitle` → `section`, `cardTitle` → `body` fett, `caption` → `meta`.
 - **Bewegung:** `motion-base` 0,25 s cubic-bezier(0.4,0,0.2,1) (Ist `--t`) · `motion-fast` 0,15 s · `motion-crossfade` 0,3 s für Bild-zu-Video-Überblendung.
 
+**Layout-Variablen (Desktop, `styles.css`):** `--overlay-top` (24 px, ≤700 px Breite 12 px) und `--overlay-bar-h` (68 px) beschreiben die schwebende Navigationsleiste; `--settings-top` = Oberkante + Höhe + `space-4` ist der Kopfabstand des Einstellungsbereichs. Die Einstellungen haben feste Höhe unterhalb davon: Seitenleiste und Inhalt scrollen jeweils selbst, die Seite nicht.
+
 ## Komponenten-Katalog
 
 Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansichten bauen nur aus diesen Teilen.
