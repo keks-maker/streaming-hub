@@ -174,13 +174,6 @@ test('LiveTV: Werkzeugleiste (Senderverwaltung, Status, EPG aktualisieren); das 
   await page.locator('#overlayNav [data-section="livetv"]').click();
 });
 
-// LiveTV-Gruppe der Einstellungs-Seitenleiste aufklappen (falls zugeklappt).
-async function expandSettingsLiveTv() {
-  const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
-  await expect(group).toHaveAttribute('aria-expanded', 'true');
-}
-
 test('Aufnahmen: Dashboard-Einstieg und Speicherort-Einstellung erreichbar', async () => {
   // Navigation über die Navbar (nach dem Betreten eines Bereichs ist sie sichtbar).
   const nav = page.locator('#overlayNav');
@@ -197,7 +190,7 @@ test('Aufnahmen: Dashboard-Einstieg und Speicherort-Einstellung erreichbar', asy
   await nav.locator('[data-section="settings"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
   // Seitenleiste: Aufnahmen liegt unter LiveTV und ist erst nach Seitenwahl sichtbar.
-  await expandSettingsLiveTv();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'LiveTV' })).toBeVisible();
   await page.locator('#settingsTab-livetv-recordings').click();
   await expect(page.locator('#recPathInput')).toBeVisible();
   await expect(page.locator('#recPathSaveBtn')).toBeVisible();
@@ -217,8 +210,7 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await expect(page.locator('#settingsServiceListStreaming')).toBeVisible();
   await expect(page.locator('#settingsTab-streaming')).toHaveAttribute('aria-selected', 'true');
 
-  const mediathekGroup = page.locator('#settingsNav .settings-nav-group', { hasText: 'Mediatheken' });
-  if ((await mediathekGroup.getAttribute('aria-expanded')) !== 'true') await mediathekGroup.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'Mediatheken' })).toBeVisible();
   await page.locator('#settingsTab-mediathek-sources').click();
   await expect(page.locator('#settingsServiceListMediathek')).toBeVisible();
   await page.locator('#settingsAddMediathekBtn').click();
@@ -241,7 +233,7 @@ test('Einstellungen: Seitenwechsel per Seitenleiste und Tastatur', async () => {
   await expect(page.locator('[data-settings-page="general"]')).toBeVisible();
 
   // LiveTV-Unterseiten
-  await expandSettingsLiveTv();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'LiveTV' })).toBeVisible();
   await page.locator('#settingsTab-livetv-playback').click();
   await expect(page.locator('input[name="tvMode"][value="free"]')).toBeVisible();
   await page.locator('#settingsTab-livetv-sources').click();
@@ -254,10 +246,8 @@ test('Einstellungen: Pfeiltasten im schmalen Layout erreichen LiveTV-Tabs', asyn
   try {
     await page.locator('#overlayNav [data-section="settings"]').click();
     await page.locator('#settingsTab-general').click();
-    const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
-    if ((await group.getAttribute('aria-expanded')) === 'true') {
-      await group.evaluate(el => el.click());
-    }
+    // Im schmalen Layout stehen die Gruppen-Überschriften als Zeilen im Umbruch; Pfeiltasten laufen über alle Einträge
+    await expect(page.locator('#settingsNav').getByRole('heading', { name: 'LiveTV' })).toBeVisible();
     await page.locator('#settingsTab-general').focus();
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('#settingsTab-livetv-sources')).toHaveAttribute('aria-selected', 'true');
@@ -268,7 +258,7 @@ test('Einstellungen: Pfeiltasten im schmalen Layout erreichen LiveTV-Tabs', asyn
 
 test('Einstellungen: LiveTV-Quelle hinzufügen, bearbeiten, EPG-URL ändern, entfernen', async () => {
   await page.locator('#overlayNav [data-section="settings"]').click();
-  await expandSettingsLiveTv();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'LiveTV' })).toBeVisible();
   await page.locator('#settingsTab-livetv-sources').click();
 
   const row = name => page.locator('#settingsTvSourceList .settings-source-row', { hasText: name });

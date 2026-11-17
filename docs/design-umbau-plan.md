@@ -59,12 +59,14 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - Bereichsfarbe: Navigation ist fertig. Offen: Schimmer hinter der Überschrift, Fortschrittslinien und Equalizer in der Farbe des Bereichs; Senderkachel-Farbe von Quellenfarbe auf `area-livetv`.
 
 ### Schritt 6: Startseite „Läuft gerade“
-- Status: erledigt (QA ausstehend). Commit A (Hash siehe git log, Präfix `design(6)`).
+- Status: erledigt (QA ausstehend). Commit `73c0c2e`.
 - Leiste unter den Bereichskacheln aus Verlauf, Radio-Status und laufenden Aufnahmen; leer, wenn nichts da ist.
 - Umsetzung: `running-now-model.js` (Auswahl, Reihenfolge), `running-now-view.js`, Verdrahtung in `renderer.js`. Eine Karte je Quelle (Aufnahme, Radio, Podcast, Verlauf), laufende zuerst. Quellen: `recording:list` + `recording:changed`, Radio-Zustand/-Einstellungen (`lastStation`), Podcast-Hörzustand (`podcastHub.data`, Player-Zustand), `get-history`. Weggelassen: Mediathek-„Weiterschauen“ (nur über Netzabruf der Hub-Daten, nicht ohne neues IPC/Netz auf der Startseite).
 
 ### Schritt 7: Einstellungen gruppieren
+- Status: erledigt (QA ausstehend). Commit `design(7)` (nach `73c0c2e`).
 - Seitenleiste mit Gruppen-Überschriften (LiveTV, Radio, Podcasts, Mediatheken, Streaming, Allgemein) statt Präfixen wie „LiveTV: Quellen“.
+- Umsetzung: `settings-view.js` (alle Gruppen immer offen, `h2` je Gruppe, `tablist` je Gruppe mit `aria-labelledby`), Seitentitel in `index.html` ohne Präfix, Streaming-Eintrag „Dienste“, Allgemein-Eintrag „Sicherung“. Gruppenreihenfolge unverändert (Allgemein, LiveTV, Radio, Podcasts, Streaming, Mediatheken), damit Home/Pfeiltasten wie vorher laufen. „Downloads: …“-Einträge der Mediatheken bleiben (Unterthema, keine Gruppe).
 
 ### Schritt 8: Restliche Bereiche angleichen
 - Mini-Player: Video, Radio und Podcast nutzen schon eine Leiste (`radio-miniplayer-view.js`); nur Optik und Tokens prüfen.

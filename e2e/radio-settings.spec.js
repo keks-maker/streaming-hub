@@ -43,8 +43,7 @@ async function openRadioDashboard(page) {
 
 // Radio-Seite der Einstellungen über die Seitenleiste öffnen (Gruppe „Radio“ aufklappen, Tab wählen)
 async function openRadioSettingsTab(page, tab) {
-  const radioGroup = page.locator('#settingsNav .settings-nav-group').nth(1);
-  if ((await radioGroup.getAttribute('aria-expanded')) !== 'true') await radioGroup.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'Radio' })).toBeVisible();
   await page.locator(`#settingsTab-${tab}`).click();
   await expect(page.locator(`[data-settings-page="${tab}"]`)).toBeVisible();
 }
@@ -127,9 +126,9 @@ test.describe('Radio-Einstellungen', () => {
     await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
     await expect(page.locator('#settingsTab-radio-stations')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-settings-page="radio-stations"]')).toBeVisible();
-    const groups = await page.locator('#settingsNav .settings-nav-group').allTextContents();
-    expect(groups.map(t => t.replace('▸', '').trim())).toEqual(['LiveTV', 'Radio', 'Podcasts', 'Mediatheken']);
-    const tabs = await page.locator('#settingsNav .settings-nav-children').nth(1).locator('[role="tab"]').allTextContents();
+    const groups = await page.locator('#settingsNav .settings-nav-heading').allTextContents();
+    expect(groups).toEqual(['Allgemein', 'LiveTV', 'Radio', 'Podcasts', 'Streaming', 'Mediatheken']);
+    const tabs = await page.locator('#settingsNav').getByRole('tablist', { name: 'Radio' }).getByRole('tab').allTextContents();
     expect(tabs).toEqual(['Sender', 'Eigene Sender', 'Wiedergabe']);
     await expect(page.locator('#settingsRadioList .settings-chan-row').first()).toBeVisible();
     await shot(page, 'radio-einstellungen-sender');

@@ -285,8 +285,7 @@ test('Planungsliste „Geplant“: Eintrag sichtbar, Puffer bearbeiten, live per
 
 test('Settings „LiveTV → Aufnahmen“: Karte „Planung“ speichert Puffer und Spätstart', async () => {
   await page.locator('#overlayNav [data-section="settings"]').click();
-  const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'LiveTV' })).toBeVisible();
   await page.locator('#settingsTab-livetv-recordings').click();
   await expect(page.locator('#recBufferBeforeInput')).toHaveValue('2');
   await expect(page.locator('#recBufferAfterInput')).toHaveValue('5');

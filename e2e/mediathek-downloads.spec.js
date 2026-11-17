@@ -321,8 +321,7 @@ test('Löschen mit Rückfrage: Abbrechen behält, „Datei auch löschen“ entf
 
 test('Einstellungen: Seiten, Begrenzung, Speicherort prüfen, Hinweise, „Download-Funktion anzeigen“', async () => {
   await page.locator('#overlayNav [data-section="settings"]').click();
-  const group = page.locator('#settingsNav .settings-nav-group', { hasText: 'Mediatheken' });
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'Mediatheken' })).toBeVisible();
   for (const label of ['Downloads: Ablage', 'Downloads: Qualität', 'Downloads: Ton & Untertitel', 'Downloads: Steuerung', 'Downloads: Hinweise']) {
     await expect(page.locator('#settingsNav .settings-nav-item', { hasText: label })).toBeVisible();
   }

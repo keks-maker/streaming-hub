@@ -65,8 +65,7 @@ const resolveFsk = () => page.evaluate(entry => window.mediathek.resolvePlayback
 test('Konten-Seite: Karten, ZDF mit Anmeldung und PIN-Hinweis, Hinweis zum Passwort', async () => {
   await page.locator('.dashboard-section-tile[data-section="settings"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
-  const group = page.locator('#settingsNav .settings-nav-group', { hasText: 'Mediatheken' });
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'Mediatheken' })).toBeVisible();
   await page.locator('#settingsTab-mediathek-accounts').click();
   await expect(page.locator('.settings-page[data-settings-page="mediathek-accounts"]')).toBeVisible();
   await expect(page.locator('.settings-account-card')).toHaveCount(3);

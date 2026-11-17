@@ -103,8 +103,7 @@ test.beforeAll(async () => {
   await page.waitForLoadState('domcontentloaded');
   await page.locator('#dashboardView').waitFor();
   await page.locator('.dashboard-section-settings').click();
-  const group = page.locator('#settingsNav .settings-nav-group').first(); // LiveTV ist die erste Gruppe (danach Radio)
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'LiveTV' })).toBeVisible();
   await page.locator('#settingsTab-livetv-channels').click();
 });
 

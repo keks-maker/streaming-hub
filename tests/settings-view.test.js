@@ -35,3 +35,20 @@ test('Bestehende Einstellungs-IDs bleiben erhalten', () => {
   }
   assert.equal(indexHtml.split('name="tvMode"').length - 1, 2);
 });
+
+test('Seitenleiste: Gruppen mit Überschrift, Einträge ohne Gruppenpräfix, Seiten-IDs unverändert', () => {
+  assert.deepEqual(SETTINGS_NAV.map(g => g.label), ['Allgemein', 'LiveTV', 'Radio', 'Podcasts', 'Streaming', 'Mediatheken']);
+  for (const group of SETTINGS_NAV) {
+    assert.ok(Array.isArray(group.children) && group.children.length >= 1, `${group.label} hat Einträge`);
+    for (const child of group.children) {
+      assert.ok(!child.label.startsWith(`${group.label}:`), `${child.label} ohne Gruppenpräfix`);
+    }
+  }
+  const pages = SETTINGS_NAV.flatMap(g => g.children.map(c => c.page));
+  assert.deepEqual(pages.slice(0, 6), ['general', 'livetv-sources', 'livetv-channels', 'livetv-epg', 'livetv-playback', 'livetv-recordings']);
+  for (const page of ['radio-stations', 'podcast-subs', 'streaming', 'mediathek-sources', 'mediathek-dl-notes']) assert.ok(pages.includes(page), page);
+});
+
+test('Seitentitel im Markup tragen keine Gruppenpräfixe mehr', () => {
+  assert.doesNotMatch(indexHtml, /settings-page-title">(LiveTV|Radio|Podcasts|Mediatheken): /);
+});

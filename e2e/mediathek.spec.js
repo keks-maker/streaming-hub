@@ -251,8 +251,7 @@ test('Weitere Mediatheken: nur eigene Weblink-Dienste, Standard-Weblinks fehlen'
 
 test('Einstellungen: Quellen ein/aus wirken im Hub, Wiedergabe wird gespeichert', async () => {
   await page.locator('#overlayNav [data-section="settings"]').click();
-  const group = page.locator('#settingsNav .settings-nav-group', { hasText: 'Mediatheken' });
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'Mediatheken' })).toBeVisible();
   await page.locator('#settingsTab-mediathek-sources').click();
   await expect(page.locator('#settingsServiceListMediathek')).toBeVisible();
   await expect(page.locator('#settingsMediathekSource-zdf')).toBeChecked();

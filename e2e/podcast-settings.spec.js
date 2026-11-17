@@ -74,8 +74,7 @@ async function openManagement(page) {
 }
 
 async function openTab(page, tab) {
-  const group = page.locator('#settingsNav .settings-nav-group', { hasText: 'Podcasts' });
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
+  await expect(page.locator('#settingsNav').getByRole('heading', { name: 'Podcasts' })).toBeVisible();
   await page.locator(`#settingsTab-${tab}`).click();
   await expect(page.locator(`[data-settings-page="${tab}"]`)).toBeVisible();
 }
@@ -117,12 +116,11 @@ test.describe('Einstellungen: Podcasts', () => {
     await openManagement(page);
     await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
     await expect(page.locator('#settingsTab-podcast-subs')).toHaveAttribute('aria-selected', 'true');
-    const group = page.locator('#settingsNav .settings-nav-group', { hasText: 'Podcasts' });
-    await expect(group).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#settingsNav').getByRole('tablist', { name: 'Podcasts' }).getByRole('tab', { name: 'Abos' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#settingsPodcastSubsEmpty')).toBeVisible();
     await expect(page.locator('#settingsPodcastSubsRefresh')).toBeDisabled();
-    const navOrder = await page.locator('#settingsNav .settings-nav-group').allTextContents();
-    expect(navOrder.map(text => text.replace('▸', '').trim()).slice(0, 3)).toEqual(['LiveTV', 'Radio', 'Podcasts']);
+    const navOrder = await page.locator('#settingsNav .settings-nav-heading').allTextContents();
+    expect(navOrder.slice(0, 4)).toEqual(['Allgemein', 'LiveTV', 'Radio', 'Podcasts']);
     await shot(page, 'einstellungen-abos-leer');
   });
 

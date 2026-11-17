@@ -2,16 +2,16 @@
 // Reine Shell: Navigation, Seitenwechsel, Merken der letzten Seite.
 // Die Funktionslogik der einzelnen Optionen bleibt in renderer.js.
 
-const Icons = require('./icons.js');
-
 const STORAGE_KEY = 'settingsPage';
 const DEFAULT_PAGE = 'general';
 
-// Konfiguration der Seitenleiste. `page` verweist auf [data-settings-page].
+// Konfiguration der Seitenleiste: jede Gruppe hat eine Überschrift (immer sichtbar, nicht fokussierbar) und ihre Einträge ohne
+// Gruppenpräfix. `page` verweist auf [data-settings-page]; die Seiten-IDs sind Ziele von Deep-Links (openSettingsPage). `area` ist die Bereichsfarbe.
 const SETTINGS_NAV = [
-  { page: 'general', label: 'Allgemein' },
+  { key: 'general', label: 'Allgemein', area: 'settings', children: [{ page: 'general', label: 'Sicherung' }] },
   {
     key: 'livetv',
+    area: 'livetv',
     label: 'LiveTV',
     children: [
       { page: 'livetv-sources', label: 'Quellen' },
@@ -23,6 +23,7 @@ const SETTINGS_NAV = [
   },
   {
     key: 'radio',
+    area: 'radio',
     label: 'Radio',
     children: [
       { page: 'radio-stations', label: 'Sender' },
@@ -32,6 +33,7 @@ const SETTINGS_NAV = [
   },
   {
     key: 'podcasts',
+    area: 'podcast',
     label: 'Podcasts',
     children: [
       { page: 'podcast-subs', label: 'Abos' },
@@ -39,9 +41,10 @@ const SETTINGS_NAV = [
       { page: 'podcast-playback', label: 'Wiedergabe' },
     ],
   },
-  { page: 'streaming', label: 'Streaming' },
+  { key: 'streaming', label: 'Streaming', area: 'streaming', children: [{ page: 'streaming', label: 'Dienste' }] },
   {
     key: 'mediathek',
+    area: 'mediathek',
     label: 'Mediatheken',
     children: [
       { page: 'mediathek-sources', label: 'Quellen' },
@@ -57,7 +60,7 @@ const SETTINGS_NAV = [
 ];
 
 function allPages(nav = SETTINGS_NAV) {
-  return nav.flatMap(entry => (entry.children ? entry.children : [entry]));
+  return nav.flatMap(entry => entry.children);
 }
 
 function isValidPage(page, nav = SETTINGS_NAV) {
@@ -97,31 +100,23 @@ function createSettingsView(panel, options = {}) {
   const addForm = panel.querySelector('#settingsAddForm');
   const addGroupSelect = panel.querySelector('#settingsInputGroup');
   const tabs = new Map();
-  const groups = new Map();
   let currentPage = null;
 
-  function setGroupExpanded(key, expanded) {
-    const group = groups.get(key);
-    if (!group) return;
-    group.button.setAttribute('aria-expanded', String(expanded));
-    group.children.hidden = !expanded;
-  }
-
-  function buildTab(item, groupLabel) {
+  function buildTab(item, headingId) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'settings-nav-item';
     btn.setAttribute('role', 'tab');
     btn.id = `settingsTab-${item.page}`;
     btn.dataset.page = item.page;
-    if (groupLabel) btn.dataset.group = groupLabel;
     btn.setAttribute('aria-selected', 'false');
     btn.tabIndex = -1;
     btn.textContent = item.label;
     const pageEl = pageEls.get(item.page);
     if (pageEl) {
       btn.setAttribute('aria-controls', pageEl.id || (pageEl.id = `settingsPage-${item.page}`));
-      pageEl.setAttribute('aria-labelledby', btn.id);
+      // Name der Seite: Gruppe und Eintrag („LiveTV Quellen“), damit gleichnamige Einträge unterscheidbar bleiben
+      pageEl.setAttribute('aria-labelledby', `${headingId} ${btn.id}`);
     }
     btn.addEventListener('click', () => showPage(item.page));
     tabs.set(item.page, btn);
@@ -130,30 +125,24 @@ function createSettingsView(panel, options = {}) {
 
   function build() {
     navEl.innerHTML = '';
-    navEl.setAttribute('role', 'tablist');
-    navEl.setAttribute('aria-orientation', 'vertical');
     nav.forEach(entry => {
-      if (!entry.children) {
-        navEl.appendChild(buildTab(entry));
-        return;
-      }
-      const header = document.createElement('button');
-      header.type = 'button';
-      header.className = 'settings-nav-group';
-      header.setAttribute('aria-expanded', 'false');
-      header.innerHTML = `<span></span><span class="settings-nav-group-chevron" aria-hidden="true">${Icons.iconSvg('chevron-right')}</span>`;
-      header.firstChild.textContent = entry.label;
+      const headingId = `settingsNavHeading-${entry.key}`;
+      const group = document.createElement('div');
+      group.className = 'settings-nav-section';
+      group.dataset.area = entry.area;
+      // Echte Überschrift, kein Bedienelement: nicht fokussierbar, Screenreader springen per Überschriftennavigation
+      const heading = document.createElement('h2');
+      heading.className = 'settings-nav-heading';
+      heading.id = headingId;
+      heading.textContent = entry.label;
       const list = document.createElement('div');
       list.className = 'settings-nav-children';
-      list.setAttribute('role', 'presentation');
-      list.hidden = true;
-      entry.children.forEach(child => list.appendChild(buildTab(child, entry.label)));
-      header.addEventListener('click', () => {
-        setGroupExpanded(entry.key, header.getAttribute('aria-expanded') !== 'true');
-      });
-      groups.set(entry.key, { button: header, children: list, pages: entry.children.map(c => c.page) });
-      navEl.appendChild(header);
-      navEl.appendChild(list);
+      list.setAttribute('role', 'tablist');
+      list.setAttribute('aria-orientation', 'vertical');
+      list.setAttribute('aria-labelledby', headingId);
+      entry.children.forEach(child => list.appendChild(buildTab(child, headingId)));
+      group.append(heading, list);
+      navEl.appendChild(group);
     });
   }
 
@@ -191,9 +180,8 @@ function createSettingsView(panel, options = {}) {
       btn.setAttribute('aria-selected', String(selected));
       btn.tabIndex = selected ? 0 : -1;
     });
-    groups.forEach((group, key) => {
-      if (group.pages.includes(page)) setGroupExpanded(key, true);
-    });
+    const selectedTab = tabs.get(page);
+    if (selectedTab && typeof selectedTab.scrollIntoView === 'function') selectedTab.scrollIntoView({ block: 'nearest' });
     placeAddForm(page);
     if (remember) writeStoredPage(page, options.storage);
     if (typeof options.onShow === 'function') options.onShow(page);
