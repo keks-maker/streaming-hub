@@ -46,6 +46,8 @@ Vier Stufen plus Navigation ersetzen die früheren rund zehn Flächen-Variablen;
 | `scrim` | Abdunkelung über Bild/Video | rgba(0,0,0,.6) (Ist) | rgba(20,28,48,.42) (Ist) | `--scrim` |
 | `scrim-media` | Pille/Knopf hinter weißem Symbol auf Bild | rgba(10,10,15,.78) (Ist) | wie Dunkel (Ist, Ausnahme) | `--media-scrim` |
 | `scrim-media-strong` | Wie `scrim-media`, Hover und Toast | rgba(10,10,15,.95) (Ist) | wie Dunkel (Ist, Ausnahme) | `--media-scrim-strong` |
+| `icon-plate` | Platte hinter Bereichs-Icon und Senderlogo | rgba(255,255,255,.11) (Ist) | rgba(255,255,255,.78) (Ist) | `--icon-plate` |
+| `media-ink` | Weiße Schrift/Symbole auf `scrim-media` | #ffffff (Ist) | #ffffff (Ist, Ausnahme wie `scrim-media`) | `--media-ink` |
 
 **Abweichende Variablen (Schritt 4, erledigt).** Die neun Variablen mit anderem Ist-Wert sind auf die Ziel-Token umgestellt und aus `:root` entfernt (sichtbare Änderung: Flächen überall gleich, Hell und Dunkel per Screenshot geprüft):
 
@@ -159,7 +161,7 @@ Werte (Entscheidung 2026-11-17, Apple A1, `DesignTokens.swift`): Hellwert = glei
 
 ### Radien, Abstände, Schrift, Bewegung
 
-- **Radien** (Ist am Desktop: 3, 4, 6, 8, 10, 12, 14, 16, 18, 24 px, 999 px und 50 %): `radius-xs` 6 · `radius-sm` 8 · `radius-md` 12 · `radius-lg` 16 · `radius-xl` 24 · `radius-full`. Entscheidung: Bereichskachel (Startkachel, `.dashboard-tile`) `xl` 24 (Ist sichtbar, passt zur iPad-Startkachel); übrige Kacheln und Icon-Platten `lg` 16; Navigationseintrag `md` 12; Badges `xs`; Navigationsleiste `full`; Bildkarten und Cover `md`; iPad-Startkacheln `xl` 24 (heute 28). Apple TV (Entscheidung 2026-11-17, Apple A3): feste TV-Radien `tv-radius-xs` 8 · `-sm` 12 · `-md` 16 · `-lg` 24 · `-xl` 32 (Startkachel 32, Platte 24); sie folgen nicht rechnerisch dem Schriftfaktor. Rundung vorhandener Radien auf Stufen (alle Plattformen): 4/5 → `xs`, 9/10/11 → `md`, 14 → `md`, 18/20 → `lg`, 22/28 → `xl`.
+- **Radien** (Ist am Desktop: 3, 4, 6, 8, 10, 12, 14, 16, 18, 24 px, 999 px und 50 %): `radius-xs` 6 · `radius-sm` 8 · `radius-md` 12 · `radius-lg` 16 · `radius-xl` 24 · `radius-full`. Entscheidung: Bereichskachel (Startkachel, `.dashboard-tile`) `xl` 24 (Ist sichtbar, passt zur iPad-Startkachel); übrige Kacheln und Icon-Platten `lg` 16; Navigationseintrag `md` 12; Badges `xs`; Navigationsleiste `full`; Bildkarten und Cover `md`; iPad-Startkacheln `xl` 24 (heute 28). Apple TV (Entscheidung 2026-11-17, Apple A3): feste TV-Radien `tv-radius-xs` 8 · `-sm` 12 · `-md` 16 · `-lg` 24 · `-xl` 32 (Startkachel 32, Platte 24); sie folgen nicht rechnerisch dem Schriftfaktor. Vorhandene TV-Radien werden direkt auf die nächstliegende TV-Stufe gelegt, bei Gleichstand nach unten (Apple A6). Rundung vorhandener Radien auf Stufen (Desktop, iPad): 4/5 → `xs`, 9/10/11 → `md`, 14 → `md`, 18/20 → `lg`, 22/28 → `xl`.
 - **Abstände:** 4 · 8 · 12 · 16 · 24 · 32 · 48 px (`space-1` bis `space-7`). Apple nutzt heute auch 6, 10, 14, 20, 28; diese werden beim Umbau auf die Stufen gelegt.
 - **Schrift:** Systemschrift (auf Apple-Geräten SF Pro; Desktop-Stack wie heute). Stufen:
 
@@ -190,9 +192,9 @@ Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansi
 
 Zweigeteilt (Mockup in `docs/design-umbau-plan.md`, Spec dort), Kachel `radius-md`:
 - **Oben die Medienfläche** (16:9): Vorschaubild der laufenden Sendung, abgedunkelt mit `scrim`. Ohne Bild: Verlauf in `area-livetv` (Senderfarbe) mit Platzhalter-Icon (`tv-minimal`). Beim Hover/Fokus liegt hier, und nur hier, die stumme Vorschau (Livestream).
-- **Auf der Medienfläche:** unten links das Senderlogo als kleine Platte (`icon-plate`, `radius-sm`), unten rechts die Zeitpille „20:15 – 21:00“ (`scrim-media`, `media-ink`, `meta`, `radius-xs`).
+- **Auf der Medienfläche:** unten links das Senderlogo als kleine Platte (`icon-plate`, `radius-sm`; im Dunkelmodus und auf Apple TV liegt `scrim-media` deckend darunter, Ersatzbuchstabe ohne Logo in `media-ink`, sonst `text-primary`), unten rechts die Zeitpille „20:15 – 21:00“ (`scrim-media`, `media-ink`, `meta`, `radius-xs`).
 - **Darunter der abgesetzte Infobereich** (Kachelgrund `surface-1`): Sendungstitel (`body`, fett), darunter „Sender · noch X Min.“ (`meta`, `text-secondary`). Abstände `space-*`.
-- Fortschritt als 3-px-Linie an der Unterkante der Kachel in `area-livetv`.
+- Fortschritt als 3-px-Linie an der Unterkante der Kachel in `area-livetv` (Apple TV 5 pt = 3 × Faktor 1,75, gerundet).
 - Hover (Desktop), Tippen (iPad) bzw. Fokus (Apple TV) startet die stumme Vorschau (Desktop 350 ms Verzögerung); Bild bzw. Platzhalter bleibt, bis der Stream das erste Videobild liefert, dann Überblendung mit `motion-crossfade`; beim Verlassen stoppt die Vorschau und blendet zurück. Es läuft immer nur eine Vorschau.
 - Entfällt: „Sender öffnen“ und das LIVE-Badge, denn im LiveTV-Bereich ist jeder Sender live.
 - Desktop-Umsetzung (Schritt S1): `renderer.js` `renderLiveTvTile`; Bild-Hook `setLiveTvTileImage` (`<img decoding="async">` in der Medienfläche, bei Fehler Verlauf). Schritt S2: Bild aus dem EPG (`<icon>` der Sendung), im Main geladen und auf 560 px Breite als JPEG im Cache-Ordner `epg-images/` abgelegt (Hash der URL, 50 MB, Aufräumen beim Start), Abruf über `epg-image:get`; der Renderer setzt es asynchron. Die EPG-Zellen „Jetzt & Gleich“ (`epg-jng-*`) sind ein Zeilenraster und nutzen die Kachel nicht (siehe unten). Umsetzung des Vorschaubilds (S2): Spec im Umbauplan.

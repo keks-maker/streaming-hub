@@ -26,9 +26,9 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau` ist in `main` aufgegange
 | A3. Radien und Schrift | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden); TV-Radius, Rundung 14/20, TV außerhalb Player offen | `e25b35a`, `5edba09`, `36f56ec` |
 | A4. TV-Vorschau-Verzögerung 350 ms | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden, Timing nur per Code geprüft) | `25b7788` |
 | A5. Texte und Komponenten (Apple) | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden, 3 Runden); voller Senderkachel-Aufbau → Schritt S | `1bbd3fd`, `0171cee`, `f081dac`, `f8278a8`, `751e354` |
-| A3b. Radien-Rundung 14 → `md`, 20 → `lg`; iPad-Schrift mit Dynamic Type | Apple | `design/umbau` (Apple-Repo) | offen (Entscheidung 2026-11-17) | – |
-| A6. Apple TV Rest auf Tokens (Radien, Schrift außerhalb Player), `list-indigo` dunkel #7672dd, TV-Senderliste Fokusstil | Apple | `design/umbau` (Apple-Repo) | offen (Entscheidung 2026-11-17) | – |
-| S-Apple. Senderkachel nach DESIGN.md mit Vorschaubild (iPad, Apple TV) | Apple | `design/umbau` (Apple-Repo) | offen (Entscheidung 2026-11-17) | – |
+| A3b. Radien-Rundung 14 → `md`, 20 → `lg`; iPad-Schrift mit Dynamic Type | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden) | `c0ce3a3` |
+| A6. Apple TV Rest auf Tokens (Radien, Schrift außerhalb Player), `list-indigo` dunkel #7672dd, TV-Senderliste Fokusstil | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden; Senderlisten-Zeile Fokus 1,02 statt 1,06, da sonst abgeschnitten) | `231ab82`, `55a4ba5`, `c191476`, `207e4c4` |
+| S-Apple. Senderkachel nach DESIGN.md mit Vorschaubild (iPad, Apple TV) | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden, 2 Runden); Sendungsbild/Zeitpille/Überblendung mangels EPG-Bildern in Testdaten nur im Code geprüft | `22568b9` … `0a941ea` |
 | S. Senderkachel mit Vorschaubild | Desktop, später Apple | `design/umbau`, `design/jetzt-gleich` → `main` | Desktop erledigt (QA bestanden): S1 Kachel, S2 EPG-Bild im Main (Cache `epg-images/`, `epg-image:get`, gehärtet). S3 Kachel für „Jetzt & Gleich“ verworfen (User 2026-11-17): Spaltenansicht bleibt, größer (Zeile 112 px, Bild 96 × 54 über den Main-Bild-Cache, Logo-Plakette 56 px), Aufnahme als Icon-Knopf ohne Ring. Apple-Umsetzung offen | f7cabd5, 106ccc5, f4da291, bccb825 … 3feb09f |
 
 ## Desktop
