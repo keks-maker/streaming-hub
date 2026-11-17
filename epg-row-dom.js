@@ -7,7 +7,7 @@
 //   'list'    Zeile der virtualisierten Programmliste (Spalte „Sender“ mit Link in die Kanalansicht)
 //   'channel' Zeile der Kanalansicht (ohne Senderspalte; Kennzeichen „Jetzt“/„Nächste“)
 //   'jng'     Zelle von „Jetzt & Gleich“ (Etappe 3.5: Titel, Zeit, Fortschritt, Marker und derselbe Toggle;
-//             Etappe 3.6: kleines Vorschaubild links — fester Platzhalter, das Bild setzt setCellThumb nach safeIconUrl)
+//             Etappe 3.6: kleines Vorschaubild links — fester Platzhalter, das Bild lädt setCellThumb über den Main-Bild-Cache)
 
 'use strict';
 
@@ -134,25 +134,38 @@ function updateRowNode(entry, row, { nowMs, marker, selected, flag = '' }) {
   return true;
 }
 
+/** Nur vom Main-Cache gelieferte Bild-Daten (data:image/…;base64) dürfen als img.src im DOM landen. */
+function cachedImageSrc(value) {
+  return typeof value === 'string' && /^data:image\/[a-z0-9.+-]+;base64,/i.test(value) ? value : '';
+}
+
 /**
- * Vorschaubild in den Platzhalter einer J&G-Zelle setzen. Nur Bild-URLs, die safeIconUrl durchlassen (http/https);
- * der Browser lädt es lazy und ohne Referrer. Fehler → Bild entfällt, der Platzhalter bleibt. Gibt true zurück,
- * wenn ein Bild-Element angelegt wurde.
+ * Vorschaubild in den Platzhalter einer J&G-Zelle laden. Der Renderer setzt nie die Fremd-URL als img.src: loadImage(url, stopMs)
+ * (Main-Bild-Cache, epg-image:get) liefert eine data:-URL oder null (gesperrte Adresse, Ladefehler). Nur URLs, die safeIconUrl
+ * durchlassen, werden angefragt; ohne loadImage oder bei Fehler bleibt der Platzhalter. Gibt true zurück, wenn ein Abruf gestartet wurde.
  */
-function setCellThumb(entry, url) {
+function setCellThumb(entry, url, loadImage, stopMs) {
   const box = entry && entry.refs ? entry.refs.thumb : null;
   const safe = detailModel.safeIconUrl(url);
-  if (!box || !safe) return false;
-  if (box.querySelector('img')) return false;
-  const img = h('img', { className: 'epg-thumb-img', attrs: { alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' } });
-  img.addEventListener('load', () => box.classList.add('has-img'));
-  img.addEventListener('error', () => {
-    img.remove();
-    box.classList.remove('has-img');
-  });
-  box.appendChild(img);
-  img.src = safe;
+  if (!box || !safe || typeof loadImage !== 'function') return false;
+  if (box.querySelector('img') || box.dataset.epgImage === safe) return false;
+  box.dataset.epgImage = safe;
+  Promise.resolve()
+    .then(() => loadImage(safe, stopMs))
+    .then(dataUrl => {
+      const src = cachedImageSrc(dataUrl);
+      if (!src || box.dataset.epgImage !== safe || box.querySelector('img')) return;
+      const img = h('img', { className: 'epg-thumb-img', attrs: { alt: '', decoding: 'async' } });
+      img.addEventListener('load', () => box.classList.add('has-img'));
+      img.addEventListener('error', () => {
+        img.remove();
+        box.classList.remove('has-img');
+      });
+      box.appendChild(img);
+      img.src = src;
+    })
+    .catch(() => {});
   return true;
 }
 
-module.exports = { createRowNode, updateRowNode, setCellThumb };
+module.exports = { createRowNode, updateRowNode, setCellThumb, cachedImageSrc };

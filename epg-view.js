@@ -260,8 +260,10 @@ function createEpgView(root, deps) {
     onScroll: () => followGrid(),
     onError: err => warn(err),
   });
+  const getImage = typeof api.getEpgImage === 'function' ? (url, stopMs) => api.getEpgImage(url, stopMs) : undefined;
   const jngView = createJngView({
     now,
+    getImage,
     getIcons: (key, fromMs, toMs) => (typeof api.getEpgRange === 'function' ? api.getEpgRange(key, fromMs, toMs) : Promise.resolve([])),
     getMarkers: rows => matchRowMarkers(rows.map(model.markerSlot)),
     isSelected: id => viewState.selectedRowId === id,
@@ -284,7 +286,7 @@ function createEpgView(root, deps) {
   Icons.setIconOnly(dClose, 'x');
   const dMeta = h('div', { className: 'epg-detail-meta', id: 'epgDetailMeta' });
   // Poster, Metazeile, Besetzung, Untertitel/Altersfreigabe (oben) und „Läuft auch“ (unten) — epg-detail-view.js
-  const detailView = createDetailView({ metaEl: dMeta, now, onPickAlso: row => pickAlsoRow(row) });
+  const detailView = createDetailView({ metaEl: dMeta, now, getImage, onPickAlso: row => pickAlsoRow(row) });
   const dToggle = h('button', { className: 'epg-toggle epg-toggle-primary', id: 'epgDetailRecordBtn', type: 'button' });
   const dPlanned = h('div', { className: 'epg-detail-planned', id: 'epgDetailPlanned', hidden: true });
   const dPlannedText = h('span', { className: 'epg-detail-planned-text' });

@@ -1,5 +1,5 @@
 // Senderkachel (docs/DESIGN.md „Senderkachel“): gemeinsame Bausteine für die LiveTV-Favoriten (renderer.js) und
-// „Jetzt & Gleich“ im Programmführer (epg-jng-tile-dom.js). Medienfläche (Verlauf/Bild, Logo-Platte, Zeitpille),
+// „Jetzt & Gleich“ im Programmführer (epg-jng-view.js). Medienfläche (Verlauf/Bild, Logo-Platte, Zeitpille),
 // Fortschrittslinie, EPG-Vorschaubild (Main-Cache über getEpgImage) und die stumme Hover-/Fokus-Vorschau (eine
 // gleichzeitig, 350 ms Verzögerung, Überblendung erst beim ersten Videobild).
 //

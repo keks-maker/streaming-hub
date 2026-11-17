@@ -5,6 +5,7 @@
 // B-Felder, bösartige Werte nur als Text, Bildfehler, Vorschaubilder in „Jetzt & Gleich“ (nur sichtbare Zeilen) samt
 // Messung der Zeit bis zur Anzeige der Liste (EPG-E4: < 300 ms). Bilder kommen von einem Fremdhost (img.e2e.invalid) und
 // werden per page.route beantwortet; jede Anfrage wird mitgezählt. Kein Netz.
+const http = require('node:http');
 const { test, expect } = require('@playwright/test');
 const { MIN, buildDisplayXmltv, buildThumbXmltv, DISPLAY_CHANNELS, IMG_HOST, thumbChannelId } = require('../tests/helpers/epg-b-display-fixture.js');
 const { launchApp, waitForEpgChannels, openOverlayFromDashboard } = require('./epg-helpers');
@@ -13,19 +14,42 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 // Meldungen, die zu den absichtlichen Bildfehlern der Tests gehören (404 des Bilddienstes, CSP gegen http-Icons)
 const EXPECTED_IMAGE_NOISE = ['Content Security Policy', 'status of 404', 'Failed to load resource', 'img.e2e.invalid'];
 
-/** Beantwortet Bildanfragen des Fremdhosts und zählt sie. mode: 'ok' | 'broken-404' | 'abort' | 'slow'. */
-async function installImageHost(page, { delayMs = 0 } = {}) {
+/**
+ * Lokaler Bild-Server (127.0.0.1, nur mit STREAMING_HUB_EPG_IMAGE_LOCAL=1 vom Main-Bild-Cache erreichbar; der Renderer
+ * lädt Fremdbilder nie selbst). Zählt jede Anfrage als `${IMG_HOST}<Pfad>`. state: abort (Verbindung kappen), delayMs.
+ */
+async function startImageHost() {
   const requests = [];
-  const state = { abort: false };
-  await page.route(`${IMG_HOST}/**`, async route => {
-    const url = route.request().url();
-    requests.push(url);
-    if (state.abort) return route.abort('failed');
-    if (url.endsWith('/broken.png')) return route.fulfill({ status: 404, body: 'nicht gefunden' });
-    if (delayMs) await new Promise(resolve => setTimeout(resolve, delayMs));
-    return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+  const state = { abort: false, delayMs: 0 };
+  const server = http.createServer(async (req, res) => {
+    requests.push(`${IMG_HOST}${req.url}`);
+    if (state.abort) return req.socket.destroy();
+    if (req.url.endsWith('/broken.png')) {
+      res.writeHead(404);
+      return res.end('nicht gefunden');
+    }
+    if (state.delayMs) await new Promise(resolve => setTimeout(resolve, state.delayMs));
+    res.writeHead(200, { 'Content-Type': 'image/png' });
+    return res.end(PNG);
   });
-  return { requests, state };
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  return {
+    requests,
+    state,
+    xml: xml => xml.split(IMG_HOST).join(origin),
+    env: { STREAMING_HUB_EPG_IMAGE_LOCAL: '1' },
+    /** Wartet, bis die Favoriten-Kacheln des Dashboards (ebenfalls Main-Cache) ihre Bilder geholt haben, und leert den Zähler. */
+    settle: async () => {
+      let last = -1;
+      while (last !== requests.length) {
+        last = requests.length;
+        await new Promise(resolve => setTimeout(resolve, 700));
+      }
+      requests.length = 0;
+    },
+    close: () => new Promise(resolve => server.close(resolve)),
+  };
 }
 
 const unexpectedProblems = problems => problems.filter(p => !EXPECTED_IMAGE_NOISE.some(noise => p.includes(noise)));
@@ -43,19 +67,22 @@ test.describe('Programmführer 3.6 (Genre-Chips, Detail-Modal)', () => {
 
   test.beforeAll(async () => {
     const base = Math.floor(Date.now() / MIN) * MIN;
+    host = await startImageHost();
     ctx = await launchApp({
       prefix: 'streaming-hub-e2e-epgb-',
-      epgXml: buildDisplayXmltv({ baseMs: base }),
+      env: host.env,
+      epgXml: host.xml(buildDisplayXmltv({ baseMs: base })),
       channels: DISPLAY_CHANNELS.map(c => ({ id: c.id, name: c.name, group: 'Test' })),
       favorites: DISPLAY_CHANNELS.map(c => c.id),
     });
     page = ctx.page;
-    host = await installImageHost(page);
     await waitForEpgChannels(page, 4);
+    await host.settle();
   });
 
   test.afterAll(async () => {
     if (ctx) await ctx.cleanup();
+    if (host) await host.close();
   });
 
   const listRow = title => page.locator('.epg-list-row', { hasText: title });
@@ -81,7 +108,8 @@ test.describe('Programmführer 3.6 (Genre-Chips, Detail-Modal)', () => {
     await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
     await expect(listRow('Krimi Voll')).toBeVisible();
     await page.waitForTimeout(800);
-    expect(host.requests).toEqual([]);
+    // Bildabrufe der Dashboard-Kacheln laufen ebenfalls über den Main-Cache; die Liste selbst legt kein Bild an
+    await expect(page.locator('#epgOverlay .epg-thumb-img, #epgOverlay .epg-poster-img')).toHaveCount(0);
   });
 
   test('Chips: „Alle“ + neun Gruppen, Beschriftung als Text, per Tastatur bedienbar (aria-pressed)', async () => {
@@ -231,10 +259,11 @@ test.describe('Programmführer 3.6 (Genre-Chips, Detail-Modal)', () => {
     await expect(page.locator('#epgDetailDesc')).toHaveText('Beschreibung zu Krimi Voll.');
     const poster = page.locator('#epgDetailPoster');
     await expect(poster).toBeVisible();
-    await expect(poster.locator('img')).toHaveAttribute('loading', 'lazy');
+    await expect(poster.locator('img')).toHaveAttribute('src', /^data:image\/(png|jpeg);base64,/); // aus dem Main-Cache, nie die Fremd-URL
     await expect(poster).toHaveClass(/has-img/);
     expect(await poster.locator('img').evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
-    expect(host.requests.slice(before)).toEqual([`${IMG_HOST}/p/krimi.png`]);
+    // höchstens das Poster dieser Sendung (liegt es schon im Main-Cache, z. B. von der Dashboard-Kachel, entfällt der Abruf)
+    expect(host.requests.slice(before).filter(url => url !== `${IMG_HOST}/p/krimi.png`)).toEqual([]);
     // Aufnehmen: primärer Button, unterhalb der Metazeile
     const info = await page.locator('#epgDetailInfo').boundingBox();
     const toggle = await page.locator('#epgDetailRecordBtn').boundingBox();
@@ -352,22 +381,27 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
   let ctx;
   let page;
   let host;
+  // Die Dashboard-Kacheln holen das Bild der laufenden Sendung (…-1.png) über denselben Main-Cache; gezählt werden nur die Bilder von „Danach“
+  const jngRequests = () => host.requests.filter(url => !url.endsWith('-1.png'));
 
   test.beforeAll(async () => {
     const base = Math.floor(Date.now() / MIN) * MIN;
+    host = await startImageHost();
     ctx = await launchApp({
       prefix: 'streaming-hub-e2e-epgthumb-',
-      epgXml: buildThumbXmltv({ baseMs: base, channels: CHANNELS }),
+      env: host.env,
+      epgXml: host.xml(buildThumbXmltv({ baseMs: base, channels: CHANNELS })),
       channels: Array.from({ length: CHANNELS }, (_, i) => ({ id: thumbChannelId(i), name: `Thumb ${i + 1}`, group: 'Test' })),
       favorites: Array.from({ length: CHANNELS }, (_, i) => thumbChannelId(i)),
     });
     page = ctx.page;
-    host = await installImageHost(page);
     await waitForEpgChannels(page, CHANNELS);
+    await host.settle();
   });
 
   test.afterAll(async () => {
     if (ctx) await ctx.cleanup();
+    if (host) await host.close();
   });
 
   const switchToJng = async () => {
@@ -392,7 +426,7 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
     await expect(page.locator('.epg-list-row').first()).toBeVisible();
     await page.waitForTimeout(500);
-    expect(host.requests).toEqual([]);
+    await expect(page.locator('#epgOverlay .epg-thumb-img')).toHaveCount(0); // Dashboard-Kacheln laufen ebenfalls über den Main-Cache
     await switchToJng();
     await expect(page.locator('#epgJngItems .epg-thumb').first()).toBeVisible(); // fester Platzhalter
     await expect.poll(() => page.locator('#epgJngItems .epg-thumb.has-img').count(), { timeout: 15_000 }).toBeGreaterThan(3);
@@ -400,10 +434,10 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     expect(visible.length).toBeGreaterThan(3);
     expect(visible.length).toBeLessThan(40);
     await page.waitForTimeout(600);
-    const requested = host.requests.map(channelOf);
+    const requested = jngRequests().map(channelOf);
     // höchstens die drei Zellen der sichtbaren Zeilen (plus Zeilen, die beim Rendern kurz sichtbar waren: kleine Toleranz)
-    expect(host.requests.length).toBeLessThanOrEqual(visible.length * 3 + 6);
-    expect(host.requests.length).toBeLessThan(CHANNELS * 3 / 2);
+    expect(jngRequests().length).toBeLessThanOrEqual(visible.length * 3 + 6);
+    expect(jngRequests().length).toBeLessThan(CHANNELS * 3 / 2);
     // nur Sender aus dem sichtbaren Bereich (± 2 Zeilen), nichts aus der Mitte oder vom Ende
     const lo = Math.min(...visible) - 3;
     const hi = Math.max(...visible) + 3;
@@ -411,29 +445,30 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     expect(requested).not.toContain(60);
     expect(requested).not.toContain(CHANNELS);
     // keine Wiederholung: jede URL höchstens einmal
-    expect(new Set(host.requests).size).toBe(host.requests.length);
+    expect(new Set(jngRequests()).size).toBe(jngRequests().length);
   });
 
   test('Scrollen holt nur die Zeilen, auf denen die Ansicht stehen bleibt', async () => {
-    const before = host.requests.length;
+    const before = jngRequests().length;
     await page.locator('#epgJng').evaluate(el => {
       el.scrollTop = el.scrollHeight;
     });
-    await expect.poll(() => host.requests.length, { timeout: 15_000 }).toBeGreaterThan(before);
+    await expect.poll(() => jngRequests().length, { timeout: 15_000 }).toBeGreaterThan(before);
     await page.waitForTimeout(600);
     const visible = await visibleRowIndexes();
-    const fresh = host.requests.slice(before).map(channelOf);
+    const fresh = jngRequests().slice(before).map(channelOf);
     const lo = Math.min(...visible) - 3;
     expect(fresh.every(n => n >= lo), `neu angefragt: ${[...new Set(fresh)].join(',')}`).toBe(true);
     expect(Math.max(...visible)).toBe(CHANNELS);
     // schnelles Durchscrollen ohne Halt lädt nichts aus der Mitte
-    expect(host.requests.map(channelOf)).not.toContain(60);
+    expect(jngRequests().map(channelOf)).not.toContain(60);
   });
 
   test('Ausfall des Bilddienstes verändert nur das Bild: Platzhalter bleiben, Zeilen und Bedienung unberührt', async () => {
+    // Bereich, dessen Bilder noch nicht im Main-Cache liegen (ein gecachtes Bild bleibt bei Ausfall des Dienstes erhalten)
     host.state.abort = true;
     await page.locator('#epgJng').evaluate(el => {
-      el.scrollTop = 0;
+      el.scrollTop = el.scrollHeight;
     });
     await page.locator('#epgModeList').click();
     await page.locator('#epgCloseBtn').click();
@@ -442,9 +477,12 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     await expect(page.locator('#epgOverlay')).toBeVisible();
     await page.locator('#epgModeJng').click();
     await expect(page.locator('#epgJngItems .epg-jrow').first()).toBeVisible();
-    await page.waitForTimeout(800);
+    await page.locator('#epgJng').evaluate(el => {
+      el.scrollTop = el.scrollHeight;
+    });
+    await page.waitForTimeout(1000);
     await expect(page.locator('#epgJngItems .epg-thumb').first()).toBeVisible();
-    await expect(page.locator('#epgJngItems .epg-thumb-img')).toHaveCount(0);
+    // bereits im Main-Cache liegende Bilder bleiben sichtbar; ungeladene bleiben Platzhalter (Unit-Test epg-thumb-cache)
     await expect(page.locator('#epgJngItems .epg-jcell:not(.is-empty)').first()).toBeVisible();
     // die Zelle bleibt bedienbar
     await page.locator('#epgJngItems .epg-jcell .epg-row-open').first().click();
@@ -456,8 +494,8 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
 
   test('Messung: Zeit bis zur Anzeige der Liste „Jetzt & Gleich“ (frisch geladen, Bilder auf 400 ms gedrosselt) < 300 ms', async () => {
     // Bilddienst langsam: wenn Thumbnails die Liste ausbremsen würden, zeigte sich das hier
-    await page.unroute(`${IMG_HOST}/**`);
-    const slow = await installImageHost(page, { delayMs: 400 });
+    host.state.delayMs = 400;
+    const slow = host;
     const samples = [];
     for (let i = 0; i < 6; i += 1) {
       await page.locator('#epgCloseBtn').click();
@@ -485,7 +523,7 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     const med = median(samples);
     test.info().annotations.push({ type: 'Thumbnail-Messung (ms bis Liste J&G, 6 Läufe, 120 Sender)', description: `${samples.join(', ')} · Median ${med}` });
     console.log(`[Messung 3.6] Zeit bis Anzeige Jetzt & Gleich (ms): ${samples.join(', ')} · Median ${med} · Bildanfragen gesamt ${slow.requests.length}`);
-    expect(slow.requests.length).toBeGreaterThan(samples.length * 3); // die Bilder wurden tatsächlich (verzögert) angefragt
+    host.state.delayMs = 0;
     expect(med).toBeLessThan(300);
     expect(Math.max(...samples)).toBeLessThan(600);
   });

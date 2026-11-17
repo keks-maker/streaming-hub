@@ -3,16 +3,17 @@
 //
 // Reine DOM-Sicht ohne Datenlogik: die Texte kommen fertig aus epg-detail-model.js, die Daten aus epg-view.js
 // (epg:find mit voller Projektion, epg:search für „Läuft auch“). Fremdtexte nur per textContent; das Poster ist
-// ein img, dessen src erst nach safeIconUrl (nur http/https) gesetzt wird. Fehlen Felder, entfällt die Zeile
+// ein img, das über den Main-Bild-Cache (getImage) befüllt wird; die Fremd-URL wird nie direkt als src gesetzt. Fehlen Felder, entfällt die Zeile
 // (kein leerer Platzhalter) — nur das Poster behält bei Ladefehler seinen festen Rahmen (kein Layoutsprung).
 
 'use strict';
 
 const detailModel = require('./epg-detail-model.js');
 const { h } = require('./epg-dom.js');
+const { cachedImageSrc } = require('./epg-row-dom.js');
 const { genreLabel } = require('./epg-genres.js');
 
-/** deps: metaEl (Zeit/Sender-Zeile des Modals), onPickAlso(row), now(). */
+/** deps: metaEl (Zeit/Sender-Zeile des Modals), onPickAlso(row), now(), getImage(url, stopMs) → Promise<data:-URL|null> (Main-Bild-Cache). */
 function createDetailView(deps) {
   const now = typeof deps.now === 'function' ? deps.now : () => Date.now();
   const sub = h('p', { className: 'epg-detail-sub', id: 'epgDetailSub', hidden: true });
@@ -58,6 +59,7 @@ function createDetailView(deps) {
 
   function clearPoster() {
     poster.textContent = '';
+    delete poster.dataset.epgImage;
     poster.hidden = true;
     poster.classList.remove('is-failed', 'has-img');
   }
@@ -95,16 +97,30 @@ function createDetailView(deps) {
     cast.hidden = !castText;
     const url = detailModel.safeIconUrl(slot.icon);
     clearPoster();
-    if (url) {
-      poster.hidden = false;
-      const img = h('img', { className: 'epg-poster-img', attrs: { alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' } });
-      img.addEventListener('load', () => poster.classList.add('has-img'));
-      img.addEventListener('error', () => {
-        img.remove(); // Bild entfällt, der Rahmen bleibt (kein Layoutsprung)
-        poster.classList.add('is-failed');
-      });
-      poster.appendChild(img);
-      img.src = url;
+    if (url && typeof deps.getImage === 'function') {
+      poster.dataset.epgImage = url;
+      poster.hidden = false; // fester Rahmen steht sofort (kein Layoutsprung), das Bild kommt nach
+      Promise.resolve()
+        .then(() => deps.getImage(url, Number.isFinite(slot.stop) ? slot.stop : 0))
+        .then(dataUrl => {
+          const src = cachedImageSrc(dataUrl);
+          if (poster.dataset.epgImage !== url) return;
+          if (!src) {
+            poster.classList.add('is-failed');
+            return;
+          }
+          const img = h('img', { className: 'epg-poster-img', attrs: { alt: '', decoding: 'async' } });
+          img.addEventListener('load', () => poster.classList.add('has-img'));
+          img.addEventListener('error', () => {
+            img.remove(); // Bild entfällt, der Rahmen bleibt (kein Layoutsprung)
+            poster.classList.add('is-failed');
+          });
+          poster.appendChild(img);
+          img.src = src;
+        })
+        .catch(() => {
+          if (poster.dataset.epgImage === url) poster.classList.add('is-failed');
+        });
     }
   }
 

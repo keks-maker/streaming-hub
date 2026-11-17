@@ -186,7 +186,7 @@ test('Verdrahtung: kein Settings-Schalter für Bilder (P12); Bilder nur als img.
   for (const file of settingsFiles) assert.ok(!/showImages|loadImages|bilder laden|epgImages/i.test(read(file)), file);
   const detailView = read('epg-detail-view.js');
   assert.match(detailView, /detailModel\.safeIconUrl\(slot\.icon\)/);
-  assert.match(detailView, /img\.src = url/);
+  assert.match(detailView, /img\.src = src/);
   assert.match(read('epg-row-dom.js'), /detailModel\.safeIconUrl\(url\)/);
   assert.ok(!/style\.backgroundImage|setAttribute\('src'|\.srcset/.test(detailView + read('epg-row-dom.js')));
   // die Vorschau-/Poster-Bilder laufen unter der bestehenden CSP (img-src 'self' data: https:), die nicht gelockert wird
@@ -198,8 +198,6 @@ test('Verdrahtung: kein Settings-Schalter für Bilder (P12); Bilder nur als img.
 test('Verdrahtung: Poster/Thumbnails lazy, ohne Referrer, Fehler → Bild entfällt; kein Vorab-Laden', () => {
   for (const file of ['epg-detail-view.js', 'epg-row-dom.js']) {
     const src = read(file);
-    assert.match(src, /loading: 'lazy'/, file);
-    assert.match(src, /referrerpolicy: 'no-referrer'/, file);
     assert.match(src, /addEventListener\('error'/, file);
   }
   const jngView = read('epg-jng-view.js');

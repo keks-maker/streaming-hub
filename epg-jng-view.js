@@ -12,7 +12,8 @@
 // Etappe 3.6: Genre-Filter (setGenres) — die Positionen laufend/nächste/übernächste bleiben, nicht passende Zellen
 // entfallen, Sender ohne passende Zelle verschwinden. Vorschaubilder: Die schlanken Daten (epg:range-many) tragen kein
 // Bild; für die SICHTBAREN Zeilen holt getIcons (epg:range je Sender, nur Zeilen im Viewport, entprellt) die Bild-URLs,
-// setCellThumb setzt sie lazy in den festen Platzhalter. Kein Vorab-Laden, kein eigener Bildcache (nur die URL-Zuordnung
+// setCellThumb lädt sie über getImage (Main-Bild-Cache, epg-image:get) in den festen Platzhalter; der Renderer setzt keine
+// Fremd-URL als img.src. Kein Vorab-Laden, kein eigener Bildcache (nur die URL-Zuordnung
 // bis zum nächsten Datenabruf); fehlt der Bilddienst, bleibt der Platzhalter.
 
 'use strict';
@@ -28,7 +29,7 @@ const EMPTY_FILTERED = 'Keine Sendungen für die gewählten Genres. Wähle „Al
 /**
  * deps: now(), getMarkers(rows) → Marker je Zeile (wie grid.matchMarkers), isSelected(rowId), onOpen(row),
  * onToggle(row, element), onChannelClick(channel), sanitizeLogoUrl(url),
- * getIcons(channelKey, fromMs, toMs) → Promise<Slot[]> (volle Projektion, optional: ohne sind keine Vorschaubilder möglich).
+ * getImage(url, stopMs) → Promise<data:-URL|null> (Main-Bild-Cache), getIcons(channelKey, fromMs, toMs) → Promise<Slot[]> (volle Projektion, optional: ohne sind keine Vorschaubilder möglich).
  */
 function createJngView(deps) {
   const now = typeof deps.now === 'function' ? deps.now : () => Date.now();
@@ -186,7 +187,7 @@ function createJngView(deps) {
     visible.forEach((cell, i) => {
       updateRowNode(cell, cell.row, { nowMs, marker: markers[i] || null, selected: !!(deps.isSelected && deps.isSelected(cell.row.id)) });
       const url = icons.get(cell.row.id);
-      if (url) setCellThumb(cell, url);
+      if (url) setCellThumb(cell, url, deps.getImage, cell.row.stop);
     });
     scheduleThumbs();
   }
@@ -248,7 +249,7 @@ function createJngView(deps) {
       for (const cell of entry.cells) {
         if (!cell) continue;
         const url = icons.get(cell.row.id);
-        if (url) setCellThumb(cell, url);
+        if (url) setCellThumb(cell, url, deps.getImage, cell.row.stop);
       }
     }
   }
