@@ -5,7 +5,7 @@
 // den Fortschritt gedrosselt an den Verlauf. Menüs für Qualität, Ton und Untertitel erscheinen nur, wenn der Stream Auswahl bietet.
 
 const model = require('./mediathek-player-model.js');
-const { el, button, iconButton } = require('./mediathek-cards.js');
+const { el, iconButton } = require('./mediathek-cards.js');
 const { fskText } = require('./mediathek-format.js');
 
 const MEDIA_ERRORS = {

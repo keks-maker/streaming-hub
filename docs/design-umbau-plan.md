@@ -13,8 +13,8 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | 0a. `DESIGN.md`, Umbauplan, Design-Regeln in `CLAUDE.md` | Desktop | `design/umbau` | erledigt | `375436a` |
 | 0b. `docs/ipad-desktop-angleichung.md` durch Verweis auf `../streaming-hub/docs/DESIGN.md` ersetzen; Designabschnitt in `CLAUDE.md`; Funktions-Merkpunkte bleiben dort unter „Nicht-Design-Themen“, überholte Design-Aussagen einzeln markiert | Apple | `design/umbau` (Apple-Repo) | erledigt | `b667845`, `f2d54f9`, `f363ff8` |
 | 1. Tokens bereinigen | Desktop | `design/umbau` | erledigt (QA bestanden) | 19e0bd6 |
-| 2. Icon-Set einführen | Desktop | `design/umbau` | erledigt (QA ausstehend) | 7b59994 |
-| 3. Texte aufräumen | Desktop | `design/umbau` | erledigt (QA ausstehend) | siehe `git log` (`design(3)`) |
+| 2. Icon-Set einführen | Desktop | `design/umbau` | erledigt (QA bestanden) | 7b59994 |
+| 3. Texte aufräumen | Desktop | `design/umbau` | erledigt (QA bestanden) | 8d21214 |
 | 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` | offen | – |
 | 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` | offen | – |
 | 6. Startseite „Läuft gerade“ | Desktop | `design/umbau` | offen | – |

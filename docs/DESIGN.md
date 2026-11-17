@@ -149,7 +149,7 @@ Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansi
 
 - Illustration oben in Bereichsfarbe (`area-*`), Kachel `radius-xl`, Icon-Platte (`radius-lg`), Titel. Der Kachelgrund bleibt fest dunkel (theme-literal, Ist auf allen Plattformen).
 - Entfällt: Untertitel „Bereich öffnen“. Die ganze Kachel ist der Klick.
-- Icons: Startkacheln des Desktops nutzen PNG-Bilder (`tv-icon.png`, `radio-icon.png`, `podcast-icon.png`, Dienst-Logos); nur Einstellungen hat das Zeichen ⚙. Es gilt die Icon-Zuordnung unten.
+- Icons: Startkacheln des Desktops nutzen Linien-Icons aus der Zuordnung (`tv-minimal`, `radio`, `mic`, `settings`); nur die Markenlogos der Dienste bleiben Bilder. Es gilt die Icon-Zuordnung unten.
 
 ### Senderkachel (LiveTV-Favoriten, EPG „Jetzt & Gleich“)
 
@@ -218,6 +218,10 @@ Zwei Varianten derselben Komponente, beide mit `radius-md`, Titel und Meta darun
 | Einstellungen | `gearshape` | `settings` |
 | Verlauf | `clock` | `clock` |
 | Aufnahme | `record.circle` (Vorschlag, keine Aufnahme auf Apple) | `circle-dot` |
+| Bearbeiten | `pencil` | `pencil` |
+| Alle / Liste (Podcast-Kachel) | `line.3.horizontal` | `menu` |
+| Weiter / Hub-Pfeil | `chevron.right` | `chevron-right` |
+| Aufnahme-Marker (Punkt) | `circle.fill` | `circle` |
 | Speicherort | `folder` | `folder` |
 | Neu laden | `arrow.clockwise` | `rotate-cw` |
 | Schließen | `xmark` | `x` |
@@ -262,6 +266,7 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 
 ## Offen
 
+- Natives Tray-Menü (`lib/recorder/tray-menu-model.js:93,209,212`, Zeichen ⚠ ● ⏹): Native Menüs können keine SVG-Icons. Vorschlag: Zeichen entfernen oder `nativeImage`-Template-Icons; Entscheidung später.
 - Lucide-Namen gegen die eingesetzte Version prüfen; Motive ohne klares Pendant: „Kein Sender / kein Signal“ (SF `antenna.radiowaves.left.and.right.slash`, `tv.slash`), Sprung zurück/vor (kollidiert motivisch mit `rotate-cw` für Neu laden).
 - Erledigt (Schritt 2): Die Start-PNGs für LiveTV, Radio und Podcasts waren Emoji-artige Grafiken und sind durch `tv-minimal`, `radio`, `mic` ersetzt (`settings` für Einstellungen). Die Markenlogos (Netflix, ARD, Dienste) bleiben Bilder. `tv-icon.png`, `radio-icon.png`, `podcast-icon.png` werden nicht mehr genutzt.
 - Schritt 2, bewusst nicht ersetzt: Schaltflächen-Zeichen ▲▼/↑↓ (Reihenfolge in Einstellungen) und ⠿ (Ziehgriff) – Zuordnung fehlt in der Tabelle (Vorschlag `chevron-up`/`chevron-down`, `grip-vertical`); Glyphen `+`/✓/✕ in der in YouTube-Seiten eingeschleusten Overlay-Schaltfläche (`lib/youtube-mini-page.js`, Fremdseite ohne Zugriff auf `icons.js`); `pip.html` (×, Funktion ruht); Tastenkappen `←` in `<kbd>`; vorhandene eigene Inline-SVGs (Update-Knopf, Werkzeugleisten, Download-Symbole) bis zu ihrer Zuordnung; „Sprung zurück/vor“ ohne eigenes Motiv.

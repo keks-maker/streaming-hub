@@ -223,7 +223,7 @@ test('Verdrahtung: Navigation, Startkachel, Ort, Konflikt-Hooks und Vollbild-Aus
   const html = read('index.html');
   assert.match(html, /id="radioMiniPlayer"[^>]*hidden/);
   assert.match(html, /id="radioDashboard"[^>]*hidden/);
-  assert.ok(fs.existsSync(path.join(root, 'assets/icons/radio-icon.png')));
+  assert.ok(!fs.existsSync(path.join(root, 'assets/icons/radio-icon.png')));
 });
 
 test('Verdrahtung: kein Strg+R/Strg+T-Konflikt — Radio bekommt kein eigenes Tastenkürzel', () => {

@@ -317,7 +317,9 @@ function createTvSourcesView({ root, api, getSources, safeColor, onRefreshEpg, g
     const parts = [epgMessage, info.text];
     const loaded = formatLoadedAt(info.loadedAt);
     if (loaded) parts.push(`Letzter Abruf: ${loaded}`);
-    epgStatus.textContent = parts.filter(Boolean).join(' · ');
+    const text = parts.filter(Boolean).join(' · ');
+    const ok = Boolean(epgMessage) && !epgStatus.classList.contains('error');
+    Icons.setStatusContent(epgStatus, ok ? 'ok' : '', text);
     if (epgRefreshBtn) epgRefreshBtn.disabled = Boolean(info.busy);
   }
 

@@ -232,7 +232,7 @@ function createGridView(deps) {
     entry.refs.text.style.maxWidth = shift ? `calc(100% - ${shift + (hasRec ? 30 : 0)}px)` : '';
   }
 
-    const REC_WIDTH = 28;
+  const REC_WIDTH = 28;
 
   /** Kleiner Toggle rechts im Block: nur bei geplanter/laufender Aufnahme und ausreichend breitem Block. */
   function updateRec(row, blockEntry, rowIndex, nowMs, marker) {
