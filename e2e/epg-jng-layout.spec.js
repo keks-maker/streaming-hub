@@ -74,6 +74,7 @@ test.describe('Jetzt & Gleich Zellenlayout', () => {
           return {
             cell: rect(cell),
             btn: rect(q('.epg-toggle')),
+            btnBorder: ['Top', 'Right', 'Bottom', 'Left'].map(d => getComputedStyle(q('.epg-toggle'))['border' + d + 'Width']).join(' '),
             title: rect(q('.epg-row-open')),
             meta: rect(q('.epg-jcell-time')),
             time: rect(time),
@@ -96,6 +97,7 @@ test.describe('Jetzt & Gleich Zellenlayout', () => {
       expect(cells.length).toBeGreaterThan(2);
       for (const c of cells) {
         expect(Math.round(c.btn.w)).toBe(32);
+        expect(c.btnBorder, 'Knopf ohne Rand/Ring').toBe('0px 0px 0px 0px');
         expect(hit(c.btn, c.title), 'Knopf/Titel').toBe(false);
         expect(hit(c.btn, c.meta), 'Knopf/Meta-Zeile').toBe(false);
         expect(hit(c.btn, c.time), 'Knopf/Zeit').toBe(false);
@@ -110,6 +112,34 @@ test.describe('Jetzt & Gleich Zellenlayout', () => {
         fs.mkdirSync(process.env.E2E_SHOT_DIR, { recursive: true });
         await page.screenshot({ path: `${process.env.E2E_SHOT_DIR}/jng-${width}.png` });
       }
+    });
+  }
+
+  for (const scheme of ['dark', 'light']) {
+    test(`Knopf-Icon hat mind. 3 : 1 gegen die Zelle (${scheme})`, async () => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await setWidth(1300);
+      const ratio = await page.evaluate(() => {
+        const parse = c => (c.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
+        const lin = v => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+        const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+        const cell = window.document.querySelector('#epgJngItems .epg-jcell[data-row-id]');
+        const fg = parse(getComputedStyle(cell.querySelector('.epg-toggle')).color);
+        // Hintergrund: Schichten von der Zelle nach oben überlagern (Seite als Grund)
+        let bg = parse(getComputedStyle(window.document.body).backgroundColor);
+        if (bg.length < 4 || bg[3] === 0) bg = [255, 255, 255, 1];
+        const layers = [];
+        for (let el = cell; el; el = el.parentElement) layers.unshift(parse(getComputedStyle(el).backgroundColor));
+        let base = bg.slice(0, 3);
+        for (const l of layers) {
+          if (l.length === 4 && l[3] > 0) base = base.map((v, i) => v * (1 - l[3]) + l[i] * l[3]);
+          else if (l.length === 3) base = l;
+        }
+        const a = lum(fg) + 0.05;
+        const b = lum(base) + 0.05;
+        return Math.max(a, b) / Math.min(a, b);
+      });
+      expect(ratio).toBeGreaterThanOrEqual(3);
     });
   }
 

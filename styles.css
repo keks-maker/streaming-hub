@@ -2644,8 +2644,9 @@ body.epg-open .overlay-bar { z-index: 105; }
 .epg-jcell-time .epg-time-sub { min-width: 0; overflow: hidden; text-overflow: clip; }
 .epg-jcell-main .epg-progress { width: 100%; }
 .epg-jcell-action { flex: none; display: flex; align-items: center; font-size: 12px; color: var(--epg-dim); }
-/* Aufnahme-Knopf: eigene Spalte am Zellenende, runder Icon-Knopf 32 px (Bauteilmaß), Rand voll in status-rec (Bedienelement mind. 3 : 1), kein Text */
-.epg-jcell-action .epg-toggle { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; border-radius: var(--radius-full); border-color: var(--status-rec); color: var(--status-rec); }
+/* Aufnahme-Knopf: eigene Spalte am Zellenende, Icon-Knopf 32 px (Bauteilmaß) ohne Ring und Rand, Icon in status-rec (Bedienelement mind. 3 : 1), Fläche nur bei Hover/aktiv */
+.epg-jcell-action .epg-toggle { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; border: 0; border-radius: var(--radius-full); background: transparent; color: var(--status-rec); }
+.epg-jcell-action .epg-toggle:hover:not(:disabled), .epg-jcell-action .epg-toggle:active:not(:disabled) { background: var(--glass-hover); }
 .epg-jcell-action .epg-toggle .ic { vertical-align: 0; }
 /* Zelle als Container: zu wenig Platz → zuerst entfällt die Restzeit, dann das Vorschaubild; die Zeit bleibt immer vollständig */
 .epg-jcell { container-type: inline-size; }
