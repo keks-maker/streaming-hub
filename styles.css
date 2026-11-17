@@ -2597,7 +2597,8 @@ body.epg-open .overlay-bar { z-index: 105; }
 .epg-jtile button.tv-tile-title:focus-visible::after { outline: 2px solid var(--focus-ring); outline-offset: -2px; border-radius: var(--radius-md); }
 .epg-jtile .tv-tile-meta .epg-time-sub { display: inline; font-size: inherit; line-height: inherit; color: inherit; }
 .epg-jtile .tv-tile-logo { z-index: 5; padding: var(--space-1); border: none; cursor: pointer; }
-.epg-jtile .tv-tile-logo .dashboard-tile-fallback { font-size: 14px; } /* zwei Zeichen Senderkürzel */
+.epg-jtile .tv-tile-logo .dashboard-tile-fallback { font-size: 12px; font-weight: 700; color: var(--media-ink); letter-spacing: -.02em; } /* Senderkürzel bis 3 Zeichen, Stufe meta */
+.epg-jtile .tv-tile-logo.has-error { background: linear-gradient(145deg, hsl(var(--h, 260) 55% 38%), hsl(calc(var(--h, 260) + 30) 55% 20%)); } /* Farbfläche je Sender wie früher */
 .epg-jtile .tv-tile-logo:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .epg-jtile .dashboard-tv-progress[hidden] { display: none; }
 /* Marker und Aufnahme-Zustand der laufenden Sendung liegen auf einer deckenden Fläche (surface-1), nicht auf dem Scrim: status-rec erreicht dort in Hell und Dunkel mindestens 3 : 1, unabhängig vom Bild darunter */
@@ -2612,7 +2613,7 @@ body.epg-open .overlay-bar { z-index: 105; }
 .epg-jrec:hover:not(:disabled) { background: var(--scrim-media); border-color: var(--media-ink); }
 .epg-jrec[data-kind="stop"], .epg-jrec[data-kind="cancel"], .epg-jrec[data-kind="stopping"] { background: var(--surface-1); border-color: var(--status-rec); color: var(--status-rec); box-shadow: 0 0 0 2px var(--surface-1); }
 .epg-jrec[data-kind="stop"]:hover:not(:disabled), .epg-jrec[data-kind="cancel"]:hover:not(:disabled), .epg-jrec[data-kind="stopping"]:hover:not(:disabled) { background: var(--surface-1); border-color: var(--status-rec); }
-.epg-jrec:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.epg-jrec:focus-visible, .epg-jrec.is-small[data-kind]:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; box-shadow: 0 0 0 2px var(--surface-1); } /* Halo in surface-1 trägt den Ring auf jedem Bild */
 .epg-jrec.is-small { position: static; flex: none; width: 24px; height: 24px; font-size: 12px; }
 .epg-jrec.is-small[data-kind="stop"], .epg-jrec.is-small[data-kind="cancel"], .epg-jrec.is-small[data-kind="stopping"] { box-shadow: none; }
 .epg-jnext { position: relative; z-index: 2; display: flex; align-items: center; gap: var(--space-2); min-width: 0; height: 36px; flex: none; color: var(--text-secondary); font-size: 12px; }

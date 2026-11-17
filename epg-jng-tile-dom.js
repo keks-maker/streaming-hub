@@ -35,11 +35,13 @@ function createTile(channel, kit) {
   const root = h('div', { className: 'dashboard-tile dashboard-tv-tile epg-jtile', attrs: { role: 'listitem' } });
   root.style.setProperty('--tile-color', 'var(--area-livetv)');
   root.dataset.channelKey = channel.key;
-  // Ersatz ohne Logo: zwei Zeichen des Senderkürzels („KA“ für „Kabel Eins“), wie die Logo-Platte der früheren Ansicht
-  const fallbackText = [...gridModel.channelBadge(name).abbr].slice(0, 2).join('');
+  // Ersatz ohne Logo: volles Senderkürzel (bis 3 Zeichen, „KE“ für „Kabel Eins“, „ZDF“) auf der Farbfläche je Sender (--h), wie die Logo-Platte der früheren Ansicht
+  const badge = gridModel.channelBadge(name);
+  const fallbackText = badge.abbr;
   const media = kit.createMedia(ch, { logoTag: 'button', fallbackText });
   const chan = media.querySelector('.tv-tile-logo');
   chan.classList.add('epg-jchan');
+  chan.style.setProperty('--h', String(badge.hue));
   chan.setAttribute('aria-label', `Alle Sendungen von ${name}`);
   chan.title = `Alle Sendungen von ${name}`;
   const info = h('div', { className: 'tv-tile-info' });
@@ -52,7 +54,7 @@ function createTile(channel, kit) {
 function upcomingLine(row) {
   const title = row.title || '(ohne Titel)';
   const range = `${model.clock(row.start)}–${model.clock(row.stop)}`;
-  const thumb = h('span', { className: 'epg-thumb', text: [...title.trim()][0] || '·', attrs: { 'aria-hidden': 'true' } });
+  const thumb = h('span', { className: 'epg-thumb', text: row.title ? [...row.title.trim()][0] || '·' : '·', attrs: { 'aria-hidden': 'true' } });
   thumb.style.setProperty('--h', String(gridModel.channelBadge(row.title).hue));
   const marker = h('span', { className: 'epg-marker' });
   const open = h('button', {

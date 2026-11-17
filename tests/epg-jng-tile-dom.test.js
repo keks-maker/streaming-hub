@@ -33,6 +33,8 @@ function fakeKit() {
       media.className = 'tv-tile-media';
       const logo = doc.createElement('button');
       logo.className = 'tv-tile-logo';
+      logo.vars = {};
+      logo.style = { setProperty: (k, v) => { logo.vars[k] = v; } };
       logo.fallbackText = opts.fallbackText;
       media.appendChild(logo);
       return media;
@@ -96,7 +98,16 @@ test('leerer Zustand: Hinweistext trägt title (bei schmaler Kachel abgeschnitte
   assert.equal(empty.getAttribute('title'), empty.textContent);
 });
 
-test('Logo-Platte ohne Logo: zwei Zeichen des Senderkürzels', () => {
+test('Logo-Platte ohne Logo: volles Senderkürzel (bis 3 Zeichen) und Farbton je Sender', () => {
   const { tile } = build({ current: null, next: null, after: null });
   assert.equal(tile.chan.fallbackText, 'KE');
+  assert.equal(tile.chan.vars['--h'], String(require('../epg-grid-model.js').channelBadge('Kabel Eins').hue));
+  const kit = fakeKit();
+  const zdf = createTile({ key: 'Z', channel: { name: 'ZDF' }, rows: [], hasEpg: true }, kit);
+  assert.equal(zdf.chan.fallbackText, 'ZDF');
+});
+
+test('Danach-Zeile ohne Titel: Platzhalter „·“ statt „(“', () => {
+  const { tile } = build({ current: null, next: row('n', NOW + 30 * MIN, NOW + 75 * MIN, ''), after: null });
+  assert.equal(tile.info.byClass('epg-thumb')[0].textContent, '·');
 });
