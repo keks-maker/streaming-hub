@@ -1,10 +1,10 @@
 # Design-Umbau: Plan und Status
 
-Stand: 2026-11-16. Der Abgleich mit dem Apple-Repo basierte auf `main` vor dem YouTube-Merge; Nachtrag auf Stand `931bacf`. Vorgabe: `docs/DESIGN.md` (nur im Desktop-Repo). Neue Sessions starten mit diesem Dokument und der Vorgabe.
+Stand: 2026-11-17 (Desktop fertig, alles in `main` gepusht bis `a888eba`, kein Release). Der Abgleich mit dem Apple-Repo basierte auf `main` vor dem YouTube-Merge; Nachtrag auf Stand `931bacf`. Vorgabe: `docs/DESIGN.md` (nur im Desktop-Repo). Neue Sessions starten mit diesem Dokument und der Vorgabe.
 
 **Arbeitsweise:** Ein Schritt pro Commit, Commit-Präfix `design(<schritt>): …` (z. B. `design(1): Tokens bereinigen`). Jeder Schritt läuft über dev und qa; App nach jedem Schritt im Hintergrund starten und in Hell und Dunkel prüfen. Token-Änderungen gelten für alle drei Apps und werden im Commit vermerkt. Push, Merge nach `main`, Tag und Release nur nach ausdrücklicher Freigabe des Users.
 
-Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-tvOS` (Branch je Schritt, von `main`).
+Repos: Desktop = `streaming-hub` (Branch `design/umbau` ist in `main` aufgegangen und gelöscht; neue Desktop-Arbeit je Thema auf eigenem Branch von `main`), Apple = `StreamingHub-tvOS` (Branch je Schritt, von `main`).
 
 ## Checkliste
 
@@ -15,17 +15,18 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | 1. Tokens bereinigen | Desktop | `design/umbau` | erledigt (QA bestanden) | 19e0bd6 |
 | 2. Icon-Set einführen | Desktop | `design/umbau` | erledigt (QA bestanden) | 7b59994 |
 | 3. Texte aufräumen | Desktop | `design/umbau` | erledigt (QA bestanden) | 8d21214 |
-| 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` | erledigt (QA ausstehend) | a0cda0d |
-| 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` | erledigt (QA ausstehend) | siehe git log |
-| 6. Startseite „Fortsetzen“ | Desktop | `design/umbau` | offen | – |
-| 7. Einstellungen gruppieren | Desktop | `design/umbau` | offen | – |
-| 8. Restliche Bereiche angleichen | Desktop | `design/umbau` | 8a erledigt (Mini-Player, Cover-Raster, Bildkarte; QA ausstehend), Rest offen | `design(8)` 8a |
-| A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift` | Apple | offen | offen (nach 0b) | – |
+| 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` → `main` | erledigt (QA bestanden) | a0cda0d |
+| 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` → `main` | erledigt (QA bestanden) | aeb79e9 |
+| 6. Startseite „Fortsetzen“ | Desktop | `design/umbau` → `main` | erledigt (QA bestanden) | 73c0c2e, c17ba2a |
+| 7. Einstellungen gruppieren | Desktop | `design/umbau` → `main` | erledigt (QA bestanden) | 4ebaefc … 0240630 |
+| 8. Restliche Bereiche angleichen | Desktop | `design/umbau` → `main` | erledigt (8a–8c, QA bestanden); Rest siehe Abschnitt Schritt 8 „Offen“ | 0fe2770, afb15a2 |
+| N. Navigation: Eintrag „Start“ (`house`, Strg+Umsch+H; Leiste auf der Startseite ausgeblendet, daher kein aktiver Zustand) | Desktop | `design/start-nav` → `main` | erledigt (QA bestanden) | 78c934c, 63f1a1b |
+| A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift` | Apple | offen | offen (0b erledigt, kann starten) | – |
 | A2. Hellwerte iPad angleichen | Apple | offen | offen | – |
 | A3. Radien und Schrift | Apple | offen | offen | – |
 | A4. TV-Vorschau-Verzögerung 350 ms | Apple | offen | offen | – |
 | A5. Texte und Komponenten (Apple) | Apple | offen | offen | – |
-| S. Senderkachel mit Vorschaubild | Desktop, später Apple | `design/umbau` | S1 erledigt und abgenommen; S2 erledigt (EPG-Bild im Main geladen, JPEG-Cache `epg-images/`, `epg-image:get`; QA ausstehend); S3 (Jetzt & Gleich als Senderkachel) verworfen, Entscheidung 2026-11-17: Spaltenansicht bleibt, größer und im neuen Design (Zeile 112 px, Bild 96 × 54, Logo-Plakette 56 px; Branch `design/jetzt-gleich`, QA ausstehend); Baustein `livetv-tile.js` bleibt für die LiveTV-Favoriten; Apple-Umsetzung offen | `design(S)` S1, S2 |
+| S. Senderkachel mit Vorschaubild | Desktop, später Apple | `design/umbau`, `design/jetzt-gleich` → `main` | Desktop erledigt (QA bestanden): S1 Kachel, S2 EPG-Bild im Main (Cache `epg-images/`, `epg-image:get`, gehärtet). S3 Kachel für „Jetzt & Gleich“ verworfen (User 2026-11-17): Spaltenansicht bleibt, größer (Zeile 112 px, Bild 96 × 54 über den Main-Bild-Cache, Logo-Plakette 56 px), Aufnahme als Icon-Knopf ohne Ring. Apple-Umsetzung offen | f7cabd5, 106ccc5, f4da291, bccb825 … 3feb09f |
 
 ## Desktop
 
@@ -59,18 +60,18 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - Bereichsfarbe: Navigation ist fertig. Offen: Schimmer hinter der Überschrift, Fortschrittslinien und Equalizer in der Farbe des Bereichs; Senderkachel-Farbe von Quellenfarbe auf `area-livetv`.
 
 ### Schritt 6: Startseite „Fortsetzen“
-- Status: erledigt (QA ausstehend). Commit `73c0c2e`.
+- Status: erledigt (QA bestanden). Commit `73c0c2e`.
 - Leiste unter den Bereichskacheln aus Verlauf, Radio-Status und laufenden Aufnahmen; leer, wenn nichts da ist.
 - Umsetzung: `running-now-model.js` (Auswahl, Reihenfolge), `running-now-view.js`, Verdrahtung in `renderer.js`. Eine Karte je Quelle (Aufnahme, Radio, Podcast, Verlauf), laufende zuerst. Quellen: `recording:list` + `recording:changed`, Radio-Zustand/-Einstellungen (`lastStation`), Podcast-Hörzustand (`podcastHub.data`, Player-Zustand), `get-history`. Weggelassen: Mediathek-„Weiterschauen“ (nur über Netzabruf der Hub-Daten, nicht ohne neues IPC/Netz auf der Startseite).
 
 ### Schritt 7: Einstellungen gruppieren
-- Status: erledigt (QA ausstehend). Commit `design(7)` (nach `73c0c2e`).
+- Status: erledigt (QA bestanden). Commit `design(7)` (nach `73c0c2e`).
 - Seitenleiste mit Gruppen-Überschriften (LiveTV, Radio, Podcasts, Mediatheken, Streaming, Allgemein) statt Präfixen wie „LiveTV: Quellen“.
 - Umsetzung: `settings-view.js` (alle Gruppen immer offen, `h2` je Gruppe, `tablist` je Gruppe mit `aria-labelledby`), Seitentitel in `index.html` ohne Präfix, Streaming-Eintrag „Dienste“, Allgemein-Eintrag „Sicherung“. Gruppenreihenfolge unverändert (Allgemein, LiveTV, Radio, Podcasts, Streaming, Mediatheken), damit Home/Pfeiltasten wie vorher laufen. „Downloads: …“-Einträge der Mediatheken bleiben (Unterthema, keine Gruppe).
 
 ### Schritt 8: Restliche Bereiche angleichen
-- 8a, erledigt (QA ausstehend): Mini-Player (`--mini-c` je Modus) sowie Cover-Raster und Bildkarte auf Tokens; Details und Ausnahmen in DESIGN.md (Mini-Player, Cover-Raster und Bildkarte).
-- 8b, erledigt (QA ausstehend): EPG (Raster, Liste, Details) auf Tokens (Schrift 12/14/20, `space-*`, `radius-*`, `--epg-*` auf `surface-1`/`surface-inset`/`border-strong`/`text-secondary`/`area-livetv`); `genre-*` und `on-genre` in `:root` mit getesteten Werten (DESIGN.md „EPG-Genrefarben“); neues Token `surface-inset` (auch Mediathek-Vorschau-Grund); Komponenten Dialog, Verlauf-Zeile, Fehler-/Leerzustand und Bauteilmaße (Ausnahmen) in DESIGN.md; Dialog-Panels einheitlich `surface-3`/`radius-xl`; EPG-Fehlerzustand mit Icon; Nachzügler aus 8a erledigt.
+- 8a, erledigt (QA bestanden): Mini-Player (`--mini-c` je Modus) sowie Cover-Raster und Bildkarte auf Tokens; Details und Ausnahmen in DESIGN.md (Mini-Player, Cover-Raster und Bildkarte).
+- 8b, erledigt (QA bestanden): EPG (Raster, Liste, Details) auf Tokens (Schrift 12/14/20, `space-*`, `radius-*`, `--epg-*` auf `surface-1`/`surface-inset`/`border-strong`/`text-secondary`/`area-livetv`); `genre-*` und `on-genre` in `:root` mit getesteten Werten (DESIGN.md „EPG-Genrefarben“); neues Token `surface-inset` (auch Mediathek-Vorschau-Grund); Komponenten Dialog, Verlauf-Zeile, Fehler-/Leerzustand und Bauteilmaße (Ausnahmen) in DESIGN.md; Dialog-Panels einheitlich `surface-3`/`radius-xl`; EPG-Fehlerzustand mit Icon; Nachzügler aus 8a erledigt.
 - Offen (nicht 8b): Mediathek-Palette `--md-*` und Bereichs-Dialoge der Einstellungen/Aufnahmen-Liste nur teilweise auf Tokens (Abstände/Schrift ja, Flächen `--md-*` bleiben).
 - 8c, erledigt: README-Screenshots (alle 19 eingebundenen Bilder, dunkel, Testdaten) erneuert, GIF der Hover-Vorschau `livetv-hover-vorschau.gif` ergänzt. Erzeugung: `scripts/readme-screenshots.js`, `-radio.js`, `-epg.js` (EPG, Aufnahme-Dialog, GIF). Schritt 8 damit erledigt.
 
