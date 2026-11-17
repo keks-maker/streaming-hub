@@ -59,7 +59,9 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - Bereichsfarbe: Navigation ist fertig. Offen: Schimmer hinter der Überschrift, Fortschrittslinien und Equalizer in der Farbe des Bereichs; Senderkachel-Farbe von Quellenfarbe auf `area-livetv`.
 
 ### Schritt 6: Startseite „Läuft gerade“
+- Status: erledigt (QA ausstehend). Commit A (Hash siehe git log, Präfix `design(6)`).
 - Leiste unter den Bereichskacheln aus Verlauf, Radio-Status und laufenden Aufnahmen; leer, wenn nichts da ist.
+- Umsetzung: `running-now-model.js` (Auswahl, Reihenfolge), `running-now-view.js`, Verdrahtung in `renderer.js`. Eine Karte je Quelle (Aufnahme, Radio, Podcast, Verlauf), laufende zuerst. Quellen: `recording:list` + `recording:changed`, Radio-Zustand/-Einstellungen (`lastStation`), Podcast-Hörzustand (`podcastHub.data`, Player-Zustand), `get-history`. Weggelassen: Mediathek-„Weiterschauen“ (nur über Netzabruf der Hub-Daten, nicht ohne neues IPC/Netz auf der Startseite).
 
 ### Schritt 7: Einstellungen gruppieren
 - Seitenleiste mit Gruppen-Überschriften (LiveTV, Radio, Podcasts, Mediatheken, Streaming, Allgemein) statt Präfixen wie „LiveTV: Quellen“.

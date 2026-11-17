@@ -46,6 +46,7 @@ const {
 const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const { resolveShowOverride } = require('./lib/recorder/show-override.js');
 const { createDashboardHub } = require('./dashboard-hub-view.js');
+const { createRunningNow } = require('./running-now-view.js');
 const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
 const { createYoutubeMini } = require('./youtube-mini-controller.js');
@@ -742,6 +743,49 @@ window.podcasts.player.onState(next => {
   podcastPreviousStatus = next && next.status;
   podcastLatestState = next;
 });
+// ── Startseite „Läuft gerade“ (Design-Umbau Schritt 6): Karten aus Aufnahmen, Radio, Podcast-Hörzustand und Verlauf ──
+const runningNowRoot = document.getElementById('runningNow');
+const runningNowView = createRunningNow(runningNowRoot, {
+  isShown: () => dashboardView.style.display !== 'none' && dashboardView.classList.contains('start-page'),
+  collect: async () => {
+    const api = window.electronAPI;
+    const [recordings, sources, radioSettings, history] = await Promise.all([
+      api.listRecordings().catch(() => []),
+      window.radio.getSources().catch(() => []),
+      window.radio.getSettings().catch(() => null),
+      api.getHistory().catch(() => []),
+    ]);
+    const podcast = podcastHub.data.snapshot();
+    return {
+      recordings,
+      radio: { state: radioLatestState, sources, lastStation: radioSettings && radioSettings.lastStation },
+      podcast: { subscriptions: podcast.subscriptions, episodes: podcast.episodes, player: podcastLatestState },
+      history: { history, serviceIds: services.map(s => s.id) },
+    };
+  },
+  onAction: action => {
+    const fail = error => logger.warn('Läuft gerade: Aktion fehlgeschlagen:', error && error.message ? error.message : error);
+    if (action.type === 'recordings') showDashboard('recording');
+    else if (action.type === 'radio-open') showDashboard('radio');
+    else if (action.type === 'radio-play') window.radio.play(action.key).catch(fail);
+    else if (action.type === 'podcast') {
+      showDashboard('podcasts', { route: { view: 'show', id: action.podcastId } });
+      if (action.play) window.podcasts.player.play({ podcastId: action.podcastId, episodeId: action.episodeId }).catch(fail);
+    } else if (action.type === 'service') {
+      const svc = services.find(s => s.id === action.serviceKey);
+      if (svc) navigateTo(svc);
+    } else if (action.type === 'tv') {
+      const channel = tvChannels.find(ch => ch.name === action.name);
+      if (channel) selectTvChannel(channel, { suppressChannelList: true });
+      else showDashboard('livetv');
+    }
+  },
+});
+window.electronAPI.onRecordingChanged(() => runningNowView.schedule());
+window.radio.onState(() => runningNowView.schedule());
+window.podcasts.player.onState(() => runningNowView.schedule());
+podcastHub.data.subscribe(() => runningNowView.schedule());
+
 async function pausePodcastForVideo() {
   if (!podcastLatestState || podcastLatestState.status === 'idle') return;
   try {
@@ -1022,6 +1066,7 @@ function renderStartDashboard() {
   mediathekDashboardRoot.hidden = true;
   mediathekHub.hideArea();
   dashboardEmpty.style.display = 'none';
+  if (!podcastHub.data.snapshot().loaded) podcastHub.data.load();
   const sections = [
     { key: 'livetv', label: 'LiveTV', icon: 'tv-minimal', color: 'var(--area-livetv)' },
     { key: 'radio', label: 'Radio', icon: 'radio', color: 'var(--area-radio)' },
@@ -1051,6 +1096,7 @@ function renderStartDashboard() {
   overlayBar.classList.add('start-page');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   placeUpdateButton(dashboardUpdateSlot, true);
+  runningNowView.show();
 }
 
 function renderDashboard(groupKey, opts = {}) {
@@ -1060,6 +1106,7 @@ function renderDashboard(groupKey, opts = {}) {
     return;
   }
   currentDashboardGroup = groupKey;
+  runningNowView.hide();
   dashboardView.classList.remove('start-page');
   overlayBar.classList.remove('start-page');
   placeUpdateButton(overlayUpdateSlot);

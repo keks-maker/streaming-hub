@@ -4083,3 +4083,28 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
    (:focus-visible). Steht am Dateiende, damit er bei gleicher Spezifität gewinnt; Einzelregeln setzen nur den Abstand (outline-offset). */
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .theme-dark-scope:focus-visible, .dashboard-section-tile:focus-visible, .dashboard-tv-tile.is-previewing:focus-visible { outline-color: var(--focus-ring-page); } /* Ring richtet sich nach der Seite, nicht nach der lokal dunklen Kachel */
+
+/* Startseite „Läuft gerade“ (Design-Umbau Schritt 6): Leiste unter den Bereichskacheln, Karten nach DESIGN.md (Komponente „Läuft gerade“) */
+.running-now { max-width: 1480px; margin: var(--space-5) auto 0; }
+.running-now[hidden] { display: none; }
+.running-now-title { margin: 0 0 var(--space-3); color: var(--text-secondary); font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.running-now-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+.running-card { --card-area: var(--area-livetv); position: relative; display: flex; align-items: center; gap: var(--space-3); min-width: 0; padding: var(--space-3) var(--space-4); overflow: hidden; color: var(--text-primary); text-align: left; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; transition: border-color var(--motion-fast) ease; }
+.running-card[data-area="radio"] { --card-area: var(--area-radio); }
+.running-card[data-area="podcast"] { --card-area: var(--area-podcast); }
+.running-card[data-area="streaming"] { --card-area: var(--area-streaming); }
+.running-card[data-area="mediathek"] { --card-area: var(--area-mediathek); }
+.running-card:hover { border-color: var(--card-area); }
+.running-card-icon { display: grid; flex: none; width: 40px; height: 40px; place-items: center; color: var(--card-area); background: color-mix(in srgb, var(--card-area) 16%, var(--surface-1)); border-radius: var(--radius-md); }
+.running-card-icon .ic { width: 20px; height: 20px; display: block; }
+.running-card-rec .running-card-icon { color: var(--status-rec); }
+.running-card-body { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.running-card-title, .running-card-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.running-card-title { font-size: 14px; font-weight: 600; }
+.running-card-sub { color: var(--text-secondary); font-size: 12px; }
+.running-card-live { flex: none; padding: 2px var(--space-2); color: var(--on-accent); font-size: 10px; font-weight: 700; letter-spacing: .06em; background: var(--status-live); border-radius: var(--radius-xs); }
+.running-card-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 3px; background: color-mix(in srgb, var(--card-area) 22%, transparent); }
+.running-card-progress > span { display: block; height: 100%; background: var(--card-area); }
+.dashboard-view.start-page { overflow-y: auto; }
+@media (max-width: 700px) { .running-now-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@media (prefers-reduced-motion: reduce) { .running-card { transition: none; } }
