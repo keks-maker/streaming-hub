@@ -19,7 +19,7 @@ function color(name, scheme) {
 // [Vordergrund, Fläche, Mindestkontrast, Seitenhintergrund für Transparenz]
 const TEXT = 4.5;
 const UI = 3;
-const SURFACES = ['--surface-0', '--surface-3', '--surface-1', '--surface-2', '--surface-nav', '--epg-surface', '--epg-surface-2'];
+const SURFACES = ['--surface-inset', '--surface-0', '--surface-3', '--surface-1', '--surface-2', '--surface-nav', '--epg-surface', '--epg-surface-2'];
 const PAIRS = [];
 for (const s of SURFACES) {
   PAIRS.push(['--text-primary', s, TEXT], ['--text-secondary', s, TEXT], ['--text-muted', s, TEXT]);
@@ -41,7 +41,7 @@ PAIRS.push(
   ['--nav-text', '--surface-nav', TEXT], ['--nav-btn-fg', '--surface-nav', TEXT],
 );
 // Genre-Farben tragen Balken/Rahmen (grafisch, Genre steht zusätzlich als Text): 3:1 auf der Fläche
-for (const g of ['news', 'sport', 'doku', 'kinder', 'serie', 'film', 'show', 'musik', 'sonstiges']) PAIRS.push([`--g-${g}`, '--epg-surface', UI]);
+for (const g of ['news', 'sport', 'doku', 'kinder', 'serie', 'film', 'show', 'musik', 'sonstiges']) PAIRS.push([`--genre-${g}`, '--epg-surface', UI], [`--on-genre`, `--genre-${g}`, TEXT]);
 
 for (const scheme of ['dark', 'light']) {
   test(`Kontrast AA im ${scheme === 'dark' ? 'dunklen' : 'hellen'} Design: Token-Paare`, () => {

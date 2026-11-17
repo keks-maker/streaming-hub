@@ -222,10 +222,13 @@ function createEpgView(root, deps) {
     h('div', { className: 'epg-state-text', text: 'In den geladenen Tagen gibt es für die gewählten Genres keine Sendung.' }),
     filterEmptyBtn,
   ]);
+  const stateIcon = h('span', { className: 'epg-state-icon', hidden: true });
+  Icons.setIconOnly(stateIcon, 'triangle-alert', '', { size: 32 });
   const stateTitle = h('div', { className: 'epg-state-title' });
   const stateText = h('div', { className: 'epg-state-text' });
   const stateBtn = h('button', { className: 'epg-btn epg-state-btn', type: 'button', hidden: true });
   const stateEl = h('div', { className: 'epg-state', id: 'epgState', attrs: { role: 'status' }, hidden: true }, [
+    stateIcon,
     stateTitle,
     stateText,
     stateBtn,
@@ -578,6 +581,7 @@ function createEpgView(root, deps) {
     applyControls();
     root.dataset.state = next.kind;
     if (ready) return;
+    stateIcon.hidden = next.kind !== 'error';
     stateTitle.textContent = next.title;
     stateText.textContent = next.text;
     stateText.hidden = !next.text;

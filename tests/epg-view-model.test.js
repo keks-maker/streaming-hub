@@ -502,11 +502,11 @@ test('Genre: alle Gruppen aus lib/epg/genre.js haben eine Beschriftung und ein F
     const base = themeCss.resolve('var(--surface-0)', tokens, scheme);
     const surfaces = ['--epg-surface', '--epg-surface-2', '--epg-block'].map(name => themeCss.resolve(`var(${name})`, tokens, scheme));
     for (const group of Object.keys(GENRES)) {
-      assert.ok(`--g-${group}` in tokens, `Token --g-${group}`);
-      const color = themeCss.resolve(`var(--g-${group})`, tokens, scheme);
+      assert.ok(`--genre-${group}` in tokens, `Token --genre-${group}`);
+      const color = themeCss.resolve(`var(--genre-${group})`, tokens, scheme);
       for (const surface of surfaces) {
         const ratio = themeCss.contrast(color, surface, base);
-        assert.ok(ratio >= 3, `--g-${group} (${scheme}) ${ratio.toFixed(2)}`);
+        assert.ok(ratio >= 3, `--genre-${group} (${scheme}) ${ratio.toFixed(2)}`);
       }
       assert.ok(css.includes(`[data-g="${group}"]`), `Zuordnung data-g=${group}`);
     }

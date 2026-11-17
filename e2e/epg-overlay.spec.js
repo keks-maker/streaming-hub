@@ -800,7 +800,7 @@ test.describe('Programmführer (kleine Fixture)', () => {
     await expect(withNews.locator('.epg-col-genre')).toHaveText('Nachrichten');
     await expect(withNews).toHaveAttribute('data-g', 'news');
     const bar = await withNews.evaluate(el => window.getComputedStyle(el).boxShadow);
-    expect(bar).toContain('rgb(74, 163, 255)'); // --g-news, 4 px links
+    expect(bar).toContain('rgb(74, 163, 255)'); // --genre-news, 4 px links
     expect(bar).toContain('inset');
     // Kategorie ohne Zuordnung → „Sonstiges“ (neutraler Balken), keine Kategorie → „–“ ohne Balken
     await expect(row('Laufende Sendung').locator('.epg-col-genre')).toHaveText('Sonstiges');

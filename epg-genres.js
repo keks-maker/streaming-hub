@@ -1,5 +1,5 @@
 // Genre-Beschriftungen des Programmführers (Etappe 3.3, M4): die Gruppen kommen aus
-// lib/epg/genre.js (normalizeGenre, Main-Cache); Farben stehen als Tokens --g-* in styles.css.
+// lib/epg/genre.js (normalizeGenre, Main-Cache); Farben stehen als Tokens --genre-* in styles.css.
 // Rein und DOM-frei. Ein leeres Genre (keine Kategorie) bleibt neutral: kein Balken, Text „–“.
 
 'use strict';

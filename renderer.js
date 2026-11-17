@@ -2713,12 +2713,12 @@ function toggleShortcuts() {
 function renderHistory(entries) {
   historyList.innerHTML = '';
   if (!entries || entries.length === 0) {
-    historyList.innerHTML = '<div class="history-empty">Noch keine Einträge.</div>';
+    historyList.innerHTML = '<div class="history-empty">Noch nichts angesehen. Geöffnete Dienste erscheinen hier.</div>';
     return;
   }
   for (const e of entries) {
     const svc = services.find(s => s.id === e.serviceKey);
-    const color = svc ? svc.color : '#6c5ce7';
+    const color = svc ? svc.color : (e.serviceKey === '__tv__' ? 'var(--area-livetv)' : 'var(--accent)');
     const svcName = svc ? svc.name : e.serviceName || e.serviceKey;
 
     const row = document.createElement('div');

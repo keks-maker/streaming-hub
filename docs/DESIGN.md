@@ -42,6 +42,7 @@ Vier Stufen plus Navigation ersetzen die früheren rund zehn Flächen-Variablen;
 | `surface-2` | Panel, Eingabefeld | rgba(22,27,38,.78) (Ist) | rgba(255,255,255,.9) (Ist) | `--c-panel` |
 | `surface-3` | Dialog, Popup | #12121a (Ist) | #ffffff (Ist) | `--c-modal` |
 | `surface-nav` | Navigationsleiste | #171717 (Ist, alle drei Apps) | #ffffff (Ist) | `--nav-bg` |
+| `surface-inset` | Vertiefte Fläche: Bildgrund vor dem Laden (Mediathek-Vorschau), Kopfzeilen im EPG | #191925 (Entscheidung 8b, = frühere `--epg-surface-2`) | #eceff6 (Entscheidung 8b; ersetzt `surface-2` als Bildgrund, das auf `surface-0` kaum sichtbar war) | – |
 | `scrim` | Abdunkelung über Bild/Video | rgba(0,0,0,.6) (Ist) | rgba(20,28,48,.42) (Ist) | `--scrim` |
 | `scrim-media` | Pille/Knopf hinter weißem Symbol auf Bild | rgba(10,10,15,.78) (Ist) | wie Dunkel (Ist, Ausnahme) | `--media-scrim` |
 | `scrim-media-strong` | Wie `scrim-media`, Hover und Toast | rgba(10,10,15,.95) (Ist) | wie Dunkel (Ist, Ausnahme) | `--media-scrim-strong` |
@@ -116,7 +117,23 @@ Jeder Bereich hat genau eine Farbe. Sie ersetzt Farbnamen wie `--violet`, `--vio
 
 ### EPG-Genrefarben
 
-Die Apple-Apps haben neun Genrefarben mit Hell- und Dunkelwert (`Sources/StreamingHubCore/Utils/EpgTokens.swift`, `Sources/StreamingHubiPad/iPadEpgTheme.swift`), die Desktop-App eigene Werte. Sie werden als Token-Gruppe `genre-*` übernommen; die Werte legt Plan Schritt 8 fest. Die EPG-Flächen der Apple-Apps (surface #12121B, surface2 #191925, line .16) werden auf `surface-1`, `surface-2` und `border-strong` abgebildet.
+Neun Genre-Token (Schritt 8b, Entscheidung 2026-11-17, am Desktop umgesetzt). Dunkelwerte = Desktop = Apple (`EpgTokens.swift`); Hellwerte = Desktop-Ist, `genre-doku` hell von #a8690c auf #a36508 abgedunkelt (4,48 auf 4,75 : 1). Die Apple-Hellwerte (z. B. `sport` #1E9E58, 3,4 : 1 mit weißer Schrift) erreichen 4,5 : 1 nicht; der Apple-Schritt A1 übernimmt die Werte unten.
+
+Verwendung: Streifen (4 px links an Zeile, Block, Karte; 3 px in der Jetzt-&-Gleich-Zelle) und Punkt (8 px im Genre-Chip, Detail) in `genre-*`; Schrift auf einer Genre-Fläche (z. B. gefüllter Chip, Badge) in `on-genre` (#0a0a0f dunkel, #ffffff hell). Farbe ist nie alleiniger Träger: das Genre steht zusätzlich als Text in Spalte, Tooltip und Detail. `tests/theme-contrast.test.js` prüft beides.
+
+| Token | Dunkel | Hell | `on-genre` auf Fläche (dunkel / hell) | Streifen auf `surface-1` (dunkel / hell) |
+| --- | --- | --- | --- | --- |
+| `genre-news` | #4aa3ff | #1f6fd1 | 7.5 / 4.9 | 6.9 / 4.9 |
+| `genre-sport` | #2ecc71 | #13803f | 9.4 / 5.0 | 8.7 / 5.0 |
+| `genre-doku` | #e0a43a | #a36508 | 9.0 / 4.7 | 8.3 / 4.7 |
+| `genre-kinder` | #ff7eb6 | #c2307a | 8.4 / 5.3 | 7.8 / 5.3 |
+| `genre-serie` | #b388ff | #7547d6 | 7.4 / 5.8 | 6.9 / 5.8 |
+| `genre-film` | #ff6b5b | #cc3a29 | 7.1 / 5.0 | 6.5 / 5.0 |
+| `genre-show` | #f5d04c | #8a6d00 | 13.2 / 4.9 | 12.2 / 4.9 |
+| `genre-musik` | #2dd4bf | #0e7f73 | 10.6 / 4.9 | 9.8 / 4.9 |
+| `genre-sonstiges` | #8a8a9c | #666679 | 5.8 / 5.6 | 5.4 / 5.6 |
+
+Die EPG-Flächen der Apple-Apps (surface #12121B, surface2 #191925, line .16) sind am Desktop abgebildet: `--epg-surface` = `surface-1`, `--epg-surface-2` = `surface-inset`, `--epg-line` = `border-strong`, `--epg-dim` = `text-secondary`, `--epg-accent-light` = `area-livetv`. Nur die Zustandsflächen des Rasters (`--epg-block`, `-hover`, `-now`, `--epg-dayhead`, `--epg-flag`, `--epg-chan-hover`, `--epg-poster-a/b`) bleiben eigene Werte im theme-literal-Block (Tonstufen, Kontrast gegen `text-primary` getestet).
 
 ### Merklistenfarben
 
@@ -259,6 +276,39 @@ Zwei Varianten derselben Komponente, beide mit `radius-md`, Titel und Meta darun
 - LIVE (`status-live`, `radius-xs`) nur, wo Live- und Abrufinhalte gemischt sind, z. B. in „Läuft gerade“ oder der Suche.
 - Fehler auf Kacheln: Icon und ein kurzer Satz, was passiert ist und was hilft. Leere Bereiche: eine Einladung mit Aktion statt „Noch keine Einträge“.
 
+### Dialog (Desktop, Schritt 8b)
+
+- Panel: Fläche `surface-3` (Glas-Dialoge Verlauf, Aufnahmen, Kürzel: `surface-2` mit `backdrop-filter: blur`), Rand `border`, Radius `radius-xl`, Schatten `0 24px 80px` in `shadow` (50 %), Abdunkelung dahinter `scrim` bzw. `scrim-strong`. Die Mediathek-Dialoge nutzen dieselbe Fläche (`--md-dialog` = `surface-3`) und denselben Radius.
+- Titel `section` (20, halbfett), Fließtext `body`, Meta `meta`; Innenabstand `space-5`, Abstand der Elemente `space-3`/`space-4`; Eingabefelder `radius-sm`.
+- Schließen-Knopf oben rechts mit Icon `x`; Aktionen unten rechts, die Hauptaktion in `accent` mit `on-accent`, destruktive in `status-danger`.
+
+### Verlauf-Zeile (Farbpunkt)
+
+- Eine Zeile im Verlauf-Overlay (`surface-2`-Glas-Dialog): Farbpunkt, Titel (`body`, `text-primary`, eine Zeile mit Ellipsis), darunter Dienst und Zeitpunkt (`meta`, `text-muted`). Zeile `radius-sm`, Innenabstand `space-3`, Hover mit stärkerer Tönung.
+- Farbpunkt: 10 px (Bauteilmaß), `radius-full`, Farbe = Markenfarbe des Dienstes (`services.json`, bewusst keine `area-*`, damit Dienste unterscheidbar bleiben). Ohne bekannten Dienst `accent`, Einträge des LiveTV-Bereichs (`__tv__`) `area-livetv`. Der Punkt ist nie alleiniger Träger: der Dienstname steht in der Metazeile.
+- Leerzustand: „Noch nichts angesehen. Geöffnete Dienste erscheinen hier.“ in `text-muted`; „Löschen“ oben rechts in der Dialog-Kopfzeile (Schrift `--brand-red`, 15 % Tönung).
+
+### Fehler- und Leerzustand
+
+- Fehler: Icon `triangle-alert` (32 px) in `status-error`, Titel `section`, ein Satz Ursache bzw. Abhilfe in `text-secondary`, danach die Aktion („Jetzt aktualisieren“). Umgesetzt im EPG (`.epg-state`, `data-state="error"`); Fehlerbanner im Player: `player-err-bg`, `err-text`, `radius-sm`.
+- Leer: Titel, ein Satz Einladung und wo möglich eine Aktion; ohne Icon, ohne Ausrufezeichen. Radio-Leerzustand: Knopf `--amber-fill` mit `--amber-ink` (Konstanten, gleich in Hell und Dunkel, Kontrast getestet) als Bereichsknopf Radio, `radius-md`, Innenabstand `space-3`/`space-5`.
+- Leere Karten (`.dashboard-empty`): gestrichelter Rand `border`, `radius-lg`, Innenabstand `space-6`.
+
+### Bauteilmaße (Ausnahmen von den Abstands-/Schrift-/Größen-Tokens)
+
+Feste Maße, die an die Größe eines Bauteils gebunden sind, nicht an die Typo- oder Abstandsleiter. Sie bleiben bewusst stehen:
+
+| Maß | Wo | Grund |
+| --- | --- | --- |
+| 48 px Schrift | Platzhalter-Buchstabe im Folgen-Cover (132 px) | wächst mit dem Cover, kein Textstil |
+| 1 px / 2 px Abstand | vertikaler Innenabstand von Pillen und Badges, Zeilenabstand in Listen | Haarabstand, unterhalb `space-1` |
+| 33 px Oberkante | FSK-Pille unter dem Sender-Pille (8 px + Pillenhöhe 17 px + 8 px) | hängt an der Pillenhöhe |
+| 30 px Höhe | Auswahlfeld Wiedergabegeschwindigkeit im Mini-Player; Info-/Stern-/Entfernen-Knöpfe auf der Mediathek-Karte | kompakte Bedienelemente auf Bild bzw. in der Leiste |
+| 26 px | Entfernen-Knopf in der Mini-Player-Playlist | kompakter Icon-Knopf in einer Zeile von 36 px |
+| 64 × 36 px | Vorschaubild in der Mini-Player-Playlist | 16:9, wie die Karte |
+| 34 / 46 / 56 px | Kopf-, Listen- und Blockhöhe im EPG | Rasterhöhen, vom Skript für die Positionierung genutzt |
+| 36 px Einzug | Kopfzeile der EPG-Liste (Spalte der Markierung) | fluchtet mit der Zeilenspalte |
+
 ## Plattform-Regeln
 
 Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat Hover, iPad Touch, Apple TV Fokus.
@@ -282,7 +332,7 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 - Lucide-Namen gegen die eingesetzte Version prüfen; Motive ohne klares Pendant: „Kein Sender / kein Signal“ (SF `antenna.radiowaves.left.and.right.slash`, `tv.slash`), Sprung zurück/vor (kollidiert motivisch mit `rotate-cw` für Neu laden).
 - Erledigt (Schritt 2): Die Start-PNGs für LiveTV, Radio und Podcasts waren Emoji-artige Grafiken und sind durch `tv-minimal`, `radio`, `mic` ersetzt (`settings` für Einstellungen). Die Markenlogos (Netflix, ARD, Dienste) bleiben Bilder. `tv-icon.png`, `radio-icon.png`, `podcast-icon.png` werden nicht mehr genutzt.
 - Schritt 2, bewusst nicht ersetzt: Schaltflächen-Zeichen ▲▼/↑↓ (Reihenfolge in Einstellungen) und ⠿ (Ziehgriff) – Zuordnung fehlt in der Tabelle (Vorschlag `chevron-up`/`chevron-down`, `grip-vertical`); Glyphen `+`/✓/✕ in der in YouTube-Seiten eingeschleusten Overlay-Schaltfläche (`lib/youtube-mini-page.js`, Fremdseite ohne Zugriff auf `icons.js`); `pip.html` (×, Funktion ruht); Tastenkappen `←` in `<kbd>`; vorhandene eigene Inline-SVGs (Update-Knopf, Werkzeugleisten, Download-Symbole) bis zu ihrer Zuordnung; „Sprung zurück/vor“ ohne eigenes Motiv.
-- Werte der `genre-*`-Token (Plan Schritt 8) und Hellwerte der `list-*`-Token (Plan A1).
+- Hellwerte der `list-*`-Token (Plan A1).
 - Schritt 1 (Desktop, Stand `design(1)`): Werte ohne Token, nach `:root` verschoben bzw. belassen, Zuordnung offen. Farben: Navigation `--nav-shadow`, `--nav-text`, `--nav-btn-bg`, `--nav-btn-fg` (Vorschlag: `text-secondary` bzw. `surface-2` ableiten); EPG-Palette `--epg-*` (Vorschlag: `surface-1`/`surface-2`/`border-strong`, Blockfarben neu), `--g-*` (= `genre-*`, Schritt 8); Mediathek `--md-btn-bg`, `--md-btn-ink`, `--md-bg`, `--md-dialog`, `--md-surface`, `--md-surface2`, `--md-line`, `--md-text`, `--md-dim`, `--md-amber`, `--md-amber-ink`, `--md-danger` (Vorschlag: `surface-0` bis `surface-3`, `text-primary`, `text-secondary`, `status-*`; Schritt 4); übrige Altnamen in `:root` (`--ink`, `--violet`, `--accent-glow`, `--glass*`, `--icon-plate`, `--scrim-strong`, `--amber-*`, `--green-*`, `--media-*`, `--video-*` usw.). Inline-Farben in JS: `radio-dashboard-view.js:90` (`--tile-color` #f59e0b, Vorschlag `area-radio`, Schritt 5), Dienst-Standardfarbe #6c5ce7 (`renderer.js`, = `accent`, Datenwert), `hsl(var(--h) …)`-Verläufe für Cover-Platzhalter (`styles.css:2310`, `:2737`; kein fester Wert). Weitere feste Farben in JS: `mediathek-home-view.js:302` (Rückfall #1ab8e0, Vorschlag `area-mediatheken`), `mediathek-format.js:7` (`SOURCE_COLORS` ard #3a8dde, zdf #f08a3c, arte #e8602c; Senderfarben als Datenwerte, Vorschlag belassen), `settings-tv-sources.js:7` (`DEFAULT_COLOR` #a78bfa) und `settings-tv-channels.js:522` (Rückfall #a78bfa; Vorschlag beide `area-livetv`). `--md-text` hat denselben Wert wie `text-primary` (`styles.css:3863`; kann Alias werden).
 - Schritt 1: Radien ohne Stufe, unverändert belassen (sichtbar sonst anders): 10 px (25x), 4 px (12x), 14 px (7x; Navigationseintrag ist schon `radius-md`), 18 px (6x: Dialoge, Leerzustand, Hub-Karte), 2/3/5/9/11/20/22 px, 99 px (Vorschlag `radius-full`), Einzel-Ecken (`10px 0 0 10px` usw.). Vorschlag: 4/5 → `xs`, 9/10/11 → `sm` oder `md`, 14 → `md`, 18/20 → `lg`, 22 → `xl`. Außerdem: Die Kachel `.dashboard-tile` zeigt wegen der späteren Regel (`styles.css:3055`, Regel mit `min-height:220px`) 24 px, nicht 18. Entschieden: Bereichskachel `radius-xl` 24; die tote Basisregel (`styles.css:2889`) steht ebenfalls auf `radius-xl` (keine sichtbare Änderung).
 - Schritt 5, offen: Mini-Player-Leiste (Radio-Fortschritt/Regler in `--warn-soft`/`--amber-*`, Plan Schritt 8); `--epg-accent-light` (= `--violet`) für Auswahl und „jetzt“ im EPG bleibt, Zuordnung zu `area-livetv` in Plan Schritt 8; die Quellenfarbe in den Einstellungen (Farbwähler je TV-Quelle) hat auf der Senderkachel keine Wirkung mehr, das Feld bleibt vorerst.

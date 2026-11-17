@@ -476,7 +476,7 @@ function deriveViewState({ status, loadError, loading, channelCount, hasFavorite
     return {
       kind: 'no-favorites',
       title: 'Keine Favoriten',
-      text: 'Markiere Sender in der TV-Seitenleiste als Favorit oder zeige alle Sender.',
+      text: 'Markiere Sender als Favorit oder zeige alle Sender.',
       action: 'show-all',
     };
   }
