@@ -43,6 +43,9 @@ PAIRS.push(
 // Genre-Farben tragen Balken/Rahmen (grafisch, Genre steht zusätzlich als Text): 3:1 auf der Fläche
 for (const g of ['news', 'sport', 'doku', 'kinder', 'serie', 'film', 'show', 'musik', 'sonstiges']) PAIRS.push([`--genre-${g}`, '--epg-surface', UI], [`--on-genre`, `--genre-${g}`, TEXT]);
 
+// Merklistenfarben (list-*): Textkontrast auf surface-0/1
+for (const c of ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink', 'gray']) PAIRS.push([`--list-${c}`, '--surface-0', TEXT], [`--list-${c}`, '--surface-1', TEXT]);
+
 for (const scheme of ['dark', 'light']) {
   test(`Kontrast AA im ${scheme === 'dark' ? 'dunklen' : 'hellen'} Design: Token-Paare`, () => {
     const failures = [];

@@ -21,11 +21,14 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau` ist in `main` aufgegange
 | 7. Einstellungen gruppieren | Desktop | `design/umbau` → `main` | erledigt (QA bestanden) | 4ebaefc … 0240630 |
 | 8. Restliche Bereiche angleichen | Desktop | `design/umbau` → `main` | erledigt (8a–8c, QA bestanden); Rest siehe Abschnitt Schritt 8 „Offen“ | 0fe2770, afb15a2 |
 | N. Navigation: Eintrag „Start“ (`house`, Strg+Umsch+H; Leiste auf der Startseite ausgeblendet, daher kein aktiver Zustand) | Desktop | `design/start-nav` → `main` | erledigt (QA bestanden) | 78c934c, 63f1a1b |
-| A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift` | Apple | offen | offen (0b erledigt, kann starten) | – |
-| A2. Hellwerte iPad angleichen | Apple | offen | offen | – |
-| A3. Radien und Schrift | Apple | offen | offen | – |
-| A4. TV-Vorschau-Verzögerung 350 ms | Apple | offen | offen | – |
-| A5. Texte und Komponenten (Apple) | Apple | offen | offen | – |
+| A1. `Sources/StreamingHubCore/Utils/DesignTokens.swift` | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden); `list-*`-Hellwerte von dev festgelegt, Bestätigung offen | `23daa7f`, `5f4efa9` |
+| A2. Hellwerte iPad angleichen | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden, 3 Runden) | `25426a1`, `688b478`, `88decc6` |
+| A3. Radien und Schrift | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden); TV-Radius, Rundung 14/20, TV außerhalb Player offen | `e25b35a`, `5edba09`, `36f56ec` |
+| A4. TV-Vorschau-Verzögerung 350 ms | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden, Timing nur per Code geprüft) | `25b7788` |
+| A5. Texte und Komponenten (Apple) | Apple | `design/umbau` (Apple-Repo) | erledigt (QA bestanden, 3 Runden); voller Senderkachel-Aufbau → Schritt S | `1bbd3fd`, `0171cee`, `f081dac`, `f8278a8`, `751e354` |
+| A3b. Radien-Rundung 14 → `md`, 20 → `lg`; iPad-Schrift mit Dynamic Type | Apple | `design/umbau` (Apple-Repo) | offen (Entscheidung 2026-11-17) | – |
+| A6. Apple TV Rest auf Tokens (Radien, Schrift außerhalb Player), `list-indigo` dunkel #7672dd, TV-Senderliste Fokusstil | Apple | `design/umbau` (Apple-Repo) | offen (Entscheidung 2026-11-17) | – |
+| S-Apple. Senderkachel nach DESIGN.md mit Vorschaubild (iPad, Apple TV) | Apple | `design/umbau` (Apple-Repo) | offen (Entscheidung 2026-11-17) | – |
 | S. Senderkachel mit Vorschaubild | Desktop, später Apple | `design/umbau`, `design/jetzt-gleich` → `main` | Desktop erledigt (QA bestanden): S1 Kachel, S2 EPG-Bild im Main (Cache `epg-images/`, `epg-image:get`, gehärtet). S3 Kachel für „Jetzt & Gleich“ verworfen (User 2026-11-17): Spaltenansicht bleibt, größer (Zeile 112 px, Bild 96 × 54 über den Main-Bild-Cache, Logo-Plakette 56 px), Aufnahme als Icon-Knopf ohne Ring. Apple-Umsetzung offen | f7cabd5, 106ccc5, f4da291, bccb825 … 3feb09f |
 
 ## Desktop

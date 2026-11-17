@@ -119,7 +119,7 @@ Jeder Bereich hat genau eine Farbe. Sie ersetzt Farbnamen wie `--violet`, `--vio
 
 Neun Genre-Token (Schritt 8b, Entscheidung 2026-11-17, am Desktop umgesetzt). Dunkelwerte = Desktop = Apple (`EpgTokens.swift`); Hellwerte = Desktop-Ist, `genre-doku` hell von #a8690c auf #a36508 abgedunkelt (4,48 auf 4,75 : 1). Die Apple-Hellwerte (z. B. `sport` #1E9E58, 3,4 : 1 mit weißer Schrift) erreichen 4,5 : 1 nicht; der Apple-Schritt A1 übernimmt die Werte unten.
 
-Verwendung: Streifen (4 px links an Zeile, Block, Karte; 3 px in der Jetzt-&-Gleich-Zelle) und Punkt (8 px im Genre-Chip, Detail) in `genre-*`; Schrift auf einer Genre-Fläche (z. B. gefüllter Chip, Badge) in `on-genre` (#0a0a0f dunkel, #ffffff hell). Farbe ist nie alleiniger Träger: das Genre steht zusätzlich als Text in Spalte, Tooltip und Detail. `tests/theme-contrast.test.js` prüft beides.
+Verwendung: Streifen (4 px links an Zeile, Block, Karte; 3 px in der Jetzt-&-Gleich-Zelle) und Punkt (8 px im Genre-Chip, Detail) in `genre-*`; Schrift auf einer Genre-Fläche (z. B. gefüllter Chip, Badge) in `on-genre` (#0a0a0f dunkel, #ffffff hell). `on-genre` gilt auch für Schrift auf gefüllten Bereichsflächen (`area-*`, z. B. Podcast-Badges „Neu“ und Zähler auf `area-podcast`: hell 5,9 : 1, dunkel 13,8 : 1). Farbe ist nie alleiniger Träger: das Genre steht zusätzlich als Text in Spalte, Tooltip und Detail. `tests/theme-contrast.test.js` prüft beides.
 
 | Token | Dunkel | Hell | `on-genre` auf Fläche (dunkel / hell) | Streifen auf `surface-1` (dunkel / hell) |
 | --- | --- | --- | --- | --- |
@@ -147,11 +147,19 @@ Apple TV bietet für YouTube-Merklisten zehn feste Farben (`Sources/StreamingHub
 | `list-green` | .24 / .74 / .38 | `list-pink` | .95 / .36 / .63 |
 | `list-teal` | .13 / .70 / .72 | `list-gray` | .56 / .58 / .62 |
 
-Die Hellwerte legt der Apple-Schritt A1 fest (Kontrastziel wie bei `area-*`), sobald Merklisten auf dem iPad oder Desktop vorkommen; bis dahin gilt der Dunkelwert.
+Werte (Entscheidung 2026-11-17, Apple A1, `DesignTokens.swift`): Hellwert = gleicher Farbton wie der Dunkelwert, abgedunkelt auf mindestens 4,5 : 1 gegen `surface-0` und `surface-1`. `list-indigo` dunkel von #5c57d6 auf #7672dd aufgehellt (3,6 auf 4,9 : 1).
+
+| Token | Dunkel | Hell | Token | Dunkel | Hell |
+| --- | --- | --- | --- | --- | --- |
+| `list-red` | #ed4545 | #df1515 | `list-blue` | #3380f5 | #0c67f3 |
+| `list-orange` | #fa8c21 | #ae5804 | `list-indigo` | #7672dd | #5c57d6 |
+| `list-yellow` | #facc24 | #896c03 | `list-purple` | #9e66f2 | #8b47f0 |
+| `list-green` | #3dbd61 | #297f41 | `list-pink` | #f25ca1 | #d81169 |
+| `list-teal` | #21b2b8 | #177c7f | `list-gray` | #8f949e | #6a707b |
 
 ### Radien, Abstände, Schrift, Bewegung
 
-- **Radien** (Ist am Desktop: 3, 4, 6, 8, 10, 12, 14, 16, 18, 24 px, 999 px und 50 %): `radius-xs` 6 · `radius-sm` 8 · `radius-md` 12 · `radius-lg` 16 · `radius-xl` 24 · `radius-full`. Entscheidung: Bereichskachel (Startkachel, `.dashboard-tile`) `xl` 24 (Ist sichtbar, passt zur iPad-Startkachel); übrige Kacheln und Icon-Platten `lg` 16; Navigationseintrag `md` 12; Badges `xs`; Navigationsleiste `full`; Bildkarten und Cover `md`; iPad-Startkacheln `xl` 24 (heute 28). Apple TV skaliert mit dem Schriftfaktor (Startkachel 32, Platte 24).
+- **Radien** (Ist am Desktop: 3, 4, 6, 8, 10, 12, 14, 16, 18, 24 px, 999 px und 50 %): `radius-xs` 6 · `radius-sm` 8 · `radius-md` 12 · `radius-lg` 16 · `radius-xl` 24 · `radius-full`. Entscheidung: Bereichskachel (Startkachel, `.dashboard-tile`) `xl` 24 (Ist sichtbar, passt zur iPad-Startkachel); übrige Kacheln und Icon-Platten `lg` 16; Navigationseintrag `md` 12; Badges `xs`; Navigationsleiste `full`; Bildkarten und Cover `md`; iPad-Startkacheln `xl` 24 (heute 28). Apple TV (Entscheidung 2026-11-17, Apple A3): feste TV-Radien `tv-radius-xs` 8 · `-sm` 12 · `-md` 16 · `-lg` 24 · `-xl` 32 (Startkachel 32, Platte 24); sie folgen nicht rechnerisch dem Schriftfaktor. Rundung vorhandener Radien auf Stufen (alle Plattformen): 4/5 → `xs`, 9/10/11 → `md`, 14 → `md`, 18/20 → `lg`, 22/28 → `xl`.
 - **Abstände:** 4 · 8 · 12 · 16 · 24 · 32 · 48 px (`space-1` bis `space-7`). Apple nutzt heute auch 6, 10, 14, 20, 28; diese werden beim Umbau auf die Stufen gelegt.
 - **Schrift:** Systemschrift (auf Apple-Geräten SF Pro; Desktop-Stack wie heute). Stufen:
 
@@ -163,7 +171,7 @@ Die Hellwerte legt der Apple-Schritt A1 fest (Kontrastziel wie bei `area-*`), so
 | `body` | 14 | 14 (Zuordnung `cardTitle` fett) | × Faktor |
 | `meta` | 12 | 12 (Zuordnung `caption`) | × Faktor |
 
-  Faktor Apple TV: 1,5 bis 2. Zuordnung iPad `iPadType` (Systemstile) → Stufen: `pageTitle` → `section`, `cardTitle` → `body` fett, `caption` → `meta`.
+  Faktor Apple TV: 1,75 (Entscheidung 2026-11-17, Apple A3; `tvScale`). iPad: Stufen skalieren mit Dynamic Type (`relativeTo:` des passenden Systemstils), die Werte oben gelten für die Standardgröße. Zuordnung iPad `iPadType` (Systemstile) → Stufen: `pageTitle` → `section`, `cardTitle` → `body` fett, `caption` → `meta`.
 - **Bewegung:** `motion-base` 0,25 s cubic-bezier(0.4,0,0.2,1) (Ist `--t`) · `motion-fast` 0,15 s · `motion-crossfade` 0,3 s für Bild-zu-Video-Überblendung.
 
 **Layout-Variablen (Desktop, `styles.css`):** `--overlay-top` (24 px, ≤700 px Breite 12 px) und `--overlay-bar-h` (68 px) beschreiben die schwebende Navigationsleiste; `--settings-top` = Oberkante + Höhe + `space-4` ist der Kopfabstand des Einstellungsbereichs. Die Einstellungen haben feste Höhe unterhalb davon: Seitenleiste und Inhalt scrollen jeweils selbst, die Seite nicht.
@@ -328,7 +336,7 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 | Hervorhebung | `border-strong`, leichtes Anheben | Druckzustand beim Tippen | Fokuseffekt des Systems (Anheben, Schatten) |
 | Fokus | Ring `focus-ring` | Ring `focus-ring` (Hardware-Tastatur) | Systemeffekt; Navigation: weiße Fokusfläche, schwarze Schrift, Vergrößerung 1,06 (TV-Fokusstil) |
 | Navigation | Schwebende Pille oben | Tab-Leiste oben im selben Pillen-Look | Tab-Leiste oben, Bereichsfarbe für den aktiven Eintrag |
-| Schrift | Stufen wie oben | Stufen wie oben | Faktor 1,5 bis 2 |
+| Schrift | Stufen wie oben | Stufen wie oben, mit Dynamic Type | Faktor 1,75 |
 | Hell/Dunkel | folgt dem System | folgt dem System | **fest dunkel** (Ausnahme: Fernsehen im dunklen Raum, Video im Mittelpunkt); Tokens trotzdem mit beiden Werten |
 | Mini-Player | Leiste unten (Video, Radio, Podcast) | Leiste unten (Video, Radio, Podcast) | Leiste unten (Radio, Podcast); YouTube als schwebendes Eckfenster; „Fortsetzen“ zusätzlich |
 | Bereiche | LiveTV, Radio, Streaming, Mediatheken, Podcasts, Einstellungen | wie Desktop; Streaming = YouTube | wie Desktop; Streaming = YouTube (hinter `YOUTUBE_NATIVE`) |
@@ -341,14 +349,13 @@ Tokens und Komponenten sind gleich; nur die Bedienung passt sich an: Desktop hat
 - Lucide-Namen gegen die eingesetzte Version prüfen; Motive ohne klares Pendant: „Kein Sender / kein Signal“ (SF `antenna.radiowaves.left.and.right.slash`, `tv.slash`), Sprung zurück/vor (kollidiert motivisch mit `rotate-cw` für Neu laden).
 - Erledigt (Schritt 2): Die Start-PNGs für LiveTV, Radio und Podcasts waren Emoji-artige Grafiken und sind durch `tv-minimal`, `radio`, `mic` ersetzt (`settings` für Einstellungen). Die Markenlogos (Netflix, ARD, Dienste) bleiben Bilder. `tv-icon.png`, `radio-icon.png`, `podcast-icon.png` werden nicht mehr genutzt.
 - Schritt 2, bewusst nicht ersetzt: Schaltflächen-Zeichen ▲▼/↑↓ (Reihenfolge in Einstellungen) und ⠿ (Ziehgriff) – Zuordnung fehlt in der Tabelle (Vorschlag `chevron-up`/`chevron-down`, `grip-vertical`); Glyphen `+`/✓/✕ in der in YouTube-Seiten eingeschleusten Overlay-Schaltfläche (`lib/youtube-mini-page.js`, Fremdseite ohne Zugriff auf `icons.js`); `pip.html` (×, Funktion ruht); Tastenkappen `←` in `<kbd>`; vorhandene eigene Inline-SVGs (Update-Knopf, Werkzeugleisten, Download-Symbole) bis zu ihrer Zuordnung; „Sprung zurück/vor“ ohne eigenes Motiv.
-- Hellwerte der `list-*`-Token (Plan A1).
 - EPG-XML-Download (`EpgService`, globales `fetch` mit `remoteHttpUrl`): prüft nur den Hostnamen, nicht die aufgelöste IP; auf `lib/epg/safe-fetch.js` umstellen (eigener Auftrag, kein Design-Thema).
 - Test-Hooks `STREAMING_HUB_TEST_LOGO_ALLOW_HTTP` (Logo per http) und `STREAMING_HUB_E2E_PODCAST_SEARCH_URL` (Loopback-Cover/Kapitel) wirken auch in der paketierten App; wie `STREAMING_HUB_EPG_IMAGE_LOCAL` über `lib/test-hook-gate.js` an `!app.isPackaged` binden. Vorher die E2E-Läufe gegen die paketierte App (`E2E_APP_PATH`) anpassen, die diese Hooks nutzen (eigener Auftrag, kein Design-Thema).
 - Schritt 1 (Desktop, Stand `design(1)`): Werte ohne Token, nach `:root` verschoben bzw. belassen, Zuordnung offen. Farben: Navigation `--nav-shadow`, `--nav-text`, `--nav-btn-bg`, `--nav-btn-fg` (Vorschlag: `text-secondary` bzw. `surface-2` ableiten); EPG-Palette `--epg-*` (Vorschlag: `surface-1`/`surface-2`/`border-strong`, Blockfarben neu), `--g-*` (= `genre-*`, Schritt 8); Mediathek `--md-btn-bg`, `--md-btn-ink`, `--md-bg`, `--md-dialog`, `--md-surface`, `--md-surface2`, `--md-line`, `--md-text`, `--md-dim`, `--md-amber`, `--md-amber-ink`, `--md-danger` (Vorschlag: `surface-0` bis `surface-3`, `text-primary`, `text-secondary`, `status-*`; Schritt 4); übrige Altnamen in `:root` (`--ink`, `--violet`, `--accent-glow`, `--glass*`, `--icon-plate`, `--scrim-strong`, `--amber-*`, `--green-*`, `--media-*`, `--video-*` usw.). Inline-Farben in JS: `radio-dashboard-view.js:90` (`--tile-color` #f59e0b, Vorschlag `area-radio`, Schritt 5), Dienst-Standardfarbe #6c5ce7 (`renderer.js`, = `accent`, Datenwert), `hsl(var(--h) …)`-Verläufe für Cover-Platzhalter (`styles.css:2310`, `:2737`; kein fester Wert). Weitere feste Farben in JS: `mediathek-home-view.js:302` (Rückfall #1ab8e0, Vorschlag `area-mediatheken`), `mediathek-format.js:7` (`SOURCE_COLORS` ard #3a8dde, zdf #f08a3c, arte #e8602c; Senderfarben als Datenwerte, Vorschlag belassen), `settings-tv-sources.js:7` (`DEFAULT_COLOR` #a78bfa) und `settings-tv-channels.js:522` (Rückfall #a78bfa; Vorschlag beide `area-livetv`). `--md-text` hat denselben Wert wie `text-primary` (`styles.css:3863`; kann Alias werden).
 - Schritt 1: Radien ohne Stufe, unverändert belassen (sichtbar sonst anders): 10 px (25x), 4 px (12x), 14 px (7x; Navigationseintrag ist schon `radius-md`), 18 px (6x: Dialoge, Leerzustand, Hub-Karte), 2/3/5/9/11/20/22 px, 99 px (Vorschlag `radius-full`), Einzel-Ecken (`10px 0 0 10px` usw.). Vorschlag: 4/5 → `xs`, 9/10/11 → `sm` oder `md`, 14 → `md`, 18/20 → `lg`, 22 → `xl`. Außerdem: Die Kachel `.dashboard-tile` zeigt wegen der späteren Regel (`styles.css:3055`, Regel mit `min-height:220px`) 24 px, nicht 18. Entschieden: Bereichskachel `radius-xl` 24; die tote Basisregel (`styles.css:2889`) steht ebenfalls auf `radius-xl` (keine sichtbare Änderung).
 - Schritt 5, offen: Mini-Player-Leiste (Radio-Fortschritt/Regler in `--warn-soft`/`--amber-*`, Plan Schritt 8); `--epg-accent-light` (= `--violet`) für Auswahl und „jetzt“ im EPG bleibt, Zuordnung zu `area-livetv` in Plan Schritt 8; die Quellenfarbe in den Einstellungen (Farbwähler je TV-Quelle) hat auf der Senderkachel keine Wirkung mehr, das Feld bleibt vorerst.
 - Schritt 1: Tokens ohne Verwendung bis zu ihrem Schritt: `status-danger`, `space-*`, `motion-fast`, `motion-crossfade`.
-- Apple-TV-Player-Seitenspalte (`Sources/StreamingHubTV/YouTube/TVPlayerInfoViews.swift`): Schrift 20 bis 34 pt auf die TV-Stufen (Faktor 1,5 bis 2) bringen, Eckradius `cornerRadius: 28` (Z. 38) auf `radius-xl` × TV-Faktor (Plan A3).
+- Erledigt (Apple A3): Apple-TV-Player-Seitenspalte auf TV-Stufen und `tv-radius-xl`.
 
 ## Regeln für Claude Code
 

@@ -83,6 +83,17 @@
   --genre-show: light-dark(#8a6d00, #f5d04c);
   --genre-musik: light-dark(#0e7f73, #2dd4bf);
   --genre-sonstiges: light-dark(#666679, #8a8a9c);
+  /* Merklistenfarben (Apple A1, gemeinsame Tokens): Hell auf mind. 4,5:1 gegen surface-0/1 abgedunkelt */
+  --list-red: light-dark(#df1515, #ed4545);
+  --list-orange: light-dark(#ae5804, #fa8c21);
+  --list-yellow: light-dark(#896c03, #facc24);
+  --list-green: light-dark(#297f41, #3dbd61);
+  --list-teal: light-dark(#177c7f, #21b2b8);
+  --list-blue: light-dark(#0c67f3, #3380f5);
+  --list-indigo: light-dark(#5c57d6, #7672dd);
+  --list-purple: light-dark(#8b47f0, #9e66f2);
+  --list-pink: light-dark(#d81169, #f25ca1);
+  --list-gray: light-dark(#6a707b, #8f949e);
   --on-genre: light-dark(#ffffff, #0a0a0f);
   --status-live: light-dark(#d62f52, #d62f52);
   --status-rec: light-dark(#c62828, #ff5d5d);
