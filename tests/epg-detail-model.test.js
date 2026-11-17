@@ -187,27 +187,23 @@ test('Verdrahtung: kein Settings-Schalter für Bilder (P12); Bilder nur als img.
   const detailView = read('epg-detail-view.js');
   assert.match(detailView, /detailModel\.safeIconUrl\(slot\.icon\)/);
   assert.match(detailView, /img\.src = url/);
-  // Kachelbilder (Jetzt & Gleich, LiveTV): Main-Cache liefert data:-URL, im Renderer nur img.src nach safeResourceUrl
-  const tile = read('livetv-tile.js');
-  assert.match(tile, /deps\.safeResourceUrl\(url\)/);
-  assert.match(tile, /img\.src = src/);
-  assert.ok(!/style\.backgroundImage|setAttribute\('src'|\.srcset/.test(detailView + read('epg-row-dom.js') + tile));
+  assert.match(read('epg-row-dom.js'), /detailModel\.safeIconUrl\(url\)/);
+  assert.ok(!/style\.backgroundImage|setAttribute\('src'|\.srcset/.test(detailView + read('epg-row-dom.js')));
   // die Vorschau-/Poster-Bilder laufen unter der bestehenden CSP (img-src 'self' data: https:), die nicht gelockert wird
   const html = read('index.html');
   assert.match(html, /img-src 'self' data: https:;/);
   assert.ok(!/img-src[^;]*http:/.test(html));
 });
 
-test('Verdrahtung: Poster lazy, ohne Referrer; Kachelbild asynchron dekodiert, Fehler → Bild entfällt; kein Vorab-Laden', () => {
-  const src = read('epg-detail-view.js');
-  assert.match(src, /loading: 'lazy'/);
-  assert.match(src, /referrerpolicy: 'no-referrer'/);
-  assert.match(src, /addEventListener\('error'/);
-  const tile = read('livetv-tile.js');
-  assert.match(tile, /img\.decoding = 'async'/);
-  assert.match(tile, /addEventListener\('error'/);
+test('Verdrahtung: Poster/Thumbnails lazy, ohne Referrer, Fehler → Bild entfällt; kein Vorab-Laden', () => {
+  for (const file of ['epg-detail-view.js', 'epg-row-dom.js']) {
+    const src = read(file);
+    assert.match(src, /loading: 'lazy'/, file);
+    assert.match(src, /referrerpolicy: 'no-referrer'/, file);
+    assert.match(src, /addEventListener\('error'/, file);
+  }
   const jngView = read('epg-jng-view.js');
-  assert.match(jngView, /viewportCells\(\)/, 'nur Kacheln im Viewport');
+  assert.match(jngView, /viewportCells\(\)/, 'nur Zeilen im Viewport');
   assert.ok(!/new Image\(\)|fetch\(/.test(jngView + read('epg-view.js') + read('epg-detail-view.js')), 'kein Vorab-Download');
 });
 

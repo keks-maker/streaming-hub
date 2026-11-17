@@ -7,14 +7,7 @@
 // werden per page.route beantwortet; jede Anfrage wird mitgezählt. Kein Netz.
 const { test, expect } = require('@playwright/test');
 const { MIN, buildDisplayXmltv, buildThumbXmltv, DISPLAY_CHANNELS, IMG_HOST, thumbChannelId } = require('../tests/helpers/epg-b-display-fixture.js');
-const { execFileSync } = require('child_process');
-const fs = require('fs');
-const http = require('http');
-const os = require('os');
-const path = require('path');
 const { launchApp, waitForEpgChannels, openOverlayFromDashboard } = require('./epg-helpers');
-
-const FFMPEG = path.join(__dirname, '..', 'bin', 'ffmpeg');
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 // Meldungen, die zu den absichtlichen Bildfehlern der Tests gehören (404 des Bilddienstes, CSP gegen http-Icons)
@@ -67,7 +60,7 @@ test.describe('Programmführer 3.6 (Genre-Chips, Detail-Modal)', () => {
 
   const listRow = title => page.locator('.epg-list-row', { hasText: title });
   const block = title => page.locator('.epg-block', { hasText: title });
-  const jngRows = () => page.locator('#epgJngItems .epg-jtile');
+  const jngRows = () => page.locator('#epgJngItems .epg-jrow');
   const chip = genre => page.locator(`#epgGenre_${genre}`);
   const openDetailOf = async title => {
     await listRow(title).first().locator('.epg-row-open').click();
@@ -178,10 +171,9 @@ test.describe('Programmführer 3.6 (Genre-Chips, Detail-Modal)', () => {
     await expect(jngRows()).toHaveCount(1);
     const row = jngRows().first();
     await expect(row).toContainText('Genre Eins');
-    // „Läuft“: Krimi Voll ist kein Sport → Platzhalter statt Titel; die nächste Sendung (Sport Live) steht in ihrer „Danach“-Zeile
-    await expect(row.locator('.tv-tile-title')).toHaveText('–');
-    await expect(row.locator('.epg-jnext')).toHaveCount(1);
-    await expect(row.locator('.epg-jnext')).toContainText('Sport Live');
+    await expect(row.locator('.epg-jcell:not(.is-empty)')).toHaveCount(1);
+    await expect(row.locator('.epg-jcell:not(.is-empty)')).toContainText('Sport Live');
+    await expect(row.locator('.epg-jslot').first()).toContainText('–'); // „Läuft“: Krimi Voll ist kein Sport
     // anderes Genre → anderer Sender
     await chip('sport').click();
     await chip('doku').click();
@@ -351,107 +343,78 @@ test.describe('Programmführer 3.6 (Genre-Chips, Detail-Modal)', () => {
   });
 });
 
-// ───────────────────────── Vorschaubilder in „Jetzt & Gleich“ ─────────────────────────
+// ───────────────────────── Thumbnails in „Jetzt & Gleich“ ─────────────────────────
 
-test.describe('Programmführer 3.6/S3 (Vorschaubilder in Jetzt & Gleich)', () => {
+test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
   test.describe.configure({ mode: 'serial' });
 
   const CHANNELS = Number(process.env.E2E_THUMB_CHANNELS) || 120;
   let ctx;
   let page;
-  let server;
-  let workDir;
-  const host = { requests: [], state: { fail: false, delayMs: 0 } };
+  let host;
 
   test.beforeAll(async () => {
-    // Das Bild lädt der Main (epg-image:get): lokaler Bild-Server statt page.route; jede Anfrage wird mitgezählt.
-    workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-e2e-epgthumb-img-'));
-    const jpg = path.join(workDir, 'img.jpg');
-    execFileSync(FFMPEG, ['-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=1', '-frames:v', '1', '-y', jpg], { timeout: 30_000 });
-    const bytes = fs.readFileSync(jpg);
-    server = http.createServer((req, res) => {
-      host.requests.push(req.url);
-      if (host.state.fail) {
-        res.destroy();
-        return;
-      }
-      setTimeout(() => {
-        res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-        res.end(bytes);
-      }, host.state.delayMs);
-    });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    const origin = `http://127.0.0.1:${server.address().port}`;
     const base = Math.floor(Date.now() / MIN) * MIN;
     ctx = await launchApp({
       prefix: 'streaming-hub-e2e-epgthumb-',
-      epgXml: buildThumbXmltv({ baseMs: base, channels: CHANNELS, host: origin }),
+      epgXml: buildThumbXmltv({ baseMs: base, channels: CHANNELS }),
       channels: Array.from({ length: CHANNELS }, (_, i) => ({ id: thumbChannelId(i), name: `Thumb ${i + 1}`, group: 'Test' })),
-      // Ein Favorit: Die LiveTV-Favoritenkacheln laden ihr Bild sofort; hier soll nur Jetzt & Gleich für die Auswahl „Alle Sender“ laden
-      favorites: [thumbChannelId(0)],
-      env: { STREAMING_HUB_EPG_IMAGE_LOCAL: '1' },
+      favorites: Array.from({ length: CHANNELS }, (_, i) => thumbChannelId(i)),
     });
     page = ctx.page;
+    host = await installImageHost(page);
     await waitForEpgChannels(page, CHANNELS);
   });
 
   test.afterAll(async () => {
     if (ctx) await ctx.cleanup();
-    if (server) await new Promise(resolve => server.close(resolve));
-    if (workDir) fs.rmSync(workDir, { recursive: true, force: true });
   });
 
   const switchToJng = async () => {
     await page.locator('#epgModeJng').click();
-    await expect(page.locator('#epgJngItems .epg-jtile').first()).toBeVisible();
+    await expect(page.locator('#epgJngItems .epg-jrow').first()).toBeVisible();
   };
   const visibleRowIndexes = () =>
     page.evaluate(() => {
       const scroll = window.document.getElementById('epgJng');
       const box = scroll.getBoundingClientRect();
-      return [...window.document.querySelectorAll('#epgJngItems .epg-jtile')]
-        .filter(tile => {
-          const r = tile.getBoundingClientRect();
+      return [...window.document.querySelectorAll('#epgJngItems .epg-jrow')]
+        .filter(row => {
+          const r = row.getBoundingClientRect();
           return r.bottom > box.top && r.top < box.bottom;
         })
-        .map(tile => Number(/Thumb (\d+)/.exec(tile.textContent)[1]));
+        .map(row => Number(/Thumb (\d+)/.exec(row.textContent)[1]));
     });
   const channelOf = url => Number(/\/t\/(\d+)-\d+\.png$/.exec(url)[1]);
 
-  test('Liste geöffnet → keine Bildanfrage für die Ansicht; J&G zeigt Verlauf mit Platzhalter, Bilder nur für die sichtbaren Kacheln', async () => {
+  test('Liste geöffnet → keine Bildanfrage; J&G zeigt Platzhalter, Bilder nur für die sichtbaren Zeilen', async () => {
     await openOverlayFromDashboard(page);
     await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
     await expect(page.locator('.epg-list-row').first()).toBeVisible();
-    await page.locator('#epgSenderMenu').click();
-    await page.locator('.epg-menu-item', { hasText: 'Alle Sender' }).click();
-    await expect(page.locator('.epg-list-row').first()).toBeVisible();
     await page.waitForTimeout(500);
-    expect(host.requests.every(url => channelOf(url) === 1)).toBe(true); // nur das Bild der Favoritenkachel, nichts für Liste oder Rest
+    expect(host.requests).toEqual([]);
     await switchToJng();
-    await expect(page.locator('#epgJngItems .tv-tile-still .ic').first()).toBeVisible(); // Verlauf mit Platzhalter-Icon
-    await expect.poll(() => page.locator('#epgJngItems .tv-tile-still.has-image').count(), { timeout: 15_000 }).toBeGreaterThan(3);
+    await expect(page.locator('#epgJngItems .epg-thumb').first()).toBeVisible(); // fester Platzhalter
+    await expect.poll(() => page.locator('#epgJngItems .epg-thumb.has-img').count(), { timeout: 15_000 }).toBeGreaterThan(3);
     const visible = await visibleRowIndexes();
     expect(visible.length).toBeGreaterThan(3);
     expect(visible.length).toBeLessThan(40);
     await page.waitForTimeout(600);
     const requested = host.requests.map(channelOf);
-    // nur die Bilder der laufenden und der beiden „Danach“-Sendungen je sichtbarer Kachel (plus Kacheln, die beim Rendern kurz sichtbar waren: kleine Toleranz)
-    expect(host.requests.length).toBeLessThanOrEqual(visible.length * 3 + 8);
-    expect(host.requests.length).toBeLessThan(CHANNELS / 2);
-    // nur Sender aus dem sichtbaren Bereich (± 4 Kacheln), nichts aus der Mitte oder vom Ende
-    const lo = Math.min(...visible) - 5;
-    const hi = Math.max(...visible) + 5;
-    expect(requested.every(n => n >= lo && n <= hi), `angefragt: ${[...new Set(requested)].join(',')}, sichtbar ${lo + 5}-${hi - 5}`).toBe(true);
+    // höchstens die drei Zellen der sichtbaren Zeilen (plus Zeilen, die beim Rendern kurz sichtbar waren: kleine Toleranz)
+    expect(host.requests.length).toBeLessThanOrEqual(visible.length * 3 + 6);
+    expect(host.requests.length).toBeLessThan(CHANNELS * 3 / 2);
+    // nur Sender aus dem sichtbaren Bereich (± 2 Zeilen), nichts aus der Mitte oder vom Ende
+    const lo = Math.min(...visible) - 3;
+    const hi = Math.max(...visible) + 3;
+    expect(requested.every(n => n >= lo && n <= hi), `angefragt: ${[...new Set(requested)].join(',')}, sichtbar ${lo + 3}-${hi - 3}`).toBe(true);
     expect(requested).not.toContain(60);
     expect(requested).not.toContain(CHANNELS);
     // keine Wiederholung: jede URL höchstens einmal
     expect(new Set(host.requests).size).toBe(host.requests.length);
-    // das Bild ist ein verkleinertes JPEG aus dem Main-Cache, kein Fremdhost-Bild im Renderer
-    const img = page.locator('#epgJngItems .tv-tile-still.has-image .tv-tile-image').first();
-    expect(await img.evaluate(el => el.src.startsWith('data:image/jpeg;base64,'))).toBe(true);
   });
 
-  test('Scrollen holt nur die Kacheln, auf denen die Ansicht stehen bleibt', async () => {
+  test('Scrollen holt nur die Zeilen, auf denen die Ansicht stehen bleibt', async () => {
     const before = host.requests.length;
     await page.locator('#epgJng').evaluate(el => {
       el.scrollTop = el.scrollHeight;
@@ -460,41 +423,41 @@ test.describe('Programmführer 3.6/S3 (Vorschaubilder in Jetzt & Gleich)', () =>
     await page.waitForTimeout(600);
     const visible = await visibleRowIndexes();
     const fresh = host.requests.slice(before).map(channelOf);
-    const lo = Math.min(...visible) - 5;
+    const lo = Math.min(...visible) - 3;
     expect(fresh.every(n => n >= lo), `neu angefragt: ${[...new Set(fresh)].join(',')}`).toBe(true);
     expect(Math.max(...visible)).toBe(CHANNELS);
     // schnelles Durchscrollen ohne Halt lädt nichts aus der Mitte
     expect(host.requests.map(channelOf)).not.toContain(60);
   });
 
-  test('Ausfall des Bilddienstes verändert nur das Bild: Verlauf bleibt, Kacheln und Bedienung unberührt', async () => {
-    host.state.fail = true;
-    // Kacheln um Sender 60: bisher nie angefragt, der Dienst ist nun ausgefallen
-    await page.locator('#epgJng').evaluate((el, ratio) => {
-      el.scrollTop = el.scrollHeight * ratio;
-    }, 0.5);
-    await expect.poll(() => visibleRowIndexes().then(v => v.some(n => n >= 55 && n <= 65))).toBe(true);
-    await page.waitForTimeout(900);
-    const mid = page.locator('#epgJngItems .epg-jtile', { hasText: /Thumb (5\d|6\d)\b/ });
-    expect(await mid.count()).toBeGreaterThan(0);
-    await expect(mid.locator('.tv-tile-image')).toHaveCount(0);
-    await expect(mid.first().locator('.tv-tile-still .ic')).toHaveCount(1);
-    // die Kachel bleibt bedienbar
-    await mid.first().locator('.tv-tile-title.epg-row-open').click();
-    await expect(page.locator('#epgDetailBackdrop')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
-    host.state.fail = false;
-  });
-
-  test('Messung: Zeit bis zur Anzeige von „Jetzt & Gleich“ (frisch geladen, Bilddienst auf 400 ms gedrosselt) < 300 ms', async () => {
-    // Bilddienst langsam: wenn Bilder die Ansicht ausbremsen würden, zeigte sich das hier. Die Bilder der oben gezeigten
-    // Kacheln kommen aus dem Cache (Main und Renderer), gedrosselt wird nur, was noch nie geladen wurde.
-    host.state.delayMs = 400;
+  test('Ausfall des Bilddienstes verändert nur das Bild: Platzhalter bleiben, Zeilen und Bedienung unberührt', async () => {
+    host.state.abort = true;
     await page.locator('#epgJng').evaluate(el => {
       el.scrollTop = 0;
     });
     await page.locator('#epgModeList').click();
+    await page.locator('#epgCloseBtn').click();
+    await expect(page.locator('#epgOverlay')).toBeHidden();
+    await page.locator('#dashboardEpgOpen').evaluate(el => el.click());
+    await expect(page.locator('#epgOverlay')).toBeVisible();
+    await page.locator('#epgModeJng').click();
+    await expect(page.locator('#epgJngItems .epg-jrow').first()).toBeVisible();
+    await page.waitForTimeout(800);
+    await expect(page.locator('#epgJngItems .epg-thumb').first()).toBeVisible();
+    await expect(page.locator('#epgJngItems .epg-thumb-img')).toHaveCount(0);
+    await expect(page.locator('#epgJngItems .epg-jcell:not(.is-empty)').first()).toBeVisible();
+    // die Zelle bleibt bedienbar
+    await page.locator('#epgJngItems .epg-jcell .epg-row-open').first().click();
+    await expect(page.locator('#epgDetailBackdrop')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
+    host.state.abort = false;
+  });
+
+  test('Messung: Zeit bis zur Anzeige der Liste „Jetzt & Gleich“ (frisch geladen, Bilder auf 400 ms gedrosselt) < 300 ms', async () => {
+    // Bilddienst langsam: wenn Thumbnails die Liste ausbremsen würden, zeigte sich das hier
+    await page.unroute(`${IMG_HOST}/**`);
+    const slow = await installImageHost(page, { delayMs: 400 });
     const samples = [];
     for (let i = 0; i < 6; i += 1) {
       await page.locator('#epgCloseBtn').click();
@@ -507,8 +470,8 @@ test.describe('Programmführer 3.6/S3 (Vorschaubilder in Jetzt & Gleich)', () =>
           new Promise(resolve => {
             const t0 = window.performance.now();
             const done = () => {
-              const tiles = window.document.querySelectorAll('#epgJngItems .epg-jtile');
-              if (tiles.length > 0 && tiles[0].querySelector('.tv-tile-title.epg-row-open')) resolve(window.performance.now() - t0);
+              const rows = window.document.querySelectorAll('#epgJngItems .epg-jrow');
+              if (rows.length > 0 && rows[0].querySelector('.epg-jcell .epg-row-open')) resolve(window.performance.now() - t0);
               else window.requestAnimationFrame(done);
             };
             window.document.getElementById('epgModeJng').click();
@@ -516,13 +479,13 @@ test.describe('Programmführer 3.6/S3 (Vorschaubilder in Jetzt & Gleich)', () =>
           }),
       );
       samples.push(Math.round(ms));
-      await page.waitForTimeout(700); // Bilder der sichtbaren Kacheln werden (gedrosselt) angefragt, ohne dass die Ansicht wartet
+      await page.waitForTimeout(900); // die (gedrosselten) Bilder der sichtbaren Zeilen werden angefragt, ohne dass die Liste wartet
       await page.locator('#epgModeList').click();
     }
     const med = median(samples);
-    test.info().annotations.push({ type: 'Messung (ms bis Jetzt & Gleich, 6 Läufe, 120 Sender)', description: `${samples.join(', ')} · Median ${med}` });
-    console.log(`[Messung S3] Zeit bis Anzeige Jetzt & Gleich (ms): ${samples.join(', ')} · Median ${med} · Bildanfragen gesamt ${host.requests.length}`);
-    host.state.delayMs = 0;
+    test.info().annotations.push({ type: 'Thumbnail-Messung (ms bis Liste J&G, 6 Läufe, 120 Sender)', description: `${samples.join(', ')} · Median ${med}` });
+    console.log(`[Messung 3.6] Zeit bis Anzeige Jetzt & Gleich (ms): ${samples.join(', ')} · Median ${med} · Bildanfragen gesamt ${slow.requests.length}`);
+    expect(slow.requests.length).toBeGreaterThan(samples.length * 3); // die Bilder wurden tatsächlich (verzögert) angefragt
     expect(med).toBeLessThan(300);
     expect(Math.max(...samples)).toBeLessThan(600);
   });

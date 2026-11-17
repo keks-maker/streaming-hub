@@ -86,14 +86,8 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
   });
 
   const listRow = title => page.locator('.epg-list-row', { hasText: title });
-  // Kachel eines Senders; „Zelle“ einer Sendung = die Kachel (laufende Sendung, über ihren Titel) oder ihre „Danach“-Zeile
-  const jngRow = name => page.locator('.epg-jtile', { hasText: name });
-  const jngCell = title => page.locator('.epg-jnext', { hasText: title }).or(page.locator('.epg-jtile', { has: page.locator('.tv-tile-title', { hasText: title }) }));
-  const jngOpen = title => page.locator('.tv-tile-title.epg-row-open, .epg-jnext-open').filter({ hasText: title });
-  const jngToggle = title =>
-    page.locator('.epg-jtile', { has: page.locator('.tv-tile-title', { hasText: title }) }).locator('.tv-tile-info > .epg-toggle').or(page.locator('.epg-jnext', { hasText: title }).locator('.epg-toggle'));
-  const jngMarker = title =>
-    page.locator('.epg-jtile', { has: page.locator('.tv-tile-title', { hasText: title }) }).locator('.tv-tile-media > .epg-marker').or(page.locator('.epg-jnext', { hasText: title }).locator('.epg-marker'));
+  const jngCell = title => page.locator('.epg-jcell', { hasText: title });
+  const jngRow = name => page.locator('.epg-jrow', { hasText: name });
   const pickSender = async label => {
     await page.locator('#epgSenderMenu').click();
     await page.locator('.epg-menu-item', { hasText: label }).first().click();
@@ -184,114 +178,74 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
 
   // ── Jetzt & Gleich ──
 
-  test('Jetzt & Gleich im schmalen Fenster (899 px): Kachelraster ohne horizontales Scrollen, Kacheln vollständig, Infobereich ohne Überlauf', async () => {
+  test('Jetzt & Gleich im schmalen Fenster (899 px): ohne horizontales Scrollen nutzbar, Zeilen untereinander, Kopf ausgeblendet', async () => {
     const jng = page.locator('#epgJng');
     await expect(jngRow('E2E Kanal')).toBeVisible();
     const metrics = await page.evaluate(() => {
       const scroll = window.document.getElementById('epgJng');
-      const tile = window.document.querySelector('.epg-jtile');
-      const box = tile.getBoundingClientRect();
-      const media = tile.querySelector('.tv-tile-media').getBoundingClientRect();
-      const info = tile.querySelector('.tv-tile-info');
-      const lines = [...tile.querySelectorAll('.epg-jnext')].map(c => c.getBoundingClientRect());
+      const row = window.document.querySelector('.epg-jrow');
+      const cells = [...row.querySelectorAll('.epg-jcell')].map(c => c.getBoundingClientRect());
       return {
         narrow: window.document.querySelector('.epg-jng').classList.contains('is-narrow'),
         overflowX: scroll.scrollWidth - scroll.clientWidth,
         pageOverflow: window.document.documentElement.scrollWidth - window.document.documentElement.clientWidth,
-        tileInside: box.right <= scroll.getBoundingClientRect().right + 1 && box.left >= scroll.getBoundingClientRect().left - 1,
-        ratio: media.width / media.height,
-        infoOverflow: info.scrollHeight - info.clientHeight,
-        linesInside: lines.every(c => c.bottom <= box.bottom + 1),
-        cols: new Set([...window.document.querySelectorAll('.epg-jtile')].map(t => Math.round(t.getBoundingClientRect().left))).size,
+        headVisible: window.getComputedStyle(window.document.querySelector('.epg-jng-head')).display !== 'none',
+        stacked: cells.length >= 3 && cells.every((c, i) => i === 0 || c.top >= cells[i - 1].bottom - 1),
+        rowH: row.getBoundingClientRect().height,
+        cellsInside: cells.every(c => c.bottom <= row.getBoundingClientRect().bottom + 1),
       };
     });
     expect(metrics.narrow).toBe(true);
     expect(metrics.overflowX).toBeLessThanOrEqual(0);
     expect(metrics.pageOverflow).toBeLessThanOrEqual(0);
-    expect(metrics.tileInside).toBe(true);
-    expect(Math.abs(metrics.ratio - 16 / 9)).toBeLessThan(0.05);
-    expect(metrics.infoOverflow).toBeLessThanOrEqual(0);
-    expect(metrics.linesInside).toBe(true);
-    expect(metrics.cols).toBeGreaterThanOrEqual(2);
+    expect(metrics.headVisible).toBe(false);
+    expect(metrics.stacked).toBe(true);
+    expect(metrics.cellsInside).toBe(true);
     await expect(jng).toBeVisible();
-    // ~740 px: zwei Spalten füllen die Breite (Kacheln breit); 1280 px: vier Spalten (Kacheln schmaler), beide Favoriten in einer Rasterzeile
-    const geometry = () => page.evaluate(() => [...window.document.querySelectorAll('.epg-jtile')].map(t => ({ w: Math.round(t.getBoundingClientRect().width), top: Math.round(t.getBoundingClientRect().top) })));
-    await setWindowWidth(ctx, 740);
-    await expect.poll(async () => (await geometry())[0].w).toBeGreaterThan(320);
-    expect(new Set((await geometry()).map(g => g.top)).size).toBe(1);
+    // Fenster wieder breit
     await setWindowWidth(ctx, 1280);
     await expect(page.locator('.epg-jng')).not.toHaveClass(/is-narrow/);
-    await expect.poll(async () => (await geometry())[0].w).toBeLessThan(320);
-    expect((await geometry())[0].w).toBeGreaterThanOrEqual(240);
-    expect(new Set((await geometry()).map(g => g.top)).size).toBe(1);
+    await expect(page.locator('.epg-jng-head')).toBeVisible();
   });
 
-  test('Jetzt & Gleich (Favoriten): Senderkachel mit laufender Sendung (Zeitpille, Titel, „Sender · noch X Min.“, Fortschritt), „Danach“-Zeilen für nächste und übernächste; Logo mit Buchstaben-Fallback', async () => {
-    const tile = jngRow('E2E Kanal');
-    await expect(tile).toHaveClass(/dashboard-tv-tile/);
-    await expect(tile).toHaveClass(/is-now/);
-    await expect(tile.locator('.tv-tile-title')).toHaveText('Laufende Sendung');
-    await expect(tile.locator('.tv-tile-time')).toHaveText(/^\d{2}:\d{2} – \d{2}:\d{2}$/);
-    await expect(tile.locator('.tv-tile-meta')).toHaveText(/^E2E Kanal · noch \d+ Min\.$/);
-    await expect(tile.locator(':scope > .dashboard-tv-progress')).toBeVisible();
-    await expect(tile.locator('.tv-tile-still .ic')).toHaveCount(1); // diese Fixture trägt keine Bilder: Verlauf mit Platzhalter-Icon
-    await expect(tile.locator('.tv-tile-image')).toHaveCount(0);
-    const lines = tile.locator('.epg-jnext');
-    await expect(lines).toHaveCount(2);
-    await expect(lines.nth(0).locator('.epg-jnext-open')).toHaveText(/^Danach \d{2}:\d{2}–\d{2}:\d{2} · Kommende Sendung\s*$/);
-    await expect(lines.nth(1).locator('.epg-jnext-open')).toHaveText(/^Danach \d{2}:\d{2}–\d{2}:\d{2} · Uebernaechste Sendung\s*$/);
-    await expect(lines.nth(0)).toHaveAttribute('data-row-id', /.+/);
-    await expect(lines.nth(0).locator('.epg-jnext-open')).toHaveAttribute('aria-label', /^Danach \d{2}:\d{2}–\d{2}:\d{2}: Kommende Sendung$/);
-    // Vorschau je Zeile: fester Platzhalter 64 × 36
-    expect(await lines.nth(0).locator('.epg-thumb').evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }))).toEqual({ w: 64, h: 36 });
-    // Tab-Reihenfolge wie vorher: Logo-Platte, Titel, Aufnehmen, dann die „Danach“-Zeilen
-    await tile.locator('.tv-tile-logo').focus();
-    await page.keyboard.press('Tab');
-    await expect(tile.locator('.tv-tile-title')).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(tile.locator('.tv-tile-info > .epg-toggle')).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(lines.nth(0).locator('.epg-jnext-open')).toBeFocused();
+  test('Jetzt & Gleich (Favoriten): je Sender laufend (mit Fortschritt) · nächste · übernächste, Thumbnail-Platzhalter ohne Bilder; Logo mit Kürzel-Fallback', async () => {
+    const row = jngRow('E2E Kanal');
+    await expect(row.locator('.epg-jcell')).toHaveCount(3);
+    await expect(row.locator('.epg-jcell').nth(0)).toContainText('Laufende Sendung');
+    await expect(row.locator('.epg-jcell').nth(0)).toHaveClass(/is-now/);
+    await expect(row.locator('.epg-jcell').nth(0).locator('.epg-time-sub')).toHaveText(/^noch \d+ min$/);
+    await expect(row.locator('.epg-jcell').nth(0).locator('.epg-progress')).toBeVisible();
+    await expect(row.locator('.epg-jcell').nth(1)).toContainText('Kommende Sendung');
+    await expect(row.locator('.epg-jcell').nth(2)).toContainText('Uebernaechste Sendung');
+    await expect(row.locator('.epg-jcell').nth(1).locator('.epg-progress')).toBeHidden();
+    // Thumbnails (3.6): fester Platzhalter je Zelle; diese Fixture trägt keine Bilder → nie ein Bild-Element
+    await expect(page.locator('.epg-jcell .epg-thumb')).toHaveCount(5);
+    await expect(page.locator('.epg-jcell .epg-thumb-img, .epg-jcell img.thumb')).toHaveCount(0);
     // Vorbei und ferne Sendung stehen nicht darin
-    await expect(page.locator('.epg-jtile', { hasText: 'Vorbei Magazin' })).toHaveCount(0);
-    await expect(page.locator('.epg-jtile', { hasText: 'Ferne Sendung' })).toHaveCount(0);
-    // Logo: echtes Bild mit file-URL (Kanal 1), Buchstabe bei nicht ladbarer URL (Kanal 2)
-    await expect(tile.locator('.tv-tile-logo')).not.toHaveClass(/has-error/);
-    await expect(tile.locator('.tv-tile-logo img')).toHaveCount(1);
-    const second = jngRow('Zweiter Kanal');
-    await expect(second.locator('.tv-tile-logo')).toHaveClass(/has-error/);
-    await expect(second.locator('.tv-tile-logo .dashboard-tile-fallback')).toHaveText('ZK'); // zwei Zeichen des Senderkürzels wie vorher
+    await expect(jngCell('Vorbei Magazin')).toHaveCount(0);
+    await expect(jngCell('Ferne Sendung')).toHaveCount(0);
+    // Logo: echtes Bild mit file-URL (Kanal 1), Kürzel-Badge bei nicht ladbarer URL (Kanal 2)
+    await expect(row.locator('.epg-grid-logo')).toHaveClass(/has-img/);
+    await expect(jngRow('Zweiter Kanal').locator('.epg-grid-logo')).not.toHaveClass(/has-img/);
+    await expect(jngRow('Zweiter Kanal').locator('.epg-grid-logo')).toHaveText('ZK');
     // Sender ohne Favoritenstatus fehlen
     await expect(jngRow('Füllkanal')).toHaveCount(0);
-    // Zweiter Kanal: laufend, nächste, dahinter nichts → nur eine „Danach“-Zeile
-    await expect(second.locator('.epg-jnext')).toHaveCount(1);
+    // Zweiter Kanal: laufend, nächste, dahinter nichts → Platzhalter statt Zelle
+    await expect(jngRow('Zweiter Kanal').locator('.epg-jcell:not(.is-empty)')).toHaveCount(2);
   });
 
-  test('Jetzt & Gleich: Klick auf Kachel oder „Danach“-Zeile öffnet das Detail-Modal (Esc schließt, Fokus zurück), Logo-Platte öffnet die Kanalansicht', async () => {
-    await jngCell('Kommende Sendung').locator('.epg-jnext-open').click();
+  test('Jetzt & Gleich: Klick auf Sendung öffnet das Detail-Modal (Esc schließt, Fokus zurück), Sendername öffnet die Kanalansicht', async () => {
+    await jngCell('Kommende Sendung').locator('.epg-row-open').click();
     await expect(page.locator('#epgDetailBackdrop')).toBeVisible();
     await expect(page.locator('#epgDetailTitle')).toHaveText('Kommende Sendung');
     await page.keyboard.press('Escape');
     await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
     await expect(page.locator('#epgOverlay')).toBeVisible();
-    await expect(jngOpen('Kommende Sendung')).toBeFocused();
-    // Klick irgendwo auf die Kachel (Medienfläche) öffnet die laufende Sendung
-    const mediaBox = await jngRow('E2E Kanal').locator('.tv-tile-media').boundingBox();
-    await page.mouse.click(mediaBox.x + mediaBox.width / 2, mediaBox.y + mediaBox.height / 2); // echter Mausklick: der Titel-Knopf spannt sich über die Kachel
-    await expect(page.locator('#epgDetailTitle')).toHaveText('Laufende Sendung');
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
-    // Tastatur: Fokus auf den Titel-Knopf, Enter öffnet das Detail
-    await jngOpen('Laufende Sendung').focus();
-    await page.keyboard.press('Enter');
-    await expect(page.locator('#epgDetailTitle')).toHaveText('Laufende Sendung');
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
-    // Logo-Platte (Sendername) → Kanalansicht (3.4); Esc führt zurück in Jetzt & Gleich, Fokus auf die Logo-Platte
+    await expect(jngCell('Kommende Sendung').locator('.epg-row-open')).toBeFocused();
+    // Sendername → Kanalansicht (3.4); Esc führt zurück in Jetzt & Gleich, Fokus auf den Sendernamen
     await jngRow('E2E Kanal').locator('.epg-jchan').click();
     await expect(page.locator('#epgChannel')).toBeVisible();
     await expect(page.locator('#epgChannelName')).toHaveText('E2E Kanal');
-    await expect(page.locator('#epgDetailBackdrop')).toBeHidden();
     expect(await page.evaluate(() => window.document.querySelector('.epg-jng').inert)).toBe(true); // darunter, nicht bedienbar
     await page.keyboard.press('Escape');
     await expect(page.locator('#epgChannel')).toBeHidden();
@@ -301,52 +255,35 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     expect(await activeMode(page)).toBe('epgModeJng');
   });
 
-  test('Jetzt & Gleich: runder Aufnahme-Knopf je Sendung wie in 3.3 — Aufnehmen (Planungsdialog), Marker, Abbrechen mit Rückfrage; laufende Sendung: Meldung; Maus und Tastatur', async () => {
-    const running = jngToggle('Laufende Sendung');
-    // Knopf: rund, mit aria-label (Sendung und Sender), nur Icon, oben rechts in der Medienfläche
-    await expect(running).toHaveAttribute('aria-label', /^Aufnehmen: Laufende Sendung \(E2E Kanal, \d{2}:\d{2}\)$/);
-    await expect(running.locator('svg')).toHaveCount(1);
-    expect(await running.evaluate(el => ({ r: getComputedStyle(el).borderTopLeftRadius, text: el.textContent.trim() }))).toEqual({ r: expect.stringMatching(/^(\d{3,4}px|50%)/), text: '' });
-    const geo = await running.evaluate(el => {
-      const b = el.getBoundingClientRect();
-      const m = el.closest('.epg-jtile').querySelector('.tv-tile-media').getBoundingClientRect();
-      return { right: m.right - b.right, top: b.top - m.top, w: b.width, h: b.height };
-    });
-    expect(Math.abs(geo.w - geo.h)).toBeLessThan(0.5);
-    expect(geo.right).toBeLessThan(16);
-    expect(geo.top).toBeLessThan(16);
-    await running.click();
+  test('Jetzt & Gleich: Toggle je Sendung wie in 3.3 — Aufnehmen (Planungsdialog), Marker, Abbrechen mit Rückfrage; laufende Sendung: Meldung', async () => {
+    const running = jngCell('Laufende Sendung');
+    await running.locator('.epg-toggle').click();
     await expect(page.locator('#epgToast')).toContainText('läuft bereits');
     await expect(page.locator('#recScheduleOverlay')).not.toHaveClass(/open/);
-    // Tastatur: Fokus auf den Knopf der nächsten Sendung, Enter plant
-    const next = jngToggle('Kommende Sendung');
-    await next.focus();
-    await expect(next).toBeFocused();
-    await page.keyboard.press('Enter');
+    const next = jngCell('Kommende Sendung');
+    await next.locator('.epg-toggle').click();
     await expect(page.locator('#recScheduleOverlay')).toHaveClass(/open/);
     await page.locator('#recScheduleConfirm').click();
     await expect(page.locator('#recScheduleOverlay')).not.toHaveClass(/open/);
-    await expect(jngMarker('Kommende Sendung')).toHaveAttribute('data-state', 'scheduled');
-    await expect(next).toHaveAttribute('aria-label', /^Aufnahme abbrechen: Kommende Sendung/);
-    await expect(next).toHaveAttribute('data-kind', 'cancel');
+    await expect(next.locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
+    await expect(next.locator('.epg-toggle')).toHaveText('Aufnahme abbrechen');
     expect(await scheduledEntries()).toHaveLength(1);
-    // Marker status-rec, geplant statisch (keine Animation)
-    const style = await jngMarker('Kommende Sendung').evaluate(el => {
+    // Marker rot, geplant statisch (keine Animation)
+    const style = await next.locator('.epg-marker').evaluate(el => {
       const cs = window.getComputedStyle(el);
       return { color: cs.color, animation: cs.animationName };
     });
     expect(style.color).toBe('rgb(255, 93, 93)');
     expect(style.animation).toBe('none');
-    // derselbe Marker in der Liste (eine Quelle der Wahrheit)
+    // derselbe Marker in Liste und Raster (eine Quelle der Wahrheit)
     await page.locator('#epgModeList').click();
     await expect(listRow('Kommende Sendung').locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
     await page.locator('#epgModeJng').click();
-    await next.click();
+    await next.locator('.epg-toggle').click();
     await expect(page.locator('#epgConfirm')).toBeVisible();
     await page.locator('#epgConfirmYes').click();
-    await expect(jngMarker('Kommende Sendung')).toHaveAttribute('data-state', '');
-    await expect(next).toHaveAttribute('data-kind', 'record');
-    await expect(next).toHaveAttribute('aria-label', /^Aufnehmen: Kommende Sendung/);
+    await expect(next.locator('.epg-marker')).toHaveAttribute('data-state', '');
+    await expect(next.locator('.epg-toggle')).toHaveText('Aufnehmen');
     expect(await scheduledEntries()).toHaveLength(0);
   });
 
@@ -357,27 +294,26 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await reopenOverlay(page);
     await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
     await page.locator('#epgModeJng').click();
-    const tile = () => jngRow('E2E Kanal');
-    await expect(tile().locator('.tv-tile-title')).toHaveText('Laufende Sendung');
+    const cell = () => jngRow('E2E Kanal').locator('.epg-jcell').nth(0);
+    await expect(cell()).toContainText('Laufende Sendung');
     await page.evaluate(() => {
-      const el = window.document.querySelector('.epg-jtile[data-channel-key="E2E.de"]');
-      el.dataset.keep = '1';
-      el.querySelector('.tv-tile-info').dataset.keep = '1';
+      const row = window.document.querySelector('.epg-jrow[data-channel-key="E2E.de"]');
+      row.dataset.keep = '1';
+      row.querySelector('.epg-jcell').dataset.keep = '1';
     });
-    const progress = () => tile().locator(':scope > .dashboard-tv-progress > span').evaluate(el => parseFloat(el.style.width));
+    const progress = () => cell().locator('.epg-progress-fill').evaluate(el => parseFloat(el.style.width));
     const before = await progress();
-    // 10 min später (laufende Sendung endet erst in 30 min): Fortschritt wächst, derselbe Knoten, Infobereich nicht neu aufgebaut
+    // 10 min später (laufende Sendung endet erst in 30 min): Fortschritt wächst, derselbe Knoten, keine neuen Zellen
     await page.clock.fastForward(10 * MIN);
     await expect.poll(progress).toBeGreaterThan(before);
-    expect(await page.evaluate(() => !!window.document.querySelector('.epg-jtile[data-keep="1"] .tv-tile-info[data-keep="1"]'))).toBe(true);
+    expect(await page.evaluate(() => !!window.document.querySelector('.epg-jrow[data-keep="1"] .epg-jcell[data-keep="1"]'))).toBe(true);
     // 25 min weiter: „Laufende Sendung“ ist vorbei, „Kommende“ läuft, „Übernächste“ ist die nächste
     await page.clock.fastForward(25 * MIN);
-    await expect(tile().locator('.tv-tile-title')).toHaveText('Kommende Sendung');
-    await expect(tile()).toHaveClass(/is-now/);
-    await expect(tile().locator('.epg-jnext')).toHaveCount(1);
-    await expect(tile().locator('.epg-jnext')).toContainText('Uebernaechste Sendung');
-    // die Kachel selbst (Sender, Logo) bleibt derselbe Knoten, nur der Infobereich wurde ersetzt
-    expect(await page.evaluate(() => !!window.document.querySelector('.epg-jtile[data-keep="1"]'))).toBe(true);
+    await expect(cell()).toContainText('Kommende Sendung');
+    await expect(cell()).toHaveClass(/is-now/);
+    await expect(jngRow('E2E Kanal').locator('.epg-jcell').nth(1)).toContainText('Uebernaechste Sendung');
+    // die Zeile selbst (Sender, Logo) bleibt derselbe Knoten, nur die Zellen wurden ersetzt
+    expect(await page.evaluate(() => !!window.document.querySelector('.epg-jrow[data-keep="1"]'))).toBe(true);
     await page.clock.resume();
   });
 
@@ -402,7 +338,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     // Gruppe Beta: nur Füllkanal (Ohne EPG Kanal hat kein EPG und bleibt ausgeblendet)
     await pickSender('Beta');
     await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Gruppe Beta');
-    await expect(page.locator('.epg-jtile')).toHaveCount(1);
+    await expect(page.locator('.epg-jrow')).toHaveCount(1);
     await expect(jngRow('Füllkanal')).toBeVisible();
     await page.locator('#epgModeList').click();
     await expect(listRow('Fuellkanal Krimi')).toHaveCount(1);
@@ -440,12 +376,12 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
   test('„Mehr ▾“: „Sender ohne EPG ausblenden“ (Standard an) steuert Raster und Jetzt & Gleich', async () => {
     await pickSender('Beta');
     await page.locator('#epgModeJng').click();
-    await expect(page.locator('.epg-jtile')).toHaveCount(1);
+    await expect(page.locator('.epg-jrow')).toHaveCount(1);
     await page.locator('#epgMoreMenu').click();
     await expect(page.locator('#epgOptHideNoEpg')).toBeChecked();
     await expect(page.locator('#epgOptDesc')).not.toBeChecked();
     await page.locator('#epgOptHideNoEpg').uncheck();
-    await expect(page.locator('.epg-jtile')).toHaveCount(2);
+    await expect(page.locator('.epg-jrow')).toHaveCount(2);
     await expect(jngRow('Ohne EPG Kanal')).toContainText('Kein EPG im Cache');
     await page.keyboard.press('Escape'); // schließt das Menü zuerst, nicht das Overlay
     await expect(page.locator('#epgMoreMenuPanel')).toBeHidden();
@@ -591,7 +527,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
       await page.locator('#epgSenderMenu').click();
       await closeOverlay(page);
       expect(await page.evaluate(() => window.document.getElementById('epgOverlay').dataset.subs)).toBe('0');
-      expect(await page.evaluate(() => window.document.querySelectorAll('.epg-jtile, .epg-list-row, .epg-search-hit').length)).toBe(0);
+      expect(await page.evaluate(() => window.document.querySelectorAll('.epg-jrow, .epg-list-row, .epg-search-hit').length)).toBe(0);
       expect(await page.evaluate(() => window.document.getElementById('epgSearchInput').value)).toBe('');
     }
     // erwartete Main-Meldungen der absichtlich abgelehnten Einstellungswerte (Test „Startansicht“) sind kein Fehler
@@ -649,7 +585,7 @@ test.describe('Programmführer 3.5 (Großfixture 438 Kanäle × 10 Tage, „Alle
       window.document.getElementById('epgModeJng').click();
       await new Promise(resolve => {
         const check = () => {
-          if (window.document.querySelector('.epg-jtile .tv-tile-title.epg-row-open')) resolve();
+          if (window.document.querySelector('.epg-jcell:not(.is-empty)')) resolve();
           else window.requestAnimationFrame(check);
         };
         check();
@@ -658,7 +594,7 @@ test.describe('Programmführer 3.5 (Großfixture 438 Kanäle × 10 Tage, „Alle
     });
     // erster Wechsel lädt die Daten (438 Kanäle); danach ist der Wechsel sofort
     expect(switchMs).toBeLessThan(2000);
-    const rows = await page.locator('.epg-jtile').count();
+    const rows = await page.locator('.epg-jrow').count();
     expect(rows).toBeGreaterThan(3);
     expect(rows).toBeLessThan(40);
     const second = await page.evaluate(async () => {
@@ -668,7 +604,7 @@ test.describe('Programmführer 3.5 (Großfixture 438 Kanäle × 10 Tage, „Alle
       window.document.getElementById('epgModeJng').click();
       await new Promise(resolve => {
         const check = () => {
-          if (window.document.querySelector('.epg-jtile .tv-tile-title.epg-row-open')) resolve();
+          if (window.document.querySelector('.epg-jcell:not(.is-empty)')) resolve();
           else window.requestAnimationFrame(check);
         };
         check();
@@ -684,13 +620,13 @@ test.describe('Programmführer 3.5 (Großfixture 438 Kanäle × 10 Tage, „Alle
       for (let i = 0; i < 100; i += 1) {
         list.scrollTop += 700;
         await new Promise(resolve => window.requestAnimationFrame(resolve));
-        maxRows = Math.max(maxRows, window.document.querySelectorAll('.epg-jtile').length);
+        maxRows = Math.max(maxRows, window.document.querySelectorAll('.epg-jrow').length);
       }
       return { maxRows, ms: window.performance.now() - t0, total: window.document.getElementById('epgJngItems').offsetHeight };
     });
     expect(scroll.maxRows).toBeLessThan(40);
     expect(scroll.ms).toBeLessThan(100 * 100);
-    expect(scroll.total).toBeGreaterThan(438 * 60);
+    expect(scroll.total).toBeGreaterThan(438 * 80);
   });
 
   test('Gruppe filtert 438 → 219 Sender in allen Modi; Suche über alle Sender: Treffer, Sprung < 300 ms, begrenzter DOM', async () => {
@@ -699,12 +635,12 @@ test.describe('Programmführer 3.5 (Großfixture 438 Kanäle × 10 Tage, „Alle
     await expect(page.locator('#epgSenderMenu')).toHaveText('Sender: Gruppe Gerade');
     await expect
       .poll(async () => page.evaluate(() => window.document.getElementById('epgJngItems').offsetHeight), { timeout: 30_000 })
-      .toBeGreaterThan(219 * 60);
+      .toBe(219 * 84);
     await page.locator('#epgSenderMenu').click();
     await page.locator('.epg-menu-item', { hasText: 'Alle Sender' }).click();
     await expect
       .poll(async () => page.evaluate(() => window.document.getElementById('epgJngItems').offsetHeight), { timeout: 30_000 })
-      .toBeGreaterThan(438 * 60);
+      .toBe(438 * 84);
     // Suche über alle Sender
     await page.locator('#epgModeList').click();
     await page.locator('#epgSearchInput').fill('krimi');

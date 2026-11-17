@@ -3,7 +3,7 @@
 // Je Sender: laufende Sendung, nächste, übernächste. Die Daten kommen schlank aus epg:range-many
 // (Fenster jetzt … +12 h); die Zuordnung wird aus den geladenen Sendungen berechnet und kann ohne
 // neuen Abruf fortgeschrieben werden (30-s-Takt: Wechsel der laufenden Sendung, Fortschritt).
-// Kacheln mit fester Höhe im responsiven Raster → Virtualisierung nach Rasterzeilen (438 Kanäle ohne großen DOM).
+// Zeilen mit fester Höhe → Virtualisierung (438 Kanäle ohne großen DOM).
 
 'use strict';
 
@@ -14,43 +14,17 @@ const genreFilter = require('./epg-genre-filter-model.js');
 const WINDOW_MS = 12 * 60 * 60 * 1000;
 /** Nach dieser Zeit werden die Sendungen des Fensters neu abgerufen (das Fenster ist dann aufgebraucht). */
 const RELOAD_AFTER_MS = 60 * 60 * 1000;
-/** Kachelraster (Bauteilmaße, docs/DESIGN.md): Mindestbreite, Abstand, feste Höhe des Infobereichs, Innenrand der Ansicht. */
-const TILE_MIN_WIDTH = 240;
-const TILE_GAP = 16;
-const TILE_INFO_HEIGHT = 152;
-const GRID_PADDING = 16;
+/** Zeilenhöhe: breit = eine Zeile mit drei Zellen; schmal (< 900 px) = Sender und drei Zellen untereinander. */
+const ROW_HEIGHT_WIDE = 84;
+const ROW_HEIGHT_NARROW = 250;
 
 /** Schmales Layout bei Fensterbreite unter der Schwelle der Startansicht „Automatisch“ (900 px). */
 function isNarrow(widthPx) {
   return typeof widthPx === 'number' && Number.isFinite(widthPx) && widthPx < settings.AUTO_LIST_MIN_WIDTH;
 }
 
-/**
- * Raster der Kacheln bei der Breite des Scrollbereichs: Spaltenzahl aus der Mindestbreite, Kachelbreite füllt die Zeile,
- * Medienfläche 16:9, feste Kachelhöhe (Voraussetzung der Virtualisierung). Maße in px.
- */
-function gridLayout(widthPx, count = 0) {
-  const inner = Math.max(TILE_MIN_WIDTH, (Number.isFinite(widthPx) ? widthPx : 0) - 2 * GRID_PADDING);
-  const cols = Math.max(1, Math.floor((inner + TILE_GAP) / (TILE_MIN_WIDTH + TILE_GAP)));
-  const tileW = Math.floor((inner - (cols - 1) * TILE_GAP) / cols);
-  const tileH = Math.round((tileW * 9) / 16) + TILE_INFO_HEIGHT;
-  const rows = Math.ceil(Math.max(0, count) / cols);
-  const rowH = tileH + TILE_GAP;
-  return { cols, tileW, tileH, rowH, gap: TILE_GAP, padding: GRID_PADDING, rows, totalH: rows ? rows * rowH + GRID_PADDING * 2 - TILE_GAP : 0 };
-}
-
-/** Position (px) der Kachel mit dem Index im Raster. */
-function tilePosition(layout, index) {
-  const row = Math.floor(index / layout.cols);
-  const col = index % layout.cols;
-  return { top: layout.padding + row * layout.rowH, left: layout.padding + col * (layout.tileW + layout.gap) };
-}
-
-/** Indexbereich [from, to) der Kacheln, die zwischen top und bottom (Scroll-Koordinaten) liegen. */
-function visibleRange(layout, count, top, bottom) {
-  const firstRow = Math.max(0, Math.floor((top - layout.padding) / layout.rowH));
-  const lastRow = Math.max(firstRow, Math.ceil((bottom - layout.padding) / layout.rowH));
-  return { from: Math.min(count, firstRow * layout.cols), to: Math.min(count, lastRow * layout.cols) };
+function rowHeight(narrow) {
+  return narrow ? ROW_HEIGHT_NARROW : ROW_HEIGHT_WIDE;
 }
 
 /** Abruffenster für epg:range-many: von jetzt (laufende Sendung überlappt) bis jetzt + 12 h. */
@@ -126,14 +100,10 @@ function assignmentSig(assignment) {
 module.exports = {
   WINDOW_MS,
   RELOAD_AFTER_MS,
-  TILE_MIN_WIDTH,
-  TILE_GAP,
-  TILE_INFO_HEIGHT,
-  GRID_PADDING,
+  ROW_HEIGHT_WIDE,
+  ROW_HEIGHT_NARROW,
   isNarrow,
-  gridLayout,
-  tilePosition,
-  visibleRange,
+  rowHeight,
   windowFor,
   needsReload,
   buildChannels,

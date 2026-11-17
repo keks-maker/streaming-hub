@@ -2378,7 +2378,6 @@ function switchTvChannel(dir) {
 const epgView = createEpgView(epgOverlay, {
   api: window.electronAPI,
   getChannels: () => tvChannels,
-  tiles: liveTvTileKit,
   getSources: () => tvSources.map(source => ({ id: source.id, name: source.name })),
   getStartView: () => window.electronAPI.getEpgViewSettings().then(saved => saved && saved.startView),
   isFavorite: ch => isFavorite(ch, tvSources),

@@ -1,28 +1,25 @@
-// „Jetzt & Gleich“ (Etappe 3.5, M7; Umbau auf die Senderkachel S3): je Sender eine Kachel mit laufender Sendung
-// (Medienfläche, Titel, „Sender · noch X Min.“, Fortschritt) und den Zeilen „Danach …“ für nächste und übernächste Sendung.
+// „Jetzt & Gleich“ (Etappe 3.5, M7): je Sender laufende, nächste und übernächste Sendung.
 //
-// Factory-Muster wie epg-channel-view.js: reine DOM-Sicht ohne Daten- oder Aufnahme-Logik. Die Zuordnung kommt aus
-// epg-jng-model.js, den Kachelaufbau liefert epg-jng-tile-dom.js (Komponente aus livetv-tile.js, dieselbe wie die
-// LiveTV-Favoriten), Marker/Toggle/Fortschritt je Sendung epg-row-dom.js (updateRowNode wie Liste und Kanalansicht) —
-// Planen/Abbrechen/Stoppen läuft über den Callback onToggle (epg-view.js → runToggle, die einzige Aufnehmen-Logik).
+// Factory-Muster wie epg-channel-view.js: reine DOM-Sicht ohne Daten- oder Aufnahme-Logik. Die Zuordnung
+// kommt aus epg-jng-model.js, Marker/Toggle/Fortschritt je Sendung aus epg-row-dom.js (Variante 'jng',
+// dieselbe updateRowNode-Logik wie Liste und Kanalansicht) — Planen/Abbrechen/Stoppen läuft über den
+// Callback onToggle (epg-view.js → runToggle, die einzige Aufnehmen-Logik).
 //
-// Virtualisierung: responsives Raster mit fester Kachelhöhe (Modell: gridLayout), nur die sichtbaren Rasterzeilen plus
-// Überstand liegen im DOM. tick() schreibt den Fortschritt fort und baut nur Kacheln neu auf, deren Zuordnung
-// (laufend/nächste/übernächste) sich geändert hat. Texte nur per textContent.
+// Virtualisierung: Zeilen mit fester Höhe (breit/schmal, siehe Modell), nur der sichtbare Bereich
+// plus Überstand liegt im DOM. tick() schreibt den Fortschritt fort und baut nur Zeilen neu auf,
+// deren Zuordnung (laufend/nächste/übernächste) sich geändert hat. Texte nur per textContent.
 //
-// Etappe 3.6: Genre-Filter (setGenres) — die Positionen laufend/nächste/übernächste bleiben, nicht passende Zellen entfallen,
-// Sender ohne passende Zelle verschwinden. Vorschaubilder: Die schlanken Daten (epg:range-many) tragen kein Bild; für die
-// laufende und die „Danach“-Sendungen der SICHTBAREN Kacheln holt getIcons (epg:range je Sender, entprellt) die Bild-URLs. Das Kachelbild lädt der Kachel-Baustein aus dem
-// Bild-Cache des Main (epg-image:get), die 64×36-Vorschau der „Danach“-Zeilen lädt kit.loadThumb über denselben Cache (kein Fremdhost im Renderer). Kein Vorab-Laden; fehlt der Bilddienst, bleiben Verlauf bzw. Platzhalter.
-// Die stumme Vorschau (Hover/Fokus) gehört dem Kachel-Baustein: eine gleichzeitig.
+// Etappe 3.6: Genre-Filter (setGenres) — die Positionen laufend/nächste/übernächste bleiben, nicht passende Zellen
+// entfallen, Sender ohne passende Zelle verschwinden. Vorschaubilder: Die schlanken Daten (epg:range-many) tragen kein
+// Bild; für die SICHTBAREN Zeilen holt getIcons (epg:range je Sender, nur Zeilen im Viewport, entprellt) die Bild-URLs,
+// setCellThumb setzt sie lazy in den festen Platzhalter. Kein Vorab-Laden, kein eigener Bildcache (nur die URL-Zuordnung
+// bis zum nächsten Datenabruf); fehlt der Bilddienst, bleibt der Platzhalter.
 
 'use strict';
 
 const jngModel = require('./epg-jng-model.js');
-const { updateRowNode } = require('./epg-row-dom.js');
-const { h } = require('./epg-dom.js');
-const { createTile, fillTile } = require('./epg-jng-tile-dom.js');
-const { createLiveTvTileKit } = require('./livetv-tile.js');
+const { createRowNode, updateRowNode, setCellThumb } = require('./epg-row-dom.js');
+const { h, createChannelLogo } = require('./epg-dom.js');
 
 const OVERSCAN_PX = 400;
 const THUMB_DEBOUNCE_MS = 120;
@@ -31,17 +28,10 @@ const EMPTY_FILTERED = 'Keine Sendungen für die gewählten Genres. Wähle „Al
 /**
  * deps: now(), getMarkers(rows) → Marker je Zeile (wie grid.matchMarkers), isSelected(rowId), onOpen(row),
  * onToggle(row, element), onChannelClick(channel), sanitizeLogoUrl(url),
- * tiles (Kachel-Baustein aus livetv-tile.js; ohne wird einer aus sanitizeLogoUrl/getEpgImage gebaut),
- * getEpgImage(url, stopMs) → Promise<data:-URL|null> (nur ohne tiles),
  * getIcons(channelKey, fromMs, toMs) → Promise<Slot[]> (volle Projektion, optional: ohne sind keine Vorschaubilder möglich).
  */
 function createJngView(deps) {
   const now = typeof deps.now === 'function' ? deps.now : () => Date.now();
-  const kit = deps.tiles
-    || createLiveTvTileKit({
-      safeResourceUrl: typeof deps.sanitizeLogoUrl === 'function' ? deps.sanitizeLogoUrl : url => url || '',
-      getEpgImage: typeof deps.getEpgImage === 'function' ? deps.getEpgImage : () => Promise.resolve(null),
-    });
   let allChannels = []; // [{ key, channel, rows, hasEpg }] — alle Sender der Auswahl
   let channels = []; // angezeigte Sender (mit aktivem Genre-Filter nur die mit passender Zelle)
   let assignments = []; // je angezeigtem Kanal { current, next, after }
@@ -50,31 +40,28 @@ function createJngView(deps) {
   const icons = new Map(); // Zeilen-ID → Bild-URL ('' = keine/unbrauchbar); nur bis zum nächsten Datenabruf
   let thumbTimer = null;
   let thumbEpoch = 0;
-  let nodes = new Map(); // Kanal-Schlüssel → Kachel { el, cells: [entry|null ×3], sig, chan }
+  let nodes = new Map(); // Kanal-Schlüssel → { el, cells: [entry|null ×3], sig, chan }
   let narrow = false;
   let frame = 0;
   let loadedAt = null;
-  let lastWidth = 0;
 
+  const head = h('div', { className: 'epg-jng-head', attrs: { 'aria-hidden': 'true' } }, [
+    h('span', { text: 'Sender' }),
+    h('span', { text: 'Läuft' }),
+    h('span', { text: 'Danach' }),
+    h('span', { text: 'Danach' }),
+  ]);
   const spacer = h('div', { className: 'epg-jng-spacer', id: 'epgJngItems', attrs: { role: 'list', 'aria-label': 'Jetzt und Gleich' } });
   const scroll = h('div', { className: 'epg-jng-scroll', id: 'epgJng', attrs: { tabindex: '0' } }, [spacer]);
   const emptyEl = h('div', { className: 'epg-jng-empty', id: 'epgJngEmpty', attrs: { role: 'status' }, hidden: true });
-  const el = h('div', { className: 'epg-jng', hidden: true }, [scroll, emptyEl]);
+  const el = h('div', { className: 'epg-jng', hidden: true }, [head, scroll, emptyEl]);
+
+  function rowHeight() {
+    return jngModel.rowHeight(narrow);
+  }
 
   function viewportH() {
     return scroll.clientHeight || 600;
-  }
-
-  /** Raster bei der aktuellen Breite des Scrollbereichs (im verborgenen Zustand die zuletzt bekannte Breite). */
-  function layout() {
-    const width = scroll.clientWidth || lastWidth || 1000;
-    lastWidth = width;
-    return jngModel.gridLayout(width, channels.length);
-  }
-
-  function applyHeight() {
-    const height = `${layout().totalH}px`;
-    if (spacer.style.height !== height) spacer.style.height = height;
   }
 
   function recompute(nowMs = now()) {
@@ -91,7 +78,8 @@ function createJngView(deps) {
       channels = allChannels;
       assignments = channels.map(channel => jngModel.assign(channel, nowMs));
     }
-    applyHeight();
+    const height = `${channels.length * rowHeight()}px`;
+    if (spacer.style.height !== height) spacer.style.height = height;
     updateEmpty();
   }
 
@@ -102,12 +90,55 @@ function createJngView(deps) {
     emptyEl.textContent = filteredOut ? EMPTY_FILTERED : emptyBase;
   }
 
-  function removeNode(key) {
-    const entry = nodes.get(key);
-    if (!entry) return;
-    kit.stopPreviewOf(entry.el);
-    entry.el.remove();
-    nodes.delete(key);
+  function createPlaceholder(text, extraClass = '') {
+    return h('div', { className: `epg-jcell is-empty${extraClass ? ` ${extraClass}` : ''}`, text });
+  }
+
+  function buildRowNode(index) {
+    const channel = channels[index];
+    const name = channel.channel.name || channel.key;
+    const logo = createChannelLogo({ name, channel: channel.channel, sanitizeLogoUrl: deps.sanitizeLogoUrl });
+    const chan = h('button', {
+      className: 'epg-jchan',
+      type: 'button',
+      attrs: { 'aria-label': `Alle Sendungen von ${name}`, title: `Alle Sendungen von ${name}` },
+    }, [logo, h('span', { className: 'epg-jchan-name', text: name })]);
+    chan.addEventListener('click', () => {
+      if (typeof deps.onChannelClick === 'function') deps.onChannelClick(channel.channel);
+    });
+    const slots = [0, 1, 2].map(() => h('div', { className: 'epg-jslot' }));
+    const rowEl = h('div', { className: 'epg-jrow', attrs: { role: 'listitem' } }, [chan, ...slots]);
+    rowEl.dataset.channelKey = channel.key;
+    return { el: rowEl, slots, cells: [null, null, null], sig: '', chan };
+  }
+
+  /** Zellen einer Zeile neu aufbauen (nur bei geänderter Zuordnung). */
+  function fillCells(entry, channel, assignment) {
+    entry.cells = [null, null, null];
+    const picks = [assignment.current, assignment.next, assignment.after];
+    entry.slots.forEach((slot, i) => {
+      slot.textContent = '';
+      slot.classList.toggle('is-span', false);
+      const row = picks[i];
+      if (row) {
+        const cell = createRowNode(row, { variant: 'jng' });
+        cell.row = row;
+        entry.cells[i] = cell;
+        slot.appendChild(cell.el);
+        return;
+      }
+      if (genres.length) {
+        slot.appendChild(createPlaceholder('–'));
+        return;
+      }
+      if (i === 0 && !channel.rows.length) {
+        slot.classList.add('is-span');
+        slot.appendChild(createPlaceholder(channel.hasEpg ? 'Kein Programm in den nächsten Stunden' : 'Kein EPG im Cache'));
+        return;
+      }
+      if (i > 0 && !channel.rows.length) return;
+      slot.appendChild(createPlaceholder(i === 0 ? 'Keine laufende Sendung' : '–'));
+    });
   }
 
   function render() {
@@ -117,35 +148,33 @@ function createJngView(deps) {
       return;
     }
     const nowMs = now();
-    const grid = layout();
-    applyHeight();
+    const height = rowHeight();
     const top = scroll.scrollTop;
-    const { from, to } = jngModel.visibleRange(grid, channels.length, top - OVERSCAN_PX, top + viewportH() + OVERSCAN_PX);
+    const from = Math.max(0, Math.floor((top - OVERSCAN_PX) / height));
+    const to = Math.min(channels.length, Math.ceil((top + viewportH() + OVERSCAN_PX) / height));
     const wanted = new Set();
     for (let i = from; i < to; i += 1) wanted.add(channels[i].key);
-    for (const key of [...nodes.keys()]) if (!wanted.has(key)) removeNode(key);
+    for (const [key, entry] of nodes) {
+      if (!wanted.has(key)) {
+        entry.el.remove();
+        nodes.delete(key);
+      }
+    }
     const visible = [];
     let j = 0;
     for (let i = from; i < to; i += 1) {
       const channel = channels[i];
       let entry = nodes.get(channel.key);
       if (!entry) {
-        entry = createTile(channel, kit);
-        entry.chan.addEventListener('click', event => {
-          event.stopPropagation();
-          if (typeof deps.onChannelClick === 'function') deps.onChannelClick(channel.channel);
-        });
+        entry = buildRowNode(i);
         nodes.set(channel.key, entry);
       }
-      const pos = jngModel.tilePosition(grid, i);
-      entry.el.style.top = `${pos.top}px`;
-      entry.el.style.left = `${pos.left}px`;
-      entry.el.style.width = `${grid.tileW}px`;
-      entry.el.style.height = `${grid.tileH}px`;
+      entry.el.style.top = `${i * height}px`;
+      entry.el.style.height = `${height}px`;
       const sig = jngModel.assignmentSig(assignments[i]);
       if (entry.sig !== sig) {
         entry.sig = sig;
-        fillTile(entry, channel, assignments[i], { filtered: genres.length > 0, kit });
+        fillCells(entry, channel, assignments[i]);
       }
       for (const cell of entry.cells) if (cell) visible.push(cell);
       const ref = spacer.children[j];
@@ -156,19 +185,21 @@ function createJngView(deps) {
     const markers = deps.getMarkers(visible.map(cell => cell.row));
     visible.forEach((cell, i) => {
       updateRowNode(cell, cell.row, { nowMs, marker: markers[i] || null, selected: !!(deps.isSelected && deps.isSelected(cell.row.id)) });
+      const url = icons.get(cell.row.id);
+      if (url) setCellThumb(cell, url);
     });
-    applyThumbs();
     scheduleThumbs();
   }
 
-  // ── Vorschaubilder (nur sichtbare Kacheln): laufende Sendung als Kachelbild (Bild-Cache des Main), „Danach“-Zeilen als 64×36-Vorschau ──
+  // ── Vorschaubilder (nur sichtbare Zeilen) ──
 
-  /** Zellen der Kacheln, die tatsächlich im Viewport stehen (ohne Überstand). */
+  /** Zellen der Zeilen, die tatsächlich im Viewport stehen (ohne Überstand). */
   function viewportCells() {
-    const grid = layout();
-    const { from, to } = jngModel.visibleRange(grid, channels.length, scroll.scrollTop, scroll.scrollTop + viewportH());
+    const height = rowHeight();
+    const first = Math.max(0, Math.floor(scroll.scrollTop / height));
+    const last = Math.min(channels.length, Math.ceil((scroll.scrollTop + viewportH()) / height));
     const out = [];
-    for (let i = from; i < to; i += 1) {
+    for (let i = first; i < last; i += 1) {
       const entry = nodes.get(channels[i].key);
       if (!entry) continue;
       for (const cell of entry.cells) if (cell) out.push({ key: channels[i].key, cell });
@@ -178,7 +209,7 @@ function createJngView(deps) {
 
   function scheduleThumbs() {
     if (typeof deps.getIcons !== 'function') return;
-    clearTimeout(thumbTimer); // entprellt: beim schnellen Scrollen werden nur die Kacheln angefragt, auf denen die Ansicht stehen bleibt
+    clearTimeout(thumbTimer); // entprellt: beim schnellen Scrollen werden nur die Zeilen angefragt, auf denen die Ansicht stehen bleibt
     thumbTimer = setTimeout(loadThumbs, THUMB_DEBOUNCE_MS);
   }
 
@@ -214,13 +245,11 @@ function createJngView(deps) {
 
   function applyThumbs() {
     for (const entry of nodes.values()) {
-      entry.cells.forEach((cell, i) => {
-        if (!cell) return;
+      for (const cell of entry.cells) {
+        if (!cell) continue;
         const url = icons.get(cell.row.id);
-        if (!url) return;
-        if (i === 0) kit.loadImage(entry.el, url, cell.row.stop);
-        else kit.loadThumb(cell.refs.thumb, url, cell.row.stop);
-      });
+        if (url) setCellThumb(cell, url);
+      }
     }
   }
 
@@ -236,7 +265,6 @@ function createJngView(deps) {
   }
 
   function clearNodes() {
-    for (const key of [...nodes.keys()]) removeNode(key);
     nodes = new Map();
     spacer.textContent = '';
   }
@@ -248,13 +276,11 @@ function createJngView(deps) {
     return null;
   }
 
-  // Ein Klick-Handler für alle Kacheln: Toggle → Aufnehmen-Logik des Overlays, Logo-Platte → Kanalansicht (eigener Handler),
-  // sonst Detail-Modal der Sendung, auf die geklickt wurde (Kachel = laufende Sendung, „Danach“-Zeile = diese Sendung).
+  // Ein Klick-Handler für alle Zellen: Toggle → Aufnehmen-Logik des Overlays, sonst Detail-Modal
   spacer.addEventListener('click', event => {
-    if (event.target.closest('.tv-tile-logo')) return;
-    const holder = event.target.closest('[data-row-id]');
-    if (!holder) return;
-    const cell = findCell(holder.dataset.rowId);
+    const cellEl = event.target.closest('.epg-jcell[data-row-id]');
+    if (!cellEl) return;
+    const cell = findCell(cellEl.dataset.rowId);
     if (!cell) return;
     const toggleEl = event.target.closest('.epg-toggle');
     if (toggleEl) {
@@ -276,7 +302,7 @@ function createJngView(deps) {
     render();
   }
 
-  /** Genre-Filter (Etappe 3.6): Kacheln neu aufbauen, Scrollposition bleibt. */
+  /** Genre-Filter (Etappe 3.6): Zeilen neu aufbauen, Scrollposition bleibt. */
   function setGenres(list) {
     genres = Array.isArray(list) ? list.slice() : [];
     clearNodes();
@@ -284,12 +310,13 @@ function createJngView(deps) {
     render();
   }
 
-  /** Schmales Fenster (< 900 px): nur Klasse für die Darstellung; die Rasterspalten ergeben sich aus der Breite. */
+  /** Breites/schmales Layout (Fensterbreite < 900 px): feste Zeilenhöhe wechselt, Zeilen werden neu gelegt. */
   function setNarrow(value) {
     const on = !!value;
+    if (on === narrow && el.classList.contains('is-narrow') === on) return;
     narrow = on;
     el.classList.toggle('is-narrow', on);
-    applyHeight();
+    spacer.style.height = `${channels.length * rowHeight()}px`;
     render();
   }
 
@@ -305,8 +332,6 @@ function createJngView(deps) {
     if (on) {
       recompute();
       render();
-    } else {
-      kit.stopPreview();
     }
   }
 
@@ -327,7 +352,7 @@ function createJngView(deps) {
     scroll.scrollTop = 0;
   }
 
-  /** Fokus-Rückgabe: Logo-Platte (Kopf-Knopf, Sendername) einer Kachel oder null. */
+  /** Fokus-Rückgabe: Kopf-Knopf (Sendername) einer Zeile oder null. */
   function channelElement(key) {
     const entry = nodes.get(key);
     return entry ? entry.chan : null;
@@ -360,7 +385,6 @@ function createJngView(deps) {
     count: () => channels.length,
     totalCount: () => allChannels.length,
     loadedAt: () => loadedAt,
-    isNarrow: () => narrow,
     scrollToTop: () => {
       scroll.scrollTop = 0;
       render();
@@ -370,7 +394,7 @@ function createJngView(deps) {
       scroll.scrollTop = value;
       render();
     },
-    /** Kacheln im DOM (Virtualisierungstest). */
+    /** Zeilen- und Zellenzahl im DOM (Virtualisierungstest). */
     domRowCount: () => spacer.children.length,
   };
 }
