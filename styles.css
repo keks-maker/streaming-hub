@@ -2585,11 +2585,11 @@ body.epg-open .overlay-bar { z-index: 105; }
 .epg-jng-empty { padding: var(--space-5); text-align: center; color: var(--epg-dim); font-size: 14px; }
 .dashboard-tile.dashboard-tv-tile.epg-jtile { position: absolute; display: flex; flex-direction: column; box-sizing: border-box; cursor: default; }
 .dashboard-tile.dashboard-tv-tile.epg-jtile:hover, .dashboard-tile.dashboard-tv-tile.epg-jtile:focus-within { transform: none; border-color: var(--border-strong); }
-.epg-jtile.is-selected { outline: 2px solid var(--epg-accent-light); outline-offset: -2px; }
-.epg-jtile .tv-tile-info { flex: none; box-sizing: border-box; height: 124px; overflow: hidden; gap: var(--space-1); }
+.epg-jtile.is-selected { outline: 2px solid var(--epg-accent-light); outline-offset: 1px; } /* außen: der Genre-Streifen am linken Rand bleibt sichtbar */
+.epg-jtile .tv-tile-info { flex: none; box-sizing: border-box; height: 152px; overflow: hidden; gap: var(--space-1); }
 .epg-jtile[data-g] .tv-tile-info { box-shadow: inset 3px 0 0 var(--gc); }
 .epg-jtile .tv-tile-title { flex: none; min-width: 0; padding: 0; border: none; background: none; font: inherit; font-size: 14px; font-weight: 700; text-align: left; }
-.epg-jtile .tv-tile-title.is-empty { color: var(--text-secondary); font-weight: 400; }
+.epg-jtile .tv-tile-title.is-empty { color: var(--text-secondary); font-weight: 400; white-space: normal; } /* Hinweis darf umbrechen (3 Spalten, 240 px) */
 .epg-jtile button.epg-row-open { cursor: pointer; }
 /* ganze Kachel klickbar: der Titel-Knopf spannt sich über die Kachel, Logo-Platte und Aufnahme-Knöpfe liegen darüber */
 .epg-jtile button.tv-tile-title::after { position: absolute; inset: 0; z-index: 1; content: ''; }
@@ -2597,24 +2597,38 @@ body.epg-open .overlay-bar { z-index: 105; }
 .epg-jtile button.tv-tile-title:focus-visible::after { outline: 2px solid var(--focus-ring); outline-offset: -2px; border-radius: var(--radius-md); }
 .epg-jtile .tv-tile-meta .epg-time-sub { display: inline; font-size: inherit; line-height: inherit; color: inherit; }
 .epg-jtile .tv-tile-logo { z-index: 5; padding: var(--space-1); border: none; cursor: pointer; }
+.epg-jtile .tv-tile-logo .dashboard-tile-fallback { font-size: 14px; } /* zwei Zeichen Senderkürzel */
 .epg-jtile .tv-tile-logo:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .epg-jtile .dashboard-tv-progress[hidden] { display: none; }
-.epg-jtile .epg-marker { position: absolute; z-index: 4; top: var(--space-2); left: var(--space-2); display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--radius-full); background: var(--scrim-media); }
+/* Marker und Aufnahme-Zustand der laufenden Sendung liegen auf einer deckenden Fläche (surface-1), nicht auf dem Scrim: status-rec erreicht dort in Hell und Dunkel mindestens 3 : 1, unabhängig vom Bild darunter */
+.epg-jtile .epg-marker { position: absolute; z-index: 4; top: var(--space-2); left: var(--space-2); display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--radius-full); background: var(--surface-1); box-shadow: 0 0 0 1px var(--border-strong); color: var(--status-rec); }
 .epg-jtile .epg-marker:empty { display: none; }
-.epg-jtile .epg-marker { color: var(--status-rec); }
-/* Aufnahme-Knopf: rund, scrim-media; laufend/geplant mit Ring in status-rec */
+.epg-jtile .epg-marker[data-state="stopping"] { opacity: 1; }
+.epg-jtile .epg-marker[data-state="recording"] { animation: none; } /* nur das Symbol pulsiert, die Fläche bleibt deckend */
+.epg-jtile .epg-marker[data-state="recording"] svg { animation: epgPulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .epg-jtile .epg-marker[data-state="recording"] svg { animation: none; } }
+/* Aufnahme-Knopf: rund, scrim-media; laufend/geplant: deckende Fläche mit Ring in status-rec, umgeben von einem Haloring in surface-1 (der Ring bleibt gegen jedes Bild lesbar). Sitzt im DOM nach dem Titel (Tab-Reihenfolge) und liegt oben rechts auf der Medienfläche. */
 .epg-jrec { position: absolute; z-index: 5; top: var(--space-2); right: var(--space-2); display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 2px solid transparent; border-radius: var(--radius-full); background: var(--scrim-media); color: var(--media-ink); font-size: 16px; cursor: pointer; }
 .epg-jrec:hover:not(:disabled) { background: var(--scrim-media); border-color: var(--media-ink); }
-.epg-jrec[data-kind="stop"], .epg-jrec[data-kind="cancel"], .epg-jrec[data-kind="stopping"] { border-color: var(--status-rec); }
+.epg-jrec[data-kind="stop"], .epg-jrec[data-kind="cancel"], .epg-jrec[data-kind="stopping"] { background: var(--surface-1); border-color: var(--status-rec); color: var(--status-rec); box-shadow: 0 0 0 2px var(--surface-1); }
+.epg-jrec[data-kind="stop"]:hover:not(:disabled), .epg-jrec[data-kind="cancel"]:hover:not(:disabled), .epg-jrec[data-kind="stopping"]:hover:not(:disabled) { background: var(--surface-1); border-color: var(--status-rec); }
 .epg-jrec:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .epg-jrec.is-small { position: static; flex: none; width: 24px; height: 24px; font-size: 12px; }
-.epg-jnext { position: relative; z-index: 2; display: flex; align-items: center; gap: var(--space-2); min-width: 0; height: 24px; flex: none; color: var(--text-secondary); font-size: 12px; }
+.epg-jrec.is-small[data-kind="stop"], .epg-jrec.is-small[data-kind="cancel"], .epg-jrec.is-small[data-kind="stopping"] { box-shadow: none; }
+.epg-jnext { position: relative; z-index: 2; display: flex; align-items: center; gap: var(--space-2); min-width: 0; height: 36px; flex: none; color: var(--text-secondary); font-size: 12px; }
 .epg-jnext .epg-marker { position: static; width: auto; height: auto; background: none; }
 .epg-jnext[data-g] { box-shadow: inset 3px 0 0 var(--gc); padding-left: var(--space-2); }
-.epg-jnext.is-selected { outline: 2px solid var(--epg-accent-light); outline-offset: -2px; }
-.epg-jnext-open { flex: 1; min-width: 0; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epg-jnext.is-selected { outline: 2px solid var(--epg-accent-light); outline-offset: 1px; } /* außen: der Genre-Streifen bleibt sichtbar */
+.epg-jnext-open { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 0; border: none; background: none; color: inherit; font: inherit; line-height: 16px; text-align: left; overflow: hidden; white-space: nowrap; }
+.epg-jnext-time { overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.epg-jnext-sep { display: none; } /* nur für Textinhalt/Vorlesen: „Danach HH:MM–HH:MM · Titel“ */
+.epg-jnext-title { overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
 .epg-jnext-open:hover { color: var(--text-primary); }
 .epg-jnext-open:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-xs); }
+
+/* Vorschaubild der „Danach“-Zeile (3.6, F3): fester Platzhalter 64 × 36 (Anfangsbuchstabe auf Farbfläche), das Bild setzt setCellThumb */
+.epg-thumb { position: relative; flex: none; width: 64px; height: 36px; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-xs); font-size: 14px; font-weight: 700; color: color-mix(in srgb, var(--media-ink) 70%, transparent); background: linear-gradient(145deg, hsl(var(--h, 260) 45% 30%), hsl(calc(var(--h, 260) + 40) 50% 14%)); }
+.epg-thumb-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* Etappe 3.6 (B2/F3): Genre-Chips in der Schnellfilter-Leiste, Dämpfung im Raster, Detail-Erweiterung, Vorschaubilder */
 .epg-daytabs { flex: 1 1 280px; }

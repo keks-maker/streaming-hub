@@ -17,7 +17,7 @@ const RELOAD_AFTER_MS = 60 * 60 * 1000;
 /** Kachelraster (Bauteilmaße, docs/DESIGN.md): Mindestbreite, Abstand, feste Höhe des Infobereichs, Innenrand der Ansicht. */
 const TILE_MIN_WIDTH = 240;
 const TILE_GAP = 16;
-const TILE_INFO_HEIGHT = 124;
+const TILE_INFO_HEIGHT = 152;
 const GRID_PADDING = 16;
 
 /** Schmales Layout bei Fensterbreite unter der Schwelle der Startansicht „Automatisch“ (900 px). */

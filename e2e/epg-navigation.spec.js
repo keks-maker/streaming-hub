@@ -91,7 +91,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
   const jngCell = title => page.locator('.epg-jnext', { hasText: title }).or(page.locator('.epg-jtile', { has: page.locator('.tv-tile-title', { hasText: title }) }));
   const jngOpen = title => page.locator('.tv-tile-title.epg-row-open, .epg-jnext-open').filter({ hasText: title });
   const jngToggle = title =>
-    page.locator('.epg-jtile', { has: page.locator('.tv-tile-title', { hasText: title }) }).locator('.tv-tile-media > .epg-toggle').or(page.locator('.epg-jnext', { hasText: title }).locator('.epg-toggle'));
+    page.locator('.epg-jtile', { has: page.locator('.tv-tile-title', { hasText: title }) }).locator('.tv-tile-info > .epg-toggle').or(page.locator('.epg-jnext', { hasText: title }).locator('.epg-toggle'));
   const jngMarker = title =>
     page.locator('.epg-jtile', { has: page.locator('.tv-tile-title', { hasText: title }) }).locator('.tv-tile-media > .epg-marker').or(page.locator('.epg-jnext', { hasText: title }).locator('.epg-marker'));
   const pickSender = async label => {
@@ -238,8 +238,20 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(tile.locator('.tv-tile-image')).toHaveCount(0);
     const lines = tile.locator('.epg-jnext');
     await expect(lines).toHaveCount(2);
-    await expect(lines.nth(0)).toHaveText(/^Danach \d{2}:\d{2} · Kommende Sendung\s*$/);
-    await expect(lines.nth(1)).toHaveText(/^Danach \d{2}:\d{2} · Uebernaechste Sendung\s*$/);
+    await expect(lines.nth(0).locator('.epg-jnext-open')).toHaveText(/^Danach \d{2}:\d{2}–\d{2}:\d{2} · Kommende Sendung\s*$/);
+    await expect(lines.nth(1).locator('.epg-jnext-open')).toHaveText(/^Danach \d{2}:\d{2}–\d{2}:\d{2} · Uebernaechste Sendung\s*$/);
+    await expect(lines.nth(0)).toHaveAttribute('data-row-id', /.+/);
+    await expect(lines.nth(0).locator('.epg-jnext-open')).toHaveAttribute('aria-label', /^Danach \d{2}:\d{2}–\d{2}:\d{2}: Kommende Sendung$/);
+    // Vorschau je Zeile: fester Platzhalter 64 × 36
+    expect(await lines.nth(0).locator('.epg-thumb').evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }))).toEqual({ w: 64, h: 36 });
+    // Tab-Reihenfolge wie vorher: Logo-Platte, Titel, Aufnehmen, dann die „Danach“-Zeilen
+    await tile.locator('.tv-tile-logo').focus();
+    await page.keyboard.press('Tab');
+    await expect(tile.locator('.tv-tile-title')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(tile.locator('.tv-tile-info > .epg-toggle')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(lines.nth(0).locator('.epg-jnext-open')).toBeFocused();
     // Vorbei und ferne Sendung stehen nicht darin
     await expect(page.locator('.epg-jtile', { hasText: 'Vorbei Magazin' })).toHaveCount(0);
     await expect(page.locator('.epg-jtile', { hasText: 'Ferne Sendung' })).toHaveCount(0);
@@ -248,7 +260,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(tile.locator('.tv-tile-logo img')).toHaveCount(1);
     const second = jngRow('Zweiter Kanal');
     await expect(second.locator('.tv-tile-logo')).toHaveClass(/has-error/);
-    await expect(second.locator('.tv-tile-logo .dashboard-tile-fallback')).toHaveText('Z');
+    await expect(second.locator('.tv-tile-logo .dashboard-tile-fallback')).toHaveText('ZK'); // zwei Zeichen des Senderkürzels wie vorher
     // Sender ohne Favoritenstatus fehlen
     await expect(jngRow('Füllkanal')).toHaveCount(0);
     // Zweiter Kanal: laufend, nächste, dahinter nichts → nur eine „Danach“-Zeile
@@ -297,7 +309,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     expect(await running.evaluate(el => ({ r: getComputedStyle(el).borderTopLeftRadius, text: el.textContent.trim() }))).toEqual({ r: expect.stringMatching(/^(\d{3,4}px|50%)/), text: '' });
     const geo = await running.evaluate(el => {
       const b = el.getBoundingClientRect();
-      const m = el.closest('.tv-tile-media').getBoundingClientRect();
+      const m = el.closest('.epg-jtile').querySelector('.tv-tile-media').getBoundingClientRect();
       return { right: m.right - b.right, top: b.top - m.top, w: b.width, h: b.height };
     });
     expect(Math.abs(geo.w - geo.h)).toBeLessThan(0.5);

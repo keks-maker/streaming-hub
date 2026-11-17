@@ -55,15 +55,15 @@ function createLiveTvTileKit(deps) {
 
   // ── Aufbau ──
 
-  /** Medienfläche: Verlauf mit Platzhalter-Icon, Logo-Platte unten links, Zeitpille unten rechts (nur mit Sendung). */
-  function createMedia(ch, { start = 0, stop = 0, logoTag = 'span' } = {}) {
+  /** Medienfläche: Verlauf mit Platzhalter-Icon, Logo-Platte unten links (ohne Logo: fallbackText, Standard erster Buchstabe), Zeitpille unten rechts (nur mit Sendung). */
+  function createMedia(ch, { start = 0, stop = 0, logoTag = 'span', fallbackText = '' } = {}) {
     const media = el('span', 'tv-tile-media');
     const still = el('span', 'tv-tile-still');
     still.setAttribute('aria-hidden', 'true');
     still.innerHTML = Icons.iconSvg('tv-minimal');
     const logo = el(logoTag, 'dashboard-tile-icon tv-tile-logo');
     if (logoTag === 'button') logo.type = 'button';
-    const fallback = el('span', 'dashboard-tile-fallback', (ch.name || '?').slice(0, 1).toUpperCase());
+    const fallback = el('span', 'dashboard-tile-fallback', fallbackText || (ch.name || '?').slice(0, 1).toUpperCase());
     fallback.setAttribute('aria-hidden', 'true');
     const image = el('img');
     image.alt = '';
@@ -135,6 +135,40 @@ function createLiveTvTileKit(deps) {
       }
     }
     if (tile.dataset.epgImage === wanted) setImage(tile, dataUrl || '');
+  }
+
+  /**
+   * Kleines Vorschaubild (z. B. „Danach“-Zeile) in einen Platzhalter laden: derselbe Main-Cache und Bildcache wie das
+   * Kachelbild (kein Fremdhost im Renderer). Ohne Bild oder bei Fehler bleibt der Platzhalter; Klasse has-img zeigt das Bild.
+   */
+  async function loadThumb(box, url, stopMs) {
+    const wanted = typeof url === 'string' ? url : '';
+    if (!box || !wanted || box.dataset.epgImage === wanted) return;
+    box.dataset.epgImage = wanted;
+    let dataUrl = imageCache.get(wanted);
+    if (dataUrl === undefined) {
+      try {
+        dataUrl = (await deps.getEpgImage(wanted, stopMs)) || null;
+      } catch (_) {
+        dataUrl = null;
+      }
+      if (dataUrl) {
+        if (imageCache.size > IMAGE_CACHE_MAX) imageCache.delete(imageCache.keys().next().value);
+        imageCache.set(wanted, dataUrl);
+      }
+    }
+    const src = box.dataset.epgImage === wanted ? deps.safeResourceUrl(dataUrl || '') : '';
+    if (!src) return;
+    const img = el('img', 'epg-thumb-img');
+    img.alt = '';
+    img.decoding = 'async';
+    img.addEventListener('load', () => box.classList.add('has-img'));
+    img.addEventListener('error', () => {
+      img.remove();
+      box.classList.remove('has-img');
+    });
+    img.src = src;
+    box.appendChild(img);
   }
 
   // ── Vorschau ──
@@ -239,6 +273,7 @@ function createLiveTvTileKit(deps) {
     createProgress,
     setImage,
     loadImage,
+    loadThumb,
     startPreview,
     stopPreview,
     stopPreviewOf,

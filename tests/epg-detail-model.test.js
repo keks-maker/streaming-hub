@@ -207,7 +207,7 @@ test('Verdrahtung: Poster lazy, ohne Referrer; Kachelbild asynchron dekodiert, F
   assert.match(tile, /img\.decoding = 'async'/);
   assert.match(tile, /addEventListener\('error'/);
   const jngView = read('epg-jng-view.js');
-  assert.match(jngView, /viewportCurrents\(\)/, 'nur Kacheln im Viewport');
+  assert.match(jngView, /viewportCells\(\)/, 'nur Kacheln im Viewport');
   assert.ok(!/new Image\(\)|fetch\(/.test(jngView + read('epg-view.js') + read('epg-detail-view.js')), 'kein Vorab-Download');
 });
 

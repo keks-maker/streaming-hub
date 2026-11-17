@@ -12,8 +12,8 @@
 //
 // Etappe 3.6: Genre-Filter (setGenres) — die Positionen laufend/nächste/übernächste bleiben, nicht passende Zellen entfallen,
 // Sender ohne passende Zelle verschwinden. Vorschaubilder: Die schlanken Daten (epg:range-many) tragen kein Bild; für die
-// laufende Sendung der SICHTBAREN Kacheln holt getIcons (epg:range je Sender, entprellt) die Bild-URL, der Kachel-Baustein
-// lädt sie aus dem Bild-Cache des Main (epg-image:get). Kein Vorab-Laden; fehlt der Bilddienst, bleibt der Verlauf.
+// laufende und die „Danach“-Sendungen der SICHTBAREN Kacheln holt getIcons (epg:range je Sender, entprellt) die Bild-URLs. Das Kachelbild lädt der Kachel-Baustein aus dem
+// Bild-Cache des Main (epg-image:get), die 64×36-Vorschau der „Danach“-Zeilen lädt kit.loadThumb über denselben Cache (kein Fremdhost im Renderer). Kein Vorab-Laden; fehlt der Bilddienst, bleiben Verlauf bzw. Platzhalter.
 // Die stumme Vorschau (Hover/Fokus) gehört dem Kachel-Baustein: eine gleichzeitig.
 
 'use strict';
@@ -161,16 +161,17 @@ function createJngView(deps) {
     scheduleThumbs();
   }
 
-  // ── Vorschaubilder (nur sichtbare Kacheln, nur die laufende Sendung) ──
+  // ── Vorschaubilder (nur sichtbare Kacheln): laufende Sendung als Kachelbild (Bild-Cache des Main), „Danach“-Zeilen als 64×36-Vorschau ──
 
-  /** Laufende Sendungen der Kacheln, die tatsächlich im Viewport stehen (ohne Überstand). */
-  function viewportCurrents() {
+  /** Zellen der Kacheln, die tatsächlich im Viewport stehen (ohne Überstand). */
+  function viewportCells() {
     const grid = layout();
     const { from, to } = jngModel.visibleRange(grid, channels.length, scroll.scrollTop, scroll.scrollTop + viewportH());
     const out = [];
     for (let i = from; i < to; i += 1) {
       const entry = nodes.get(channels[i].key);
-      if (entry && entry.cells[0]) out.push({ key: channels[i].key, cell: entry.cells[0] });
+      if (!entry) continue;
+      for (const cell of entry.cells) if (cell) out.push({ key: channels[i].key, cell });
     }
     return out;
   }
@@ -181,21 +182,30 @@ function createJngView(deps) {
     thumbTimer = setTimeout(loadThumbs, THUMB_DEBOUNCE_MS);
   }
 
-  /** Bild-URLs der sichtbaren Kacheln holen (ein epg:range je Sender, Zeitfenster seiner laufenden Sendung). */
+  /** Bild-URLs der sichtbaren Zellen holen (ein epg:range je Sender, Zeitfenster seiner sichtbaren Zellen). */
   function loadThumbs() {
     thumbTimer = null;
     if (el.hidden || typeof deps.getIcons !== 'function') return;
     const epoch = thumbEpoch;
-    for (const { key, cell } of viewportCurrents()) {
-      const row = cell.row;
-      if (icons.has(row.id)) continue;
-      icons.set(row.id, ''); // Abruf läuft (oder ist gescheitert): nicht erneut anfragen
+    const wanted = new Map(); // Sender-Schlüssel → { fromMs, toMs, ids }
+    for (const { key, cell } of viewportCells()) {
+      if (icons.has(cell.row.id)) continue;
+      const w = wanted.get(key) || { fromMs: Infinity, toMs: -Infinity, ids: [] };
+      w.fromMs = Math.min(w.fromMs, cell.row.start);
+      w.toMs = Math.max(w.toMs, cell.row.stop);
+      w.ids.push(cell.row);
+      wanted.set(key, w);
+    }
+    for (const [key, w] of wanted) {
+      for (const row of w.ids) icons.set(row.id, ''); // Abruf läuft (oder ist gescheitert): nicht erneut anfragen
       Promise.resolve()
-        .then(() => deps.getIcons(key, row.start, row.stop))
+        .then(() => deps.getIcons(key, w.fromMs, w.toMs))
         .then(slots => {
           if (epoch !== thumbEpoch) return;
-          const slot = (Array.isArray(slots) ? slots : []).find(s => s && s.start === row.start);
-          if (slot && typeof slot.icon === 'string') icons.set(row.id, slot.icon);
+          for (const row of w.ids) {
+            const slot = (Array.isArray(slots) ? slots : []).find(s => s && s.start === row.start);
+            if (slot && typeof slot.icon === 'string') icons.set(row.id, slot.icon);
+          }
           if (!el.hidden) applyThumbs();
         })
         .catch(() => {});
@@ -204,10 +214,13 @@ function createJngView(deps) {
 
   function applyThumbs() {
     for (const entry of nodes.values()) {
-      const cell = entry.cells[0];
-      if (!cell) continue;
-      const url = icons.get(cell.row.id);
-      if (url) kit.loadImage(entry.el, url, cell.row.stop);
+      entry.cells.forEach((cell, i) => {
+        if (!cell) return;
+        const url = icons.get(cell.row.id);
+        if (!url) return;
+        if (i === 0) kit.loadImage(entry.el, url, cell.row.stop);
+        else kit.loadThumb(cell.refs.thumb, url, cell.row.stop);
+      });
     }
   }
 

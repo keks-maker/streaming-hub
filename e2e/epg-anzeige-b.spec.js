@@ -435,8 +435,8 @@ test.describe('Programmführer 3.6/S3 (Vorschaubilder in Jetzt & Gleich)', () =>
     expect(visible.length).toBeLessThan(40);
     await page.waitForTimeout(600);
     const requested = host.requests.map(channelOf);
-    // nur das Bild der laufenden Sendung je sichtbarer Kachel (plus Kacheln, die beim Rendern kurz sichtbar waren: kleine Toleranz)
-    expect(host.requests.length).toBeLessThanOrEqual(visible.length + 8);
+    // nur die Bilder der laufenden und der beiden „Danach“-Sendungen je sichtbarer Kachel (plus Kacheln, die beim Rendern kurz sichtbar waren: kleine Toleranz)
+    expect(host.requests.length).toBeLessThanOrEqual(visible.length * 3 + 8);
     expect(host.requests.length).toBeLessThan(CHANNELS / 2);
     // nur Sender aus dem sichtbaren Bereich (± 4 Kacheln), nichts aus der Mitte oder vom Ende
     const lo = Math.min(...visible) - 5;

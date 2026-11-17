@@ -312,8 +312,8 @@ Feste Maße, die an die Größe eines Bauteils gebunden sind, nicht an die Typo-
 | 64 × 36 px | Vorschaubild in der Mini-Player-Playlist | 16:9, wie die Karte |
 | 34 / 46 / 56 px | Kopf-, Listen- und Blockhöhe im EPG | Rasterhöhen, vom Skript für die Positionierung genutzt |
 | 40 px | Logo-Platte (Anfangsbuchstabe als Ersatz 18 px Schrift) und Platzhalter-Icon (`tv-minimal`) in der Medienfläche der Senderkachel | wachsen nicht mit der Kachel, Platte bleibt unter dem Zeitpillen-Maß lesbar |
-| 240 px / 16 px / 124 px | „Jetzt & Gleich“: Mindestbreite der Kachel, Abstand im Raster (= `space-4`), feste Höhe des Infobereichs (Titel, Meta, zwei „Danach“-Zeilen) | feste Kachelhöhe ist Voraussetzung der Virtualisierung; Spaltenzahl und Breite ergeben sich aus dem Fenster |
-| 32 px / 24 px | Aufnahme-Knopf auf der Medienfläche bzw. in der „Danach“-Zeile von „Jetzt & Gleich“ | kompakte runde Icon-Knöpfe auf Bild bzw. in einer Zeile von 24 px |
+| 240 px / 16 px / 152 px | „Jetzt & Gleich“: Mindestbreite der Kachel, Abstand im Raster (= `space-4`), feste Höhe des Infobereichs (Titel, Meta, zwei „Danach“-Zeilen mit Vorschaubild 64 × 36) | feste Kachelhöhe ist Voraussetzung der Virtualisierung; Spaltenzahl und Breite ergeben sich aus dem Fenster |
+| 32 px / 24 px | Aufnahme-Knopf auf der Medienfläche bzw. in der „Danach“-Zeile von „Jetzt & Gleich“ | kompakte runde Icon-Knöpfe auf Bild bzw. in einer Zeile von 36 px; laufend/geplant auf deckender `surface-1` mit Ring `status-rec` (Kontrast gegen jedes Bild) |
 | 36 px Einzug | Kopfzeile der EPG-Liste (Spalte der Markierung) | fluchtet mit der Zeilenspalte |
 
 ## Plattform-Regeln
