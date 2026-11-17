@@ -101,6 +101,7 @@ test.describe('Startseite „Fortsetzen“: Verlaufseintrag öffnet die gespeich
   let page;
   test.beforeAll(async () => {
     server = http.createServer((req, res) => {
+      if (req.url.startsWith('/broken')) return req.socket.destroy(); // Ladefehler (leere Antwort), gleicher Host und Port wie der Dienst
       res.setHeader('content-type', 'text/html');
       res.end(`<!doctype html><title>Seite ${req.url}</title><body>${req.url}</body>`);
     });
@@ -137,17 +138,22 @@ test.describe('Startseite „Fortsetzen“: Verlaufseintrag öffnet die gespeich
   });
 
   test('Ladefehler der gespeicherten Adresse: ein Klick auf Zurück führt zur vorherigen Ansicht', async () => {
-    const dead = http.createServer();
-    await new Promise(resolve => dead.listen(0, resolve));
-    const deadPort = dead.address().port;
-    await new Promise(resolve => dead.close(resolve)); // Port ist frei: Verbindung wird abgelehnt
-    await page.evaluate(url => window.electronAPI.saveHistoryEntry({ title: 'Kaputtes Video', serviceKey: 'e2esvc', serviceName: 'E2E Dienst', url }), `http://localhost:${deadPort}/watch/x`);
+    await page.evaluate(url => window.electronAPI.saveHistoryEntry({ title: 'Kaputtes Video', serviceKey: 'e2esvc', serviceName: 'E2E Dienst', url }), `${ctx.base}/broken/x`);
     await page.reload();
     await page.locator('#dashboardView').waitFor();
     const card = page.locator('#runningNow .running-card[data-kind="history"]', { hasText: 'Kaputtes Video' });
+    // Signal: Ladefehler gemeldet und danach das Laden beendet (erst dann ist der Webview-Verlauf maßgeblich)
+    await page.evaluate(() => {
+      const view = document.getElementById('contentView');
+      window.__loadFailed = false;
+      window.__loadStoppedAfterFail = false;
+      view.addEventListener('did-fail-load', ev => { if (ev.isMainFrame && ev.errorCode !== -3) window.__loadFailed = true; });
+      view.addEventListener('did-stop-loading', () => { if (window.__loadFailed) setTimeout(() => { window.__loadStoppedAfterFail = true; }, 200); });
+    });
     await card.click();
     await expect(page.locator('#dashboardTitle')).not.toBeVisible();
-    await expect.poll(() => page.evaluate(() => document.getElementById('contentView').canGoBack())).toBe(false);
+    await expect.poll(() => page.evaluate(() => window.__loadStoppedAfterFail), { timeout: 15000 }).toBe(true);
+    await expect(page.evaluate(() => document.getElementById('contentView').canGoBack())).resolves.toBe(false);
     await page.locator('#backBtn').dispatchEvent('click');
     await expect(page.locator('#dashboardView.start-page')).toBeVisible();
   });

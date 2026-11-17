@@ -1829,7 +1829,8 @@ ipcMain.handle('get-history', event => {
 
 ipcMain.handle('save-history-entry', (event, entry) => {
   requireMainRenderer(event);
-  const clean = sanitizeHistoryEntry(entry);
+  const service = loadServices().find(item => item.id === entry.serviceKey);
+  const clean = sanitizeHistoryEntry(entry, service ? service.url : '');
   let history = loadHistory();
   const idx = history.findIndex(e => e.title === clean.title && e.serviceKey === clean.serviceKey);
   if (idx !== -1) {
