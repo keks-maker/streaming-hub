@@ -2912,6 +2912,7 @@ body.epg-open .overlay-bar { z-index: 105; }
 .tv-tile-media { position:relative; display:block; width:100%; aspect-ratio:16 / 9; flex:none; overflow:hidden; background:var(--surface-inset); }
 .tv-tile-still { position:absolute; inset:0; z-index:0; display:grid; place-items:center; color:var(--tile-color); background:linear-gradient(145deg,color-mix(in srgb,var(--tile-color) 34%,var(--surface-inset)),var(--surface-inset) 80%); }
 .tv-tile-still .ic { width:40px; height:40px; opacity:.7; }
+.dashboard-tile.dashboard-tv-tile .tv-tile-logo .dashboard-tile-fallback { font-size:18px; }
 .tv-tile-image { position:absolute; inset:0; z-index:1; display:block; width:100%; height:100%; object-fit:cover; }
 .tv-tile-still.has-image::after { position:absolute; inset:0; z-index:2; background:var(--scrim); content:''; }
 .dashboard-tv-preview { position:absolute; inset:0; z-index:3; width:100%; height:100%; object-fit:cover; background:var(--video-bg); opacity:0; transition:opacity var(--motion-crossfade) ease; }

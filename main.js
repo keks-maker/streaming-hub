@@ -32,6 +32,8 @@ const paths = require('./lib/recorder/paths.js');
 const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
 const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
+const { createEpgImageCache } = require('./lib/epg/image-cache.js');
+const { createImageProcessor } = require('./lib/epg/image-processor.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
 const { registerYoutubeMini } = require('./lib/youtube-mini-ipc.js');
@@ -834,7 +836,22 @@ app.whenReady().then(() => {
       autoRefresh:
         !process.env.STREAMING_HUB_USER_DATA || process.env.STREAMING_HUB_EPG_REFRESH === 'on' || !!epgFixtureFetch,
     });
-    registerEpgIpc({ ipcMain, epg: epgService, requireMainRenderer });
+    // Vorschaubilder der laufenden Sendung (S2): Cache-Ordner im Cache-Pfad der App (nie in userData); in isolierten
+    // Läufen unter dem Temp-userData, lokale Bild-Server nur mit STREAMING_HUB_EPG_IMAGE_LOCAL=1 erlaubt.
+    const isolated = !!process.env.STREAMING_HUB_USER_DATA;
+    const epgImages = createEpgImageCache({
+      dir: isolated
+        ? path.join(app.getPath('userData'), 'cache', 'epg-images')
+        : path.join(app.getPath('cache'), app.getName(), 'epg-images'),
+      processImage: createImageProcessor(nativeImage),
+      validateUrl:
+        isolated && process.env.STREAMING_HUB_EPG_IMAGE_LOCAL === '1'
+          ? (value, field) => remoteHttpUrl(value, field, { allowOrigin: new URL(value).origin })
+          : remoteHttpUrl,
+      logger,
+    });
+    epgImages.cleanup();
+    registerEpgIpc({ ipcMain, epg: epgService, requireMainRenderer, images: epgImages });
     // epg:changed (Main → Hauptfenster) nach jedem erfolgreichen Refresh, auch Slip
     epgService.onChanged(payload => {
       try {

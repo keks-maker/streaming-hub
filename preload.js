@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('epg:search', channelKeys, query, fromMs, toMs, limit, options),
   // Jetzt/Nächste je Kanal und Kanalliste für die Settings-Zuordnung (Etappe 3.7)
   getEpgNowNext: channelKeys => ipcRenderer.invoke('epg:now-next', channelKeys),
+  getEpgImage: (url, stopMs) => ipcRenderer.invoke('epg-image:get', url, stopMs),
   getEpgChannels: () => ipcRenderer.invoke('epg:channels'),
   onEpgChanged: cb => {
     const handler = (_e, data) => cb(data);

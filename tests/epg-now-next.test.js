@@ -62,7 +62,7 @@ test('now-next: laufende + nächste Sendung, schlanke Slots, Eingabereihenfolge'
   const res = await handlers.get('epg:now-next')(main, ['ZDF.de@HD', 'Ende.de']);
   assert.equal(res.length, 2);
   assert.equal(res[0].channelKey, 'ZDF.de@HD');
-  assert.deepEqual(Object.keys(res[0].current).sort(), ['genre', 'start', 'stop', 'title']);
+  assert.deepEqual(Object.keys(res[0].current).sort(), ['genre', 'icon', 'start', 'stop', 'title']);
   assert.equal(res[0].current.title, 'Laufend');
   assert.equal(res[0].current.start, NOW - HOUR);
   assert.equal(res[0].next.title, 'Danach');

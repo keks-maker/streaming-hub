@@ -1076,6 +1076,42 @@ function setLiveTvTileImage(tile, url) {
   still.appendChild(img);
 }
 
+const liveTvTileChannels = new WeakMap(); // Kachel -> Sender, für den Bildwechsel bei Sendungswechsel
+const epgImageCache = new Map(); // Bild-URL -> data:-URL 
+
+/**
+ * Vorschaubild der laufenden Sendung nachladen (S2): fragt den Main-Cache asynchron, die Kachel erscheint sofort mit
+ * Verlauf. Bei Sendungswechsel wechselt das Bild; ohne Bild oder bei Fehler bleibt der Verlauf.
+ */
+async function syncLiveTvTileImage(tile) {
+  const ch = liveTvTileChannels.get(tile);
+  const current = ch ? getCurrentEpg(ch) : null;
+  const url = current && typeof current.icon === 'string' ? current.icon : '';
+  if (tile.dataset.epgImage === url) return;
+  tile.dataset.epgImage = url;
+  if (!url) {
+    setLiveTvTileImage(tile, '');
+    return;
+  }
+  let dataUrl = epgImageCache.get(url);
+  if (dataUrl === undefined) {
+    try {
+      dataUrl = (await window.electronAPI.getEpgImage(url, current.stop)) || null;
+    } catch (_) {
+      dataUrl = null;
+    }
+    if (dataUrl) {
+      if (epgImageCache.size > 60) epgImageCache.delete(epgImageCache.keys().next().value);
+      epgImageCache.set(url, dataUrl);
+    }
+  }
+  if (tile.dataset.epgImage === url) setLiveTvTileImage(tile, dataUrl || '');
+}
+
+function refreshLiveTvTileImages() {
+  dashboardGrid.querySelectorAll('.dashboard-tv-tile').forEach(syncLiveTvTileImage);
+}
+
 function renderLiveTvTile(ch, { imageUrl = '' } = {}) {
   const current = getCurrentEpg(ch);
   const start = current ? current.start : 0;
@@ -1105,12 +1141,16 @@ function renderLiveTvTile(ch, { imageUrl = '' } = {}) {
   const image = tile.querySelector('.tv-tile-logo img');
   const icon = tile.querySelector('.tv-tile-logo');
   const logoSrc = safeResourceUrl(ch.logo);
-  if (logoSrc) image.src = logoSrc;
-  image.addEventListener('error', () => {
+  const showLogoFallback = () => {
     image.remove();
     icon.classList.add('has-error');
-  });
+  };
+  if (logoSrc) image.src = logoSrc;
+  else showLogoFallback();
+  image.addEventListener('error', showLogoFallback);
+  liveTvTileChannels.set(tile, ch);
   if (imageUrl) setLiveTvTileImage(tile, imageUrl);
+  else syncLiveTvTileImage(tile);
   tile.addEventListener('mouseenter', () => startLivePreview(tile, ch));
   tile.addEventListener('mouseleave', stopLivePreview);
   tile.addEventListener('focus', () => startLivePreview(tile, ch));
@@ -2327,7 +2367,7 @@ window.electronAPI.onEpgChanged(() => {
 
 // Laufende Sendungen laufen ab: Cache jede Minute nachziehen (ohne Neuaufbau der Anzeigen)
 setInterval(() => {
-  if (settingsEpgIds) reloadEpgNowNext();
+  if (settingsEpgIds) reloadEpgNowNext().then(refreshLiveTvTileImages);
 }, 60 * 1000);
 
 async function refreshTvSourcesAndEpg() {

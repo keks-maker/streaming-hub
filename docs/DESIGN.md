@@ -187,7 +187,7 @@ Zweigeteilt (Mockup in `docs/design-umbau-plan.md`, Spec dort), Kachel `radius-m
 - Fortschritt als 3-px-Linie an der Unterkante der Kachel in `area-livetv`.
 - Hover (Desktop), Tippen (iPad) bzw. Fokus (Apple TV) startet die stumme Vorschau (Desktop 350 ms Verzögerung); Bild bzw. Platzhalter bleibt, bis der Stream das erste Videobild liefert, dann Überblendung mit `motion-crossfade`; beim Verlassen stoppt die Vorschau und blendet zurück. Es läuft immer nur eine Vorschau.
 - Entfällt: „Sender öffnen“ und das LIVE-Badge, denn im LiveTV-Bereich ist jeder Sender live.
-- Desktop-Umsetzung (Schritt S1): `renderer.js` `renderLiveTvTile`; Bild-Hook `setLiveTvTileImage` (`<img decoding="async">` in der Medienfläche, bei Fehler Verlauf). Die EPG-Zellen „Jetzt & Gleich“ am Desktop (`epg-jng-*`) sind ein Zeilenraster mit Aufnahme-Aktion und nutzen die Kachel (noch) nicht. Umsetzung des Vorschaubilds (S2): Spec im Umbauplan.
+- Desktop-Umsetzung (Schritt S1): `renderer.js` `renderLiveTvTile`; Bild-Hook `setLiveTvTileImage` (`<img decoding="async">` in der Medienfläche, bei Fehler Verlauf). Schritt S2: Bild aus dem EPG (`<icon>` der Sendung), im Main geladen und auf 560 px Breite als JPEG im Cache-Ordner `epg-images/` abgelegt (Hash der URL, 50 MB, Aufräumen beim Start), Abruf über `epg-image:get`; der Renderer setzt es asynchron. Die EPG-Zellen „Jetzt & Gleich“ am Desktop (`epg-jng-*`) sind ein Zeilenraster mit Aufnahme-Aktion und nutzen die Kachel (noch) nicht. Umsetzung des Vorschaubilds (S2): Spec im Umbauplan.
 
 ### Dienstkachel (Streaming, Mediatheken)
 
@@ -310,6 +310,7 @@ Feste Maße, die an die Größe eines Bauteils gebunden sind, nicht an die Typo-
 | 26 px | Entfernen-Knopf in der Mini-Player-Playlist | kompakter Icon-Knopf in einer Zeile von 36 px |
 | 64 × 36 px | Vorschaubild in der Mini-Player-Playlist | 16:9, wie die Karte |
 | 34 / 46 / 56 px | Kopf-, Listen- und Blockhöhe im EPG | Rasterhöhen, vom Skript für die Positionierung genutzt |
+| 40 px | Logo-Platte (Anfangsbuchstabe als Ersatz 18 px Schrift) und Platzhalter-Icon (`tv-minimal`) in der Medienfläche der Senderkachel | wachsen nicht mit der Kachel, Platte bleibt unter dem Zeitpillen-Maß lesbar |
 | 36 px Einzug | Kopfzeile der EPG-Liste (Spalte der Markierung) | fluchtet mit der Zeilenspalte |
 
 ## Plattform-Regeln

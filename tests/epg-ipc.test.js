@@ -92,7 +92,7 @@ test('IPC: epg:range/find/status/refresh liefern Daten ohne Fenster (reiner Main
   const { handlers, main } = await makeIpc();
   assert.deepEqual(
     [...handlers.keys()].sort(),
-    ['epg:channels', 'epg:find', 'epg:now-next', 'epg:refresh', 'epg:range', 'epg:range-many', 'epg:search', 'epg:status'].sort(),
+    ['epg-image:get', 'epg:channels', 'epg:find', 'epg:now-next', 'epg:refresh', 'epg:range', 'epg:range-many', 'epg:search', 'epg:status'].sort(),
   );
 
   const week = await handlers.get('epg:range')(main, 'ZDF.de@HD', NOW, NOW + 7 * 24 * HOUR);
@@ -149,7 +149,7 @@ test('preload.js: EPG-Kanäle stehen in der Whitelist (feste Namen, keine generi
 test('main.js: EpgService wird unabhängig vom Fenster/ffmpeg-Health gestartet und IPC hinter requireMainRenderer registriert', () => {
   const main = read('main.js');
   assert.match(main, /new EpgService\(\{[\s\S]*?getSources: \(\) => loadTvSources\(\)/);
-  assert.match(main, /registerEpgIpc\(\{ ipcMain, epg: epgService, requireMainRenderer \}\)/);
+  assert.match(main, /registerEpgIpc\(\{ ipcMain, epg: epgService, requireMainRenderer, images: epgImages \}\)/);
   assert.match(main, /epgService\.start\(\)/);
   // epg:changed geht nur ans Hauptfenster (mainWindow), Fehler beim Senden sind nicht fatal
   assert.match(main, /epgService\.onChanged\(payload => \{\s*try \{\s*mainWindow\?\.webContents\.send\('epg:changed', payload\)/);
