@@ -5,6 +5,7 @@
 'use strict';
 
 const { findStation } = require('./lib/radio/radio-sources-logic.js');
+const { sanitizeHistoryUrl, hostBelongsToService } = require('./lib/history-entry.js');
 
 const MAX_CARDS = 4;
 const TV_KEY = '__tv__';
@@ -13,16 +14,10 @@ const PODCAST_ACTIVE = ['loading', 'playing', 'paused'];
 
 const text = value => (typeof value === 'string' ? value.trim() : '');
 
-/** Gespeicherte Adresse eines Verlaufseintrags (nur http/https), sonst ''. Gilt für „Fortsetzen“ und das Verlauf-Overlay. */
-function historyEntryUrl(entry) {
-  const raw = text(entry && entry.url);
-  if (!raw || raw.length > 2048) return '';
-  try {
-    const parsed = new URL(raw);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : '';
-  } catch (_) {
-    return '';
-  }
+/** Gespeicherte Adresse eines Verlaufseintrags, nur wenn sie http/https ist und zur Domain des Dienstes (serviceUrl) gehört, sonst ''. */
+function historyEntryUrl(entry, serviceUrl) {
+  const clean = sanitizeHistoryUrl(entry && entry.url);
+  return clean && hostBelongsToService(clean, serviceUrl) ? clean : '';
 }
 
 function clamp01(value, total) {
@@ -91,7 +86,7 @@ function podcastCard({ subscriptions, episodes, player } = {}) {
 }
 
 /** Verlauf: der jüngste Eintrag, dessen Dienst noch existiert (LiveTV-Sender gelten als live). */
-function historyCard({ history, serviceIds } = {}) {
+function historyCard({ history, serviceIds, serviceUrls } = {}) {
   const known = new Set(Array.isArray(serviceIds) ? serviceIds : []);
   const entry = (Array.isArray(history) ? history : []).find(e => e && text(e.title) && (e.serviceKey === TV_KEY || known.has(e.serviceKey)));
   if (!entry) return null;
@@ -99,7 +94,7 @@ function historyCard({ history, serviceIds } = {}) {
     const name = text(entry.serviceName) || text(entry.title).replace(/^TV:\s*/, '');
     return { kind: 'history', area: 'livetv', icon: 'tv-minimal', title: name, subtitle: 'LiveTV', live: true, progress: null, active: false, action: { type: 'tv', name } };
   }
-  return { kind: 'history', area: 'streaming', icon: 'monitor-play', title: text(entry.title), subtitle: text(entry.serviceName) || 'Streaming', live: false, progress: null, active: false, action: { type: 'service', serviceKey: entry.serviceKey, url: historyEntryUrl(entry) } };
+  return { kind: 'history', area: 'streaming', icon: 'monitor-play', title: text(entry.title), subtitle: text(entry.serviceName) || 'Streaming', live: false, progress: null, active: false, action: { type: 'service', serviceKey: entry.serviceKey, url: historyEntryUrl(entry, serviceUrls && serviceUrls[entry.serviceKey]) } };
 }
 
 /**

@@ -773,7 +773,7 @@ const runningNowView = createRunningNow(runningNowRoot, {
       recordings,
       radio: { state: radioLatestState, sources, lastStation: radioSettings && radioSettings.lastStation },
       podcast: { subscriptions: podcast.subscriptions, episodes: podcast.episodes, player: podcastLatestState },
-      history: { history, serviceIds: services.map(s => s.id) },
+      history: { history, serviceIds: services.map(s => s.id), serviceUrls: Object.fromEntries(services.map(s => [s.id, s.url])) },
     };
   },
   onAction: action => {
@@ -786,7 +786,8 @@ const runningNowView = createRunningNow(runningNowRoot, {
       if (action.play) window.podcasts.player.play({ podcastId: action.podcastId, episodeId: action.episodeId }).catch(fail);
     } else if (action.type === 'service') {
       const svc = services.find(s => s.id === action.serviceKey);
-      if (svc) navigateTo(action.url ? { ...svc, url: action.url } : svc);
+      const url = historyEntryUrl(action, svc && svc.url);
+      if (svc) navigateTo(url ? { ...svc, url } : svc);
     } else if (action.type === 'tv') {
       const channel = tvChannels.find(ch => ch.name === action.name);
       if (channel) selectTvChannel(channel, { suppressChannelList: true });
@@ -2745,7 +2746,7 @@ function renderHistory(entries) {
     row.addEventListener('click', () => {
       closeHistory();
       if (svc) {
-        const url = historyEntryUrl(e);
+        const url = historyEntryUrl(e, svc.url);
         navigateTo(url ? { ...svc, url } : svc);
       } else if (e.serviceKey === '__tv__') {
         // Verlaufseintrag „TV“: zurück ins LiveTV-Dashboard (Sendersuche/Favoriten), keine Seitenleiste mehr
@@ -3434,7 +3435,9 @@ webview.addEventListener('did-finish-load', () => {
 
 let clearWebviewHistoryPending = false;
 webview.addEventListener('did-fail-load', e => {
-  if (e.isMainFrame && e.errorCode !== -3) clearWebviewHistoryOnNavigate = false; // -3 = abgebrochen (Vorgänger-Ladevorgang), kein Fehlschlag
+  // Auch ein Ladefehler lässt about:blank im Webview-Verlauf zurück: gelöscht wird beim folgenden did-stop-loading.
+  // -3 = abgebrochen (Vorgänger-Ladevorgang), danach folgt die eigentliche Navigation.
+  if (e.isMainFrame && e.errorCode !== -3 && clearWebviewHistoryOnNavigate) clearWebviewHistoryPending = true;
 });
 webview.addEventListener('did-stop-loading', () => {
   if (!clearWebviewHistoryPending) return;

@@ -118,7 +118,7 @@ test.describe('Startseite „Fortsetzen“: Verlaufseintrag öffnet die gespeich
   });
 
   test('Klick lädt die gespeicherte Video-Adresse, ein Klick auf Zurück führt zur Startseite', async () => {
-    await page.evaluate(url => window.electronAPI.saveHistoryEntry({ title: 'Mein Video', serviceKey: 'e2esvc', serviceName: 'E2E Dienst', url }), `${ctx.base}/watch?v=abc`);
+    await page.evaluate(url => window.electronAPI.saveHistoryEntry({ title: 'Mein Video', serviceKey: 'e2esvc', serviceName: 'E2E Dienst', url }), `${ctx.base}/watch/abc`);
     await page.reload();
     await page.locator('#dashboardView').waitFor();
     const card = page.locator('#runningNow .running-card[data-kind="history"]');
@@ -126,13 +126,29 @@ test.describe('Startseite „Fortsetzen“: Verlaufseintrag öffnet die gespeich
     await card.click();
     await expect(page.locator('#dashboardTitle')).not.toBeVisible();
     const contentUrl = () => page.evaluate(() => document.getElementById('contentView').getURL());
-    await expect.poll(contentUrl).toBe(`${ctx.base}/watch?v=abc`);
+    await expect.poll(contentUrl).toBe(`${ctx.base}/watch/abc`);
     // Der Webview-Verlauf enthält keinen Eintrag vor der Zielseite (sonst führt Zurück auf about:blank)
     await expect.poll(() => page.evaluate(() => document.getElementById('contentView').canGoBack())).toBe(false);
     await expect(page.locator('#backBtn')).toBeVisible();
     await page.locator('#backBtn').dispatchEvent('click'); // Leiste ist im Vollbild-Inhalt eingeklappt, der Handler ist derselbe
     await expect(page.locator('#dashboardView.start-page')).toBeVisible();
     await expect(page.locator('#runningNow')).toBeVisible();
+    await expect(page.locator('#dashboardView.start-page')).toBeVisible();
+  });
+
+  test('Ladefehler der gespeicherten Adresse: ein Klick auf Zurück führt zur vorherigen Ansicht', async () => {
+    const dead = http.createServer();
+    await new Promise(resolve => dead.listen(0, resolve));
+    const deadPort = dead.address().port;
+    await new Promise(resolve => dead.close(resolve)); // Port ist frei: Verbindung wird abgelehnt
+    await page.evaluate(url => window.electronAPI.saveHistoryEntry({ title: 'Kaputtes Video', serviceKey: 'e2esvc', serviceName: 'E2E Dienst', url }), `http://localhost:${deadPort}/watch/x`);
+    await page.reload();
+    await page.locator('#dashboardView').waitFor();
+    const card = page.locator('#runningNow .running-card[data-kind="history"]', { hasText: 'Kaputtes Video' });
+    await card.click();
+    await expect(page.locator('#dashboardTitle')).not.toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.getElementById('contentView').canGoBack())).toBe(false);
+    await page.locator('#backBtn').dispatchEvent('click');
     await expect(page.locator('#dashboardView.start-page')).toBeVisible();
   });
 });

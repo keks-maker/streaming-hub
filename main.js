@@ -275,6 +275,7 @@ const { updateMode } = require('./lib/update-mode.js');
 const { resolveUpdateApiBase, DEFAULT_UPDATE_API_BASE } = require('./lib/update-base.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
 const { describeM3uFetchError } = require('./lib/m3u-fetch-error.js');
+const { sanitizeHistoryEntry } = require('./lib/history-entry.js');
 
 if (process.platform === 'darwin') {
   const macPathEntries = [
@@ -1828,14 +1829,14 @@ ipcMain.handle('get-history', event => {
 
 ipcMain.handle('save-history-entry', (event, entry) => {
   requireMainRenderer(event);
+  const clean = sanitizeHistoryEntry(entry);
   let history = loadHistory();
-  const idx = history.findIndex(e => e.title === entry.title && e.serviceKey === entry.serviceKey);
+  const idx = history.findIndex(e => e.title === clean.title && e.serviceKey === clean.serviceKey);
   if (idx !== -1) {
     history[idx].timestamp = new Date().toISOString();
-    if (typeof entry.url === 'string' && /^https?:\/\//i.test(entry.url) && entry.url.length <= 2048) history[idx].url = entry.url;
+    if (clean.url) history[idx].url = clean.url;
   } else {
-    entry.timestamp = new Date().toISOString();
-    history.unshift(entry);
+    history.unshift({ ...clean, timestamp: new Date().toISOString() });
     if (history.length > 20) history = history.slice(0, 20);
   }
   saveHistory(history);
