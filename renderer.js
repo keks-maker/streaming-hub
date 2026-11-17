@@ -808,7 +808,6 @@ if (bg) {
 }
 
 function renderDashboardTile(svc) {
-  const group = svc.group === 'mediathek' ? 'Mediathek' : 'Streaming';
   const tile = document.createElement('button');
   tile.className = 'dashboard-tile is-loading';
   tile.type = 'button';
@@ -822,9 +821,7 @@ function renderDashboardTile(svc) {
     </span>
     <span class="dashboard-tile-content">
       <span class="dashboard-tile-name">${escapeHtml(svc.name)}</span>
-      <span class="dashboard-tile-meta">${group}</span>
     </span>
-    <span class="dashboard-tile-action">Öffnen</span>
   `;
   const icon = tile.querySelector('.dashboard-tile-icon');
   const image = tile.querySelector('img');
@@ -958,7 +955,6 @@ function renderLiveTvTile(ch) {
   tile.setAttribute('aria-label', `${ch.name} öffnen`);
   tile.style.setProperty('--tile-color', source?.color || '#6c5ce7');
   tile.innerHTML = `
-    <span class="dashboard-tv-badge">LIVE</span>
     <span class="dashboard-tile-glow"></span>
     <span class="dashboard-tile-icon">
       <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((ch.name || '?').slice(0, 1).toUpperCase())}</span>
@@ -969,7 +965,6 @@ function renderLiveTvTile(ch) {
       <span class="dashboard-tile-meta">${current ? escapeHtml(current.title) : 'Kein EPG verfügbar'}</span>
       ${current ? `<span class="dashboard-tv-progress"><span style="width:${progress.toFixed(1)}%"></span></span>` : ''}
     </span>
-    <span class="dashboard-tile-action">Sender öffnen</span>
   `;
   const image = tile.querySelector('img');
   const icon = tile.querySelector('.dashboard-tile-icon');
@@ -1043,7 +1038,8 @@ function renderStartDashboard() {
     tile.type = 'button';
     tile.dataset.section = section.key;
     tile.style.setProperty('--tile-color', section.color);
-    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.logo ? `<img src="assets/icons/${section.logo}" alt="">` : Icons.iconSvg(section.icon)}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span><span class="dashboard-tile-meta">Bereich öffnen</span></span>`;
+    tile.innerHTML = `<span class="dashboard-tile-glow"></span><span class="dashboard-section-tile-art" aria-hidden="true"><span class="dashboard-section-tile-art-shape"></span><span class="dashboard-section-tile-art-detail"></span></span><span class="dashboard-section-tile-icon">${section.logo ? `<img src="assets/icons/${section.logo}" alt="">` : Icons.iconSvg(section.icon)}</span><span class="dashboard-tile-content"><span class="dashboard-tile-name">${section.label}</span></span>`;
+    tile.setAttribute('aria-label', `${section.label} öffnen`);
     tile.addEventListener('click', () => {
       overlayBar.classList.remove('nav-collapsed');
       showDashboard(section.key);
