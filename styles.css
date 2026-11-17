@@ -4082,4 +4082,4 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
 /* Fokus (DESIGN.md): Tastaturfokus zeigt überall denselben 2-px-Ring in focus-ring, nie die Bereichsfarbe; kein Ring bei Mausklick
    (:focus-visible). Steht am Dateiende, damit er bei gleicher Spezifität gewinnt; Einzelregeln setzen nur den Abstand (outline-offset). */
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.dashboard-section-tile:focus-visible { outline-color: var(--focus-ring-page); }
+.theme-dark-scope:focus-visible, .dashboard-section-tile:focus-visible, .dashboard-tv-tile.is-previewing:focus-visible { outline-color: var(--focus-ring-page); } /* Ring richtet sich nach der Seite, nicht nach der lokal dunklen Kachel */

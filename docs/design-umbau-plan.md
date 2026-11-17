@@ -48,11 +48,13 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - Barrierefreiheit: Kachel bekommt ein `aria-label` („LiveTV öffnen“).
 
 ### Schritt 4: Text-Stufen und Flächen vereinheitlichen
+- Status: erledigt (QA bestanden).
 - `text-secondary` auf die neuen Werte (dunkel .70, hell .78).
 - Flächen vereinheitlichen: die abweichenden Variablen aus DESIGN.md (Abschnitt „Abweichende Variablen“: `--bg-dash`, `--bg-content`, `--c-card2`, `--surface-card`, `--c-glass-panel`, `--c-field`, `--c-modal-glass`, `--c-pop`, `--media-scrim`) auf `surface-0` bis `surface-3` bzw. `scrim` umstellen. Sichtbare Änderung, bewusst.
 - Abnahme: alle Texte erfüllen das Kontrastziel in Hell und Dunkel; Unterschied der vereinheitlichten Flächen in Hell und Dunkel per Screenshot geprüft.
 
 ### Schritt 5: Fokus-Ring und Bereichsfarbe durchziehen
+- Status: erledigt (QA bestanden). Commit `aeb79e9`, Nachbesserung Fokusring Vorschau-Kachel: siehe git log.
 - Fokus-Ring `focus-ring` (2 px, `text-primary`) statt Bereichsfarbe: ändert die Fokusfarbe der Navigation (`styles.css:3743`, `--nav-c`) und der Mediathek (`styles.css:3792`, `--md-accent`).
 - Bereichsfarbe: Navigation ist fertig. Offen: Schimmer hinter der Überschrift, Fortschrittslinien und Equalizer in der Farbe des Bereichs; Senderkachel-Farbe von Quellenfarbe auf `area-livetv`.
 

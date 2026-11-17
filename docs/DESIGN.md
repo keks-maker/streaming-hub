@@ -97,6 +97,10 @@ Jeder Bereich hat genau eine Farbe. Sie ersetzt Farbnamen wie `--violet`, `--vio
 
 **Umsetzung Bereichsfarbe am Desktop (Schritt 5):** Der aktuelle Bereich ergibt sich aus dem aktiven Navigationseintrag (`body:has(.overlay-bar [data-section=…].active)` setzt `--area-c`; Startseite ohne Eintrag: `accent`). Der Schimmer hinter der Überschrift (`.content-area`) nutzt `--area-c`. Fortschrittslinien: LiveTV-Kachel und EPG `area-livetv`, Podcast `area-podcast`, Mediathek `area-mediathek` (`--md-accent`). Equalizer: Radio-Kachel `area-radio`, Podcast `area-podcast`. Senderkachel (`--tile-color`) und Radiokachel stehen auf `area-livetv` bzw. `area-radio` statt Quellen-/Festfarbe. Ausnahme: Die Wiedergabe-Hervorhebung (Titel, Rand) einer Podcast-Folge bleibt orange (`--orange-play`), damit sie sich von der grünen Auswahl abhebt (Testvorgabe `podcast-dashboard-split.test.js`).
 
+**Begründete Ausnahme Podcast:** Equalizer und Wiedergabe-Hervorhebung der Podcast-Folge bleiben orange (`--orange-play`), nicht `area-podcast`. Der Zustand „läuft“ muss sich von der grünen Auswahl (`area-podcast`) unterscheiden (Tests `podcasts.spec`, `podcast-dashboard-split`).
+
+**Hinweis Deaktivierte Knöpfe:** Deckkraft .5, in Hell rund 3,3 : 1. Nach WCAG 2.x sind deaktivierte Bedienelemente vom Kontrastziel ausgenommen.
+
 **Kontrastziel WCAG AA:** Text mindestens 4,5 : 1, große Schrift und Bedienelemente (Icons, Ränder, Fortschritt) mindestens 3 : 1, jeweils gegen die Fläche, auf der sie stehen. Nachrechnung 2026-11-16: Alle sechs `area-*`-Werte erreichen auf `surface-0` und `surface-1` mindestens 4,99 : 1 (hell, Radio) bzw. 5,79 : 1 (dunkel, LiveTV auf `surface-1`). Die frühere Ausnahme für `area-livetv` dunkel (#6c5ce7: 4,07 : 1) entfällt damit, die Bereichsfarben sind auch für kleinen Text geeignet. `accent` #6c5ce7 dunkel erreicht nur 4,07 : 1 und ist deshalb nicht für kleinen Text auf dunkler Fläche gedacht.
 
 ### Status
