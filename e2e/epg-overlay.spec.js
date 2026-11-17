@@ -960,7 +960,7 @@ test.describe('Kanalansicht (kleine Fixture)', () => {
     await link.click();
     await channelVisible();
     await expect(page.locator('#epgChannelName')).toHaveText('Kanal Eins');
-    await expect(page.locator('#epgChannelBack')).toHaveText('← Alle Sender');
+    await expect(page.locator('#epgChannelBack')).toHaveText('Alle Sender');
     // Logo wie im Raster: echtes Bild aus der Playlist, sonst Kürzel
     await expect(page.locator('#epgChannel .epg-channel-logo')).toHaveClass(/has-img/);
     // P7: kein Segment-Button für die Kanalansicht (Segment: Liste | Raster | Jetzt & Gleich); keiner ist hervorgehoben
