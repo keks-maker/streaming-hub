@@ -13,6 +13,18 @@ const PODCAST_ACTIVE = ['loading', 'playing', 'paused'];
 
 const text = value => (typeof value === 'string' ? value.trim() : '');
 
+/** Gespeicherte Adresse eines Verlaufseintrags (nur http/https), sonst ''. Gilt für „Läuft gerade“ und das Verlauf-Overlay. */
+function historyEntryUrl(entry) {
+  const raw = text(entry && entry.url);
+  if (!raw || raw.length > 2048) return '';
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : '';
+  } catch (_) {
+    return '';
+  }
+}
+
 function clamp01(value, total) {
   if (!(total > 0) || !(value > 0)) return 0;
   return Math.min(1, value / total);
@@ -87,7 +99,7 @@ function historyCard({ history, serviceIds } = {}) {
     const name = text(entry.serviceName) || text(entry.title).replace(/^TV:\s*/, '');
     return { kind: 'history', area: 'livetv', icon: 'tv-minimal', title: name, subtitle: 'LiveTV', live: true, progress: null, active: false, action: { type: 'tv', name } };
   }
-  return { kind: 'history', area: 'streaming', icon: 'monitor-play', title: text(entry.title), subtitle: text(entry.serviceName) || 'Streaming', live: false, progress: null, active: false, action: { type: 'service', serviceKey: entry.serviceKey } };
+  return { kind: 'history', area: 'streaming', icon: 'monitor-play', title: text(entry.title), subtitle: text(entry.serviceName) || 'Streaming', live: false, progress: null, active: false, action: { type: 'service', serviceKey: entry.serviceKey, url: historyEntryUrl(entry) } };
 }
 
 /**
@@ -111,4 +123,4 @@ function cardAriaLabel(card) {
   return parts.filter(Boolean).join(', ');
 }
 
-module.exports = { MAX_CARDS, runningNowCards, recordingCard, radioCard, podcastCard, historyCard, cardAriaLabel };
+module.exports = { MAX_CARDS, historyEntryUrl, runningNowCards, recordingCard, radioCard, podcastCard, historyCard, cardAriaLabel };

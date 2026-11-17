@@ -47,6 +47,7 @@ const scheduleUi = require('./lib/recorder/schedule-ui-model.js');
 const { resolveShowOverride } = require('./lib/recorder/show-override.js');
 const { createDashboardHub } = require('./dashboard-hub-view.js');
 const { createRunningNow } = require('./running-now-view.js');
+const { historyEntryUrl } = require('./running-now-model.js');
 const { createRadioDashboard } = require('./radio-dashboard-view.js');
 const { createRadioMiniPlayer } = require('./radio-miniplayer-view.js');
 const { createYoutubeMini } = require('./youtube-mini-controller.js');
@@ -86,6 +87,7 @@ function safeColor(value, fallback) {
 let services = [];
 let webviewReady = false;
 let pendingNav = null;
+let clearWebviewHistoryOnNavigate = false;
 let pipActive = false;
 let currentProvider = '';
 let currentDashboardGroup = null;
@@ -784,7 +786,7 @@ const runningNowView = createRunningNow(runningNowRoot, {
       if (action.play) window.podcasts.player.play({ podcastId: action.podcastId, episodeId: action.episodeId }).catch(fail);
     } else if (action.type === 'service') {
       const svc = services.find(s => s.id === action.serviceKey);
-      if (svc) navigateTo(svc);
+      if (svc) navigateTo(action.url ? { ...svc, url: action.url } : svc);
     } else if (action.type === 'tv') {
       const channel = tvChannels.find(ch => ch.name === action.name);
       if (channel) selectTvChannel(channel, { suppressChannelList: true });
@@ -1515,6 +1517,9 @@ function navigateTo(svc) {
   const targetUrl = normalizeUrl(svc.url);
   lastUrlByService[svc.id] = targetUrl;
   if (ytMini.interceptNavigate(targetUrl)) return; // Video-Adresse: lädt die Player-Webview, die Inhalts-Webview bleibt
+  // Der Webview-Verlauf gehört zum Dienst: Einträge vor dieser Navigation (about:blank, Seiten des vorigen Dienstes) sind für
+  // „Zurück“ tabu, das übernimmt der Navigations-Stack (navStack). Sonst führt der erste Klick auf Zurück auf eine leere Seite.
+  clearWebviewHistoryOnNavigate = true;
   if (webviewReady) {
     try {
       contentView.loadURL(targetUrl);
@@ -2740,7 +2745,8 @@ function renderHistory(entries) {
     row.addEventListener('click', () => {
       closeHistory();
       if (svc) {
-        navigateTo(svc);
+        const url = historyEntryUrl(e);
+        navigateTo(url ? { ...svc, url } : svc);
       } else if (e.serviceKey === '__tv__') {
         // Verlaufseintrag „TV“: zurück ins LiveTV-Dashboard (Sendersuche/Favoriten), keine Seitenleiste mehr
         showDashboard('livetv');
@@ -3426,8 +3432,21 @@ webview.addEventListener('did-finish-load', () => {
   }
 });
 
+let clearWebviewHistoryPending = false;
+webview.addEventListener('did-fail-load', e => {
+  if (e.isMainFrame && e.errorCode !== -3) clearWebviewHistoryOnNavigate = false; // -3 = abgebrochen (Vorgänger-Ladevorgang), kein Fehlschlag
+});
+webview.addEventListener('did-stop-loading', () => {
+  if (!clearWebviewHistoryPending) return;
+  clearWebviewHistoryPending = false;
+  clearWebviewHistoryOnNavigate = false;
+  webview.clearHistory();
+  updateBackBtn();
+});
+
 webview.addEventListener('did-navigate', () => {
   const url = webview.getURL();
+  if (clearWebviewHistoryOnNavigate && url && url !== 'about:blank') clearWebviewHistoryPending = true;
   // Letzte URL des aktiven Dienstes tracken (Basis für die Zurück-Historie)
   if (currentProvider && currentProvider !== '__tv__' && url && url !== 'about:blank') {
     lastUrlByService[currentProvider] = url;
@@ -3630,7 +3649,7 @@ function pollMediaTitle() {
     .then(title => {
       if (title && title !== lastMediaTitle) {
         lastMediaTitle = title;
-        window.electronAPI.saveHistoryEntry({ title, serviceKey: svc.id, serviceName: svc.name });
+        window.electronAPI.saveHistoryEntry({ title, serviceKey: svc.id, serviceName: svc.name, url: webview.getURL() });
       }
     })
     .catch(() => {});

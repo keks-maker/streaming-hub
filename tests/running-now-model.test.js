@@ -103,3 +103,12 @@ test('aria-Beschriftung nennt Titel, Zustand, live und Fortschritt', () => {
   assert.equal(cardAriaLabel({ title: 'SWR3', subtitle: 'Läuft', live: true, progress: null }), 'SWR3, Läuft, live');
   assert.equal(cardAriaLabel({ title: 'Folge', subtitle: 'Sendung', live: false, progress: 0.5 }), 'Folge, Sendung, 50 Prozent gehört');
 });
+
+test('Verlaufskarte: gespeicherte Adresse des Eintrags wird Ziel, ungültige fällt auf leer zurück', () => {
+  const { historyEntryUrl } = require('../running-now-model.js');
+  const url = 'https://www.youtube.com/watch?v=abc123DEF45';
+  const card = historyCard({ history: [{ title: 'Video', serviceKey: 'youtube', serviceName: 'YouTube', url }], serviceIds: ['youtube'] });
+  assert.deepEqual(card.action, { type: 'service', serviceKey: 'youtube', url });
+  assert.equal(historyCard({ history: [{ title: 'Video', serviceKey: 'youtube', serviceName: 'YouTube' }], serviceIds: ['youtube'] }).action.url, '');
+  for (const bad of ['javascript:alert(1)', 'file:///etc/passwd', 'kein url', '', null, 42]) assert.equal(historyEntryUrl({ url: bad }), '');
+});

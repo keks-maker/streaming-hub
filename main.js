@@ -1832,6 +1832,7 @@ ipcMain.handle('save-history-entry', (event, entry) => {
   const idx = history.findIndex(e => e.title === entry.title && e.serviceKey === entry.serviceKey);
   if (idx !== -1) {
     history[idx].timestamp = new Date().toISOString();
+    if (typeof entry.url === 'string' && /^https?:\/\//i.test(entry.url) && entry.url.length <= 2048) history[idx].url = entry.url;
   } else {
     entry.timestamp = new Date().toISOString();
     history.unshift(entry);

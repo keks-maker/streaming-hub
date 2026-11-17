@@ -7,6 +7,7 @@ const { test, expect } = require('@playwright/test');
 const { MIN, xmltvTime, launchApp } = require('./epg-helpers');
 const { shotBoth } = require('./theme-audit');
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 
 // Zuletzt gehörter Sender kommt aus radio-settings.json (nur das Abspielen schreibt ihn; kein IPC zum Setzen): Seed vor dem Start
@@ -91,5 +92,47 @@ test.describe('Startseite „Läuft gerade“: mit Zustand', () => {
     await cards.nth(1).focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('#dashboardTitle')).not.toBeVisible();
+  });
+});
+
+test.describe('Startseite „Läuft gerade“: Verlaufseintrag öffnet die gespeicherte Adresse', () => {
+  let server;
+  let ctx;
+  let page;
+  test.beforeAll(async () => {
+    server = http.createServer((req, res) => {
+      res.setHeader('content-type', 'text/html');
+      res.end(`<!doctype html><title>Seite ${req.url}</title><body>${req.url}</body>`);
+    });
+    await new Promise(resolve => server.listen(0, resolve));
+    const base = `http://localhost:${server.address().port}`;
+    ctx = await launch(({ userData }) =>
+      fs.writeFileSync(path.join(userData, 'services.json'), JSON.stringify([{ id: 'e2esvc', name: 'E2E Dienst', url: `${base}/home`, icon: 'netflix.png', color: '#e50914', group: 'streaming' }])),
+    );
+    ctx.base = base;
+    page = ctx.page;
+  });
+  test.afterAll(async () => {
+    if (ctx) await ctx.cleanup();
+    if (server) await new Promise(resolve => server.close(resolve));
+  });
+
+  test('Klick lädt die gespeicherte Video-Adresse, ein Klick auf Zurück führt zur Startseite', async () => {
+    await page.evaluate(url => window.electronAPI.saveHistoryEntry({ title: 'Mein Video', serviceKey: 'e2esvc', serviceName: 'E2E Dienst', url }), `${ctx.base}/watch?v=abc`);
+    await page.reload();
+    await page.locator('#dashboardView').waitFor();
+    const card = page.locator('#runningNow .running-card[data-kind="history"]');
+    await expect(card).toContainText('Mein Video');
+    await card.click();
+    await expect(page.locator('#dashboardTitle')).not.toBeVisible();
+    const contentUrl = () => page.evaluate(() => document.getElementById('contentView').getURL());
+    await expect.poll(contentUrl).toBe(`${ctx.base}/watch?v=abc`);
+    // Der Webview-Verlauf enthält keinen Eintrag vor der Zielseite (sonst führt Zurück auf about:blank)
+    await expect.poll(() => page.evaluate(() => document.getElementById('contentView').canGoBack())).toBe(false);
+    await expect(page.locator('#backBtn')).toBeVisible();
+    await page.locator('#backBtn').dispatchEvent('click'); // Leiste ist im Vollbild-Inhalt eingeklappt, der Handler ist derselbe
+    await expect(page.locator('#dashboardView.start-page')).toBeVisible();
+    await expect(page.locator('#runningNow')).toBeVisible();
+    await expect(page.locator('#dashboardView.start-page')).toBeVisible();
   });
 });
