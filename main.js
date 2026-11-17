@@ -33,6 +33,7 @@ const recordingSettingsLib = require('./lib/recorder/recording-settings.js');
 const { EpgService } = require('./lib/epg/EpgService.js');
 const { registerEpgIpc } = require('./lib/epg/ipc.js');
 const { createEpgImageCache } = require('./lib/epg/image-cache.js');
+const { createSafeFetch } = require('./lib/epg/safe-fetch.js');
 const { createImageProcessor } = require('./lib/epg/image-processor.js');
 const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js');
 const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
@@ -839,13 +840,14 @@ app.whenReady().then(() => {
     // Vorschaubilder der laufenden Sendung (S2): Cache-Ordner im Cache-Pfad der App (nie in userData); in isolierten
     // Läufen unter dem Temp-userData, lokale Bild-Server nur mit STREAMING_HUB_EPG_IMAGE_LOCAL=1 erlaubt.
     const isolated = !!process.env.STREAMING_HUB_USER_DATA;
+    const epgImagesLocal = isolated && process.env.STREAMING_HUB_EPG_IMAGE_LOCAL === '1';
     const epgImages = createEpgImageCache({
       dir: isolated
         ? path.join(app.getPath('userData'), 'cache', 'epg-images')
         : path.join(app.getPath('cache'), app.getName(), 'epg-images'),
       processImage: createImageProcessor(nativeImage),
-      validateUrl:
-        isolated && process.env.STREAMING_HUB_EPG_IMAGE_LOCAL === '1'
+      fetchImpl: createSafeFetch({ allowLocal: epgImagesLocal }),
+      validateUrl: epgImagesLocal
           ? (value, field) => remoteHttpUrl(value, field, { allowOrigin: new URL(value).origin })
           : remoteHttpUrl,
       logger,

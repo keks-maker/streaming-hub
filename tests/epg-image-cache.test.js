@@ -189,3 +189,99 @@ test('nowNext liefert das Bild-Feld der Sendung (Parser → Store → Jetzt/Näc
   await epg.refresh({ force: true });
   assert.equal(epg.nowNext(['A.de'])[0].current.icon, 'https://img.example.org/t.jpg');
 });
+
+// ── QA-Nachbesserung: Dekompressionsbombe, SSRF über aufgelöste IP, GIF, stopMs ──
+const { readImageSize, assertSafeImageSize } = require('../lib/epg/image-size.js');
+const { createSafeFetch, isBlockedAddress } = require('../lib/epg/safe-fetch.js');
+const http = require('node:http');
+
+function pngHeader(w, h) {
+  const b = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+  b.writeUInt32BE(13, 8);
+  b.write('IHDR', 12, 'latin1');
+  b.writeUInt32BE(w, 16);
+  b.writeUInt32BE(h, 20);
+  return b;
+}
+function jpegHeader(w, h) {
+  return Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0, 0]), Buffer.from([0xff, 0xc0, 0x00, 0x11, 0x08, h >> 8, h & 255, w >> 8, w & 255, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])]);
+}
+function webpHeader(kind, w, h) {
+  const b = Buffer.alloc(40);
+  b.write('RIFF', 0, 'latin1');
+  b.write('WEBP', 8, 'latin1');
+  b.write(kind, 12, 'latin1');
+  if (kind === 'VP8 ') {
+    b[23] = 0x9d; b[24] = 0x01; b[25] = 0x2a;
+    b.writeUInt16LE(w, 26);
+    b.writeUInt16LE(h, 28);
+  } else if (kind === 'VP8L') {
+    b[20] = 0x2f;
+    b.writeUInt32LE(((w - 1) & 0x3fff) | (((h - 1) & 0x3fff) << 14), 21);
+  } else {
+    b.writeUIntLE(w - 1, 24, 3);
+    b.writeUIntLE(h - 1, 27, 3);
+  }
+  return b;
+}
+
+test('image-size: liest PNG, JPEG, WebP (VP8, VP8L, VP8X) aus dem Kopf', () => {
+  assert.deepEqual(readImageSize(pngHeader(640, 360)), { width: 640, height: 360 });
+  assert.deepEqual(readImageSize(jpegHeader(1280, 720)), { width: 1280, height: 720 });
+  assert.deepEqual(readImageSize(webpHeader('VP8 ', 800, 450)), { width: 800, height: 450 });
+  assert.deepEqual(readImageSize(webpHeader('VP8L', 800, 450)), { width: 800, height: 450 });
+  assert.deepEqual(readImageSize(webpHeader('VP8X', 800, 450)), { width: 800, height: 450 });
+});
+
+test('image-size: Bomben, zu große Maße, unbekannte und kaputte Formate werden abgelehnt', () => {
+  assert.throws(() => assertSafeImageSize(pngHeader(20000, 20000)), /zu groß/);
+  assert.throws(() => assertSafeImageSize(pngHeader(4097, 10)), /zu groß/);
+  assert.throws(() => assertSafeImageSize(webpHeader('VP8X', 16000, 16000)), /zu groß/);
+  assert.doesNotThrow(() => assertSafeImageSize(jpegHeader(4096, 4096)));
+  for (const bad of [Buffer.from('GIF89a......................'), Buffer.alloc(40, 1), Buffer.alloc(3), pngHeader(0, 5), 'text', null]) {
+    assert.throws(() => assertSafeImageSize(bad), /unbekannt/);
+  }
+});
+
+test('GIF ist kein zulässiger Bildtyp', async () => {
+  const cache = cacheWith({ fetchImpl: async () => new Response(jpegBytes(50), { headers: { 'content-type': 'image/gif' } }) });
+  assert.equal(await cache.get('https://img.example.org/a.gif', NOW), null);
+});
+
+test('stopMs wird auf jetzt + 14 Tage begrenzt', async () => {
+  const cache = cacheWith({ fetchImpl: okFetch() });
+  const url = 'https://img.example.org/far.jpg';
+  await cache.get(url, NOW + 400 * DAY);
+  const file = path.join(cache.dir, `${hashUrl(url)}.jpg`);
+  assert.equal(Math.round(fs.statSync(file).mtimeMs), NOW + 14 * DAY);
+  assert.equal(validateEpgImage('https://a.example/x.jpg', Infinity).stopMs, 0);
+});
+
+test('isBlockedAddress: lokal, privat, Link-Local, ULA, unspezifiziert, IPv4-gemappt', () => {
+  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.1.1', '0.0.0.0', '100.64.0.1', '::1', '::', 'fc00::1', 'fd12::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '::ffff:10.0.0.1', 'kein-ip']) {
+    assert.equal(isBlockedAddress(ip), true, ip);
+  }
+  for (const ip of ['93.184.216.34', '8.8.8.8', '2606:4700::1111', '::ffff:8.8.8.8']) assert.equal(isBlockedAddress(ip), false, ip);
+});
+
+test('safeFetch: lehnt Namen ab, die auf lokale IPs auflösen (localhost, Literal, 127.0.0.1.nip.io-Muster)', async () => {
+  const hits = [];
+  const server = http.createServer((req, res) => {
+    hits.push(req.url);
+    res.writeHead(200, { 'content-type': 'image/jpeg' });
+    res.end('x');
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const safe = createSafeFetch();
+  for (const host of ['localhost', '127.0.0.1', '[::1]', '127.1']) {
+    await assert.rejects(() => safe(`http://${host}:${port}/a.jpg`, {}), undefined, host);
+  }
+  assert.equal(hits.length, 0, 'es wurde nie verbunden');
+  const local = createSafeFetch({ allowLocal: true });
+  const res = await local(`http://127.0.0.1:${port}/a.jpg`, {});
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), 'x');
+  await new Promise(resolve => server.close(resolve));
+});
