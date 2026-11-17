@@ -943,7 +943,6 @@ function startLivePreview(tile, ch, openAfterStart = false) {
 }
 
 function renderLiveTvTile(ch) {
-  const source = tvSources.find(item => item.id === ch.sourceId);
   const current = getCurrentEpg(ch);
   const start = current ? current.start : 0;
   const stop = current ? current.stop : 0;
@@ -953,7 +952,7 @@ function renderLiveTvTile(ch) {
   tile.className = 'dashboard-tile dashboard-tv-tile';
   tile.type = 'button';
   tile.setAttribute('aria-label', `${ch.name} öffnen`);
-  tile.style.setProperty('--tile-color', source?.color || '#6c5ce7');
+  tile.style.setProperty('--tile-color', 'var(--area-livetv)');
   tile.innerHTML = `
     <span class="dashboard-tile-glow"></span>
     <span class="dashboard-tile-icon">

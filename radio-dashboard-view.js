@@ -87,7 +87,7 @@ function createRadioDashboard(root, options = {}) {
   function buildTile(model) {
     const button = el(doc, 'button', 'dashboard-tile radio-tile');
     button.type = 'button';
-    button.style.setProperty('--tile-color', '#f59e0b');
+    button.style.setProperty('--tile-color', 'var(--area-radio)');
     const glow = el(doc, 'span', 'dashboard-tile-glow');
     const icon = el(doc, 'span', 'dashboard-tile-icon');
     const fallback = el(doc, 'span', 'dashboard-tile-fallback', model.initial);

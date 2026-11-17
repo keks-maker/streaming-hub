@@ -15,8 +15,8 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | 1. Tokens bereinigen | Desktop | `design/umbau` | erledigt (QA bestanden) | 19e0bd6 |
 | 2. Icon-Set einführen | Desktop | `design/umbau` | erledigt (QA bestanden) | 7b59994 |
 | 3. Texte aufräumen | Desktop | `design/umbau` | erledigt (QA bestanden) | 8d21214 |
-| 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` | offen | – |
-| 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` | offen | – |
+| 4. Text-Stufen und Flächen vereinheitlichen | Desktop | `design/umbau` | erledigt (QA ausstehend) | a0cda0d |
+| 5. Fokus-Ring und Bereichsfarbe durchziehen | Desktop | `design/umbau` | erledigt (QA ausstehend) | siehe git log |
 | 6. Startseite „Läuft gerade“ | Desktop | `design/umbau` | offen | – |
 | 7. Einstellungen gruppieren | Desktop | `design/umbau` | offen | – |
 | 8. Restliche Bereiche angleichen | Desktop | `design/umbau` | offen | – |

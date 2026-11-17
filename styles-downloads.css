@@ -51,6 +51,7 @@
 .mediathek-menu[hidden] { display:none; }
 .mediathek-menu-item { display:block; width:100%; padding:9px 12px; text-align:left; background:none; border:0; border-radius:9px; color:var(--md-text); font-size:14px; cursor:pointer; }
 .mediathek-menu-item:hover,.mediathek-menu-item:focus-visible { background:var(--md-surface2); }
+.mediathek-menu-item:focus-visible { outline-offset:-2px; }
 .mediathek-caret { font-size:11px; }
 .mediathek-pill-inline { align-self:center; padding:3px 10px; border-radius:var(--radius-full); background:var(--md-pill); color:var(--media-ink); font-size:12.5px; font-weight:600; }
 .mediathek-pill-inline[hidden] { display:none; }
