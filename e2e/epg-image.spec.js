@@ -145,6 +145,38 @@ test.describe('Senderkachel mit EPG-Bild', () => {
     await expect(tile.locator('.tv-tile-still.has-image')).toHaveCount(1);
   });
 
+  test('Jetzt & Gleich: dieselbe Kachel mit Bild; Hover und Tastaturfokus starten die Vorschau, nur eine gleichzeitig', async () => {
+    await page.locator('#dashboardEpgOpen').evaluate(el => el.click());
+    await expect(page.locator('#epgOverlay')).toHaveAttribute('data-state', 'ready');
+    await page.locator('#epgModeJng').click();
+    const tile = name => page.locator('#epgJngItems .epg-jtile', { has: page.locator('.tv-tile-title', { hasText: name }) });
+    // Bild der laufenden Sendung (EPG-Bild-Cache), Verlauf bei fehlendem/falschem Bild
+    await expect(tile('Mit Bild').locator('.tv-tile-still.has-image .tv-tile-image')).toHaveCount(1, { timeout: 15_000 });
+    expect(await tile('Mit Bild').locator('.tv-tile-image').evaluate(el => el.src.startsWith('data:image/jpeg;base64,'))).toBe(true);
+    await expect(tile('Bild fehlt').locator('.tv-tile-image')).toHaveCount(0);
+    await expect(tile('Bild fehlt').locator('.tv-tile-still .ic')).toHaveCount(1);
+    // Hover: Bild bleibt bis zum ersten Videobild, dann Überblendung
+    await tile('Mit Bild').hover();
+    await expect(tile('Mit Bild')).toHaveClass(/is-previewing/, { timeout: 20_000 });
+    const video = tile('Mit Bild').locator('.tv-tile-media > video.dashboard-tv-preview');
+    await expect(video).toHaveCount(1);
+    await expect.poll(() => video.evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
+    await expect(tile('Mit Bild').locator('.tv-tile-still.has-image')).toHaveCount(1);
+    // andere Kachel per Tastaturfokus: die erste Vorschau endet, es läuft nur eine
+    await page.mouse.move(2, 400);
+    await expect(tile('Mit Bild')).not.toHaveClass(/is-previewing/);
+    await tile('Bild fehlt').locator('.tv-tile-title.epg-row-open').focus();
+    await expect(tile('Bild fehlt')).toHaveClass(/is-previewing/, { timeout: 20_000 });
+    await expect(page.locator('#epgJngItems video.dashboard-tv-preview')).toHaveCount(1);
+    await tile('Ohne Bild').hover();
+    await expect(tile('Ohne Bild')).toHaveClass(/is-previewing/, { timeout: 20_000 });
+    await expect(tile('Bild fehlt')).not.toHaveClass(/is-previewing/);
+    await expect(page.locator('#epgJngItems video.dashboard-tv-preview')).toHaveCount(1, { timeout: 3000 });
+    await page.mouse.move(2, 400);
+    await page.locator('#epgCloseBtn').click();
+    await expect(page.locator('#epgOverlay')).toBeHidden();
+  });
+
   test.afterAll(async () => {
     if (ctx) await ctx.cleanup();
     if (server) await new Promise(resolve => server.close(resolve));

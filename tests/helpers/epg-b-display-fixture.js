@@ -6,7 +6,7 @@
 //
 //   buildDisplayXmltv({ baseMs })  kleine Fixture: alle B-Felder, Lücken, bösartige Werte (HTML in Titel/Credits,
 //                                  javascript:-/data:-Icons), Bildfehler, http-Icon (die CSP lässt nur https zu)
-//   buildThumbXmltv({ baseMs, channels })  viele Sender mit je drei Sendungen und eindeutiger Bild-URL (Thumbnail-Messung)
+//   buildThumbXmltv({ baseMs, channels, host })  viele Sender mit je drei Sendungen und eindeutiger Bild-URL (Thumbnail-Messung)
 //   IMG_HOST, DISPLAY_CHANNELS, thumbChannelId(i)
 
 const MIN = 60 * 1000;
@@ -103,7 +103,7 @@ function thumbChannelId(i) {
 }
 
 /** channels Sender, je: läuft (−20…+40), danach (+40…+100), übernächste (+100…+160) — jede Sendung mit eigener Bild-URL. */
-function buildThumbXmltv({ baseMs, channels = 120 }) {
+function buildThumbXmltv({ baseMs, channels = 120, host = IMG_HOST }) {
   const out = ['<?xml version="1.0" encoding="UTF-8"?><tv generator-info-name="streaming-hub-test">'];
   const cats = ['Sport', 'Krimi', 'Nachrichten', 'Dokumentation'];
   for (let c = 0; c < channels; c += 1) out.push(`<channel id="${thumbChannelId(c)}"><display-name>Thumb ${c + 1}</display-name></channel>`);
@@ -117,7 +117,7 @@ function buildThumbXmltv({ baseMs, channels = 120 }) {
         programme(baseMs, thumbChannelId(c), a, b, {
           title: `Sendung ${c + 1}-${n + 1}`,
           categories: [cats[(c + n) % cats.length]],
-          icon: `${IMG_HOST}/t/${c + 1}-${n + 1}.png`,
+          icon: `${host}/t/${c + 1}-${n + 1}.png`,
         }),
       );
     });

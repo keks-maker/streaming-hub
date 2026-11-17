@@ -82,5 +82,6 @@ test('tv.html showFatalError escaped Meldung und Sendername', () => {
 test('renderer: Live-TV-Kachel setzt Logo nicht per Template-HTML', () => {
   const src = fs.readFileSync(path.join(ROOT, 'renderer.js'), 'utf-8');
   assert.ok(!src.includes('<img src="${ch.logo'));
-  assert.match(src, /safeResourceUrl\(ch\.logo\)/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'livetv-tile.js'), 'utf-8'), /safeResourceUrl\(ch\.logo\)/);
+  assert.ok(!fs.readFileSync(path.join(ROOT, 'livetv-tile.js'), 'utf-8').includes('<img src="${ch.logo'));
 });

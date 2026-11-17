@@ -1,7 +1,7 @@
 'use strict';
 
 // Tests: „Jetzt & Gleich“ (Etappe 3.5, M7) — Zuordnung laufend/nächste/übernächste, Fortschritt, Randfälle
-// (keine laufende Sendung, Lücken, kein EPG), Fortschreiben ohne Neuabruf, Zeilenhöhen, schmales Layout;
+// (keine laufende Sendung, Lücken, kein EPG), Fortschreiben ohne Neuabruf, Kachelraster, schmales Layout;
 // Verdrahtung: eine Aufnehmen-Logik, Update ohne Neuaufbau, Virtualisierung.
 process.env.TZ = 'Europe/Berlin';
 
@@ -127,14 +127,42 @@ test('Abruffenster und Neuabruf: jetzt … +12 h, nach einer Stunde (oder Uhrens
   assert.equal(jng.needsReload(NaN, NOW), true);
 });
 
-test('Layout: schmal unter 900 px Fensterbreite (899 schmal, 900 breit), feste Zeilenhöhe je Layout', () => {
+test('Layout: schmal unter 900 px Fensterbreite (899 schmal, 900 breit)', () => {
   assert.equal(jng.isNarrow(899), true);
   assert.equal(jng.isNarrow(900), false);
   assert.equal(jng.isNarrow(320), true);
   assert.equal(jng.isNarrow(undefined), false);
-  assert.equal(jng.rowHeight(false), jng.ROW_HEIGHT_WIDE);
-  assert.equal(jng.rowHeight(true), jng.ROW_HEIGHT_NARROW);
-  assert.ok(jng.ROW_HEIGHT_NARROW > jng.ROW_HEIGHT_WIDE);
+});
+
+test('Kachelraster: Spalten aus Mindestbreite (1280 → 4, 900 → 3, 740 → 2, schmal → 1), 16:9-Medienfläche, feste Höhe', () => {
+  const cols = width => jng.gridLayout(width, 10).cols;
+  assert.equal(cols(1280), 4);
+  assert.equal(cols(900), 3);
+  assert.equal(cols(740), 2);
+  assert.equal(cols(300), 1);
+  assert.equal(cols(0), 1);
+  for (const width of [1280, 900, 740, 420]) {
+    const g = jng.gridLayout(width, 438);
+    assert.ok(g.tileW >= jng.TILE_MIN_WIDTH, `Kachelbreite ${width}`);
+    assert.equal(g.tileH, Math.round((g.tileW * 9) / 16) + jng.TILE_INFO_HEIGHT);
+    assert.ok(g.cols * g.tileW + (g.cols - 1) * g.gap + 2 * g.padding <= Math.max(width, jng.TILE_MIN_WIDTH + 2 * g.padding));
+    assert.equal(g.rows, Math.ceil(438 / g.cols));
+    assert.equal(g.totalH, g.rows * g.rowH + 2 * g.padding - g.gap);
+  }
+  assert.equal(jng.gridLayout(1280, 0).totalH, 0);
+});
+
+test('Kachelraster: Position und sichtbarer Bereich (Virtualisierung nach Rasterzeilen)', () => {
+  const g = jng.gridLayout(1280, 438);
+  assert.deepEqual(jng.tilePosition(g, 0), { top: g.padding, left: g.padding });
+  assert.deepEqual(jng.tilePosition(g, g.cols + 1), { top: g.padding + g.rowH, left: g.padding + (g.tileW + g.gap) });
+  const top = jng.visibleRange(g, 438, 0, 600);
+  assert.equal(top.from, 0);
+  assert.ok(top.to > 0 && top.to <= 4 * 4 * 2, 'nur wenige Rasterzeilen');
+  assert.ok(top.to % g.cols === 0);
+  const end = jng.visibleRange(g, 438, g.totalH - 600, g.totalH);
+  assert.equal(end.to, 438);
+  assert.ok(end.from > 400);
 });
 
 test('Marker/Toggle: Zellen nutzen dieselbe Slot-Form und Toggle-Logik wie Liste, Raster und Kanalansicht', () => {
@@ -154,12 +182,15 @@ test('Verdrahtung: eine Aufnehmen-Logik (runToggle), Update ohne Neuaufbau, Virt
   const jngView = read('epg-jng-view.js');
   assert.ok(!/recordProgramme|stopRecording|removeSchedule|askConfirm|toggleState/.test(jngView), 'J&G-View enthält keine Aufnehmen-Logik');
   assert.match(jngView, /require\('\.\/epg-row-dom\.js'\)/);
-  assert.match(read('epg-row-dom.js'), /variant: 'jng'|variant === 'jng'/);
+  assert.match(jngView, /require\('\.\/epg-jng-tile-dom\.js'\)/);
+  assert.match(jngView, /require\('\.\/livetv-tile\.js'\)/);
+  assert.match(read('epg-jng-tile-dom.js'), /require\('\.\/livetv-tile\.js'\)/);
+  assert.match(read('renderer.js'), /require\('\.\/livetv-tile\.js'\)/, 'dieselbe Komponente wie die LiveTV-Favoriten');
   // 30-s-Takt: tick() aktualisiert nur (Zuordnung/Fortschritt), Neuaufbau nur über setChannels
   const tick = jngView.slice(jngView.indexOf('function tick()'), jngView.indexOf('function setVisible'));
   assert.match(tick, /recompute\(\);\s*render\(\);/);
   assert.ok(!/setChannels|clearNodes|spacer\.textContent/.test(tick), 'tick baut nichts neu');
-  assert.match(jngView, /if \(entry\.sig !== sig\) \{\s*entry\.sig = sig;\s*fillCells/, 'Zellen nur bei geänderter Zuordnung neu');
+  assert.match(jngView, /if \(entry\.sig !== sig\) \{\s*entry\.sig = sig;\s*fillTile/, 'Kachel nur bei geänderter Zuordnung neu');
   assert.match(jngView, /OVERSCAN_PX/);
   const viewTick = view.slice(view.indexOf('function tick()'), view.indexOf('// ── Zeilen- und Toggle-Aktionen'));
   assert.match(viewTick, /viewState\.mode === 'jng'[\s\S]*jngView\.tick\(\)[\s\S]*jngModel\.needsReload\(jngLoadedAt, nowMs\)/);

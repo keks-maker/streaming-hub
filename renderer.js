@@ -28,6 +28,7 @@ function setWarningText(node, text) {
 // Statische Icons aus index.html (<span data-icon="name">) einsetzen
 document.querySelectorAll('[data-icon]').forEach(node => node.replaceChildren(Icons.createIcon(document, node.dataset.icon)));
 const { createEpgView } = require('./epg-view.js');
+const { createLiveTvTileKit, formatRemaining } = require('./livetv-tile.js');
 const { createTvSourcesView } = require('./settings-tv-sources.js');
 const { createTvChannelsView } = require('./settings-tv-channels.js');
 const { createRadioStationsView } = require('./settings-radio-stations.js');
@@ -852,7 +853,7 @@ async function pauseRadioForVideo() {
 dashboardPlayerClose.addEventListener('click', closeDashboardPlayer);
 dashboardPlayer.addEventListener('dblclick', closeDashboardPlayer);
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement && activePreview?.fullscreen) closeDashboardPlayer();
+  if (!document.fullscreenElement && liveTvTileKit.getActivePreview()?.fullscreen) closeDashboardPlayer();
   syncRadioMiniPlayerSuppression();
 });
 
@@ -924,11 +925,15 @@ function getCurrentEpg(ch) {
   return epgAdapter.resolveNowNext(epgNowNextCache.get(epgAdapter.channelEpgKey(ch)), Date.now()).current;
 }
 
-let activePreview = null;
-let previewTimer = null;
-const PREVIEW_CROSSFADE_MS = 300; // = --motion-crossfade in styles.css
+const liveTvTileKit = createLiveTvTileKit({
+  safeResourceUrl,
+  getEpgImage: (url, stopMs) => window.electronAPI.getEpgImage(url, stopMs),
+  openFullscreen: (tile, ch) => openDashboardPlayer(tile, ch),
+});
+const liveTvTileChannels = new WeakMap(); // Kachel -> Sender, für den Bildwechsel bei Sendungswechsel
 
 function closeDashboardPlayer() {
+  const activePreview = liveTvTileKit.getActivePreview();
   if (!activePreview || !activePreview.fullscreen) return;
   const { tile, video } = activePreview;
   if (document.fullscreenElement === dashboardPlayer) document.exitFullscreen().catch(() => {});
@@ -940,8 +945,9 @@ function closeDashboardPlayer() {
 }
 
 function openDashboardPlayer(tile, ch) {
+  const activePreview = liveTvTileKit.getActivePreview();
   if (!activePreview || activePreview.tile !== tile) {
-    startLivePreview(tile, ch, true);
+    liveTvTileKit.startPreview(tile, ch, true);
     return;
   }
   const { video } = activePreview;
@@ -955,157 +961,15 @@ function openDashboardPlayer(tile, ch) {
 }
 
 function disposeDashboardPlayback() {
-  if (activePreview?.fullscreen) closeDashboardPlayer();
-  stopLivePreview();
+  if (liveTvTileKit.getActivePreview()?.fullscreen) closeDashboardPlayer();
+  liveTvTileKit.stopPreview();
 }
 
-/** Entfernt Stream und Video-Element einer Vorschau (nach dem Zurückblenden, siehe stopLivePreview). */
-function teardownPreview(preview) {
-  if (preview.hls) preview.hls.destroy();
-  preview.video.pause();
-  preview.video.removeAttribute('src');
-  preview.video.load();
-  preview.video.remove();
-}
-
-function stopLivePreview() {
-  if (activePreview?.fullscreen) return;
-  if (previewTimer) {
-    clearTimeout(previewTimer);
-    previewTimer = null;
-  }
-  if (!activePreview) return;
-  const preview = activePreview;
-  const { tile } = preview;
-  activePreview = null;
-  tile.classList.remove('is-previewing', 'is-preview-error');
-  // Hat das Video schon Bild gezeigt, bleibt es für die Dauer der Überblendung stehen (kein schwarzer Moment), dann Abbau.
-  if (preview.shown) setTimeout(() => teardownPreview(preview), PREVIEW_CROSSFADE_MS);
-  else teardownPreview(preview);
-}
-
-/** Meldet das erste dekodierte Videobild einer Vorschau (Fallback: Ereignis „playing“). */
-function onPreviewFirstFrame(video, callback) {
-  if (typeof video.requestVideoFrameCallback === 'function') video.requestVideoFrameCallback(() => callback());
-  else video.addEventListener('playing', () => callback(), { once: true });
-}
-
-function startLivePreview(tile, ch, openAfterStart = false) {
-  if (!ch.url || activePreview?.tile === tile) {
-    if (openAfterStart && activePreview?.tile === tile) openDashboardPlayer(tile, ch);
-    return;
-  }
-  stopLivePreview();
-  previewTimer = setTimeout(() => {
-    previewTimer = null;
-    const video = document.createElement('video');
-    video.className = 'dashboard-tv-preview';
-    video.muted = true;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.setAttribute('aria-hidden', 'true');
-    tile.querySelector('.tv-tile-media').prepend(video);
-    const preview = { tile, video, hls: null, fullscreen: false, shown: false };
-    activePreview = preview;
-    // Bild/Platzhalter bleibt sichtbar, bis das erste Videobild da ist; erst dann überblenden.
-    onPreviewFirstFrame(video, () => {
-      if (activePreview !== preview) return;
-      preview.shown = true;
-      tile.classList.add('is-previewing');
-    });
-    if (openAfterStart) {
-      video.addEventListener(
-        'playing',
-        () => {
-          if (activePreview === preview && !preview.fullscreen) openDashboardPlayer(tile, ch);
-        },
-        { once: true },
-      );
-    }
-    const fail = () => {
-      if (activePreview !== preview) return;
-      tile.classList.add('is-preview-error');
-      stopLivePreview();
-    };
-    video.addEventListener('error', fail, { once: true });
-    if (window.Hls && Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: false, maxBufferLength: 8, liveSyncDurationCount: 2 });
-      preview.hls = hls;
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) fail();
-      });
-      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(fail));
-      hls.loadSource(ch.url);
-      hls.attachMedia(video);
-    } else {
-      video.src = ch.url;
-      video.play().catch(fail);
-    }
-  }, 350);
-}
-
-/** „noch 29 Min.“ bzw. „noch 1 Std. 15 Min.“ für die laufende Sendung. */
-function formatRemaining(stop, now) {
-  const minutes = Math.max(0, Math.ceil((stop - now) / 60000));
-  if (minutes < 60) return `noch ${minutes} Min.`;
-  const rest = minutes % 60;
-  return `noch ${Math.floor(minutes / 60)} Std.${rest ? ` ${rest} Min.` : ''}`;
-}
-
-function formatClock(ms) {
-  return new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-}
-
-/**
- * Hook für das Vorschaubild der laufenden Sendung (S2): zeigt die Bild-URL in der Medienfläche; ohne URL oder bei
- * Ladefehler bleibt der Verlauf mit Platzhalter-Icon. Die Bildquelle selbst ist noch nicht angebunden.
- */
-function setLiveTvTileImage(tile, url) {
-  const still = tile.querySelector('.tv-tile-still');
-  still.querySelector('.tv-tile-image')?.remove();
-  still.classList.remove('has-image');
-  const src = safeResourceUrl(url);
-  if (!src) return;
-  const img = document.createElement('img');
-  img.className = 'tv-tile-image';
-  img.alt = '';
-  img.decoding = 'async';
-  img.addEventListener('load', () => still.classList.add('has-image'));
-  img.addEventListener('error', () => img.remove());
-  img.src = src;
-  still.appendChild(img);
-}
-
-const liveTvTileChannels = new WeakMap(); // Kachel -> Sender, für den Bildwechsel bei Sendungswechsel
-const epgImageCache = new Map(); // Bild-URL -> data:-URL 
-
-/**
- * Vorschaubild der laufenden Sendung nachladen (S2): fragt den Main-Cache asynchron, die Kachel erscheint sofort mit
- * Verlauf. Bei Sendungswechsel wechselt das Bild; ohne Bild oder bei Fehler bleibt der Verlauf.
- */
-async function syncLiveTvTileImage(tile) {
+/** Vorschaubild der laufenden Sendung (EPG-Bild aus dem Main-Cache) für eine Favoriten-Kachel nachladen. */
+function syncLiveTvTileImage(tile) {
   const ch = liveTvTileChannels.get(tile);
   const current = ch ? getCurrentEpg(ch) : null;
-  const url = current && typeof current.icon === 'string' ? current.icon : '';
-  if (tile.dataset.epgImage === url) return;
-  tile.dataset.epgImage = url;
-  if (!url) {
-    setLiveTvTileImage(tile, '');
-    return;
-  }
-  let dataUrl = epgImageCache.get(url);
-  if (dataUrl === undefined) {
-    try {
-      dataUrl = (await window.electronAPI.getEpgImage(url, current.stop)) || null;
-    } catch (_) {
-      dataUrl = null;
-    }
-    if (dataUrl) {
-      if (epgImageCache.size > 60) epgImageCache.delete(epgImageCache.keys().next().value);
-      epgImageCache.set(url, dataUrl);
-    }
-  }
-  if (tile.dataset.epgImage === url) setLiveTvTileImage(tile, dataUrl || '');
+  return liveTvTileKit.loadImage(tile, current && typeof current.icon === 'string' ? current.icon : '', current ? current.stop : 0);
 }
 
 function refreshLiveTvTileImages() {
@@ -1123,38 +987,21 @@ function renderLiveTvTile(ch, { imageUrl = '' } = {}) {
   tile.type = 'button';
   tile.setAttribute('aria-label', `${ch.name} öffnen`);
   tile.style.setProperty('--tile-color', 'var(--area-livetv)');
-  tile.innerHTML = `
-    <span class="tv-tile-media">
-      <span class="tv-tile-still" aria-hidden="true">${Icons.iconSvg('tv-minimal')}</span>
-      <span class="dashboard-tile-icon tv-tile-logo">
-        <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((ch.name || '?').slice(0, 1).toUpperCase())}</span>
-        <img alt="" loading="lazy">
-      </span>
-      ${current ? `<span class="tv-tile-time">${formatClock(start)} – ${formatClock(stop)}</span>` : ''}
-    </span>
-    <span class="tv-tile-info">
-      <span class="tv-tile-title">${current ? escapeHtml(current.title) : 'Kein EPG verfügbar'}</span>
-      <span class="tv-tile-meta">${escapeHtml(ch.name)}${current ? ` · ${formatRemaining(stop, now)}` : ''}</span>
-    </span>
-    ${current ? `<span class="dashboard-tv-progress"><span style="width:${progress.toFixed(1)}%"></span></span>` : ''}
-  `;
-  const image = tile.querySelector('.tv-tile-logo img');
-  const icon = tile.querySelector('.tv-tile-logo');
-  const logoSrc = safeResourceUrl(ch.logo);
-  const showLogoFallback = () => {
-    image.remove();
-    icon.classList.add('has-error');
-  };
-  if (logoSrc) image.src = logoSrc;
-  else showLogoFallback();
-  image.addEventListener('error', showLogoFallback);
+  const info = document.createElement('span');
+  info.className = 'tv-tile-info';
+  const title = document.createElement('span');
+  title.className = 'tv-tile-title';
+  title.textContent = current ? current.title : 'Kein EPG verfügbar';
+  const meta = document.createElement('span');
+  meta.className = 'tv-tile-meta';
+  meta.textContent = `${ch.name}${current ? ` · ${formatRemaining(stop, now)}` : ''}`;
+  info.append(title, meta);
+  tile.append(liveTvTileKit.createMedia(ch, { start, stop }), info);
+  if (current) tile.appendChild(liveTvTileKit.createProgress(progress));
   liveTvTileChannels.set(tile, ch);
-  if (imageUrl) setLiveTvTileImage(tile, imageUrl);
+  if (imageUrl) liveTvTileKit.setImage(tile, imageUrl);
   else syncLiveTvTileImage(tile);
-  tile.addEventListener('mouseenter', () => startLivePreview(tile, ch));
-  tile.addEventListener('mouseleave', stopLivePreview);
-  tile.addEventListener('focus', () => startLivePreview(tile, ch));
-  tile.addEventListener('blur', stopLivePreview);
+  liveTvTileKit.attachPreview(tile, ch);
   tile.addEventListener('click', () => selectTvChannel(ch, { suppressChannelList: true }));
   return tile;
 }
@@ -2531,6 +2378,7 @@ function switchTvChannel(dir) {
 const epgView = createEpgView(epgOverlay, {
   api: window.electronAPI,
   getChannels: () => tvChannels,
+  tiles: liveTvTileKit,
   getSources: () => tvSources.map(source => ({ id: source.id, name: source.name })),
   getStartView: () => window.electronAPI.getEpgViewSettings().then(saved => saved && saved.startView),
   isFavorite: ch => isFavorite(ch, tvSources),

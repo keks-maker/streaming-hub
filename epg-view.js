@@ -61,6 +61,7 @@ const SENDER_LABEL_MAX = 28;
  *   stopRecording(recId)   laufende Aufnahme stoppen
  *   openChannel(channel)   Sender im Player öffnen
  *   sanitizeLogoUrl(url)   Logo-URL prüfen (safeResourceUrl)
+ *   tiles                  optional: Senderkachel-Baustein (livetv-tile.js), geteilt mit den LiveTV-Favoriten (eine Vorschau gleichzeitig)
  *   getMediathek(channel, title) → { label, open() } | null
  *   showPlanned()          Sprung zur Geplant-Liste
  *   onError(err)           optionale Fehlerprotokollierung;  now()  Uhr (Standard Date.now)
@@ -262,6 +263,8 @@ function createEpgView(root, deps) {
   });
   const jngView = createJngView({
     now,
+    tiles: deps.tiles,
+    getEpgImage: (url, stopMs) => (typeof api.getEpgImage === 'function' ? api.getEpgImage(url, stopMs) : Promise.resolve(null)),
     getIcons: (key, fromMs, toMs) => (typeof api.getEpgRange === 'function' ? api.getEpgRange(key, fromMs, toMs) : Promise.resolve([])),
     getMarkers: rows => matchRowMarkers(rows.map(model.markerSlot)),
     isSelected: id => viewState.selectedRowId === id,
