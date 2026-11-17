@@ -316,6 +316,7 @@ let mainWindow;
 // aufzeichnet und die dort gesetzte Antwort liefert. Gilt nur in isolierten Läufen
 // (STREAMING_HUB_USER_DATA), nie im Normalbetrieb.
 const { isIsolatedTestRun, showErrorBoxGuarded } = require('./lib/e2e-dialog-guard.js');
+const { isLocalHookAllowed } = require('./lib/test-hook-gate.js');
 const guardCtx = () => {
   if (isIsolatedTestRun(process.env) && !globalThis.__streamingHubTest) globalThis.__streamingHubTest = { quitDialogCalls: [], quitDialogResponse: 0 };
   return { dialog, env: process.env, logger, store: globalThis.__streamingHubTest };
@@ -840,7 +841,7 @@ app.whenReady().then(() => {
     // Vorschaubilder der laufenden Sendung (S2): Cache-Ordner im Cache-Pfad der App (nie in userData); in isolierten
     // Läufen unter dem Temp-userData, lokale Bild-Server nur mit STREAMING_HUB_EPG_IMAGE_LOCAL=1 erlaubt.
     const isolated = !!process.env.STREAMING_HUB_USER_DATA;
-    const epgImagesLocal = isolated && process.env.STREAMING_HUB_EPG_IMAGE_LOCAL === '1';
+    const epgImagesLocal = isLocalHookAllowed(process.env, app.isPackaged, 'STREAMING_HUB_EPG_IMAGE_LOCAL'); // nie in der paketierten App
     const epgImages = createEpgImageCache({
       dir: isolated
         ? path.join(app.getPath('userData'), 'cache', 'epg-images')

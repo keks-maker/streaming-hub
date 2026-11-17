@@ -5,7 +5,9 @@
 // B-Felder, bösartige Werte nur als Text, Bildfehler, Vorschaubilder in „Jetzt & Gleich“ (nur sichtbare Zeilen) samt
 // Messung der Zeit bis zur Anzeige der Liste (EPG-E4: < 300 ms). Bilder kommen von einem Fremdhost (img.e2e.invalid) und
 // werden per page.route beantwortet; jede Anfrage wird mitgezählt. Kein Netz.
+const fs = require('node:fs');
 const http = require('node:http');
+const path = require('node:path');
 const { test, expect } = require('@playwright/test');
 const { MIN, buildDisplayXmltv, buildThumbXmltv, DISPLAY_CHANNELS, IMG_HOST, thumbChannelId } = require('../tests/helpers/epg-b-display-fixture.js');
 const { launchApp, waitForEpgChannels, openOverlayFromDashboard } = require('./epg-helpers');
@@ -381,8 +383,10 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
   let ctx;
   let page;
   let host;
-  // Die Dashboard-Kacheln holen das Bild der laufenden Sendung (…-1.png) über denselben Main-Cache; gezählt werden nur die Bilder von „Danach“
-  const jngRequests = () => host.requests.filter(url => !url.endsWith('-1.png'));
+  // Die Dashboard-Kacheln holen die Bilder der laufenden Sendung (…-1.png) über denselben Main-Cache. Im ersten Test wird
+  // vor dem Wechsel zu J&G der Cache geleert und der Zähler zurückgesetzt: alle späteren Abrufe stammen von „Jetzt & Gleich“.
+  const jngRequests = () => host.requests;
+  const cacheDir = () => path.join(ctx.userData, 'cache', 'epg-images');
 
   test.beforeAll(async () => {
     const base = Math.floor(Date.now() / MIN) * MIN;
@@ -427,6 +431,9 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     await expect(page.locator('.epg-list-row').first()).toBeVisible();
     await page.waitForTimeout(500);
     await expect(page.locator('#epgOverlay .epg-thumb-img')).toHaveCount(0); // Dashboard-Kacheln laufen ebenfalls über den Main-Cache
+    // Cache leeren, Zähler zurücksetzen: ab hier stammt jeder Abruf von „Jetzt & Gleich“ (Dashboard liegt hinter dem Overlay)
+    for (const f of fs.existsSync(cacheDir()) ? fs.readdirSync(cacheDir()) : []) fs.rmSync(path.join(cacheDir(), f), { force: true });
+    host.requests.length = 0;
     await switchToJng();
     await expect(page.locator('#epgJngItems .epg-thumb').first()).toBeVisible(); // fester Platzhalter
     await expect.poll(() => page.locator('#epgJngItems .epg-thumb.has-img').count(), { timeout: 15_000 }).toBeGreaterThan(3);
@@ -435,6 +442,10 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     expect(visible.length).toBeLessThan(40);
     await page.waitForTimeout(600);
     const requested = jngRequests().map(channelOf);
+    // die Spalte „Läuft“ (…-1.png) lädt ebenfalls, aber nur für sichtbare Zeilen
+    const running = jngRequests().filter(url => url.endsWith('-1.png')).map(channelOf);
+    expect(running.length).toBeGreaterThan(0);
+    expect(running.every(n => n >= Math.min(...visible) - 3 && n <= Math.max(...visible) + 3), `Läuft angefragt: ${[...new Set(running)].join(',')}`).toBe(true);
     // höchstens die drei Zellen der sichtbaren Zeilen (plus Zeilen, die beim Rendern kurz sichtbar waren: kleine Toleranz)
     expect(jngRequests().length).toBeLessThanOrEqual(visible.length * 3 + 6);
     expect(jngRequests().length).toBeLessThan(CHANNELS * 3 / 2);
@@ -477,12 +488,28 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     await expect(page.locator('#epgOverlay')).toBeVisible();
     await page.locator('#epgModeJng').click();
     await expect(page.locator('#epgJngItems .epg-jrow').first()).toBeVisible();
+    // Mitte der Liste: dort wurde bisher nichts geladen (Anfang und Ende liegen aus den Vortests im Main-Cache)
+    const before = jngRequests().length;
     await page.locator('#epgJng').evaluate(el => {
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
     });
+    await expect.poll(() => jngRequests().length, { timeout: 15_000 }).toBeGreaterThan(before); // Abrufe laufen, scheitern aber
     await page.waitForTimeout(1000);
     await expect(page.locator('#epgJngItems .epg-thumb').first()).toBeVisible();
-    // bereits im Main-Cache liegende Bilder bleiben sichtbar; ungeladene bleiben Platzhalter (Unit-Test epg-thumb-cache)
+    const mid = await visibleRowIndexes();
+    expect(mid.some(n => n >= 50 && n <= 70)).toBe(true);
+    // ungeladene Zeilen bleiben Platzhalter: kein Bild in den sichtbaren Zeilen
+    expect(
+      await page.evaluate(() => {
+        const box = window.document.getElementById('epgJng').getBoundingClientRect();
+        return [...window.document.querySelectorAll('#epgJngItems .epg-jrow')]
+          .filter(row => {
+            const r = row.getBoundingClientRect();
+            return r.bottom > box.top && r.top < box.bottom;
+          })
+          .reduce((sum, row) => sum + row.querySelectorAll('.epg-thumb-img').length, 0);
+      }),
+    ).toBe(0);
     await expect(page.locator('#epgJngItems .epg-jcell:not(.is-empty)').first()).toBeVisible();
     // die Zelle bleibt bedienbar
     await page.locator('#epgJngItems .epg-jcell .epg-row-open').first().click();
@@ -497,7 +524,10 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     host.state.delayMs = 400;
     const slow = host;
     const samples = [];
+    const requestsBefore = jngRequests().length;
     for (let i = 0; i < 6; i += 1) {
+      // Main-Cache leeren: jeder Lauf holt die gedrosselten Bilder wirklich vom Server
+      for (const f of fs.existsSync(cacheDir()) ? fs.readdirSync(cacheDir()) : []) fs.rmSync(path.join(cacheDir(), f), { force: true });
       await page.locator('#epgCloseBtn').click();
       await expect(page.locator('#epgOverlay')).toBeHidden();
       await page.locator('#dashboardEpgOpen').evaluate(el => el.click());
@@ -524,6 +554,7 @@ test.describe('Programmführer 3.6 (Thumbnails in Jetzt & Gleich)', () => {
     test.info().annotations.push({ type: 'Thumbnail-Messung (ms bis Liste J&G, 6 Läufe, 120 Sender)', description: `${samples.join(', ')} · Median ${med}` });
     console.log(`[Messung 3.6] Zeit bis Anzeige Jetzt & Gleich (ms): ${samples.join(', ')} · Median ${med} · Bildanfragen gesamt ${slow.requests.length}`);
     host.state.delayMs = 0;
+    expect(jngRequests().length - requestsBefore).toBeGreaterThan(samples.length * 3); // die Bilder wurden tatsächlich (verzögert) angefragt
     expect(med).toBeLessThan(300);
     expect(Math.max(...samples)).toBeLessThan(600);
   });
