@@ -926,13 +926,14 @@ function getCurrentEpg(ch) {
 
 let activePreview = null;
 let previewTimer = null;
+const PREVIEW_CROSSFADE_MS = 300; // = --motion-crossfade in styles.css
 
 function closeDashboardPlayer() {
   if (!activePreview || !activePreview.fullscreen) return;
   const { tile, video } = activePreview;
   if (document.fullscreenElement === dashboardPlayer) document.exitFullscreen().catch(() => {});
   dashboardPlayerStage.innerHTML = '';
-  tile.prepend(video);
+  tile.querySelector('.tv-tile-media').prepend(video);
   tile.classList.remove('is-fullscreen');
   dashboardPlayer.style.display = 'none';
   activePreview.fullscreen = false;
@@ -958,6 +959,15 @@ function disposeDashboardPlayback() {
   stopLivePreview();
 }
 
+/** Entfernt Stream und Video-Element einer Vorschau (nach dem Zurückblenden, siehe stopLivePreview). */
+function teardownPreview(preview) {
+  if (preview.hls) preview.hls.destroy();
+  preview.video.pause();
+  preview.video.removeAttribute('src');
+  preview.video.load();
+  preview.video.remove();
+}
+
 function stopLivePreview() {
   if (activePreview?.fullscreen) return;
   if (previewTimer) {
@@ -965,14 +975,19 @@ function stopLivePreview() {
     previewTimer = null;
   }
   if (!activePreview) return;
-  const { tile, video, hls } = activePreview;
-  if (hls) hls.destroy();
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  video.remove();
-  tile.classList.remove('is-previewing', 'is-preview-error');
+  const preview = activePreview;
+  const { tile } = preview;
   activePreview = null;
+  tile.classList.remove('is-previewing', 'is-preview-error');
+  // Hat das Video schon Bild gezeigt, bleibt es für die Dauer der Überblendung stehen (kein schwarzer Moment), dann Abbau.
+  if (preview.shown) setTimeout(() => teardownPreview(preview), PREVIEW_CROSSFADE_MS);
+  else teardownPreview(preview);
+}
+
+/** Meldet das erste dekodierte Videobild einer Vorschau (Fallback: Ereignis „playing“). */
+function onPreviewFirstFrame(video, callback) {
+  if (typeof video.requestVideoFrameCallback === 'function') video.requestVideoFrameCallback(() => callback());
+  else video.addEventListener('playing', () => callback(), { once: true });
 }
 
 function startLivePreview(tile, ch, openAfterStart = false) {
@@ -989,10 +1004,15 @@ function startLivePreview(tile, ch, openAfterStart = false) {
     video.autoplay = true;
     video.playsInline = true;
     video.setAttribute('aria-hidden', 'true');
-    tile.prepend(video);
-    const preview = { tile, video, hls: null, fullscreen: false };
+    tile.querySelector('.tv-tile-media').prepend(video);
+    const preview = { tile, video, hls: null, fullscreen: false, shown: false };
     activePreview = preview;
-    tile.classList.add('is-previewing');
+    // Bild/Platzhalter bleibt sichtbar, bis das erste Videobild da ist; erst dann überblenden.
+    onPreviewFirstFrame(video, () => {
+      if (activePreview !== preview) return;
+      preview.shown = true;
+      tile.classList.add('is-previewing');
+    });
     if (openAfterStart) {
       video.addEventListener(
         'playing',
@@ -1024,7 +1044,39 @@ function startLivePreview(tile, ch, openAfterStart = false) {
   }, 350);
 }
 
-function renderLiveTvTile(ch) {
+/** „noch 29 Min.“ bzw. „noch 1 Std. 15 Min.“ für die laufende Sendung. */
+function formatRemaining(stop, now) {
+  const minutes = Math.max(0, Math.ceil((stop - now) / 60000));
+  if (minutes < 60) return `noch ${minutes} Min.`;
+  const rest = minutes % 60;
+  return `noch ${Math.floor(minutes / 60)} Std.${rest ? ` ${rest} Min.` : ''}`;
+}
+
+function formatClock(ms) {
+  return new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Hook für das Vorschaubild der laufenden Sendung (S2): zeigt die Bild-URL in der Medienfläche; ohne URL oder bei
+ * Ladefehler bleibt der Verlauf mit Platzhalter-Icon. Die Bildquelle selbst ist noch nicht angebunden.
+ */
+function setLiveTvTileImage(tile, url) {
+  const still = tile.querySelector('.tv-tile-still');
+  still.querySelector('.tv-tile-image')?.remove();
+  still.classList.remove('has-image');
+  const src = safeResourceUrl(url);
+  if (!src) return;
+  const img = document.createElement('img');
+  img.className = 'tv-tile-image';
+  img.alt = '';
+  img.decoding = 'async';
+  img.addEventListener('load', () => still.classList.add('has-image'));
+  img.addEventListener('error', () => img.remove());
+  img.src = src;
+  still.appendChild(img);
+}
+
+function renderLiveTvTile(ch, { imageUrl = '' } = {}) {
   const current = getCurrentEpg(ch);
   const start = current ? current.start : 0;
   const stop = current ? current.stop : 0;
@@ -1036,25 +1088,29 @@ function renderLiveTvTile(ch) {
   tile.setAttribute('aria-label', `${ch.name} öffnen`);
   tile.style.setProperty('--tile-color', 'var(--area-livetv)');
   tile.innerHTML = `
-    <span class="dashboard-tile-glow"></span>
-    <span class="dashboard-tile-icon">
-      <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((ch.name || '?').slice(0, 1).toUpperCase())}</span>
-      <img alt="" loading="lazy">
+    <span class="tv-tile-media">
+      <span class="tv-tile-still" aria-hidden="true">${Icons.iconSvg('tv-minimal')}</span>
+      <span class="dashboard-tile-icon tv-tile-logo">
+        <span class="dashboard-tile-fallback" aria-hidden="true">${escapeHtml((ch.name || '?').slice(0, 1).toUpperCase())}</span>
+        <img alt="" loading="lazy">
+      </span>
+      ${current ? `<span class="tv-tile-time">${formatClock(start)} – ${formatClock(stop)}</span>` : ''}
     </span>
-    <span class="dashboard-tile-content">
-      <span class="dashboard-tile-name">${escapeHtml(ch.name)}</span>
-      <span class="dashboard-tile-meta">${current ? escapeHtml(current.title) : 'Kein EPG verfügbar'}</span>
-      ${current ? `<span class="dashboard-tv-progress"><span style="width:${progress.toFixed(1)}%"></span></span>` : ''}
+    <span class="tv-tile-info">
+      <span class="tv-tile-title">${current ? escapeHtml(current.title) : 'Kein EPG verfügbar'}</span>
+      <span class="tv-tile-meta">${escapeHtml(ch.name)}${current ? ` · ${formatRemaining(stop, now)}` : ''}</span>
     </span>
+    ${current ? `<span class="dashboard-tv-progress"><span style="width:${progress.toFixed(1)}%"></span></span>` : ''}
   `;
-  const image = tile.querySelector('img');
-  const icon = tile.querySelector('.dashboard-tile-icon');
+  const image = tile.querySelector('.tv-tile-logo img');
+  const icon = tile.querySelector('.tv-tile-logo');
   const logoSrc = safeResourceUrl(ch.logo);
   if (logoSrc) image.src = logoSrc;
   image.addEventListener('error', () => {
     image.remove();
     icon.classList.add('has-error');
   });
+  if (imageUrl) setLiveTvTileImage(tile, imageUrl);
   tile.addEventListener('mouseenter', () => startLivePreview(tile, ch));
   tile.addEventListener('mouseleave', stopLivePreview);
   tile.addEventListener('focus', () => startLivePreview(tile, ch));

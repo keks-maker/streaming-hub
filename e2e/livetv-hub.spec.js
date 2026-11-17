@@ -53,6 +53,7 @@ test.describe('LiveTV-Hub (mit Favorit)', () => {
   let server;
   let streamUrl;
   let segDir;
+  let manifestDelayMs = 0;
 
   test.beforeAll(async () => {
     const base = Math.floor(Date.now() / MIN) * MIN;
@@ -90,6 +91,49 @@ test.describe('LiveTV-Hub (mit Favorit)', () => {
     page = ctx.page;
     await waitForEpgChannels(page, 1);
     ctx.base = base;
+  });
+
+  test('Senderkachel: Medienfläche mit Logo und Zeitpille, Infobereich mit Titel/Meta, Fortschritt; Vorschau blendet erst nach dem ersten Bild über', async () => {
+    await openLiveTv(page);
+    const tile = page.locator('#dashboardGrid .dashboard-tv-tile');
+    await expect(tile).toHaveCount(1);
+    await expect(tile.locator('.tv-tile-time')).toHaveText(/^\d{2}:\d{2} – \d{2}:\d{2}$/);
+    await expect(tile.locator('.tv-tile-title')).toHaveText('Laufende Sendung');
+    await expect(tile.locator('.tv-tile-meta')).toHaveText(/^E2E Kanal · noch \d+ Min\.$/);
+    await expect(tile.locator('.tv-tile-media .tv-tile-logo')).toHaveCount(1);
+    await expect(tile.locator('.tv-tile-still .ic')).toHaveCount(1);
+    await expect(tile.locator('.dashboard-tv-progress')).toHaveCount(1);
+    await expect(tile).not.toContainText('Sender öffnen');
+    await expect(tile).not.toContainText('LIVE');
+    const box = await tile.locator('.tv-tile-media').evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }));
+    expect(Math.abs(box.w / box.h - 16 / 9)).toBeLessThan(0.05);
+
+    // Vorschau: Manifest verzögert, damit der Zeitraum ohne erstes Bild messbar ist
+    manifestDelayMs = 2500;
+    // Der Renderer erreicht Loopback nicht direkt: Anfragen an die Fixture-URL werden mit dem lokalen Stream beantwortet
+    await page.route('http://streams.invalid/**', async route => {
+      const url = route.request().url();
+      const target = url.includes('.m3u8') ? streamUrl : `${streamUrl.replace('/live.m3u8', '')}${new URL(url).pathname}`;
+      if (url.includes('.m3u8')) await new Promise(resolve => setTimeout(resolve, manifestDelayMs));
+      const res = await fetch(target);
+      let body = Buffer.from(await res.arrayBuffer());
+      if (url.includes('.m3u8')) body = Buffer.from(body.toString().replace(/\/seg\//g, 'http://streams.invalid/seg/'));
+      await route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': res.headers.get('content-type') }, body });
+    });
+    await tile.hover();
+    const video = tile.locator('.tv-tile-media > video.dashboard-tv-preview');
+    await expect(video).toHaveCount(1, { timeout: 5000 });
+    await page.waitForTimeout(800);
+    await expect(tile).not.toHaveClass(/is-previewing/);
+    expect(await video.evaluate(el => Number(getComputedStyle(el).opacity))).toBe(0);
+    await expect(tile.locator('.tv-tile-info video')).toHaveCount(0);
+    await expect(tile).toHaveClass(/is-previewing/, { timeout: 20_000 });
+    await expect.poll(() => video.evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
+    // Verlassen: Klasse sofort weg, Video bleibt für die Überblendung, danach abgebaut
+    manifestDelayMs = 0;
+    await page.mouse.move(2, 400);
+    await expect(tile).not.toHaveClass(/is-previewing/);
+    await expect(tile.locator('video')).toHaveCount(0, { timeout: 3000 });
   });
 
   test.afterAll(async () => {

@@ -25,7 +25,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 | A3. Radien und Schrift | Apple | offen | offen | – |
 | A4. TV-Vorschau-Verzögerung 350 ms | Apple | offen | offen | – |
 | A5. Texte und Komponenten (Apple) | Apple | offen | offen | – |
-| S. Senderkachel mit Vorschaubild | Desktop, später Apple | eigener Branch | offen (nach Schritt 1) | – |
+| S. Senderkachel mit Vorschaubild | Desktop, später Apple | `design/umbau` | S1 erledigt (Aufbau, Überblendung, Bild-Hook; QA ausstehend), S2 (EPG-Bild, Cache) offen | `design(S)` S1 |
 
 ## Desktop
 

@@ -166,7 +166,7 @@
 }
 @media (prefers-color-scheme: light) { :root { --k: 1.5; } }
 /* Bereiche über Video/Bild bleiben dunkel (Kontrast zum Bild): Tokens fallen auf die Dunkel-Werte zurück */
-.theme-dark-scope, .mediathek-player, .dashboard-player, .recording-player, .dashboard-section-tile, .dashboard-tv-tile.is-previewing {
+.theme-dark-scope, .mediathek-player, .dashboard-player, .recording-player, .dashboard-section-tile {
   color-scheme: dark;
   --k: 1;
 }
@@ -2907,13 +2907,22 @@ body.epg-open .overlay-bar { z-index: 105; }
 @media (max-width:700px) { .dashboard-header-actions { width:100%; justify-content:space-between; } }
 .dashboard-section-action { color:var(--text-secondary); background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; cursor:pointer; }
 .dashboard-section-action:hover,.dashboard-section-action:focus-visible { color:var(--text-primary); border-color:var(--accent); }
-.dashboard-tv-tile { isolation:isolate; }
-.dashboard-tv-tile > :not(.dashboard-tv-preview) { z-index:1; }
-.dashboard-tv-preview { position:absolute; inset:0; z-index:0; width:100%; height:100%; object-fit:cover; background:var(--video-bg); opacity:0; transition:opacity .3s ease; }
-.dashboard-tv-tile.is-previewing .dashboard-tv-preview { opacity:.82; }
-.dashboard-tv-tile.is-previewing::after { position:absolute; inset:0; z-index:0; background:linear-gradient(180deg,color-mix(in srgb, var(--video-bg) 12%, transparent),color-mix(in srgb, var(--video-bg) 90%, transparent)); content:''; }
-.dashboard-tv-progress { display:block; width:100%; height:3px; margin-top:4px; overflow:hidden; background:color-mix(in srgb, var(--ink) calc(var(--k) * 10%), transparent); border-radius:99px; }
-.dashboard-tv-progress span { display:block; height:100%; background:var(--area-livetv); border-radius:inherit; }
+/* Senderkachel (DESIGN.md): oben 16:9-Medienfläche (Bild/Platzhalter, beim Hover Video), unten abgesetzter Infobereich */
+.dashboard-tile.dashboard-tv-tile { min-height:0; justify-content:flex-start; gap:0; padding:0; border-radius:var(--radius-md); background:var(--surface-1); isolation:isolate; }
+.tv-tile-media { position:relative; display:block; width:100%; aspect-ratio:16 / 9; flex:none; overflow:hidden; background:var(--surface-inset); }
+.tv-tile-still { position:absolute; inset:0; z-index:0; display:grid; place-items:center; color:var(--tile-color); background:linear-gradient(145deg,color-mix(in srgb,var(--tile-color) 34%,var(--surface-inset)),var(--surface-inset) 80%); }
+.tv-tile-still .ic { width:40px; height:40px; opacity:.7; }
+.tv-tile-image { position:absolute; inset:0; z-index:1; display:block; width:100%; height:100%; object-fit:cover; }
+.tv-tile-still.has-image::after { position:absolute; inset:0; z-index:2; background:var(--scrim); content:''; }
+.dashboard-tv-preview { position:absolute; inset:0; z-index:3; width:100%; height:100%; object-fit:cover; background:var(--video-bg); opacity:0; transition:opacity var(--motion-crossfade) ease; }
+.dashboard-tv-tile.is-previewing .dashboard-tv-preview { opacity:1; }
+.dashboard-tile.dashboard-tv-tile .tv-tile-logo { position:absolute; z-index:4; left:var(--space-2); bottom:var(--space-2); width:40px; height:40px; padding:var(--space-1); border-radius:var(--radius-sm); }
+.tv-tile-time { position:absolute; z-index:4; right:var(--space-2); bottom:var(--space-2); padding:var(--space-1) var(--space-2); color:var(--media-ink); font-size:12px; font-variant-numeric:tabular-nums; background:var(--scrim-media); border-radius:var(--radius-xs); }
+.tv-tile-info { display:flex; width:100%; min-width:0; flex-direction:column; gap:var(--space-1); padding:var(--space-3) var(--space-3) var(--space-4); text-align:left; }
+.tv-tile-title { overflow:hidden; color:var(--text-primary); font-size:14px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.tv-tile-meta { overflow:hidden; color:var(--text-secondary); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.dashboard-tv-progress { position:absolute; right:0; bottom:0; left:0; z-index:4; display:block; height:3px; overflow:hidden; background:color-mix(in srgb, var(--ink) calc(var(--k) * 10%), transparent); }
+.dashboard-tv-progress span { display:block; height:100%; background:var(--area-livetv); }
 .dashboard-tv-tile.is-fullscreen { visibility:hidden; }
 .dashboard-player { position:fixed; inset:0; z-index:120; display:grid; place-items:center; background:var(--video-bg); }
 .dashboard-player:fullscreen { width:100vw; height:100vh; }
@@ -4121,7 +4130,7 @@ body:has(.mediathek-player) .overlay-bar { visibility:hidden; pointer-events:non
 /* Fokus (DESIGN.md): Tastaturfokus zeigt überall denselben 2-px-Ring in focus-ring, nie die Bereichsfarbe; kein Ring bei Mausklick
    (:focus-visible). Steht am Dateiende, damit er bei gleicher Spezifität gewinnt; Einzelregeln setzen nur den Abstand (outline-offset). */
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.theme-dark-scope:focus-visible, .dashboard-section-tile:focus-visible, .dashboard-tv-tile.is-previewing:focus-visible { outline-color: var(--focus-ring-page); } /* Ring richtet sich nach der Seite, nicht nach der lokal dunklen Kachel */
+.theme-dark-scope:focus-visible, .dashboard-section-tile:focus-visible { outline-color: var(--focus-ring-page); } /* Ring richtet sich nach der Seite, nicht nach der lokal dunklen Kachel */
 
 /* Startseite „Fortsetzen“ (Design-Umbau Schritt 6): Leiste unter den Bereichskacheln, Karten nach DESIGN.md (Komponente „Fortsetzen“) */
 .running-now { max-width: 1480px; margin: var(--space-5) auto 0; }

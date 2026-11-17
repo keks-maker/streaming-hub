@@ -180,12 +180,14 @@ Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansi
 
 ### Senderkachel (LiveTV-Favoriten, EPG „Jetzt & Gleich“)
 
-- Hintergrund ohne Interaktion: Vorschaubild der laufenden Sendung, abgedunkelt mit `scrim`. Ohne Bild: heutiger Verlauf (Desktop: Quellenfarbe, künftig `area-livetv`).
-- Davor: Senderlogo in Icon-Platte, Sendungstitel (`body`, fett), darunter Sender und Restzeit (`meta`).
-- Fortschritt als 3-px-Linie an der Unterkante in `area-livetv`.
-- Hover (Desktop), Tippen (iPad) bzw. Fokus (Apple TV) startet die stumme Vorschau; Bild-zu-Video-Überblendung mit `motion-crossfade`. Es läuft immer nur eine Vorschau.
+Zweigeteilt (Mockup in `docs/design-umbau-plan.md`, Spec dort), Kachel `radius-md`:
+- **Oben die Medienfläche** (16:9): Vorschaubild der laufenden Sendung, abgedunkelt mit `scrim`. Ohne Bild: Verlauf in `area-livetv` (Senderfarbe) mit Platzhalter-Icon (`tv-minimal`). Beim Hover/Fokus liegt hier, und nur hier, die stumme Vorschau (Livestream).
+- **Auf der Medienfläche:** unten links das Senderlogo als kleine Platte (`icon-plate`, `radius-sm`), unten rechts die Zeitpille „20:15 – 21:00“ (`scrim-media`, `media-ink`, `meta`, `radius-xs`).
+- **Darunter der abgesetzte Infobereich** (Kachelgrund `surface-1`): Sendungstitel (`body`, fett), darunter „Sender · noch X Min.“ (`meta`, `text-secondary`). Abstände `space-*`.
+- Fortschritt als 3-px-Linie an der Unterkante der Kachel in `area-livetv`.
+- Hover (Desktop), Tippen (iPad) bzw. Fokus (Apple TV) startet die stumme Vorschau (Desktop 350 ms Verzögerung); Bild bzw. Platzhalter bleibt, bis der Stream das erste Videobild liefert, dann Überblendung mit `motion-crossfade`; beim Verlassen stoppt die Vorschau und blendet zurück. Es läuft immer nur eine Vorschau.
 - Entfällt: „Sender öffnen“ und das LIVE-Badge, denn im LiveTV-Bereich ist jeder Sender live.
-- Dieselbe Komponente nutzt „Jetzt & Gleich“ im EPG. Umsetzung des Vorschaubilds: Spec im Umbauplan.
+- Desktop-Umsetzung (Schritt S1): `renderer.js` `renderLiveTvTile`; Bild-Hook `setLiveTvTileImage` (`<img decoding="async">` in der Medienfläche, bei Fehler Verlauf). Die EPG-Zellen „Jetzt & Gleich“ am Desktop (`epg-jng-*`) sind ein Zeilenraster mit Aufnahme-Aktion und nutzen die Kachel (noch) nicht. Umsetzung des Vorschaubilds (S2): Spec im Umbauplan.
 
 ### Dienstkachel (Streaming, Mediatheken)
 
