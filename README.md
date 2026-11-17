@@ -112,6 +112,10 @@ Wähle in der Navigationsleiste **LiveTV**. Oben stehen zwei große Karten: **Pr
 
 ![Live-TV-Dashboard mit den Karten Programmübersicht und Aufnahmen, Werkzeugleiste und Favoriten (Beispieldaten)](assets/screenshots/livetv-dashboard.png)
 
+Beim Überfahren einer Senderkachel mit der Maus (oder per Tastaturfokus) startet nach kurzer Verzögerung eine stumme Vorschau des laufenden Programms; es läuft immer nur eine Vorschau.
+
+![Hover-Vorschau auf einer Senderkachel: nach kurzer Verzögerung blendet das Livebild ein (Teststrom)](assets/screenshots/livetv-hover-vorschau.gif)
+
 #### Sender verwalten
 
 Die Senderverwaltung findest du unter **Einstellungen → LiveTV → Sender** (auch über **Senderverwaltung** im Live-TV-Dashboard). Sie bietet eine Suche, getrennte Ansichten für alle Sender und Favoriten sowie Sortierung und Senderbearbeitung (Name, EPG-Zuweisung, Logo, Stream-URL). Ein Hinweis zeigt, ob zu einem Sender EPG-Daten gefunden wurden.

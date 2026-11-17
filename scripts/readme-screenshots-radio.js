@@ -56,6 +56,7 @@ const PLAYING = 'swr3';
   });
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
+  await page.emulateMedia({ colorScheme: 'dark' }); // README zeigt das dunkle Design
   await page.locator('#dashboardView').waitFor();
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 800));
   await sleep(800);

@@ -99,6 +99,7 @@ function prepare(base) {
   });
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
+  await page.emulateMedia({ colorScheme: 'dark' }); // README zeigt das dunkle Design
   await page.locator('#dashboardView').waitFor();
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 800));
   await sleep(800);
@@ -151,8 +152,6 @@ function prepare(base) {
 
   await nav('settings').click();
   await page.locator('#settingsNav').waitFor();
-  const group = page.locator('#settingsNav .settings-nav-group');
-  if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
   await page.locator('#settingsTab-livetv-channels').click();
   await page.locator('#settingsTvChannelsList').waitFor();
   await sleep(600);

@@ -72,7 +72,7 @@ Repos: Desktop = `streaming-hub` (Branch `design/umbau`), Apple = `StreamingHub-
 - 8a, erledigt (QA ausstehend): Mini-Player (`--mini-c` je Modus) sowie Cover-Raster und Bildkarte auf Tokens; Details und Ausnahmen in DESIGN.md (Mini-Player, Cover-Raster und Bildkarte).
 - 8b, erledigt (QA ausstehend): EPG (Raster, Liste, Details) auf Tokens (Schrift 12/14/20, `space-*`, `radius-*`, `--epg-*` auf `surface-1`/`surface-inset`/`border-strong`/`text-secondary`/`area-livetv`); `genre-*` und `on-genre` in `:root` mit getesteten Werten (DESIGN.md „EPG-Genrefarben“); neues Token `surface-inset` (auch Mediathek-Vorschau-Grund); Komponenten Dialog, Verlauf-Zeile, Fehler-/Leerzustand und Bauteilmaße (Ausnahmen) in DESIGN.md; Dialog-Panels einheitlich `surface-3`/`radius-xl`; EPG-Fehlerzustand mit Icon; Nachzügler aus 8a erledigt.
 - Offen (nicht 8b): Mediathek-Palette `--md-*` und Bereichs-Dialoge der Einstellungen/Aufnahmen-Liste nur teilweise auf Tokens (Abstände/Schrift ja, Flächen `--md-*` bleiben).
-- Danach: README-Screenshots erneuern, kurzes GIF der Hover-Vorschau.
+- 8c, erledigt: README-Screenshots (alle 19 eingebundenen Bilder, dunkel, Testdaten) erneuert, GIF der Hover-Vorschau `livetv-hover-vorschau.gif` ergänzt. Erzeugung: `scripts/readme-screenshots.js`, `-radio.js`, `-epg.js` (EPG, Aufnahme-Dialog, GIF). Schritt 8 damit erledigt.
 
 ## Apple (nach 0b und Desktop-Schritt 1)
 
