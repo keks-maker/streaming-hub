@@ -3037,7 +3037,7 @@ body.epg-open .overlay-bar { z-index: 105; }
 /* Einstellungen: feste Höhe unter der Navigationsleiste; Seitenleiste und Inhalt scrollen selbst, die Seite nie. */
 .dashboard-view.settings-dashboard { display:flex; flex-direction:column; overflow:hidden; padding-top:var(--settings-top); padding-bottom:var(--space-4); }
 .settings-dashboard .dashboard-header { flex:0 0 auto; width:100%; max-width:1180px; margin:0 auto 16px; }
-.settings-dashboard .dashboard-title { font-size:clamp(30px,4vw,48px); }
+.settings-dashboard .dashboard-title { font-size:clamp(30px,4vw,54px); }
 .settings-dashboard .settings-panel-host { flex:1 1 auto; min-height:0; width:100%; max-width:1180px; margin:0 auto; }
 .settings-dashboard .settings-panel-host > .settings-panel { height:100%; }
 .overlay-location { display:none; }
