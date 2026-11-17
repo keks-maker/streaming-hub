@@ -266,7 +266,8 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await page.locator('#recScheduleConfirm').click();
     await expect(page.locator('#recScheduleOverlay')).not.toHaveClass(/open/);
     await expect(next.locator('.epg-marker')).toHaveAttribute('data-state', 'scheduled');
-    await expect(next.locator('.epg-toggle')).toHaveText('Aufnahme abbrechen');
+    await expect(next.locator('.epg-toggle')).toHaveAttribute('data-kind', 'cancel');
+    await expect(next.locator('.epg-toggle')).toHaveAttribute('aria-label', /^Aufnahme abbrechen: /);
     expect(await scheduledEntries()).toHaveLength(1);
     // Marker rot, geplant statisch (keine Animation)
     const style = await next.locator('.epg-marker').evaluate(el => {
@@ -283,7 +284,7 @@ test.describe('Programmführer 3.5 (kleine Fixture)', () => {
     await expect(page.locator('#epgConfirm')).toBeVisible();
     await page.locator('#epgConfirmYes').click();
     await expect(next.locator('.epg-marker')).toHaveAttribute('data-state', '');
-    await expect(next.locator('.epg-toggle')).toHaveText('Aufnehmen');
+    await expect(next.locator('.epg-toggle')).toHaveAttribute('data-kind', 'record');
     expect(await scheduledEntries()).toHaveLength(0);
   });
 

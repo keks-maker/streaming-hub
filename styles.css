@@ -2640,9 +2640,17 @@ body.epg-open .overlay-bar { z-index: 105; }
 .epg-jcell-main .epg-row-open { padding: 1px 0; font-weight: 700; } /* Kacheltitel-Stufe: body 14 fett */
 .epg-jcell .epg-thumb { width: 96px; height: 54px; font-size: 20px; } /* 16:9, größer als die 64 × 36 der Mini-Player-Playlist */
 .epg-jcell-time { display: flex; gap: var(--space-2); align-items: baseline; font-size: 12px; color: var(--epg-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.epg-jcell-time .epg-time { flex: none; }
+.epg-jcell-time .epg-time-sub { min-width: 0; overflow: hidden; text-overflow: clip; }
 .epg-jcell-main .epg-progress { width: 100%; }
 .epg-jcell-action { flex: none; display: flex; align-items: center; font-size: 12px; color: var(--epg-dim); }
-.epg-jcell-action .epg-toggle { padding: 2px var(--space-2); font-size: 12px; border-color: var(--status-rec); } /* Rand voll in status-rec: Bedienelement mind. 3 : 1 */
+/* Aufnahme-Knopf: eigene Spalte am Zellenende, runder Icon-Knopf 32 px (Bauteilmaß), Rand voll in status-rec (Bedienelement mind. 3 : 1), kein Text */
+.epg-jcell-action .epg-toggle { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; border-radius: var(--radius-full); border-color: var(--status-rec); color: var(--status-rec); }
+.epg-jcell-action .epg-toggle .ic { vertical-align: 0; }
+/* Zelle als Container: zu wenig Platz → zuerst entfällt die Restzeit, dann das Vorschaubild; die Zeit bleibt immer vollständig */
+.epg-jcell { container-type: inline-size; }
+@container (max-width: 339px) { .epg-jcell-time .epg-time-sub { display: none; } }
+@container (max-width: 279px) { .epg-jcell .epg-thumb { display: none; } }
 .epg-jng.is-narrow .epg-jng-head { display: none; }
 .epg-jng.is-narrow .epg-jrow { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-1); align-content: start; }
 .epg-jng.is-narrow .epg-jslot.is-span { grid-column: 1; }

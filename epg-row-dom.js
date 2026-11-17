@@ -119,10 +119,11 @@ function updateRowNode(entry, row, { nowMs, marker, selected, flag = '' }) {
   const pastOnly = info.phase === 'past' && toggle.kind === 'record';
   refs.toggle.hidden = pastOnly;
   refs.pastNote.hidden = !pastOnly;
-  Icons.setIconText(refs.toggle, toggle.icon, toggle.label);
+  // J&G-Zelle: runder Icon-Knopf ohne Text (aria-label trägt die Funktion)
+  Icons.setIconText(refs.toggle, toggle.icon, entry.variant === 'jng' ? '' : toggle.label);
   refs.toggle.dataset.kind = toggle.kind;
   refs.toggle.disabled = toggle.disabled;
-  refs.toggle.title = toggle.hint;
+  refs.toggle.title = toggle.hint || (entry.variant === 'jng' ? toggle.label : '');
   if (refs.hint) {
     refs.hint.textContent = toggle.hint;
     refs.hint.hidden = !toggle.hint;
