@@ -37,7 +37,7 @@ async function setWindowWidth(ctx, width) {
 }
 
 async function openLiveTv(page) {
-  await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+  await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
   await page.locator('.dashboard-section-tile[data-section="livetv"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
   await expect(page.locator('#dashboardHub')).toBeVisible();
@@ -192,7 +192,7 @@ test.describe('LiveTV-Hub (mit Favorit)', () => {
 
   test('Karte „Aufnahmen“ führt in den Aufnahmen-Bereich; die NavBar hat keinen Aufnahmen-Eintrag mehr', async () => {
     await expect(page.locator('#overlayNav [data-section="recording"]')).toHaveCount(0);
-    await expect(page.locator('#overlayNav .nav-section-item')).toHaveCount(5); // LiveTV, Radio (R2), Podcasts (P3), Streaming, Mediatheken
+    await expect(page.locator('#overlayNav .nav-section-item')).toHaveCount(6); // Start, LiveTV, Radio (R2), Podcasts (P3), Streaming, Mediatheken
     await page.locator('#dashboardRecordingsOpen').click();
     await expect(page.locator('#dashboardTitle')).toHaveText('Aufnahmen');
     await expect(page.locator('#dashboardView')).toHaveClass(/recordings-dashboard/);
@@ -257,7 +257,7 @@ test.describe('LiveTV-Hub (mit Favorit)', () => {
   });
 
   test('Startdashboard ohne Aufnahmen-Kachel; Aufnahmen weiter über LiveTV-Karte und Strg+R erreichbar', async () => {
-    await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+    await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
     await expect(page.locator('#dashboardTitle')).toHaveText('Was möchtest du sehen?');
     await expect(page.locator('.dashboard-section-tile')).toHaveCount(6);
     await expect(page.locator('.dashboard-section-tile[data-section="recording"]')).toHaveCount(0);

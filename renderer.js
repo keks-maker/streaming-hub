@@ -537,7 +537,6 @@ const dashboardTvRefresh = document.getElementById('dashboardTvRefresh');
 const dashboardPlayer = document.getElementById('dashboardPlayer');
 const dashboardPlayerStage = document.getElementById('dashboardPlayerStage');
 const dashboardPlayerClose = document.getElementById('dashboardPlayerClose');
-const overlayLocation = document.getElementById('overlayLocation');
 const backBtn = document.getElementById('backBtn');
 // Fix-Set 4: settings-/pip-Buttons sind aus der Navbar entfernt; die Elemente
 // existieren nicht mehr im DOM — die Verkabelung hier bleibt bewusst bestehen,
@@ -1180,7 +1179,7 @@ function showDashboard(groupKey, opts = {}) {
   lastMediaTitle = '';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   nav.querySelectorAll('[aria-current]').forEach(n => n.removeAttribute('aria-current'));
-  const activeSection = nav.querySelector(`[data-section="${groupKey}"]`);
+  const activeSection = groupKey === 'start' ? null : nav.querySelector(`[data-section="${groupKey}"]`);
   if (activeSection) {
     activeSection.classList.add('active');
     activeSection.setAttribute('aria-current', 'page');
@@ -1192,22 +1191,6 @@ function showDashboard(groupKey, opts = {}) {
   tvView.style.pointerEvents = 'none';
   webview = contentView;
   renderDashboard(groupKey, opts);
-  overlayLocation.textContent =
-    groupKey === 'start'
-      ? 'Startseite'
-      : groupKey === 'settings'
-        ? 'Einstellungen'
-        : groupKey === 'livetv'
-          ? 'LiveTV'
-          : groupKey === 'radio'
-            ? 'Radio'
-            : groupKey === 'podcasts'
-              ? 'Podcasts'
-              : groupKey === 'mediathek'
-              ? 'Mediatheken'
-              : groupKey === 'recording'
-                ? 'Aufnahmen'
-                : 'Streaming';
   overlayBar.classList.add('always-visible');
   overlayBar.classList.remove('nav-collapsed', 'is-fullscreen');
   if (groupKey === 'livetv') {
@@ -1232,6 +1215,7 @@ function getIconSrc(svc) {
 }
 
 const NAV_ICONS = {
+  start: Icons.iconSvg('house'),
   livetv: Icons.iconSvg('tv-minimal'),
   radio: Icons.iconSvg('radio'),
   podcasts: Icons.iconSvg('mic'),
@@ -1245,6 +1229,7 @@ function renderNav() {
 
   // Bereichs-Icons als Inline-SVG (currentColor), damit die Bereichsfarbe (CSS) sie einfärbt
   const groups = [
+    { key: 'start', label: 'Start', icon: NAV_ICONS.start },
     { key: 'livetv', label: 'LiveTV', icon: NAV_ICONS.livetv },
     { key: 'radio', label: 'Radio', icon: NAV_ICONS.radio },
     { key: 'podcasts', label: 'Podcasts', icon: NAV_ICONS.podcasts },
@@ -1259,7 +1244,7 @@ function renderNav() {
     btn.type = 'button';
     btn.dataset.section = group.key;
     btn.innerHTML = `<span class="nav-section-icon" aria-hidden="true">${group.icon}</span><span class="nav-section-label">${group.label}</span>`;
-    btn.addEventListener('click', () => showDashboard(group.key));
+    btn.addEventListener('click', () => (group.key === 'start' ? goToStartPage() : showDashboard(group.key)));
     if (group.key === 'livetv') {
       // Aufnahme-Indikator (P21): Punkt ohne Zahl, solange eine Aufnahme läuft; Screenreader-Text statt Farbe allein
       const icon = btn.querySelector('.nav-section-icon');
@@ -3677,6 +3662,12 @@ function handleKeyShortcut(key, ctrlKey, shiftKey, metaKey, altKey) {
     return true;
   }
 
+  // Strg+Umsch+H: Startseite (vor Strg+H, das den Verlauf öffnet)
+  if (ctrlKey && shiftKey && (key === 'h' || key === 'H')) {
+    goToStartPage();
+    return true;
+  }
+
   if (ctrlKey && (key === 'h' || key === 'H')) {
     toggleHistory();
     return true;
@@ -4140,12 +4131,9 @@ window.electronAPI.onServicesChanged(svcs => {
     if (btn) btn.classList.add('active');
   } else {
     currentProvider = '';
-    overlayLocation.textContent = 'Startseite';
   }
 });
 
-// Startseite-Klick
-overlayLocation.addEventListener('click', goToStartPage);
 renderStartDashboard();
 
 // TV Sources laden

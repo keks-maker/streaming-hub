@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- Neu (Navigation): Erster Eintrag „Start“ (Lucide `house`, Farbe `accent`) springt zur Startseite; Kürzel Strg+Umsch+H (im Kürzel-Overlay). Die ausgeblendete Beschriftung `#overlayLocation` samt CSS und Klick-Handler entfällt. Auf der Startseite bleibt die Leiste ausgeblendet. Abgleich iPad nicht nötig, dort vorhanden.
+
 ## 0.14.0 (2026-11-04) — Live-TV: EPG-Leiste folgt der Wiedergabeposition, begrenzte Aufnahme beendeter Sendungen
 - Neu (Live-TV-Player, EPG-Leiste): Im DVR-Modus zeigt die Leiste die Sendung an der Wiedergabeposition statt zur Uhrzeit. Bezugszeit = Wanduhrzeit von `video.currentTime` über den PDT-Anker (`referenceTime` in `tv-epg-model.js`, im DVR-Modus ohne Live-Schwelle); ohne DVR, ohne Anker oder ohne EPG-Einträge bleibt es bei der Host-Leiste (`epg-update`, Uhrzeit). `epg-update` überschreibt die Wiedergabezeit-Leiste nicht; Reset/Kanalwechsel fällt auf die Host-Leiste zurück. Die Leiste zeigt Zeiten, Titel, „Danach HH:MM Titel“, einen Fortschrittsbalken (in Bernstein) und, nur wenn nicht live, „zeitversetzt -m:ss“ (auf 10 s gerundet, wie tvOS). Lücke im EPG: „Keine Programminformation“, Leiste bleibt sichtbar. Beim Ziehen/Seek wird sofort neu gezeichnet (der 250-ms-Tick ruht dort).
 - Neu (Scrub-Leiste): Hover-Tooltip „HH:MM · Sendungstitel“ an der Mausposition, ohne zu spulen (`hoverText`); der Marker-Hover-Schutz (U3) bleibt unberührt. Der Tooltip bleibt am Fensterrand sichtbar; das Label „zeitversetzt“ steht in einer eigenen Zeile, damit „Danach“ nicht gekürzt wird.

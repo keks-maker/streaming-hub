@@ -31,7 +31,7 @@ const shot = async (page, name) => {
 };
 
 async function openRadio(page) {
-  await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+  await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
   await page.locator('.dashboard-section-tile[data-section="radio"]').click();
   await expect(page.locator('#dashboardTitle')).toHaveText('Radio');
   await expect(page.locator('#radioDashboard')).toBeVisible();
@@ -93,11 +93,11 @@ test.describe('Radio-Oberfläche', () => {
     await expect(page.locator('.dashboard-section-tile[data-section="radio"] .dashboard-tile-name')).toHaveText('Radio');
     await shot(page, 'startseite');
     await openRadio(page);
-    await expect(page.locator('#overlayLocation')).toHaveText('Radio');
+    await expect(page.locator('#overlayNav .nav-section-item.active')).toHaveText('Radio');
     await expect(page.locator('#dashboardEyebrow')).toHaveText('Deine Radiosender');
     // Nav-Eintrag direkt nach LiveTV
     const navOrder = await page.locator('#overlayNav .nav-section-item').evaluateAll(els => els.map(e => e.dataset.section));
-    expect(navOrder.slice(0, 2)).toEqual(['livetv', 'radio']);
+    expect(navOrder.slice(0, 3)).toEqual(['start', 'livetv', 'radio']);
     await expect(page.locator('#overlayNav .nav-section-item[data-section="radio"]')).toHaveClass(/active/);
     // Leerzustand: Hinweis, Button, Senderverwaltung; keine LiveTV-Karten
     await expect(page.locator('#radioStatus')).toHaveText('0 Favoriten');
@@ -168,7 +168,7 @@ test.describe('Radio-Oberfläche', () => {
   });
 
   test('Mini-Player bleibt auf anderen Seiten; Navigation und Zurück-Historie funktionieren', async () => {
-    await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+    await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
     await expect(page.locator('#radioMiniPlayer')).toBeVisible();
     await page.locator('.dashboard-section-tile[data-section="settings"]').click();
     await expect(page.locator('#dashboardTitle')).toHaveText('Einstellungen');
@@ -176,7 +176,7 @@ test.describe('Radio-Oberfläche', () => {
     await page.locator('#backBtn').click();
     await expect(page.locator('#radioMiniPlayer')).toBeVisible();
     // Klick auf den Sendernamen öffnet das Radio-Dashboard
-    await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+    await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
     await page.locator('#radioMiniInfo').click();
     await expect(page.locator('#dashboardTitle')).toHaveText('Radio');
     // Der Mini-Player füllt die Breite unten, ohne das Dashboard zu überdecken
@@ -215,7 +215,7 @@ test.describe('Radio-Oberfläche', () => {
   });
 
   test('Ton-Konflikt: LiveTV-Start pausiert das Radio, kein automatisches Fortsetzen', async () => {
-    await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+    await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
     await page.locator('.dashboard-section-tile[data-section="livetv"]').click();
     await expect(page.locator('#dashboardTitle')).toHaveText('LiveTV');
     await page.locator('#dashboardGrid .dashboard-tv-tile').first().click();
@@ -231,7 +231,7 @@ test.describe('Radio-Oberfläche', () => {
     // tvView bleibt aktiv sichtbar, es wird weder pausiert noch gewechselt
     const opacity = await page.evaluate(() => getComputedStyle(document.getElementById('tvView')).opacity);
     expect(opacity).toBe('1');
-    expect(await page.evaluate(() => document.getElementById('overlayLocation').textContent)).not.toBe('Radio');
+    await expect(page.locator('#overlayNav .nav-section-item.active')).toHaveCount(0);
   });
 
   test('Transport im echten Electron: Stream mit LF-only-Statuszeile (streamabc.net-Stil) hinter 302 wird erreicht', async () => {

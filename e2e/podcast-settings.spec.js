@@ -66,7 +66,7 @@ const titles = page => page.evaluate(() => window.podcasts.list().then(list => l
 const rowNames = page => page.locator('#settingsPodcastSubsList .settings-podcast-name').allTextContents();
 
 async function openManagement(page) {
-  await page.evaluate(() => window.document.getElementById('overlayLocation').click());
+  await page.locator('#overlayNav [data-section="start"]').evaluate(el => el.click());
   await page.locator('.dashboard-section-tile[data-section="podcasts"]').click();
   await expect(page.locator('#podcastDashboard')).toBeVisible();
   await page.locator('#podcastManage').click();

@@ -203,12 +203,11 @@ test('Ansicht: Pfeiltasten in der Leiste erreichen keine Seitenkürzel; Stream-D
 
 // ───────── Verdrahtung ─────────
 
-test('Verdrahtung: Navigation, Startkachel, Ort, Konflikt-Hooks und Vollbild-Ausblendung', () => {
+test('Verdrahtung: Navigation, Startkachel, Konflikt-Hooks und Vollbild-Ausblendung', () => {
   const renderer = read('renderer.js');
   assert.match(renderer, /\{ key: 'radio', label: 'Radio', icon: NAV_ICONS\.radio \}/);
   assert.match(renderer, /\{ key: 'radio', label: 'Radio', icon: 'radio', color: 'var\(--area-radio\)' \}/);
   assert.ok(renderer.indexOf("key: 'livetv', label: 'LiveTV', icon: NAV_ICONS.livetv }") < renderer.indexOf("key: 'radio', label: 'Radio', icon: NAV_ICONS.radio }"));
-  assert.match(renderer, /groupKey === 'radio'\s*\? 'Radio'/);
   assert.match(renderer, /if \(groupKey === 'radio'\) radioDashboardView\.refresh\(\)/);
   // Konflikt-Hooks: TV-Kanal, Streamingdienst, Aufnahme-Wiedergabe, Dashboard-Vollbildplayer
   const hooks = renderer.match(/pauseRadioForVideo\(\);/g) || [];
