@@ -242,6 +242,16 @@ Zwei Varianten derselben Komponente, beide mit `radius-md`, Titel und Meta darun
 - **Bildkarte 16:9** für Mediatheken (Ist auf Desktop und iPad).
 - Umsetzung Desktop (Schritt 8a): Bild `radius-md`, Titel `body` in `text-primary`, Meta `meta` in `text-secondary`, Badges und Pillen `meta` mit `radius-xs`, Fortschrittslinie 3 px (Mediathek `area-mediathek`, Podcast `area-podcast`), Rund-Knöpfe `radius-full`, Abstände `space-*`, Bildwechsel `motion-fast`. Cover 56 px (Liste), 44 px (Abos), 40 px (Einstellungen), 132 px (Folge) mit gleichem `radius-md`. Ausnahmen: Platzhalterverlauf der Mediathek-Karte (`hsl` je Titel-Farbton, dynamisch) und der Info-Knopf „i“ als Schriftzeichen (Georgia kursiv; Umstellung auf Icon braucht JS-Änderung, später).
 
+### Top-Shelf-Kachel (nur Apple TV)
+
+Entscheidung 2026-11-18 (Entwurf 2, Plan `../StreamingHub-tvOS/docs/tvos-topshelf-plan.md`). Die App rendert jede Kachel als Bild in exakter tvOS-Größe (hdtv 404 × 228, square 308 × 308, Bühne 1920 × 1080; je @1x/@2x); die Extension zeigt nur diese Bilder.
+- **Grundsatz:** keine Kachel in der Kachel (keine Plakette, kein Rahmen, keine zweite Fläche) und keine Zusatzfarbe; Farben kommen nur aus Bild und Logo.
+- **Mit Bild** (LiveTV „Jetzt“, Mediathek/YouTube): Bild formatfüllend, Verlauf von unten (`scrim`-Schwarz 82 % → 0 bei 68 % Höhe), unten links Titel (22 px halbfett, einzeilig) und darunter „Sender · 20:15–21:45“ (18 px, Weiß 78 %); Zeitfenster statt Restzeit, weil das Bild veralten kann. Fortschritt 5 px, Spur Weiß 28 %, Füllung Weiß.
+- **Ohne Bild** (LiveTV): helle Fläche (Verlauf #F2F3F5 → #E3E5EA), Senderlogo in Originalfarben mittig, nach Fläche angeglichen (≈ 6,5 % der Kachel, max. 60 % Breite / 40 % Höhe); ohne Logo der Sendername.
+- **Radio/Podcast** (square): Icon bzw. Cover formatfüllend, transparente Icons auf Weiß; Podcast-Fortschritt wie oben.
+- **Bühne:** Carousel-Stil `.details` mit Sendungsbild, Titel, Sender · Zeitfenster, Aktionen „Abspielen“/„Mehr“.
+- **Begründete Ausnahmen:** Fortschritt Weiß statt `area-livetv`/`area-podcast` (Bereichsfarbe konkurriert mit Fotos, Vorbild Apple-TV-App); helle Fallback-Fläche und Text-/Linienmaße sind Bauteilwerte der gerenderten Bilder (tvOS-Pixel, kein Token-Raster), weil Senderlogos für hellen Grund gestaltet sind.
+
 ### Icons
 
 - **Einheitlich, nicht identisch:** iPad und Apple TV nutzen SF Symbols, der Desktop ein Linien-Set (Lucide) als SVG. Verbindlich ist die Zuordnung unten: Jeder Zweck hat genau ein Icon pro Plattform. Was Apple schon nutzt, gewinnt.
