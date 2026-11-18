@@ -186,6 +186,7 @@ Jede Komponente gibt es einmal pro App und überall in derselben Form; neue Ansi
 
 - Illustration oben in Bereichsfarbe (`area-*`), Kachel `radius-xl`, Icon-Platte (`radius-lg`), Titel. Der Kachelgrund bleibt fest dunkel (theme-literal, Ist auf allen Plattformen).
 - Entfällt: Untertitel „Bereich öffnen“. Die ganze Kachel ist der Klick.
+- Anordnung (Entscheidung 2026-11-18): Keine Kachel darf beim Start angeschnitten sein, und „Fortsetzen“ muss ohne Scrollen sichtbar sein. iPad quer: alle Kacheln in einer Zeile, Höhe entsprechend verringert; iPad hoch: drei Spalten × zwei Zeilen, ebenfalls flacher. Apple TV: unverändert, „Fortsetzen“ darunter. Desktop: automatisch gefülltes Raster (Ist).
 - Icons: Startkacheln des Desktops nutzen Linien-Icons aus der Zuordnung (`tv-minimal`, `radio`, `mic`, `settings`); nur die Markenlogos der Dienste bleiben Bilder. Es gilt die Icon-Zuordnung unten.
 
 ### Senderkachel (LiveTV-Favoriten, EPG „Jetzt & Gleich“)
@@ -216,7 +217,7 @@ Zweigeteilt (Mockup in `docs/design-umbau-plan.md`, Spec dort), Kachel `radius-m
 - Die Bereichs-Icons der Desktop-Navigation sind schon Inline-SVG; sie werden an die Zuordnung angeglichen.
 - Fokus: Desktop und iPad `focus-ring` (nicht mehr die Bereichsfarbe). Apple TV behält den eigenen TV-Fokusstil (weiße Fläche, schwarze Schrift, Vergrößerung 1,06).
 - Aufnahme-Punkt am LiveTV-Eintrag bleibt (`status-rec`).
-- „Start“ ist der erste Eintrag der Desktop-Leiste (Icon `house`, Farbe `accent`, gleiches Bauteil wie die Bereiche, ohne Trennstrich). Er springt zur Startseite (Klick oder Strg+Umsch+H); auf der Startseite ist die Leiste ausgeblendet, daher hat „Start“ keinen aktiven Zustand. Das iPad hat den Eintrag schon (`iPadNavigation.swift`, `home`, `house`): kein Abgleich nötig.
+- „Start“ ist der erste Eintrag der Desktop-Leiste (Icon `house`, Farbe `accent`, gleiches Bauteil wie die Bereiche, ohne Trennstrich). Er springt zur Startseite (Klick oder Strg+Umsch+H); auf der Startseite ist die Leiste ausgeblendet, daher hat „Start“ keinen aktiven Zustand. iPad und Apple TV: Bereich `home` (`house`) ist definiert, stand aber nicht in der Leiste (`iPadNavigation.swift:81`, `TVNavigation.swift:144`); er wird wie am Desktop erster Eintrag (Plan N-Apple).
 - Auf dem iPad heißt der Streaming-Bereich YouTube (Label bleibt, Farbe `area-streaming`), weil DRM-Dienste dort nicht möglich sind.
 - Apple TV hat ebenfalls einen YouTube-Bereich (`Sources/StreamingHubTV/Views/Shell/TVNavigation.swift:15, 43, 61`, Symbol `play.rectangle.fill`, Ist-Farbe #FF5A5A, hinter `YOUTUBE_NATIVE`). Wie am iPad: Farbe `area-streaming`, Label „YouTube“.
 
