@@ -1,0 +1,71 @@
+{
+ "description": "Loeschmarke mit Alter genau 30 Tage entfaellt (>=), 30 Tage minus 1 s bleibt, ueber 30 Tage entfaellt",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "l:a",
+   "kind": "MList",
+   "modified": 1797408000,
+   "deleted": true,
+   "fields": {
+    "id": "a",
+    "name": "N",
+    "color": "blue",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:b",
+   "kind": "MList",
+   "modified": 1797408001,
+   "deleted": true,
+   "fields": {
+    "id": "b",
+    "name": "N",
+    "color": "blue",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:c",
+   "kind": "MList",
+   "modified": 1797407999,
+   "deleted": true,
+   "fields": {
+    "id": "c",
+    "name": "N",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ],
+ "remote": [],
+ "merged": [
+  {
+   "name": "l:b",
+   "kind": "MList",
+   "modified": 1797408001,
+   "deleted": true,
+   "fields": {
+    "id": "b",
+    "name": "N",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "l:b",
+   "kind": "MList",
+   "modified": 1797408001,
+   "deleted": true,
+   "fields": {
+    "id": "b",
+    "name": "N",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ]
+}

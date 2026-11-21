@@ -1,0 +1,355 @@
+{
+ "description": "Gleichstand MList: Feldreihenfolge (je Paar gegenlaeufig), jedes Feld einzeln entscheidend, nur unbekannte Felder unterscheiden sich -> Remote",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "l:x0",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x0",
+    "name": "z",
+    "color": "a",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x1",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x1",
+    "name": "m",
+    "color": "a",
+    "symbol": "z",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x2",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x2",
+    "name": "m",
+    "color": "m",
+    "symbol": "z",
+    "order": "a"
+   }
+  },
+  {
+   "name": "l:x3",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x3",
+    "name": "a",
+    "color": "m",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x4",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x4",
+    "name": "m",
+    "color": "z",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x5",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x5",
+    "name": "m",
+    "color": "m",
+    "symbol": "a",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x6",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x6",
+    "name": "m",
+    "color": "m",
+    "symbol": "m",
+    "order": "z"
+   }
+  },
+  {
+   "name": "l:x7",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x7",
+    "name": "m",
+    "color": "m",
+    "symbol": "m",
+    "order": "m",
+    "zzUnknown": "zzz",
+    "extra": 99,
+    "listIDx": "q"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "l:x0",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x0",
+    "name": "a",
+    "color": "z",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x1",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x1",
+    "name": "m",
+    "color": "z",
+    "symbol": "a",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x2",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x2",
+    "name": "m",
+    "color": "m",
+    "symbol": "a",
+    "order": "z"
+   }
+  },
+  {
+   "name": "l:x3",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x3",
+    "name": "z",
+    "color": "m",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x4",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x4",
+    "name": "m",
+    "color": "a",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x5",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x5",
+    "name": "m",
+    "color": "m",
+    "symbol": "z",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x6",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x6",
+    "name": "m",
+    "color": "m",
+    "symbol": "m",
+    "order": "a"
+   }
+  },
+  {
+   "name": "l:x7",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x7",
+    "name": "m",
+    "color": "m",
+    "symbol": "m",
+    "order": "m",
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "l:x0",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x0",
+    "name": "z",
+    "color": "a",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x1",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x1",
+    "name": "m",
+    "color": "z",
+    "symbol": "a",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x2",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x2",
+    "name": "m",
+    "color": "m",
+    "symbol": "z",
+    "order": "a"
+   }
+  },
+  {
+   "name": "l:x3",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x3",
+    "name": "z",
+    "color": "m",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x4",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x4",
+    "name": "m",
+    "color": "z",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x5",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x5",
+    "name": "m",
+    "color": "m",
+    "symbol": "z",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x6",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x6",
+    "name": "m",
+    "color": "m",
+    "symbol": "m",
+    "order": "z"
+   }
+  },
+  {
+   "name": "l:x7",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x7",
+    "name": "m",
+    "color": "m",
+    "symbol": "m",
+    "order": "m",
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "l:x0",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x0",
+    "name": "z",
+    "color": "a",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x2",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x2",
+    "name": "m",
+    "color": "m",
+    "symbol": "z",
+    "order": "a"
+   }
+  },
+  {
+   "name": "l:x4",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x4",
+    "name": "m",
+    "color": "z",
+    "symbol": "m",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:x6",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x6",
+    "name": "m",
+    "color": "m",
+    "symbol": "m",
+    "order": "z"
+   }
+  }
+ ]
+}

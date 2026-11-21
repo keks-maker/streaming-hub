@@ -1,0 +1,355 @@
+{
+ "description": "Gleichstand Recent: Feldreihenfolge (je Paar gegenlaeufig), jedes Feld einzeln entscheidend, nur unbekannte Felder unterscheiden sich -> Remote",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "r:cas00000000",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "title": "z",
+    "channel": "a",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000001",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000001",
+    "title": "m",
+    "channel": "a",
+    "duration": "z",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000002",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "duration": "z",
+    "channelID": "a"
+   }
+  },
+  {
+   "name": "r:cas00000003",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000003",
+    "title": "a",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000004",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000004",
+    "title": "m",
+    "channel": "z",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000005",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000005",
+    "title": "m",
+    "channel": "m",
+    "duration": "a",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000006",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000006",
+    "title": "m",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "z"
+   }
+  },
+  {
+   "name": "r:cas00000007",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000007",
+    "title": "m",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "m",
+    "zzUnknown": "zzz",
+    "extra": 99,
+    "listIDx": "q"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "r:cas00000000",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "title": "a",
+    "channel": "z",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000001",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000001",
+    "title": "m",
+    "channel": "z",
+    "duration": "a",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000002",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "duration": "a",
+    "channelID": "z"
+   }
+  },
+  {
+   "name": "r:cas00000003",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000003",
+    "title": "z",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000004",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000004",
+    "title": "m",
+    "channel": "a",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000005",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000005",
+    "title": "m",
+    "channel": "m",
+    "duration": "z",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000006",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000006",
+    "title": "m",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "a"
+   }
+  },
+  {
+   "name": "r:cas00000007",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000007",
+    "title": "m",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "m",
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "r:cas00000000",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "title": "z",
+    "channel": "a",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000001",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000001",
+    "title": "m",
+    "channel": "z",
+    "duration": "a",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000002",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "duration": "z",
+    "channelID": "a"
+   }
+  },
+  {
+   "name": "r:cas00000003",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000003",
+    "title": "z",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000004",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000004",
+    "title": "m",
+    "channel": "z",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000005",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000005",
+    "title": "m",
+    "channel": "m",
+    "duration": "z",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000006",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000006",
+    "title": "m",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "z"
+   }
+  },
+  {
+   "name": "r:cas00000007",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000007",
+    "title": "m",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "m",
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "r:cas00000000",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "title": "z",
+    "channel": "a",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000002",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "duration": "z",
+    "channelID": "a"
+   }
+  },
+  {
+   "name": "r:cas00000004",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000004",
+    "title": "m",
+    "channel": "z",
+    "duration": "m",
+    "channelID": "m"
+   }
+  },
+  {
+   "name": "r:cas00000006",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000006",
+    "title": "m",
+    "channel": "m",
+    "duration": "m",
+    "channelID": "z"
+   }
+  }
+ ]
+}

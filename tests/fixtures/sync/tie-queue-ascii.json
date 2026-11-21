@@ -1,0 +1,44 @@
+{
+ "description": "Gleichstand Queue: items als gespeicherter String verglichen; erster Unterschied \"]\" (0x5D) gegen \",\" (0x2C), also gewinnt der kuerzere Stand, nicht der laengere",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000000,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000000,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"},{\"id\":\"bbbbbbbbbbb\",\"title\":\"B\"}]"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000000,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]"
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000000,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]"
+   }
+  }
+ ]
+}

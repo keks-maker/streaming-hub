@@ -1,0 +1,35 @@
+{
+ "description": "Warteschlange: Gesamtdokument, neuerer Stand gewinnt (auch leere Liste)",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000100,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000200,
+   "fields": {
+    "items": "[]"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000200,
+   "fields": {
+    "items": "[]"
+   }
+  }
+ ],
+ "toUpload": []
+}

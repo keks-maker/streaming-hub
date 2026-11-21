@@ -1,0 +1,852 @@
+{
+ "description": "Gleichstand MEntry: Feldreihenfolge (je Paar gegenlaeufig), jedes Feld einzeln entscheidend, nur unbekannte Felder unterscheiden sich -> Remote",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "e:L1:cas00000000",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000000",
+    "title": "z",
+    "channel": "a",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000001",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000001",
+    "title": "m",
+    "channel": "a",
+    "order": "z",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000002",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "order": "z",
+    "thumbnailURL": "a",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000003",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000003",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "a",
+    "duration": "z",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000004",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000004",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "z",
+    "channelID": "a",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000005",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000005",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "a",
+    "channelAvatarURL": "z"
+   }
+  },
+  {
+   "name": "e:L1:cas00000006",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000006",
+    "title": "z",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000007",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000007",
+    "title": "m",
+    "channel": "a",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000008",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000008",
+    "title": "m",
+    "channel": "m",
+    "order": "z",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000009",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000009",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "a",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000010",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000010",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "z",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000011",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000011",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "a",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000012",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000012",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "z"
+   }
+  },
+  {
+   "name": "e:L1:cas00000013",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000013",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m",
+    "zzUnknown": "zzz",
+    "extra": 99,
+    "listIDx": "q"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "e:L1:cas00000000",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000000",
+    "title": "a",
+    "channel": "z",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000001",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000001",
+    "title": "m",
+    "channel": "z",
+    "order": "a",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000002",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "order": "a",
+    "thumbnailURL": "z",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000003",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000003",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "z",
+    "duration": "a",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000004",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000004",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "a",
+    "channelID": "z",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000005",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000005",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "z",
+    "channelAvatarURL": "a"
+   }
+  },
+  {
+   "name": "e:L1:cas00000006",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000006",
+    "title": "a",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000007",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000007",
+    "title": "m",
+    "channel": "z",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000008",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000008",
+    "title": "m",
+    "channel": "m",
+    "order": "a",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000009",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000009",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "z",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000010",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000010",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "a",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000011",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000011",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "z",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000012",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000012",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "a"
+   }
+  },
+  {
+   "name": "e:L1:cas00000013",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000013",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m",
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "e:L1:cas00000000",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000000",
+    "title": "z",
+    "channel": "a",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000001",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000001",
+    "title": "m",
+    "channel": "z",
+    "order": "a",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000002",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "order": "z",
+    "thumbnailURL": "a",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000003",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000003",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "z",
+    "duration": "a",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000004",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000004",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "z",
+    "channelID": "a",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000005",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000005",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "z",
+    "channelAvatarURL": "a"
+   }
+  },
+  {
+   "name": "e:L1:cas00000006",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000006",
+    "title": "z",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000007",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000007",
+    "title": "m",
+    "channel": "z",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000008",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000008",
+    "title": "m",
+    "channel": "m",
+    "order": "z",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000009",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000009",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "z",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000010",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000010",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "z",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000011",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000011",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "z",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000012",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000012",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "z"
+   }
+  },
+  {
+   "name": "e:L1:cas00000013",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000013",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m",
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "e:L1:cas00000000",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000000",
+    "title": "z",
+    "channel": "a",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000002",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000002",
+    "title": "m",
+    "channel": "m",
+    "order": "z",
+    "thumbnailURL": "a",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000004",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000004",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "z",
+    "channelID": "a",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000006",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000006",
+    "title": "z",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000008",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000008",
+    "title": "m",
+    "channel": "m",
+    "order": "z",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000010",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000010",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "z",
+    "channelID": "m",
+    "channelAvatarURL": "m"
+   }
+  },
+  {
+   "name": "e:L1:cas00000012",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "cas00000012",
+    "title": "m",
+    "channel": "m",
+    "order": "m",
+    "thumbnailURL": "m",
+    "duration": "m",
+    "channelID": "m",
+    "channelAvatarURL": "z"
+   }
+  }
+ ]
+}

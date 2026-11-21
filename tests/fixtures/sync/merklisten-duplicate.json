@@ -1,0 +1,50 @@
+{
+ "description": "Dublette durch Offline-Doppelanlage: gleicher Schluessel listID+videoID ergibt einen Record (neuere Aenderung gewinnt)",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "e:L1:vvvvvvvvvvv",
+   "kind": "MEntry",
+   "modified": 1799000100,
+   "fields": {
+    "id": "u1",
+    "listID": "L1",
+    "videoID": "vvvvvvvvvvv",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "e:L1:vvvvvvvvvvv",
+   "kind": "MEntry",
+   "modified": 1799000200,
+   "fields": {
+    "id": "u2",
+    "listID": "L1",
+    "videoID": "vvvvvvvvvvv",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "e:L1:vvvvvvvvvvv",
+   "kind": "MEntry",
+   "modified": 1799000200,
+   "fields": {
+    "id": "u2",
+    "listID": "L1",
+    "videoID": "vvvvvvvvvvv",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  }
+ ],
+ "toUpload": []
+}

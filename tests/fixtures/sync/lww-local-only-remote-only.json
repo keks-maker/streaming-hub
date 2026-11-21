@@ -1,0 +1,62 @@
+{
+ "description": "Nur lokal wird hochgeladen, nur remote kommt ohne Upload hinzu",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ]
+}

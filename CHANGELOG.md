@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- Neu (Vorbereitung iCloud-Abgleich D10, noch inaktiv): `lib/sync-merge.js` (`merge(local, remote, now)`, Regel und 26 gemeinsame Vektoren aus dem Apple-Repo unter `tests/fixtures/sync/`). `youtube-progress.json` behält `done`-Marken (zu Ende gesehen: position 0, bis 100 Stück, 30 Tage) und unbekannte Zusatzfelder; Leser behandeln Marken wie nicht vorhanden; bestehende Dateien bleiben kompatibel.
 - Neu (Navigation): Erster Eintrag „Start“ (Lucide `house`, Farbe `accent`) springt zur Startseite; Kürzel Strg+Umsch+H (im Kürzel-Overlay). Die ausgeblendete Beschriftung `#overlayLocation` samt CSS und Klick-Handler entfällt. Auf der Startseite bleibt die Leiste ausgeblendet. Abgleich iPad nicht nötig, dort vorhanden.
 
 ## 0.14.0 (2026-11-04) — Live-TV: EPG-Leiste folgt der Wiedergabeposition, begrenzte Aufnahme beendeter Sendungen

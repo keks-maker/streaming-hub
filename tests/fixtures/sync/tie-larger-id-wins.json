@@ -1,0 +1,103 @@
+{
+ "description": "Gleichstand ohne Loeschmarke: groessere ID gewinnt (Merklisten-Eintrag gleicher Schluessel)",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "e:L1:vvvvvvvvvvv",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaa",
+    "listID": "L1",
+    "videoID": "vvvvvvvvvvv",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  },
+  {
+   "name": "e:L1:wwwwwwwwwww",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "zzz",
+    "listID": "L1",
+    "videoID": "wwwwwwwwwww",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "e:L1:vvvvvvvvvvv",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbb",
+    "listID": "L1",
+    "videoID": "vvvvvvvvvvv",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  },
+  {
+   "name": "e:L1:wwwwwwwwwww",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "yyy",
+    "listID": "L1",
+    "videoID": "wwwwwwwwwww",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "e:L1:vvvvvvvvvvv",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbb",
+    "listID": "L1",
+    "videoID": "vvvvvvvvvvv",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  },
+  {
+   "name": "e:L1:wwwwwwwwwww",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "zzz",
+    "listID": "L1",
+    "videoID": "wwwwwwwwwww",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "e:L1:wwwwwwwwwww",
+   "kind": "MEntry",
+   "modified": 1799000000,
+   "fields": {
+    "id": "zzz",
+    "listID": "L1",
+    "videoID": "wwwwwwwwwww",
+    "title": "T",
+    "channel": "K",
+    "order": "m"
+   }
+  }
+ ]
+}

@@ -1,0 +1,74 @@
+{
+ "description": "Identische Records: nichts hochzuladen",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000100,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  },
+  {
+   "name": "l:x",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000100,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  },
+  {
+   "name": "l:x",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "l:x",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  },
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000100,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "toUpload": []
+}

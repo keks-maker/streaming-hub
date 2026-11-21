@@ -1,0 +1,52 @@
+{
+ "description": "Lokal neuer: Lokal gewinnt und wird hochgeladen",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000200,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 50,
+    "duration": 600
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000100,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000200,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 50,
+    "duration": 600
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000200,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 50,
+    "duration": 600
+   }
+  }
+ ]
+}

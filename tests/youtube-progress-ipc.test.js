@@ -81,7 +81,7 @@ test('Ungültige Meldungen und fremde Absender werden ignoriert; nichts wird ges
   assert.throws(() => validateYoutubeProgressReport({ id: ID, t: 5 }));
 });
 
-test('Geschrieben wird nur bei Änderung: Anfang unter 3 s und Ende ohne Eintrag ändern nichts', () => {
+test('Geschrieben wird nur bei Änderung: Anfang unter 3 s und Ende nach Marke ändern nichts', () => {
   const t = setup();
   t.report(t.guest(), { id: ID, t: 1, d: 300 });
   assert.equal(t.writes(), 0);
@@ -92,7 +92,9 @@ test('Geschrieben wird nur bei Änderung: Anfang unter 3 s und Ende ohne Eintrag
   assert.equal(t.read()[0].position, 100);
   t.report(t.guest(), { id: ID, t: 295, d: 300 });
   assert.equal(t.writes(), 2);
-  assert.deepEqual(t.read(), []);
+  assert.equal(t.read().length, 1);
+  assert.equal(t.read()[0].done, true);
+  assert.equal(t.read()[0].position, 0);
   t.report(t.guest(), { id: ID, t: 299, d: 300 });
   assert.equal(t.writes(), 2);
   assert.equal(t.position(t.guest(), ID), 0);

@@ -5,7 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { MAX_ENTRIES, recording, resumePosition, clampResume, normalizeEntries } = require('../lib/youtube-progress.js');
+const { MAX_ENTRIES, MAX_DONE_MARKS, DONE_RETENTION_SECONDS, recording, resumePosition, clampResume, normalizeEntries } = require('../lib/youtube-progress.js');
 const { progressVideoId, progressHasStartTime } = require('../lib/youtube-progress-page.js');
 
 const ID = 'dQw4w9WgXcQ';
@@ -17,12 +17,14 @@ test('Aufzeichnen und Fortsetzen', () => {
   assert.equal(resumePosition(list[0]), 120);
 });
 
-test('Letzte 10 Sekunden: Eintrag wird gelöscht, Fortsetzen beginnt bei 0', () => {
+test('Letzte 10 Sekunden: Eintrag wird zur Marke done, Fortsetzen beginnt bei 0', () => {
   assert.equal(resumePosition(entry(595)), 0);
   assert.equal(resumePosition(entry(590)), 0);
   assert.equal(resumePosition(entry(589)), 589);
-  assert.deepEqual(recording([entry(100)], ID, 592, 600, 2), []);
-  assert.deepEqual(recording([entry(100)], ID, 600, 600, 2), []);
+  const mark = { id: ID, position: 0, duration: 600, updated: 2, done: true };
+  assert.deepEqual(recording([entry(100)], ID, 592, 600, 2), [mark]);
+  assert.deepEqual(recording([entry(100)], ID, 600, 600, 2), [mark]);
+  assert.deepEqual(recording([], ID, 600, 600, 2), [mark]);
 });
 
 test('Anfang unter 3 Sekunden wird nicht gemerkt und ändert einen bestehenden Eintrag nicht', () => {
@@ -98,4 +100,48 @@ test('Seitenskript: feste Startzeit (t= oder start=) in der Adresse wird erkannt
   assert.equal(progressHasStartTime(`https://www.youtube.com/watch?v=${ID}`), false);
   assert.equal(progressHasStartTime(`https://www.youtube.com/watch?v=${ID}&list=PLx&index=2`), false);
   assert.equal(progressHasStartTime('kaputt'), false);
+});
+
+const DAY = 24 * 3600;
+const vid = n => 'vid' + String(n).padStart(8, '0');
+const doneMark = (updated, id = ID) => ({ id, position: 0, duration: 600, updated, done: true });
+
+test('done-Marke: Leser behandeln sie wie nicht vorhanden (Fortsetzen 0), neue Wiedergabe belebt sie wieder', () => {
+  assert.equal(resumePosition({ ...doneMark(1), position: 500 }), 0);
+  const revived = recording([doneMark(1)], ID, 50, 600, 2);
+  assert.deepEqual(revived, [entry(50, 600, 2)]);
+  assert.equal(resumePosition(revived[0]), 50);
+});
+
+test('normalizeEntries behält done und unbekannte Felder; done nur bei true', () => {
+  const raw = [{ ...entry(10, 100, 5), extra: { a: 1 } }, { ...doneMark(6, 'bbbbbbbbbbb'), x: 'y' }, { ...entry(10, 100, 7, 'ccccccccccc'), done: false }, { ...entry(10, 100, 8, 'ddddddddddd'), done: 'ja' }];
+  assert.deepEqual(normalizeEntries(raw), [raw[0], raw[1], entry(10, 100, 7, 'ccccccccccc'), entry(10, 100, 8, 'ddddddddddd')]);
+});
+
+test('Zusatzfelder überleben recording()', () => {
+  const list = recording([{ ...entry(30, 600, 1), extra: 'x' }], ID, 60, 600, 2);
+  assert.deepEqual(list, [{ id: ID, position: 60, duration: 600, updated: 2, extra: 'x' }]);
+});
+
+test('Marken: höchstens 100 und nur 30 Tage (Grenze: ab 30 Tagen weg); lebende zählen getrennt (200)', () => {
+  assert.equal(MAX_DONE_MARKS, 100);
+  const now = 100 * DAY;
+  const marks = Array.from({ length: 120 }, (_, n) => doneMark(now - 1000 - n, vid(n)));
+  const live = Array.from({ length: 210 }, (_, n) => entry(30, 600, n, vid(1000 + n)));
+  const out = normalizeEntries([...marks, ...live], now);
+  assert.equal(out.filter(e => e.done).length, 100);
+  assert.equal(out.filter(e => !e.done).length, 200);
+  assert.ok(!out.some(e => e.id === vid(119)));
+  assert.equal(normalizeEntries([doneMark(now - DONE_RETENTION_SECONDS)], now).length, 0);
+  assert.equal(normalizeEntries([doneMark(now - DONE_RETENTION_SECONDS + 1)], now).length, 1);
+  assert.equal(normalizeEntries([doneMark(1)]).length, 1, 'ohne now keine Frist');
+});
+
+test('recording kürzt Marken und lebende Einträge getrennt', () => {
+  let list = [];
+  for (let n = 0; n < 101; n++) list = recording(list, vid(n), 600, 600, 10 + n);
+  assert.equal(list.length, 100);
+  assert.ok(!list.some(e => e.id === vid(0)));
+  list = recording(list, 'zzzzzzzzzzz', 30, 600, 500);
+  assert.equal(list.length, 101);
 });

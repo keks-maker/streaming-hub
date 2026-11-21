@@ -1,0 +1,94 @@
+{
+ "description": "Gleichstand: die Loeschmarke gewinnt, egal auf welcher Seite",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "l:x",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "x",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:y",
+   "kind": "MList",
+   "modified": 1799000000,
+   "deleted": true,
+   "fields": {
+    "id": "y",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "l:x",
+   "kind": "MList",
+   "modified": 1799000000,
+   "deleted": true,
+   "fields": {
+    "id": "x",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:y",
+   "kind": "MList",
+   "modified": 1799000000,
+   "fields": {
+    "id": "y",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "l:x",
+   "kind": "MList",
+   "modified": 1799000000,
+   "deleted": true,
+   "fields": {
+    "id": "x",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  },
+  {
+   "name": "l:y",
+   "kind": "MList",
+   "modified": 1799000000,
+   "deleted": true,
+   "fields": {
+    "id": "y",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "l:y",
+   "kind": "MList",
+   "modified": 1799000000,
+   "deleted": true,
+   "fields": {
+    "id": "y",
+    "name": "Liste",
+    "color": "blue",
+    "order": "m"
+   }
+  }
+ ]
+}

@@ -1,0 +1,86 @@
+{
+ "description": "Fortschritt: done (Loeschmarke) schlaegt aelteren Stand; neuere Wiedergabe belebt done wieder",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000500,
+   "deleted": true,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000300,
+   "deleted": true,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 0,
+    "duration": 600
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000400,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 100,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000400,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 120,
+    "duration": 600
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000500,
+   "deleted": true,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000400,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 120,
+    "duration": 600
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000500,
+   "deleted": true,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0,
+    "duration": 600
+   }
+  }
+ ]
+}

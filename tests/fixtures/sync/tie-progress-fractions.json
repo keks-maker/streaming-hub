@@ -1,0 +1,185 @@
+{
+ "description": "Gleichstand Progress: groessere position, dann groessere duration (Bruchzahlen, 1e-05); bei vollstaendigem Gleichstand der benannten Felder gewinnt der Remote-Stand (unbekannte Felder zaehlen nicht)",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0.30000000000000004,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 0.000009,
+    "duration": 1
+   }
+  },
+  {
+   "name": "p:ccccccccccc",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "ccccccccccc",
+    "position": 12.5,
+    "duration": 600.25
+   }
+  },
+  {
+   "name": "p:ddddddddddd",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "ddddddddddd",
+    "position": 5,
+    "duration": 1200,
+    "y": 2
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 1000000,
+    "duration": 1
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0.3,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 0.00001,
+    "duration": 1
+   }
+  },
+  {
+   "name": "p:ccccccccccc",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "ccccccccccc",
+    "position": 12.5,
+    "duration": 600.5
+   }
+  },
+  {
+   "name": "p:ddddddddddd",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "ddddddddddd",
+    "position": 5,
+    "duration": 1200,
+    "x": 1
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 999999.5,
+    "duration": 1
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0.30000000000000004,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 0.00001,
+    "duration": 1
+   }
+  },
+  {
+   "name": "p:ccccccccccc",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "ccccccccccc",
+    "position": 12.5,
+    "duration": 600.5
+   }
+  },
+  {
+   "name": "p:ddddddddddd",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "ddddddddddd",
+    "position": 5,
+    "duration": 1200,
+    "x": 1
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 1000000,
+    "duration": 1
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0.30000000000000004,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 1000000,
+    "duration": 1
+   }
+  }
+ ]
+}

@@ -1,0 +1,120 @@
+{
+ "description": "Loeschmarken aelter als 30 Tage entfallen (remote-only, local-only); frische (29 Tage) bleiben; abgelaufene Loeschmarke gegen lebende Gegenseite bleibt und wird hochgeladen",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1797321600,
+   "deleted": true,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 0,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:ddddddddddd",
+   "kind": "Progress",
+   "modified": 1797494400,
+   "deleted": true,
+   "fields": {
+    "id": "ddddddddddd",
+    "position": 0,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1797321600,
+   "deleted": true,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 0,
+    "duration": 600
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1797321600,
+   "deleted": true,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 0,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:ddddddddddd",
+   "kind": "Progress",
+   "modified": 1797494390,
+   "fields": {
+    "id": "ddddddddddd",
+    "position": 5,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1797321500,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 30,
+    "duration": 600
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:ddddddddddd",
+   "kind": "Progress",
+   "modified": 1797494400,
+   "deleted": true,
+   "fields": {
+    "id": "ddddddddddd",
+    "position": 0,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1797321600,
+   "deleted": true,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 0,
+    "duration": 600
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "p:ddddddddddd",
+   "kind": "Progress",
+   "modified": 1797494400,
+   "deleted": true,
+   "fields": {
+    "id": "ddddddddddd",
+    "position": 0,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:eeeeeeeeeee",
+   "kind": "Progress",
+   "modified": 1797321600,
+   "deleted": true,
+   "fields": {
+    "id": "eeeeeeeeeee",
+    "position": 0,
+    "duration": 600
+   }
+  }
+ ]
+}

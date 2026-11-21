@@ -1,0 +1,80 @@
+{
+ "description": "Wert ohne Text gilt als \"\": Zahl als title (r:a remote) verliert gegen \"a\"; Zahl lokal gegen fehlendes title (r:b) ist Gleichstand, Remote gewinnt",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "r:bbbbbbbbbbb",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "channel": "c",
+    "title": 7
+   }
+  },
+  {
+   "name": "r:aaaaaaaaaaa",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "channel": "c",
+    "title": "a"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "r:aaaaaaaaaaa",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "channel": "c",
+    "title": 5
+   }
+  },
+  {
+   "name": "r:bbbbbbbbbbb",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "channel": "c"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "r:aaaaaaaaaaa",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "channel": "c",
+    "title": "a"
+   }
+  },
+  {
+   "name": "r:bbbbbbbbbbb",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "channel": "c"
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "r:aaaaaaaaaaa",
+   "kind": "Recent",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "channel": "c",
+    "title": "a"
+   }
+  }
+ ]
+}

@@ -1,0 +1,159 @@
+{
+ "description": "Gleichstand Progress: Feldreihenfolge (je Paar gegenlaeufig), jedes Feld einzeln entscheidend, nur unbekannte Felder unterscheiden sich -> Remote",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:cas00000000",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "position": 7,
+    "duration": 3
+   }
+  },
+  {
+   "name": "p:cas00000001",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000001",
+    "position": 3,
+    "duration": 5
+   }
+  },
+  {
+   "name": "p:cas00000002",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "position": 5,
+    "duration": 7
+   }
+  },
+  {
+   "name": "p:cas00000003",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000003",
+    "position": 5,
+    "duration": 5,
+    "zzUnknown": "zzz",
+    "extra": 99,
+    "listIDx": "q"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:cas00000000",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "position": 3,
+    "duration": 7
+   }
+  },
+  {
+   "name": "p:cas00000001",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000001",
+    "position": 7,
+    "duration": 5
+   }
+  },
+  {
+   "name": "p:cas00000002",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "position": 5,
+    "duration": 3
+   }
+  },
+  {
+   "name": "p:cas00000003",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000003",
+    "position": 5,
+    "duration": 5,
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:cas00000000",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "position": 7,
+    "duration": 3
+   }
+  },
+  {
+   "name": "p:cas00000001",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000001",
+    "position": 7,
+    "duration": 5
+   }
+  },
+  {
+   "name": "p:cas00000002",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "position": 5,
+    "duration": 7
+   }
+  },
+  {
+   "name": "p:cas00000003",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000003",
+    "position": 5,
+    "duration": 5,
+    "zzUnknown": "aaa",
+    "extra": 1
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "p:cas00000000",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000000",
+    "position": 7,
+    "duration": 3
+   }
+  },
+  {
+   "name": "p:cas00000002",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "cas00000002",
+    "position": 5,
+    "duration": 7
+   }
+  }
+ ]
+}

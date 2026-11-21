@@ -1,0 +1,44 @@
+{
+ "description": "Warteschlange: lokal neuer wird hochgeladen",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000300,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"},{\"id\":\"bbbbbbbbbbb\",\"title\":\"B\"}]"
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000200,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]"
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000300,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"},{\"id\":\"bbbbbbbbbbb\",\"title\":\"B\"}]"
+   }
+  }
+ ],
+ "toUpload": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000300,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"},{\"id\":\"bbbbbbbbbbb\",\"title\":\"B\"}]"
+   }
+  }
+ ]
+}

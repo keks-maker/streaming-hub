@@ -1,0 +1,40 @@
+{
+ "description": "Warteschlange: gleiche items, nur unbekannte Felder verschieden -> vollstaendiger Gleichstand, Remote gewinnt, kein Upload",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000300,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]",
+    "x": 1
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000300,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]",
+    "y": "z",
+    "n": null
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "queue",
+   "kind": "Queue",
+   "modified": 1799000300,
+   "fields": {
+    "items": "[{\"id\":\"aaaaaaaaaaa\",\"title\":\"A\"}]",
+    "y": "z",
+    "n": null
+   }
+  }
+ ],
+ "toUpload": []
+}

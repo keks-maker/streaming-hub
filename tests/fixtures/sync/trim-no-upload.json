@@ -1,0 +1,81 @@
+{
+ "description": "Lokal gekuerzt (Eintrag fehlt lokal): keine Loeschung, Eintrag kommt zurueck, kein Upload",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1798999990,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 10,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:ccccccccccc",
+   "kind": "Progress",
+   "modified": 1798999980,
+   "fields": {
+    "id": "ccccccccccc",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:bbbbbbbbbbb",
+   "kind": "Progress",
+   "modified": 1798999990,
+   "fields": {
+    "id": "bbbbbbbbbbb",
+    "position": 10,
+    "duration": 600
+   }
+  },
+  {
+   "name": "p:ccccccccccc",
+   "kind": "Progress",
+   "modified": 1798999980,
+   "fields": {
+    "id": "ccccccccccc",
+    "position": 10,
+    "duration": 600
+   }
+  }
+ ],
+ "toUpload": []
+}

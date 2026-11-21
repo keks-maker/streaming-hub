@@ -1,0 +1,46 @@
+{
+ "description": "Unbekannte Felder bleiben im Gewinner erhalten",
+ "now": 1800000000,
+ "local": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000000,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 10,
+    "duration": 600,
+    "x": 1
+   }
+  }
+ ],
+ "remote": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000005,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 20,
+    "duration": 600,
+    "y": "z",
+    "n": null
+   }
+  }
+ ],
+ "merged": [
+  {
+   "name": "p:aaaaaaaaaaa",
+   "kind": "Progress",
+   "modified": 1799000005,
+   "fields": {
+    "id": "aaaaaaaaaaa",
+    "position": 20,
+    "duration": 600,
+    "y": "z",
+    "n": null
+   }
+  }
+ ],
+ "toUpload": []
+}
