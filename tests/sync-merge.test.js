@@ -9,9 +9,10 @@ const path = require('node:path');
 const { merge } = require('../lib/sync-merge.js');
 
 const dir = path.join(__dirname, 'fixtures', 'sync');
-const vectors = fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort();
+const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+const vectors = fs.readdirSync(dir).filter(f => f.endsWith('.json') && f !== 'manifest.json').sort();
 
-test('Vektordateien vorhanden', () => assert.ok(vectors.length >= 26));
+test('Vektordateien entsprechen genau dem Manifest (manifest.json)', () => assert.deepEqual(vectors, [...manifest].sort()));
 
 for (const file of vectors) {
   test(`Vektor ${file}`, () => {
