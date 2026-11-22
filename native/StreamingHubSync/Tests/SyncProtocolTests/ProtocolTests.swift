@@ -165,14 +165,14 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(db.sent.count, 2)
     }
 
-    func testFailedFirstRunSeedsAgainWithEmptyPending() async throws {
+    func testFailedFirstRunIsRetriedViaPending() async throws {
         let local = [progress("a", 1), progress("b", 1)]
         let session = SyncSession(database: db, store: store, now: { 1_000_000 })
         db.sendHandler = { $0.map { .failed(name: $0.name) } }
         let o1 = try await session.sync(local: local, pending: [])
-        XCTAssertEqual(o1.failed, ["p:a", "p:b"]); XCTAssertNotEqual(store.state.seeded, true)
+        XCTAssertEqual(o1.failed, ["p:a", "p:b"]); XCTAssertEqual(store.state.seeded, true)
         db.sendHandler = { $0.map { .saved($0) } }
-        let o2 = try await session.sync(local: local, pending: [])
+        let o2 = try await session.sync(local: local, pending: ["p:a", "p:b"])
         XCTAssertEqual(o2.uploaded, ["p:a", "p:b"]); XCTAssertTrue(o2.failed.isEmpty)
         XCTAssertEqual(store.state.seeded, true)
     }
@@ -198,16 +198,56 @@ final class ProtocolTests: XCTestCase {
         XCTAssertLessThanOrEqual(db.sent.count, CloudSyncEngine.maxSendRounds)
         XCTAssertTrue(Set(o.failed).isDisjoint(with: Set(o.settled)))
         XCTAssertEqual(db.sent.count, CloudSyncEngine.maxSendRounds)
-        XCTAssertEqual(o.failed, ["p:a"]); XCTAssertNotEqual(store.state.seeded, true)
+        XCTAssertEqual(o.failed, ["p:a"]); XCTAssertEqual(store.state.seeded, true)
     }
 
     func testSettledAndFailedAreDisjointAfterZoneReset() async throws {
         var calls = 0
         db.sendHandler = { recs in calls += 1
-            return recs.map { calls == 1 ? .saved($0) : .failed(name: $0.name) } }
-        db.fetchResults = [CloudFetch(zoneReset: true)]
+            if calls == 1 { return recs.map { $0.name == "p:a" ? .saved($0) : .zoneMissing(name: $0.name) } }
+            return recs.map { .failed(name: $0.name) } }
         let session = SyncSession(database: db, store: store, now: { 1_000_000 })
-        let o = try await session.sync(local: [progress("a", 1)], pending: ["p:a"])
-        XCTAssertTrue(Set(o.failed).isDisjoint(with: Set(o.settled)))
+        let o = try await session.sync(local: [progress("a", 1), progress("b", 1)], pending: ["p:a", "p:b"])
+        XCTAssertEqual(o.settled, [])
+        XCTAssertEqual(o.failed, ["p:a", "p:b"])
+        XCTAssertEqual(o.uploaded, [])
+    }
+
+    func testPermanentFailureStillMarksSeededAndSecondRunUploadsOnlyPending() async throws {
+        let local = [progress("a", 1), progress("b", 1)]
+        let session = SyncSession(database: db, store: store, now: { 1_000_000 })
+        db.sendHandler = { $0.map { $0.name == "p:a" ? .failed(name: $0.name) : .saved($0) } }
+        let o1 = try await session.sync(local: local, pending: [])
+        XCTAssertEqual(o1.failed, ["p:a"]); XCTAssertEqual(o1.uploaded, ["p:b"])
+        XCTAssertEqual(store.state.seeded, true)
+        let sentBefore = db.sent.count
+        let o2 = try await session.sync(local: local, pending: ["p:a"])
+        XCTAssertEqual(db.sent.count, sentBefore + 1)
+        XCTAssertEqual(db.sent.last?.map(\.name), ["p:a"])
+        XCTAssertEqual(o2.failed, ["p:a"])
+    }
+
+    func testExpiredTombstoneLeavesGuardAfterSeeding() async throws {
+        let old = 1_000_000 - 40 * 86_400.0
+        let tomb = progress("x", old, deleted: true)
+        let session = SyncSession(database: db, store: store, now: { 1_000_000 })
+        db.sendHandler = { $0.map { $0.name == "p:a" ? .failed(name: $0.name) : .saved($0) } }
+        let o1 = try await session.sync(local: [progress("a", 1), tomb], pending: [])
+        XCTAssertEqual(o1.uploaded, ["p:x"]); XCTAssertEqual(store.state.seeded, true)
+        // Server kennt die Löschmarke jetzt; ohne Erstabgleich ist sie nicht mehr geschützt und entfällt lokal.
+        db.fetchResults = [CloudFetch(records: [tomb])]
+        let o2 = try await session.sync(local: [progress("a", 1), tomb], pending: ["p:a"])
+        XCTAssertEqual(o2.remove, ["p:x"]); XCTAssertFalse(o2.uploaded.contains("p:x"))
+    }
+
+    func testUploadedAndFailedAreDisjoint() async throws {
+        var calls = 0
+        db.sendHandler = { recs in calls += 1
+            if calls == 1 { return recs.map { $0.name == "p:a" ? .saved($0) : .zoneMissing(name: $0.name) } }
+            return recs.map { .failed(name: $0.name) } }
+        let session = SyncSession(database: db, store: store, now: { 1_000_000 })
+        let o = try await session.sync(local: [progress("a", 1), progress("b", 1)], pending: ["p:a", "p:b"])
+        XCTAssertTrue(Set(o.uploaded).isDisjoint(with: Set(o.failed)))
+        XCTAssertEqual(o.failed, ["p:a", "p:b"])
     }
 }

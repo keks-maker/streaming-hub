@@ -84,11 +84,14 @@ public final class SyncSession {
             persist()
             throw HelperError(.syncFailed, error.localizedDescription)
         }
-        // `failed` hat Vorrang vor `settled` (Namen sind disjunkt).
+        // `failed` hat Vorrang vor `settled` und `uploaded` (Namen sind disjunkt).
         let failedNames = Set(outcome.failed)
         outcome.settled.removeAll { failedNames.contains($0) }
-        // Erstabgleich erst nach vollständig erfolgreichem Durchlauf als erledigt speichern.
-        if outcome.failed.isEmpty { state.seeded = true }
+        outcome.uploaded.removeAll { failedNames.contains($0) }
+        // Erstabgleich gilt nach einem Lauf ohne geworfenen Fehler als erledigt: jeder nicht hochgeladene Record steht
+        // namentlich in `failed`, JS hält ihn in `pending` und versucht ihn erneut. Bei einem Fehler (Wurf oder
+        // Fehlerantwort ohne Namen) kommt dieser Punkt nicht und `seeded` bleibt unverändert.
+        state.seeded = true
         state.lastSync = now()
         outcome.lastSync = state.lastSync ?? 0
         persist()

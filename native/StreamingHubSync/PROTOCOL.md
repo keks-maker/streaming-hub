@@ -43,10 +43,10 @@ Antwort `result`:
 - `apply`: Records, die JS lokal übernehmen muss (Gewinner ungleich dem gelieferten Stand). JS schreibt sie ohne sie wieder
   als lokale Änderung zu markieren.
 - `remove`: lokal entfallende Namen (abgelaufene Löschmarken).
-- `uploaded`: auf dem Server gespeichert.
+- `uploaded`: auf dem Server gespeichert. `uploaded` und `failed` sind disjunkt (`failed` hat Vorrang).
 - `settled`: aus `pending` erledigt (gespeichert oder Server-Stand gewann); JS nimmt sie aus `pending`.
 - `failed`: Senden fehlgeschlagen oder nach den Sende-Runden offen, bleibt in `pending`. `settled` und `failed` sind disjunkt (`failed` hat Vorrang).
-- Der Erstabgleich (Hochladen des gesamten lokalen Bestands) gilt erst nach einem Lauf ohne Fehler und ohne `failed` als erledigt; andernfalls wird er im nächsten Lauf wiederholt, auch bei leerem `pending`.
+- Der Erstabgleich (Hochladen des gesamten lokalen Bestands) gilt als erledigt, sobald ein Lauf ohne Fehlerantwort durchgelaufen ist; jeder nicht hochgeladene Record steht dann namentlich in `failed`. JS MUSS `failed` in `pending` behalten und beim nächsten Lauf erneut senden. Bei einer Fehlerantwort (`ok:false`) bleibt der Erstabgleich offen und wird im nächsten Lauf wiederholt, auch bei leerem `pending`.
 - Hat JS zwischen Anfrage und Antwort einen Record erneut geändert, gilt dessen neuere `modified`; JS wendet `apply` nur an,
   wenn der lokale Record noch dem gelieferten entspricht, und lässt ihn sonst pending.
 
