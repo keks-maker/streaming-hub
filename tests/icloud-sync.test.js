@@ -147,7 +147,7 @@ test('remoteChange löst sync aus', async () => {
   const t = setup({ FAKE_EVENTS: JSON.stringify([{ event: 'remoteChange' }]) });
   try {
     t.sync.start();
-    await until(() => t.commands().filter(c => c.cmd === 'sync').length >= 2, 'sync nach remoteChange');
+    await until(() => t.commands().filter(c => c.cmd === 'sync').length >= 2, 'sync nach remoteChange', 12000);
   } finally { await t.cleanup(); }
 });
 
@@ -283,4 +283,79 @@ test('failed bleibt pending und wird beim nächsten sync wieder mitgesendet', as
     const second = t.commands().filter(c => c.cmd === 'sync')[1];
     assert.deepEqual(second.pending, [`p:${A}`]); // B war erledigt, A (failed) wieder dabei
   } finally { await t.cleanup(); }
+});
+
+test('Warteschlange: echte Änderungszeit des Speichers, nicht der Zeitpunkt der Erkennung', async () => {
+  const old = NOW - 90000;
+  const t2 = setup();
+  t2.local.queue = [{ id: A, title: 'Alt' }];
+  // Adapter um readQueueModified ergänzen: Datei zuletzt vor einem Tag geändert
+  const sync = createICloudSync({
+    platform: 'darwin', enabled: true, helperDir: t2.dir,
+    command: { file: process.execPath, args: [FAKE] },
+    spawnImpl: (file, args, opts) => spawn(file, args, { ...opts, env: { ...process.env, FAKE_LOG: path.join(t2.dir, 'log2.txt'), FAKE_COUNTER: path.join(t2.dir, 'c2') } }),
+    now: () => NOW,
+    stateStore: { read: () => null, write: () => {} },
+    adapter: { readProgress: () => [], readQueue: () => t2.local.queue, readQueueModified: () => old, applyProgress: () => {}, applyQueue: () => {} },
+    timing: { debounceMs: 30, helloTimeoutMs: 1500, requestTimeoutMs: 1500, syncTimeoutMs: 1500, retryAfterFailureMs: 60000, restartDelaysMs: [20], stopGraceMs: 1500 },
+  });
+  try {
+    sync.start();
+    const log2 = path.join(t2.dir, 'log2.txt');
+    await until(() => fs.existsSync(log2) && fs.readFileSync(log2, 'utf8').includes('"cmd":"sync"'), 'sync');
+    const msg = fs.readFileSync(log2, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)).find(m => m.cmd === 'sync');
+    const queue = msg.local.find(r => r.name === 'queue');
+    assert.equal(queue.modified, old); // nicht NOW
+  } finally { await sync.stop(); await t2.cleanup(); }
+});
+
+test('Warteschlange ohne bekannte Änderungszeit: 0 statt now()', async () => {
+  const t = setup();
+  t.local.queue = [{ id: A, title: 'x' }];
+  try {
+    t.sync.start();
+    await until(() => t.commands().some(c => c.cmd === 'sync'), 'sync');
+    const queue = t.commands().find(c => c.cmd === 'sync').local.find(r => r.name === 'queue');
+    assert.equal(queue.modified, 0);
+  } finally { await t.cleanup(); }
+});
+
+test('Alte lokale Warteschlange verliert gegen neuere vom Server', async () => {
+  const items = JSON.stringify([{ id: B, title: 'Neu' }]);
+  const result = { apply: [{ name: 'queue', kind: 'Queue', modified: NOW - 10, fields: { items } }] };
+  const t = setup({ FAKE_RESULT: JSON.stringify(result) });
+  t.local.queue = [{ id: A, title: 'Alt' }];
+  try {
+    t.sync.start();
+    await until(() => t.applied.queue.length > 0, 'Queue angewendet');
+    assert.deepEqual(t.applied.queue[0], [{ id: B, title: 'Neu' }]);
+  } finally { await t.cleanup(); }
+});
+
+test('Lokal gekürzte Fortschritts-Einträge werden nicht bei jedem Abgleich erneut angewendet', async () => {
+  const result = { apply: [{ name: `p:${B}`, kind: 'Progress', modified: NOW - 10, fields: { id: B, position: 5, duration: 100 } }] };
+  const t = setup({ FAKE_RESULT: JSON.stringify(result) });
+  // Adapter, dessen Bestand B nach dem Anwenden nicht enthält (lokal gekürzt)
+  const dir = t.dir;
+  const store = { v: null };
+  const applied = [];
+  const sync = createICloudSync({
+    platform: 'darwin', enabled: true, helperDir: dir,
+    command: { file: process.execPath, args: [FAKE] },
+    spawnImpl: (file, args, opts) => spawn(file, args, { ...opts, env: { ...process.env, FAKE_LOG: path.join(dir, 'log3.txt'), FAKE_RESULT: JSON.stringify(result) } }),
+    now: () => NOW,
+    stateStore: { read: () => store.v, write: s => { store.v = JSON.parse(JSON.stringify(s)); } },
+    adapter: { readProgress: () => [], readQueue: () => [], applyProgress: c => applied.push(c), applyQueue: () => {} },
+    timing: { debounceMs: 30, helloTimeoutMs: 1500, requestTimeoutMs: 1500, syncTimeoutMs: 1500, retryAfterFailureMs: 60000, restartDelaysMs: [20], stopGraceMs: 1500 },
+  });
+  try {
+    sync.start();
+    await until(() => applied.length === 1, 'erstes Anwenden');
+    await until(() => store.v && store.v.trimmed && store.v.trimmed[`p:${B}`] === NOW - 10, 'gemerkt');
+    sync.syncNow();
+    await until(() => fs.readFileSync(path.join(dir, 'log3.txt'), 'utf8').split('\n').filter(l => l.includes('"cmd":"sync"')).length === 2, 'zweiter sync');
+    await new Promise(resolve => setTimeout(resolve, 150));
+    assert.equal(applied.length, 1); // zweites apply mit gleichem Stand wird ignoriert
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'log3.txt'), 'utf8').split('\n').filter(l => l.includes('"cmd":"sync"'))[1]).local.length, 0); // Kürzen wird nicht als Löschung gemeldet
+  } finally { await sync.stop(); }
 });

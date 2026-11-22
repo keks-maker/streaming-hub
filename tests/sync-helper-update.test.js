@@ -162,3 +162,72 @@ test('Helferordner übersteht den App-Austausch (stash/restore)', t => {
   assert.equal(fs.existsSync(stash), false);
   assert.equal(stashSyncHelper(path.join(dir, 'fehlt'), stash), false);
 });
+
+function makeApp(dir, version) {
+  const contents = path.join(dir, 'StreamingHubSync.app', 'Contents');
+  fs.mkdirSync(contents, { recursive: true });
+  fs.writeFileSync(path.join(contents, 'Info.plist'), `<key>CFBundleShortVersionString</key><string>${version}</string>`);
+}
+
+test('recoverSyncHelperStash: fehlender Helferordner wird aus dem Stash zurückgelegt', t => {
+  const { recoverSyncHelperStash } = require('../lib/sync-helper-update.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-recover-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const support = path.join(dir, 'Support');
+  fs.mkdirSync(support);
+  const stash = `${support}.synchelper-stash-99999999`;
+  makeApp(stash, '1.2.0');
+  fs.writeFileSync(path.join(stash, 'state.json'), 'x');
+  const helperDir = path.join(support, 'SyncHelper');
+  const result = recoverSyncHelperStash(helperDir, support);
+  assert.equal(result.restored.length, 1);
+  assert.equal(installedHelperVersion(helperDir), '1.2.0');
+  assert.equal(fs.readFileSync(path.join(helperDir, 'state.json'), 'utf8'), 'x');
+  assert.equal(fs.existsSync(stash), false);
+});
+
+test('recoverSyncHelperStash: beides vorhanden, der neuere Helfer bleibt, Stash erst nach gültiger Kopie weg', t => {
+  const { recoverSyncHelperStash } = require('../lib/sync-helper-update.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-recover-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const support = path.join(dir, 'Support');
+  const helperDir = path.join(support, 'SyncHelper');
+  fs.mkdirSync(support);
+  // aktueller Helfer neuer als Stash: Stash ergänzt nur, wird entfernt
+  makeApp(helperDir, '1.3.0');
+  const stash = `${support}.synchelper-stash-99999999`;
+  makeApp(stash, '1.2.0');
+  fs.writeFileSync(path.join(stash, 'state.json'), 's');
+  recoverSyncHelperStash(helperDir, support);
+  assert.equal(installedHelperVersion(helperDir), '1.3.0');
+  assert.equal(fs.readFileSync(path.join(helperDir, 'state.json'), 'utf8'), 's');
+  assert.equal(fs.existsSync(stash), false);
+  // Stash neuer als aktueller Helfer: Stash gewinnt, Zustand des alten Ordners bleibt ergänzt
+  const stash2 = `${support}.synchelper-stash-99999998`;
+  makeApp(stash2, '1.9.0');
+  recoverSyncHelperStash(helperDir, support);
+  assert.equal(installedHelperVersion(helperDir), '1.9.0');
+  assert.equal(fs.readFileSync(path.join(helperDir, 'state.json'), 'utf8'), 's');
+  assert.equal(fs.existsSync(stash2), false);
+  assert.equal(fs.existsSync(`${helperDir}.old-${process.pid}`), false);
+});
+
+test('recoverSyncHelperStash: weder Stash noch Helfer lesbar, nichts wird gelöscht', t => {
+  const { recoverSyncHelperStash } = require('../lib/sync-helper-update.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-recover-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const support = path.join(dir, 'Support');
+  const helperDir = path.join(support, 'SyncHelper');
+  fs.mkdirSync(helperDir, { recursive: true });
+  const stash = `${support}.synchelper-stash-99999999`;
+  fs.mkdirSync(stash);
+  fs.writeFileSync(path.join(stash, 'state.json'), 'x');
+  recoverSyncHelperStash(helperDir, support);
+  assert.equal(fs.existsSync(path.join(stash, 'state.json')), true);
+});
+
+test('restoreSyncHelperSafely: wirft restore, bleibt es beim Rückgabewert false (Update gilt nicht als gescheitert)', () => {
+  const { restoreSyncHelperSafely } = require('../updater.js');
+  assert.equal(restoreSyncHelperSafely('/x', '/y', () => { throw new Error('kaputt'); }), false);
+  assert.equal(restoreSyncHelperSafely('/x', '/y', () => true), true);
+});

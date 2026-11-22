@@ -73,7 +73,9 @@ test('Playlist: wird validiert gespeichert und nach Neustart wieder gelesen; kap
   await assert.rejects(async () => t.call('youtube-mini:set-playlist', [{ id: 'kaputt' }]), /Ungültige Playlist/);
   await assert.rejects(async () => t.call('youtube-mini:set-playlist', 'x'), /Ungültige Playlist/);
   const file = JSON.parse(fs.readFileSync(path.join(t.dir, 'youtube-playlist.json'), 'utf8'));
-  assert.deepEqual(file, { version: 1, items: [{ id: ID, title: 'Titel' }] });
+  assert.equal(typeof file.modified, 'number'); // echte Änderungszeit für den iCloud-Abgleich
+  assert.deepEqual({ ...file, modified: undefined }, { version: 1, items: [{ id: ID, title: 'Titel' }], modified: undefined });
+  assert.equal(t.api.getPlaylistModified(), file.modified);
   const restart = setup({ files: { 'youtube-playlist.json': file } });
   assert.deepEqual(await restart.call('youtube-mini:get-playlist'), [{ id: ID, title: 'Titel' }]);
   const broken = setup({ files: { 'youtube-playlist.json': { items: [{ id: 'x' }, { id: ID, title: 5 }, null] } } });

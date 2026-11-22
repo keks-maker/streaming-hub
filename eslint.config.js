@@ -25,6 +25,8 @@ export default [
     ignores: [
       'node_modules/',
       'dist/',
+      'native/**/.build/**',
+      'native/**/dist/**',
       'release/',
       'release-x64/',
       'release-linux/',

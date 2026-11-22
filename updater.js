@@ -32,7 +32,7 @@ const {
 } = require('./lib/bundle-install.js');
 const { findLinuxAppRoot, installLinuxRelease } = require('./lib/linux-install.js');
 const os = require('os');
-const { installSyncHelper, installedHelperVersion, stashSyncHelper, restoreSyncHelper } = require('./lib/sync-helper-update.js');
+const { installSyncHelper, installedHelperVersion, stashSyncHelper, restoreSyncHelper, recoverSyncHelperStash } = require('./lib/sync-helper-update.js');
 const { fetchReleaseCandidates, selectReleaseNotes, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
 // Basis-URL setzt main.js nur nach Prüfung (lib/update-base.js) in die Env des Updater-Prozesses; Default GitHub.
@@ -471,6 +471,17 @@ function extractLinuxArchive(archive, installRoot) {
   }
 }
 
+// Helfer nach dem App-Austausch zurücklegen. Ein Fehler lässt das Update nicht scheitern (sonst entfielen restoreUserFiles
+// und das Aufräumen); der Stash bleibt liegen, recoverSyncHelperStash holt ihn beim nächsten Start zurück.
+function restoreSyncHelperSafely(helperDir, stashDir, restore = restoreSyncHelper) {
+  try {
+    return restore(helperDir, stashDir);
+  } catch (error) {
+    updaterLog('ERROR', 'Sync-Helfer nicht zurückgelegt (Stash bleibt erhalten)', error.message);
+    return false;
+  }
+}
+
 // Mac-Helfer aus dem optionalen Release-Asset aktualisieren. Fehlt das Asset, ist das kein Fehler; ein Prüffehler
 // (Signatur, Gatekeeper) lässt den alten Helfer stehen und bricht das App-Update nicht ab.
 async function updateSyncHelper(release, helperDir, deps = {}) {
@@ -555,6 +566,7 @@ process.on('message', async msg => {
       verifyMacBundle(bundle, extractDir);
       // Der App-Austausch ersetzt das ganze Support-Verzeichnis: Helferordner vorher beiseite, danach zurück.
       const helperDir = syncHelperDir();
+      try { recoverSyncHelperStash(helperDir, installDir); } catch (recoverError) { updaterLog('ERROR', 'Sync-Helfer-Stash nicht wiederhergestellt', recoverError.message); }
       const helperStash = `${installDir}.synchelper-stash-${process.pid}`;
       let stashed = false;
       try {
@@ -565,7 +577,7 @@ process.on('message', async msg => {
       try {
         installMacBundle(bundle, installDir);
       } finally {
-        if (stashed) restoreSyncHelper(helperDir, helperStash);
+        if (stashed) restoreSyncHelperSafely(helperDir, helperStash);
       }
       await updateSyncHelper(release, helperDir);
       updateDataDir = installDir;
@@ -584,4 +596,4 @@ process.on('message', async msg => {
 });
 }
 
-module.exports = { updateSyncHelper, applyLinuxRelease, extractLinuxArchive, assertSafeArchiveEntries, findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };
+module.exports = { restoreSyncHelperSafely, updateSyncHelper, applyLinuxRelease, extractLinuxArchive, assertSafeArchiveEntries, findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };

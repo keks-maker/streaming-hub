@@ -40,6 +40,7 @@ const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
 const { registerYoutubeMini } = require('./lib/youtube-mini-ipc.js');
 const { registerYoutubeProgress } = require('./lib/youtube-progress-ipc.js');
 const { createICloudSync } = require('./lib/icloud-sync.js');
+const { recoverSyncHelperStash } = require('./lib/sync-helper-update.js');
 const { registerIcloudSyncIpc, readEnabled: readIcloudSyncEnabled } = require('./lib/icloud-sync-ipc.js');
 let icloudSync = null; // iCloud-Abgleich über den Mac-Helfer (lib/icloud-sync.js), No-op ohne Helfer/Konto
 let youtubeMini = null; // Zugriff auf die Mini-Player-Einstellungen (Kontextmenü der Webviews)
@@ -885,6 +886,9 @@ app.whenReady().then(() => {
   try {
     const syncHelperDir = process.env.STREAMING_HUB_SYNC_HELPER_DIR
       || (process.env.STREAMING_HUB_USER_DATA ? path.join(app.getPath('userData'), 'SyncHelper') : path.join(app.getPath('appData'), 'Streaming Hub', 'SyncHelper'));
+    if (!process.env.STREAMING_HUB_SYNC_HELPER_DIR && !process.env.STREAMING_HUB_USER_DATA) {
+      try { recoverSyncHelperStash(syncHelperDir, path.join(app.getPath('appData'), 'Streaming Hub')); } catch (e) { logger.warn('Sync-Helfer-Stash nicht wiederhergestellt:', e.message); }
+    }
     icloudSync = createICloudSync({
       helperDir: syncHelperDir,
       enabled: readIcloudSyncEnabled(userStorage),
@@ -893,9 +897,10 @@ app.whenReady().then(() => {
       adapter: {
         readProgress: () => youtubeProgress.getAllEntries(),
         readQueue: () => youtubeMini.getPlaylist(),
+        readQueueModified: () => youtubeMini.getPlaylistModified(),
         applyProgress: change => youtubeProgress.applyRemote(change),
-        applyQueue: items => {
-          youtubeMini.applyRemotePlaylist(items);
+        applyQueue: (items, modified) => {
+          youtubeMini.applyRemotePlaylist(items, modified);
           if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('youtube-mini:playlist-remote', items);
         },
       },
