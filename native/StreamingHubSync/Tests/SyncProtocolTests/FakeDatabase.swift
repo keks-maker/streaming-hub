@@ -10,6 +10,7 @@ final class FakeDatabase: CloudSyncDatabase {
     var fetchResults: [CloudFetch] = [CloudFetch()]
     var sendHandler: ([SyncRecord]) -> [CloudSendResult] = { $0.map { .saved($0) } }
     var fetchError: Error?
+    var sendError: Error?
     private(set) var sent: [[SyncRecord]] = []
     private(set) var forgotten: [String] = []
     private(set) var fetchCount = 0
@@ -21,6 +22,7 @@ final class FakeDatabase: CloudSyncDatabase {
     }
     func send(_ records: [SyncRecord]) async throws -> [CloudSendResult] {
         sent.append(records)
+        if let sendError { throw sendError }
         return sendHandler(records)
     }
     func currentAccountStatus() async -> CloudAccountStatus { account }

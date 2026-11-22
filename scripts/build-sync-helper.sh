@@ -48,6 +48,7 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "iCloud.tv.streaminghub" || { echo "Entitlement fehlt" >&2; exit 1; }
 
 ZIP="$DIST/StreamingHubSync-$VERSION.zip"
+[ "$NOTARIZE" = 1 ] || ZIP="$DIST/StreamingHubSync-$VERSION-unnotarized.zip"   # nie unter dem Release-Asset-Namen
 if [ "$NOTARIZE" = 1 ]; then
   echo "== Notarisieren"
   ditto -c -k --keepParent "$APP" "$DIST/notarize.zip"

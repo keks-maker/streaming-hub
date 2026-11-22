@@ -47,7 +47,7 @@ function request(creds, method, apiPath, body) {
       let data = '';
       res.on('data', (c) => { data += c; });
       res.on('end', () => {
-        let json = null;
+        let json;
         try { json = data ? JSON.parse(data) : null; } catch { json = null; }
         resolve({ status: res.statusCode, json });
       });

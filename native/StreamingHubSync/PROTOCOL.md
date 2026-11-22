@@ -45,7 +45,8 @@ Antwort `result`:
 - `remove`: lokal entfallende Namen (abgelaufene Löschmarken).
 - `uploaded`: auf dem Server gespeichert.
 - `settled`: aus `pending` erledigt (gespeichert oder Server-Stand gewann); JS nimmt sie aus `pending`.
-- `failed`: Senden fehlgeschlagen, bleibt in `pending`.
+- `failed`: Senden fehlgeschlagen oder nach den Sende-Runden offen, bleibt in `pending`. `settled` und `failed` sind disjunkt (`failed` hat Vorrang).
+- Der Erstabgleich (Hochladen des gesamten lokalen Bestands) gilt erst nach einem Lauf ohne Fehler und ohne `failed` als erledigt; andernfalls wird er im nächsten Lauf wiederholt, auch bei leerem `pending`.
 - Hat JS zwischen Anfrage und Antwort einen Record erneut geändert, gilt dessen neuere `modified`; JS wendet `apply` nur an,
   wenn der lokale Record noch dem gelieferten entspricht, und lässt ihn sonst pending.
 

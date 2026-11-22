@@ -164,4 +164,50 @@ final class ProtocolTests: XCTestCase {
         catch let e as HelperError { XCTAssertEqual(e.code, .syncFailed) } catch { XCTFail("\(error)") }
         XCTAssertEqual(db.sent.count, 2)
     }
+
+    func testFailedFirstRunSeedsAgainWithEmptyPending() async throws {
+        let local = [progress("a", 1), progress("b", 1)]
+        let session = SyncSession(database: db, store: store, now: { 1_000_000 })
+        db.sendHandler = { $0.map { .failed(name: $0.name) } }
+        let o1 = try await session.sync(local: local, pending: [])
+        XCTAssertEqual(o1.failed, ["p:a", "p:b"]); XCTAssertNotEqual(store.state.seeded, true)
+        db.sendHandler = { $0.map { .saved($0) } }
+        let o2 = try await session.sync(local: local, pending: [])
+        XCTAssertEqual(o2.uploaded, ["p:a", "p:b"]); XCTAssertTrue(o2.failed.isEmpty)
+        XCTAssertEqual(store.state.seeded, true)
+    }
+
+    func testThrownSendErrorInFirstRunDoesNotMarkSeeded() async throws {
+        struct Net: Error {}
+        let local = [progress("a", 1)]
+        let session = SyncSession(database: db, store: store, now: { 1_000_000 })
+        db.sendError = Net()
+        do { _ = try await session.sync(local: local, pending: []); XCTFail("erwartet Fehler") } catch {}
+        XCTAssertNotEqual(store.state.seeded, true)
+        db.sendError = nil
+        let o = try await session.sync(local: local, pending: [])
+        XCTAssertEqual(o.uploaded, ["p:a"]); XCTAssertEqual(store.state.seeded, true)
+    }
+
+    func testRecordsOpenAfterMaxSendRoundsAreFailed() async throws {
+        let rec = progress("a", 100)
+        db.sendHandler = { _ in [.conflict(server: progress("a", 50, position: 99))] }
+        let session = SyncSession(database: db, store: store, now: { 1_000_000 })
+        // Server-Stand stets älter: lokaler Stand gewinnt, der Konflikt wiederholt sich, bis die Runden erschöpft sind.
+        let o = try await session.sync(local: [rec], pending: [])
+        XCTAssertLessThanOrEqual(db.sent.count, CloudSyncEngine.maxSendRounds)
+        XCTAssertTrue(Set(o.failed).isDisjoint(with: Set(o.settled)))
+        XCTAssertEqual(db.sent.count, CloudSyncEngine.maxSendRounds)
+        XCTAssertEqual(o.failed, ["p:a"]); XCTAssertNotEqual(store.state.seeded, true)
+    }
+
+    func testSettledAndFailedAreDisjointAfterZoneReset() async throws {
+        var calls = 0
+        db.sendHandler = { recs in calls += 1
+            return recs.map { calls == 1 ? .saved($0) : .failed(name: $0.name) } }
+        db.fetchResults = [CloudFetch(zoneReset: true)]
+        let session = SyncSession(database: db, store: store, now: { 1_000_000 })
+        let o = try await session.sync(local: [progress("a", 1)], pending: ["p:a"])
+        XCTAssertTrue(Set(o.failed).isDisjoint(with: Set(o.settled)))
+    }
 }

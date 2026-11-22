@@ -84,6 +84,11 @@ public final class SyncSession {
             persist()
             throw HelperError(.syncFailed, error.localizedDescription)
         }
+        // `failed` hat Vorrang vor `settled` (Namen sind disjunkt).
+        let failedNames = Set(outcome.failed)
+        outcome.settled.removeAll { failedNames.contains($0) }
+        // Erstabgleich erst nach vollständig erfolgreichem Durchlauf als erledigt speichern.
+        if outcome.failed.isEmpty { state.seeded = true }
         state.lastSync = now()
         outcome.lastSync = state.lastSync ?? 0
         persist()
@@ -111,7 +116,6 @@ public final class SyncSession {
             pendingNow.formUnion(working.keys)
             outcome.zoneReset = outcome.zoneReset || fetched.zoneReset
         }
-        state.seeded = true
         if !fetched.deletedNames.isEmpty {
             // Auf dem Server gelöscht (wir löschen nie): lokaler Stand bleibt und wird neu hochgeladen.
             database.forget(fetched.deletedNames)
@@ -159,6 +163,8 @@ public final class SyncSession {
             toUpload = retry
             if zoneMissing { break }
         }
+        // Nach `maxSendRounds` noch offene Records wurden nicht gesendet: wartend melden.
+        if !zoneMissing { for r in toUpload { failed.insert(r.name) } }
         // Abschluss des Durchlaufs in die Ausgabe übernehmen.
         let changed = working.values.filter { initial[$0.name] != $0 }.sorted { $0.name < $1.name }
         var applied = Dictionary(outcome.apply.map { ($0.name, $0) }, uniquingKeysWith: { $1 })
