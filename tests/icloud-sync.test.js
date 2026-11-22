@@ -388,3 +388,53 @@ test('Lokal gekürzte Fortschritts-Einträge werden nicht bei jedem Abgleich ern
     assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'log3.txt'), 'utf8').split('\n').filter(l => l.includes('"cmd":"sync"'))[1]).local.length, 0); // Kürzen wird nicht als Löschung gemeldet
   } finally { await sync.stop(); }
 });
+
+test('Helfer-Bezug: bei Schalter aus wird nie geladen; beim Einschalten Status "installing", danach Start', async () => {
+  const calls = [];
+  const t = setup({}, { enabled: false, helperProvider: { ensure: async args => { calls.push(args); args.onInstall?.(); return { installed: true, version: '1.0.0' }; } } });
+  try {
+    assert.equal(t.sync.start(), false);
+    await t.sync.stop();
+    assert.equal(calls.length, 0);
+    await t.sync.setEnabled(true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].force, true);
+    assert.ok(t.statuses.includes('installing'));
+    await until(() => t.sync.getStatus().state === 'active', 'aktiv nach Installation');
+    await t.sync.setEnabled(false);
+    assert.equal(calls.length, 1);
+    assert.equal(t.sync.getStatus().state, 'disabled');
+  } finally { await t.cleanup(); }
+});
+
+test('Helfer-Bezug: App-Start (eingeschaltet) fragt ohne force; Fehler ohne Helfer -> verständliche Meldung, alter Helfer startet trotzdem', async () => {
+  const calls = [];
+  const missing = setup({}, { command: { file: path.join(os.tmpdir(), 'gibt-es-nicht', 'StreamingHubSync'), args: [] }, helperProvider: { ensure: async args => { calls.push(args.force); return { failed: 'GitHub Releases API 503' }; } } });
+  try {
+    await missing.sync.start();
+    assert.deepEqual(calls, [false]);
+    const status = missing.sync.getStatus();
+    assert.equal(status.state, 'error');
+    assert.match(status.message, /konnte nicht geladen werden.*503/);
+  } finally { await missing.cleanup(); }
+  const present = setup({}, { helperProvider: { ensure: async () => ({ failed: 'offline' }) } });
+  try {
+    present.sync.start();
+    await until(() => present.sync.getStatus().state === 'active', 'alter Helfer läuft trotz Fehler');
+  } finally { await present.cleanup(); }
+});
+
+test('Helfer-Bezug: Ausschalten während der Installation startet den Helfer nicht', async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const t = setup({}, { enabled: false, helperProvider: { ensure: async () => { await gate; return { installed: true, version: '1.0.0' }; } } });
+  try {
+    const enabling = t.sync.setEnabled(true);
+    await t.sync.setEnabled(false);
+    release();
+    await enabling;
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(t.commands().length, 0);
+    assert.equal(t.sync.getStatus().state, 'disabled');
+  } finally { await t.cleanup(); }
+});

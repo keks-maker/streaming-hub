@@ -6,6 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
+const http = require('http');
 const path = require('path');
 const { shotBoth } = require('./theme-audit');
 const { MIN, xmltvTime, launchApp } = require('./epg-helpers');
@@ -19,8 +20,12 @@ test.describe('Einstellungen: iCloud-Abgleich', () => {
   let ctx;
   let page;
   let helperDir;
+  let releasesServer;
 
   test.beforeAll(async () => {
+    // Release-API lokal und leer: kein Netz, der Helfer-Bezug meldet „kein Helfer-Release“ (deterministisch).
+    releasesServer = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); res.end('[]'); });
+    await new Promise(resolve => releasesServer.listen(0, '127.0.0.1', resolve));
     helperDir = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-e2e-icloud-helper-'));
     const now = Math.floor(Date.now() / MIN) * MIN;
     ctx = await launchApp({
@@ -28,13 +33,14 @@ test.describe('Einstellungen: iCloud-Abgleich', () => {
       epgXml: `<?xml version="1.0" encoding="UTF-8"?><tv><channel id="E2E.de"><display-name>E2E Kanal</display-name></channel><programme start="${xmltvTime(now - 30 * MIN)}" stop="${xmltvTime(now + 30 * MIN)}" channel="E2E.de"><title>Sendung</title></programme></tv>`,
       channels: [{ id: 'E2E.de', name: 'E2E Kanal', group: 'Test' }],
       favorites: ['E2E.de'],
-      env: { STREAMING_HUB_SYNC_HELPER_DIR: helperDir },
+      env: { STREAMING_HUB_SYNC_HELPER_DIR: helperDir, STREAMING_HUB_RELEASES_API_URL: `http://127.0.0.1:${releasesServer.address().port}/releases` },
     });
     page = ctx.page;
   });
 
   test.afterAll(async () => {
     if (ctx) await ctx.cleanup();
+    if (releasesServer) releasesServer.close();
     if (helperDir) fs.rmSync(helperDir, { recursive: true, force: true });
   });
 
@@ -55,7 +61,7 @@ test.describe('Einstellungen: iCloud-Abgleich', () => {
     }
     await toggle.check();
     await expect(toggle).toBeChecked();
-    await expect(page.locator('#settingsIcloudStatus')).not.toHaveText('');
+    await expect(page.locator('#settingsIcloudStatus')).toContainText('konnte nicht geladen werden');
     if (SHOTS) await shotBoth(page, SHOTS, 'icloud-an');
     await toggle.uncheck();
     await expect(toggle).not.toBeChecked();

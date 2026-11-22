@@ -8,24 +8,52 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { parseReleaseCandidate } = require('../lib/github-releases.js');
-const { verifyHelperApp, installSyncHelper, stashSyncHelper, restoreSyncHelper, installedHelperVersion } = require('../lib/sync-helper-update.js');
-const { updateSyncHelper } = require('../updater.js');
+const { parseReleaseCandidate, parseSyncHelperRelease, findSyncHelperReleases, findReleaseCandidates } = require('../lib/github-releases.js');
+const oldClient = require('./fixtures/github-releases-v0.14.0.js');
+const { createSyncHelperProvider } = require('../lib/sync-helper-provider.js');
+const { verifyHelperApp, installSyncHelper, assertNoAppleDouble, dittoUnzip, stashSyncHelper, restoreSyncHelper, installedHelperVersion } = require('../lib/sync-helper-update.js');
 
 const asset = name => ({ name, browser_download_url: `https://example.invalid/${name}` });
 const release = (tag, assets) => ({ tag_name: tag, draft: false, prerelease: false, assets });
 
-test('Release-Erkennung: Helfer-Asset optional auf Mac, nie auf Linux', () => {
+test('Release-Erkennung: App-Releases haben genau ein Asset, Helfer-Release eigener Tag mit genau einem Asset', () => {
   const app = asset('Streaming.Hub-1.2.3-mac.zip');
   const helper = asset('StreamingHubSync-1.0.0.zip');
-  assert.equal(parseReleaseCandidate(release('v1.2.3', [app]), 'darwin-arm64').syncHelperAsset, null);
-  const withHelper = parseReleaseCandidate(release('v1.2.3', [app, helper]), 'darwin-arm64');
-  assert.deepEqual(withHelper.syncHelperAsset, { name: 'StreamingHubSync-1.0.0.zip', version: '1.0.0', browserDownloadUrl: helper.browser_download_url });
-  assert.equal(withHelper.asset.name, 'Streaming.Hub-1.2.3-mac.zip');
-  assert.equal(parseReleaseCandidate(release('v1.2.3', [app, helper, asset('StreamingHubSync-1.0.1.zip')]), 'darwin-arm64'), null);
-  assert.equal(parseReleaseCandidate(release('v1.2.3', [helper]), 'darwin-arm64'), null);
-  assert.equal(parseReleaseCandidate(release('v1.2.3', [app, asset('notes.txt')]), 'darwin-arm64'), null);
-  assert.equal(parseReleaseCandidate(release('v1.2.3-linux', [asset('Streaming.Hub-1.2.3-linux-x64.tar.gz'), helper]), 'linux-x64'), null);
+  assert.equal(parseReleaseCandidate(release('v1.2.3', [app]), 'darwin-arm64').asset.name, 'Streaming.Hub-1.2.3-mac.zip');
+  assert.equal(parseReleaseCandidate(release('v1.2.3', [app, helper]), 'darwin-arm64'), null); // zwei Assets: v0.14.0-Clients würden verwerfen
+  assert.deepEqual(parseSyncHelperRelease(release('sync-helper-v1.0.0', [helper])), { version: '1.0.0', tagName: 'sync-helper-v1.0.0', asset: { name: 'StreamingHubSync-1.0.0.zip', browserDownloadUrl: helper.browser_download_url } });
+  assert.equal(parseSyncHelperRelease(release('sync-helper-v1.0.0', [asset('StreamingHubSync-1.0.1.zip')])), null); // Version passt nicht zum Tag
+  assert.equal(parseSyncHelperRelease(release('sync-helper-v1.0.0', [helper, app])), null);
+  assert.equal(parseSyncHelperRelease(release('sync-helper-v1.0.0', [])), null);
+  assert.equal(parseSyncHelperRelease({ ...release('sync-helper-v1.0.0', [helper]), prerelease: true }), null);
+  assert.equal(parseSyncHelperRelease({ ...release('sync-helper-v1.0.0', [helper]), draft: true }), null);
+  assert.equal(parseSyncHelperRelease(release('v1.0.0', [helper])), null);
+  const newest = findSyncHelperReleases([release('sync-helper-v1.0.0', [helper]), release('sync-helper-v1.10.0', [asset('StreamingHubSync-1.10.0.zip')]), release('sync-helper-v1.2.0', [asset('StreamingHubSync-1.2.0.zip')]), release('v0.15.0', [asset('Streaming.Hub-0.15.0-mac.zip')])]).at(-1);
+  assert.equal(newest.version, '1.10.0');
+});
+
+test('Alte Clients (v0.14.0-Code-Abbild): Helfer-Release wird ignoriert, 0.15.0 wird erkannt', () => {
+  const releases = [
+    release('sync-helper-v1.0.0', [asset('StreamingHubSync-1.0.0.zip')]),
+    release('v0.15.0', [asset('Streaming.Hub-0.15.0-mac.zip')]),
+    release('v0.15.0-x64', [asset('Streaming.Hub-0.15.0-mac-x64.zip')]),
+    release('v0.15.0-linux', [asset('Streaming.Hub-0.15.0-linux-x64.tar.gz')]),
+    release('v0.14.0', [asset('Streaming.Hub-0.14.0-mac.zip')]),
+  ];
+  for (const [target, tag] of [['darwin-arm64', 'v0.15.0'], ['darwin-x64', 'v0.15.0-x64'], ['linux-x64', 'v0.15.0-linux']]) {
+    const oldCandidates = oldClient.findReleaseCandidates(releases, target);
+    assert.equal(oldCandidates.at(-1).tagName, tag);
+    assert.equal(oldCandidates.some(c => /sync-helper/.test(c.tagName)), false);
+    assert.deepEqual(findReleaseCandidates(releases, target).map(c => c.tagName), oldCandidates.map(c => c.tagName)); // neuer Code sieht dasselbe
+  }
+  // Gegenprobe: ein zweites Asset auf dem App-Release würde alte Clients ausschließen (Grund für das eigene Helfer-Release)
+  assert.deepEqual(oldClient.findReleaseCandidates([release('v0.15.0', [asset('Streaming.Hub-0.15.0-mac.zip'), asset('StreamingHubSync-1.0.0.zip')])], 'darwin-arm64'), []);
+});
+
+test('install.sh und Updater lesen keine Latest-Abfrage (Helfer-Release kann nie als Latest ausgeliefert werden)', () => {
+  const sh = fs.readFileSync(path.join(__dirname, '..', 'install.sh'), 'utf8');
+  assert.equal(/releases\/latest/.test(sh), false);
+  assert.equal(/releases\/latest/.test(fs.readFileSync(path.join(__dirname, '..', 'updater.js'), 'utf8')), false);
 });
 
 // Fake-Werkzeuge: Verhalten über Env, jeder Aufruf wird protokolliert.
@@ -114,36 +142,123 @@ test('Asset ohne StreamingHubSync.app wird abgelehnt', t => {
   assert.equal(e.marker(), 'alt');
 });
 
-test('updateSyncHelper: fehlendes Asset ist kein Fehler; Prüffehler behält alten Helfer; gleiche Version wird übersprungen; keine Neusignierung', async t => {
+const helperRel = (version, extra = {}) => ({ tag_name: `sync-helper-v${version}`, draft: false, prerelease: false, assets: [asset(`StreamingHubSync-${version}.zip`)], ...extra });
+const fetchOf = releases => async () => ({ ok: true, json: async () => releases });
+
+function providerEnv(t, overrides = {}) {
   clearFakeEnv();
   t.after(clearFakeEnv);
   const e = makeEnv(t);
-  e.putOld();
-  const download = async (url, dest) => fs.copyFileSync(e.zip, dest);
-  const deps = { download, unzip: e.unzip, verify: e.verify };
-  assert.deepEqual(await updateSyncHelper({ version: '1.2.3', syncHelperAsset: null }, e.helperDir, deps), { skipped: 'kein Helfer-Asset im Release' });
-  const rel = { syncHelperAsset: { name: 'StreamingHubSync-1.0.0.zip', version: '1.0.0', browserDownloadUrl: 'https://example.invalid/x' } };
-  process.env.FAKE_VERIFY_FAIL = '1';
-  const failed = await updateSyncHelper(rel, e.helperDir, deps);
-  assert.ok(failed.failed);
-  assert.equal(e.marker(), 'alt');
-  delete process.env.FAKE_VERIFY_FAIL;
-  assert.deepEqual(await updateSyncHelper(rel, e.helperDir, deps), { installed: true });
+  let clock = 1_000_000_000_000;
+  let stored = null;
+  const downloads = [];
+  const provider = createSyncHelperProvider({
+    helperDir: e.helperDir,
+    fetchImpl: fetchOf([helperRel('1.0.0'), release('v0.15.0', [asset('Streaming.Hub-0.15.0-mac.zip')])]),
+    download: async (url, dest) => { downloads.push(url); fs.copyFileSync(e.zip, dest); },
+    unzip: e.unzip,
+    verify: e.verify,
+    checkStore: { read: () => stored, write: ms => { stored = ms; } },
+    nowMs: () => clock,
+    ...overrides,
+  });
+  return { ...e, provider, downloads, advance: ms => { clock += ms; }, stored: () => stored };
+}
+
+test('Provider: Helfer fehlt -> Download und Installation, onInstall wird gemeldet', async t => {
+  const e = providerEnv(t);
+  let announced = 0;
+  assert.deepEqual(await e.provider.ensure({ force: true, onInstall: () => { announced += 1; } }), { installed: true, version: '1.0.0' });
+  assert.equal(announced, 1);
+  assert.deepEqual(e.downloads, ['https://example.invalid/StreamingHubSync-1.0.0.zip']);
   assert.equal(e.marker(), 'neu');
-  // Nie ad hoc signiert: kein codesign mit --sign/--force
-  assert.equal(e.tools.calls().some(c => /--sign|--force/.test(c)), false);
-  // gleiche Version installiert -> übersprungen
+});
+
+test('Provider: nur neuere Helfer-Version wird geladen; gleiche oder ältere nicht', async t => {
+  const e = providerEnv(t);
+  e.putOld();
+  const plist = version => fs.writeFileSync(path.join(e.helperDir, 'StreamingHubSync.app', 'Contents', 'Info.plist'), `<key>CFBundleShortVersionString</key>\n<string>${version}</string>`);
+  plist('1.0.0');
+  assert.match((await e.provider.ensure({ force: true })).skipped, /aktuell/);
+  plist('2.0.0');
+  e.advance(25 * 3600 * 1000);
+  assert.match((await e.provider.ensure({})).skipped, /aktuell/);
+  plist('0.9.0');
+  e.advance(25 * 3600 * 1000);
+  assert.equal((await e.provider.ensure({})).installed, true);
+  assert.equal(e.marker(), 'neu');
+});
+
+test('Provider: höchstens einmal pro Tag (auch nach Fehler); Einschalten ohne Helfer erzwingt', async t => {
+  let calls = 0;
+  const e = providerEnv(t, { fetchImpl: async () => { calls += 1; return { ok: true, json: async () => [helperRel('1.0.0')] }; } });
+  e.putOld(); // ohne lesbare Version: wird ersetzt
+  assert.equal((await e.provider.ensure({})).installed, true);
+  assert.equal(calls, 1);
   fs.writeFileSync(path.join(e.helperDir, 'StreamingHubSync.app', 'Contents', 'Info.plist'), '<key>CFBundleShortVersionString</key>\n<string>1.0.0</string>');
-  assert.equal(installedHelperVersion(e.helperDir), '1.0.0');
-  assert.match((await updateSyncHelper(rel, e.helperDir, deps)).skipped, /aktuell/);
+  assert.match((await e.provider.ensure({})).skipped, /heute/);
+  e.advance(23 * 3600 * 1000);
+  assert.match((await e.provider.ensure({ force: true })).skipped, /heute|aktuell/); // Helfer vorhanden: force hebt das Limit nicht auf
+  assert.equal(calls, 1);
+  e.advance(2 * 3600 * 1000);
+  await e.provider.ensure({});
+  assert.equal(calls, 2);
+  // Ohne Helfer: force ignoriert das Tageslimit
+  fs.rmSync(e.helperDir, { recursive: true, force: true });
+  assert.equal((await e.provider.ensure({ force: true })).installed, true);
+  assert.equal(calls, 3);
+});
+
+test('Provider: Netzfehler, Prüffehler und fehlendes Release liefern failed; alter Helfer bleibt', async t => {
+  const e = providerEnv(t, { fetchImpl: async () => ({ ok: false, status: 503 }) });
+  e.putOld();
+  assert.match((await e.provider.ensure({})).failed, /503/);
+  assert.equal(e.marker(), 'alt');
+  const none = providerEnv(t, { fetchImpl: fetchOf([release('v0.15.0', [asset('Streaming.Hub-0.15.0-mac.zip')])]) });
+  assert.match((await none.provider.ensure({ force: true })).failed, /kein Helfer-Release/);
+  const bad = providerEnv(t);
+  bad.putOld();
+  process.env.FAKE_VERIFY_FAIL = '1';
+  assert.match((await bad.provider.ensure({})).failed, /Signatur/);
+  assert.equal(bad.marker(), 'alt');
+  assert.equal(fs.readdirSync(os.tmpdir()).some(n => n.startsWith('streaming-hub-synchelper-') && fs.existsSync(path.join(os.tmpdir(), n, 'StreamingHubSync-1.0.0.zip'))), false); // Temp-Zip aufgeräumt
+});
+
+test('AppleDouble: ._*-Einträge und __MACOSX werden abgelehnt (Liste und entpackter Baum)', t => {
+  assert.doesNotThrow(() => assertNoAppleDouble(['StreamingHubSync.app/', 'StreamingHubSync.app/Contents/Info.plist']));
+  assert.throws(() => assertNoAppleDouble(['StreamingHubSync.app/Contents/._Info.plist']), /AppleDouble/);
+  assert.throws(() => assertNoAppleDouble(['__MACOSX/StreamingHubSync.app/x']), /AppleDouble/);
+  const e = makeEnv(t);
+  e.putOld();
+  const unzipWithDouble = (zip, dest) => { e.unzip(zip, dest); fs.writeFileSync(path.join(dest, 'StreamingHubSync.app', 'Contents', '._marker'), 'x'); };
+  assert.throws(() => installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: unzipWithDouble, verify: e.verify }), /AppleDouble/);
+  assert.equal(e.marker(), 'alt');
+});
+
+test('dittoUnzip: echtes zip mit ._-Eintrag wird vor dem Entpacken abgelehnt, sauberes zip entpackt', { skip: process.platform !== 'darwin' }, t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-zip-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const src = path.join(dir, 'src');
+  fs.mkdirSync(path.join(src, 'StreamingHubSync.app', 'Contents'), { recursive: true });
+  fs.writeFileSync(path.join(src, 'StreamingHubSync.app', 'Contents', 'Info.plist'), 'x');
+  fs.writeFileSync(path.join(src, 'StreamingHubSync.app', 'Contents', '._Info.plist'), 'x');
+  const bad = path.join(dir, 'bad.zip');
+  require('child_process').execFileSync('/usr/bin/zip', ['-qr', bad, 'StreamingHubSync.app'], { cwd: src });
+  assert.throws(() => dittoUnzip(bad, path.join(dir, 'out-bad')), /AppleDouble/);
+  fs.rmSync(path.join(src, 'StreamingHubSync.app', 'Contents', '._Info.plist'));
+  const good = path.join(dir, 'good.zip');
+  require('child_process').execFileSync('/usr/bin/ditto', ['-c', '-k', '--norsrc', '--keepParent', path.join(src, 'StreamingHubSync.app'), good]);
+  fs.mkdirSync(path.join(dir, 'out'));
+  dittoUnzip(good, path.join(dir, 'out'));
+  assert.ok(fs.existsSync(path.join(dir, 'out', 'StreamingHubSync.app', 'Contents', 'Info.plist')));
 });
 
 test('Quelltext: Helfer-Pfad kennt weder resignBundleAdHoc noch --sign', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'sync-helper-update.js'), 'utf8');
   assert.equal(/resignBundleAdHoc|'--sign'|--force/.test(src), false);
-  const updater = fs.readFileSync(path.join(__dirname, '..', 'updater.js'), 'utf8');
-  const fn = updater.slice(updater.indexOf('async function updateSyncHelper'), updater.indexOf('async function applyLinuxRelease'));
-  assert.equal(/resignBundleAdHoc|--sign/.test(fn), false);
+  const provider = fs.readFileSync(path.join(__dirname, '..', 'lib', 'sync-helper-provider.js'), 'utf8');
+  assert.equal(/resignBundleAdHoc|'--sign'|--force/.test(provider), false);
+  assert.equal(/installSyncHelper|syncHelperAsset|updateSyncHelper/.test(fs.readFileSync(path.join(__dirname, '..', 'updater.js'), 'utf8')), false); // App-Update fasst den Helfer nur als Stash an
 });
 
 test('Helferordner übersteht den App-Austausch (stash/restore)', t => {

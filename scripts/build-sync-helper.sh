@@ -1,10 +1,10 @@
 #!/bin/bash
 # Baut, signiert und notarisiert StreamingHubSync.app (Mac-Hilfs-App für den iCloud-Abgleich, D10).
 #   scripts/build-sync-helper.sh [--sign-only] [--no-notarize]
-# Ergebnis: native/StreamingHubSync/dist/StreamingHubSync-<version>.zip (Release-Asset, gestapelt).
+# Veröffentlichung: eigenes GitHub-Release `sync-helper-v<version>` (nicht Latest), genau dieses Asset. Ergebnis: native/StreamingHubSync/dist/StreamingHubSync-<version>.zip (Release-Asset, gestapelt).
 # Voraussetzungen: Developer-ID-Application-Zertifikat (Team LXXDCD6K7Z) im Schlüsselbund, Provisioning-Profil unter
 # native/StreamingHubSync/Resources/StreamingHubSync.provisionprofile (erzeugt: node scripts/provision-sync-helper.js),
-# notarytool-Profil `streaminghub-notary`. --sign-only/--no-notarize überspringen Notarisierung und Stapeln.
+# Zip mit --norsrc (keine AppleDouble-Einträge ._*, sonst ungültiges Siegel). notarytool-Profil `streaminghub-notary`. --sign-only/--no-notarize überspringen Notarisierung und Stapeln.
 set -euo pipefail
 
 TEAM="LXXDCD6K7Z"
@@ -51,13 +51,13 @@ ZIP="$DIST/StreamingHubSync-$VERSION.zip"
 [ "$NOTARIZE" = 1 ] || ZIP="$DIST/StreamingHubSync-$VERSION-unnotarized.zip"   # nie unter dem Release-Asset-Namen
 if [ "$NOTARIZE" = 1 ]; then
   echo "== Notarisieren"
-  ditto -c -k --keepParent "$APP" "$DIST/notarize.zip"
+  ditto -c -k --norsrc --keepParent "$APP" "$DIST/notarize.zip"
   xcrun notarytool submit "$DIST/notarize.zip" --keychain-profile "$NOTARY_PROFILE" --wait
   rm -f "$DIST/notarize.zip"
   xcrun stapler staple "$APP"
   xcrun stapler validate "$APP"
   spctl -a -vv -t exec "$APP"
 fi
-ditto -c -k --keepParent "$APP" "$ZIP"
+ditto -c -k --norsrc --keepParent "$APP" "$ZIP"
 echo "== Ergebnis: $ZIP (Core $CORE_REV, notarisiert: $NOTARIZE)"
 shasum -a 256 "$ZIP"

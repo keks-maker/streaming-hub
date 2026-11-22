@@ -8,12 +8,13 @@
  *   npm run release:check                 Version aus package.json
  *   npm run release:check -- --version 0.9.9
  * Exit-Code 0 = vollstaendig, 1 = Luecke, 2 = Abfrage fehlgeschlagen (Netz/API).
- * Zusatz-Asset StreamingHubSync-<Helfer-Version>.zip (Mac-Helfer iCloud-Abgleich) ist auf beiden Mac-Releases (arm64 und x64)
- * Pflicht, auf Linux nicht: fehlt es, gilt das Mac-Release als unvollstaendig.
+ * Mac-Releases tragen genau ein Asset (v0.14.0-Clients verwerfen sonst das Release). Der Mac-Helfer StreamingHubSync liegt in
+ * einem eigenen Release `sync-helper-v<Helfer-Version>` (genau ein Asset StreamingHubSync-<Version>.zip, nie Latest);
+ * fehlt es, ist das nur eine Warnung (Exit-Code bleibt 0).
  * Ein Release gilt nur als vorhanden, wenn es dem Updater-Schema entspricht (kein Draft/Prerelease,
  * Tag + genau ein Asset mit passendem Namen; lib/github-releases.js).
  */
-const { RELEASE_TARGETS, RELEASES_API_URL, ASSET_NAME, fetchReleaseCandidates } = require('../lib/github-releases.js');
+const { RELEASE_TARGETS, RELEASES_API_URL, ASSET_NAME, fetchReleaseCandidates, fetchLatestSyncHelperRelease } = require('../lib/github-releases.js');
 
 async function checkReleaseSet(version, fetchImpl = fetch, apiUrl = RELEASES_API_URL) {
   const results = [];
@@ -26,11 +27,19 @@ async function checkReleaseSet(version, fetchImpl = fetch, apiUrl = RELEASES_API
     } catch (e) {
       error = e.message;
     }
-    const syncHelperAsset = candidate && candidate.syncHelperAsset ? candidate.syncHelperAsset.name : null;
-    const helperRequired = target.startsWith('darwin-');
-    results.push({ target, tagName: candidate ? candidate.tagName : null, expectedAsset, ok: !!candidate && (!helperRequired || !!syncHelperAsset), error, syncHelperAsset, helperRequired, missingHelper: !!candidate && helperRequired && !syncHelperAsset });
+    results.push({ target, tagName: candidate ? candidate.tagName : null, expectedAsset, ok: !!candidate, error });
   }
   return results;
+}
+
+/** Neuestes Helfer-Release { tagName, asset, version } oder null; Fehler der Abfrage werden zu { error }. */
+async function checkSyncHelperRelease(fetchImpl = fetch, apiUrl = RELEASES_API_URL) {
+  try {
+    const release = await fetchLatestSyncHelperRelease(fetchImpl, apiUrl);
+    return release ? { tagName: release.tagName, version: release.version, asset: release.asset.name } : null;
+  } catch (e) {
+    return { error: e.message };
+  }
 }
 
 async function main(argv = process.argv.slice(2)) {
@@ -40,12 +49,14 @@ async function main(argv = process.argv.slice(2)) {
     console.error(`Ungueltige Version: ${version}`);
     return 2;
   }
-  const results = await checkReleaseSet(version, fetch, process.env.STREAMING_HUB_RELEASES_API_URL || RELEASES_API_URL);
+  const apiUrl = process.env.STREAMING_HUB_RELEASES_API_URL || RELEASES_API_URL;
+  const results = await checkReleaseSet(version, fetch, apiUrl);
   for (const r of results) {
-    const what = r.ok ? r.tagName : r.missingHelper ? `${r.tagName}: Helfer-Asset StreamingHubSync-<Version>.zip fehlt` : `${r.expectedAsset}${r.error ? ` (${r.error})` : ''}`;
-    console.log(`${r.ok ? 'OK    ' : 'FEHLT '} ${r.target.padEnd(13)} ${what}`);
-    if (r.ok && r.helperRequired) console.log(`       Helfer-Asset: ${r.syncHelperAsset}`);
+    console.log(`${r.ok ? 'OK    ' : 'FEHLT '} ${r.target.padEnd(13)} ${r.ok ? r.tagName : `${r.expectedAsset}${r.error ? ` (${r.error})` : ''}`}`);
   }
+  const helper = await checkSyncHelperRelease(fetch, apiUrl);
+  if (helper && !helper.error) console.log(`OK     Helfer        ${helper.tagName} (${helper.asset})`);
+  else console.log(`WARNUNG Helfer-Release sync-helper-v<Version> mit Asset StreamingHubSync-<Version>.zip fehlt${helper && helper.error ? ` (${helper.error})` : ''} (nur Warnung)`);
   if (results.some(r => r.error)) return 2;
   const missing = results.filter(r => !r.ok);
   console.log(missing.length ? `Release-Satz v${version} UNVOLLSTAENDIG (${missing.length} von ${results.length} fehlen)` : `Release-Satz v${version} vollstaendig (${results.length} von ${results.length})`);
@@ -56,4 +67,4 @@ if (require.main === module) {
   main().then(code => { process.exitCode = code; }, error => { console.error(error.message); process.exitCode = 2; });
 }
 
-module.exports = { checkReleaseSet, main };
+module.exports = { checkReleaseSet, checkSyncHelperRelease, main };

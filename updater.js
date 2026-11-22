@@ -32,7 +32,8 @@ const {
 } = require('./lib/bundle-install.js');
 const { findLinuxAppRoot, installLinuxRelease } = require('./lib/linux-install.js');
 const os = require('os');
-const { installSyncHelper, installedHelperVersion, stashSyncHelper, restoreSyncHelper, recoverSyncHelperStash } = require('./lib/sync-helper-update.js');
+const { downloadAsset } = require('./lib/release-download.js');
+const { stashSyncHelper, restoreSyncHelper, recoverSyncHelperStash } = require('./lib/sync-helper-update.js');
 const { fetchReleaseCandidates, selectReleaseNotes, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
 // Basis-URL setzt main.js nur nach Prüfung (lib/update-base.js) in die Env des Updater-Prozesses; Default GitHub.
@@ -198,36 +199,6 @@ function restoreUserFiles(onWarning) {
 
   // Hinweis: Backup-Verzeichnis wird erst am Ende von 'apply' aufgeräumt.
   if (onWarning) onWarning(warn);
-}
-
-const MAX_UPDATE_BYTES = 512 * 1024 * 1024;
-
-async function downloadAsset(url, destination) {
-  const response = await fetch(url, {
-    headers: { Accept: 'application/octet-stream', 'User-Agent': 'Streaming-Hub' },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(300000),
-  });
-  if (!response.ok || !response.body) throw new Error(`Release-Asset Download ${response.status}`);
-  const declared = Number(response.headers.get('content-length') || 0);
-  if (declared > MAX_UPDATE_BYTES) throw new Error('Release-Asset ist zu groß');
-  const file = fs.createWriteStream(destination, { flags: 'wx', mode: 0o600 });
-  const reader = response.body.getReader();
-  let received = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      received += value.byteLength;
-      if (received > MAX_UPDATE_BYTES) throw new Error('Release-Asset ist zu groß');
-      if (!file.write(value)) await new Promise((resolve, reject) => { file.once('drain', resolve); file.once('error', reject); });
-    }
-    await new Promise((resolve, reject) => { file.once('finish', resolve); file.once('error', reject); file.end(); });
-    if (declared && received !== declared) throw new Error('Unvollständiger Release-Asset-Download');
-  } catch (error) {
-    file.destroy();
-    throw error;
-  }
 }
 
 function findAppBundle(root) {
@@ -482,26 +453,6 @@ function restoreSyncHelperSafely(helperDir, stashDir, restore = restoreSyncHelpe
   }
 }
 
-// Mac-Helfer aus dem optionalen Release-Asset aktualisieren. Fehlt das Asset, ist das kein Fehler; ein Prüffehler
-// (Signatur, Gatekeeper) lässt den alten Helfer stehen und bricht das App-Update nicht ab.
-async function updateSyncHelper(release, helperDir, deps = {}) {
-  const asset = release && release.syncHelperAsset;
-  if (!asset) return { skipped: 'kein Helfer-Asset im Release' };
-  const installed = installedHelperVersion(helperDir);
-  if (installed && cmpVersions(installed, asset.version) >= 0) return { skipped: `Helfer ${installed} ist aktuell` };
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-synchelper-'));
-  try {
-    const zipPath = path.join(tempRoot, asset.name);
-    await (deps.download || downloadAsset)(asset.browserDownloadUrl, zipPath);
-    return installSyncHelper({ zipPath, helperDir, unzip: deps.unzip, verify: deps.verify, log: message => updaterLog('INFO', message) });
-  } catch (error) {
-    updaterLog('ERROR', 'Sync-Helfer nicht aktualisiert (alter Helfer bleibt)', error.message);
-    return { failed: error.message };
-  } finally {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
-  }
-}
-
 async function applyLinuxRelease(release, send) {
   const installRoot = linuxInstallRoot();
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-update-'));
@@ -579,7 +530,6 @@ process.on('message', async msg => {
       } finally {
         if (stashed) restoreSyncHelperSafely(helperDir, helperStash);
       }
-      await updateSyncHelper(release, helperDir);
       updateDataDir = installDir;
       restoreUserFiles();
       fs.rmSync(legacyBackupDir, { recursive: true, force: true });
@@ -596,4 +546,4 @@ process.on('message', async msg => {
 });
 }
 
-module.exports = { restoreSyncHelperSafely, updateSyncHelper, applyLinuxRelease, extractLinuxArchive, assertSafeArchiveEntries, findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };
+module.exports = { restoreSyncHelperSafely, applyLinuxRelease, extractLinuxArchive, assertSafeArchiveEntries, findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };

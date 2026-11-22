@@ -41,6 +41,7 @@ const { registerYoutubeMini } = require('./lib/youtube-mini-ipc.js');
 const { registerYoutubeProgress } = require('./lib/youtube-progress-ipc.js');
 const { createICloudSync } = require('./lib/icloud-sync.js');
 const { recoverSyncHelperStash } = require('./lib/sync-helper-update.js');
+const { createSyncHelperProvider } = require('./lib/sync-helper-provider.js');
 const { registerIcloudSyncIpc, readEnabled: readIcloudSyncEnabled } = require('./lib/icloud-sync-ipc.js');
 let icloudSync = null; // iCloud-Abgleich über den Mac-Helfer (lib/icloud-sync.js), No-op ohne Helfer/Konto
 let youtubeMini = null; // Zugriff auf die Mini-Player-Einstellungen (Kontextmenü der Webviews)
@@ -889,8 +890,17 @@ app.whenReady().then(() => {
     if (!process.env.STREAMING_HUB_SYNC_HELPER_DIR && !process.env.STREAMING_HUB_USER_DATA) {
       try { recoverSyncHelperStash(syncHelperDir, path.join(app.getPath('appData'), 'Streaming Hub')); } catch (e) { logger.warn('Sync-Helfer-Stash nicht wiederhergestellt:', e.message); }
     }
+    // Helfer-Bezug unabhängig vom App-Update: beim Einschalten und App-Start (höchstens einmal pro Tag), nur bei eingeschaltetem Schalter.
+    const helperProvider = createSyncHelperProvider({
+      helperDir: syncHelperDir,
+      apiUrl: process.env.STREAMING_HUB_RELEASES_API_URL || undefined,
+      checkStore: { read: () => userStorage.readJson('icloudHelperCheck', null), write: ms => userStorage.writeJson('icloudHelperCheck', ms) },
+      log: message => logger.info(message),
+      warn: message => logger.warn(message),
+    });
     icloudSync = createICloudSync({
       helperDir: syncHelperDir,
+      helperProvider,
       enabled: readIcloudSyncEnabled(userStorage),
       logger,
       stateStore: { read: () => userStorage.readJson('icloudSyncState', null), write: state => userStorage.writeJson('icloudSyncState', state) },

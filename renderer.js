@@ -1683,7 +1683,8 @@ const ICLOUD_STATE_TEXT = {
   active: 'Aktiv',
   no_account: 'Kein iCloud-Konto angemeldet',
   unavailable: 'iCloud vorübergehend nicht erreichbar',
-  no_helper: 'Der Abgleich-Helfer ist noch nicht installiert. Er kommt mit dem nächsten App-Update.',
+  installing: 'Der Abgleich-Helfer wird installiert',
+  no_helper: 'Der Abgleich-Helfer ist nicht installiert. Er wird beim Einschalten geladen.',
   error: 'Fehler',
 };
 
