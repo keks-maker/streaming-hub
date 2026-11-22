@@ -10,10 +10,10 @@ const os = require('os');
 const path = require('path');
 const { parseReleaseCandidate, parseSyncHelperRelease, findSyncHelperReleases, findReleaseCandidates } = require('../lib/github-releases.js');
 const oldClient = require('./fixtures/github-releases-v0.14.0.js');
-const { createSyncHelperProvider } = require('../lib/sync-helper-provider.js');
+const { createSyncHelperProvider, assertTrustedDownloadUrl } = require('../lib/sync-helper-provider.js');
 const { verifyHelperApp, installSyncHelper, assertNoAppleDouble, dittoUnzip, stashSyncHelper, restoreSyncHelper, installedHelperVersion } = require('../lib/sync-helper-update.js');
 
-const asset = name => ({ name, browser_download_url: `https://example.invalid/${name}` });
+const asset = name => ({ name, browser_download_url: `https://github.com/keks-maker/streaming-hub/releases/download/x/${name}` });
 const release = (tag, assets) => ({ tag_name: tag, draft: false, prerelease: false, assets });
 
 test('Release-Erkennung: App-Releases haben genau ein Asset, Helfer-Release eigener Tag mit genau einem Asset', () => {
@@ -102,11 +102,11 @@ function makeEnv(t) {
 
 const clearFakeEnv = () => ['FAKE_VERIFY_FAIL', 'FAKE_IDENTIFIER', 'FAKE_TEAM', 'FAKE_SPCTL_FAIL', 'FAKE_ORIGIN_TEAM'].forEach(k => delete process.env[k]);
 
-test('Gültiger Helfer wird geprüft und atomar getauscht, state.json bleibt', t => {
+test('Gültiger Helfer wird geprüft und atomar getauscht, state.json bleibt', async t => {
   clearFakeEnv();
   const e = makeEnv(t);
   e.putOld();
-  assert.deepEqual(installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: e.unzip, verify: e.verify }), { installed: true });
+  assert.deepEqual(await installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: e.unzip, verify: e.verify }), { installed: true });
   assert.equal(e.marker(), 'neu');
   assert.ok(fs.existsSync(path.join(e.helperDir, 'state.json')));
   assert.deepEqual(fs.readdirSync(e.helperDir).sort(), ['StreamingHubSync.app', 'state.json']); // kein Staging/Rollback übrig
@@ -122,23 +122,23 @@ for (const [label, env] of [
   ['Gatekeeper lehnt ab', { FAKE_SPCTL_FAIL: '1' }],
   ['Gatekeeper-Herkunft anderes Team', { FAKE_ORIGIN_TEAM: 'BBBBBBBBBB' }],
 ]) {
-  test(`Ablehnung (${label}): alter Helfer bleibt, kein Rest`, t => {
+  test(`Ablehnung (${label}): alter Helfer bleibt, kein Rest`, async t => {
     clearFakeEnv();
     Object.assign(process.env, env);
     t.after(clearFakeEnv);
     const e = makeEnv(t);
     e.putOld();
-    assert.throws(() => installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: e.unzip, verify: e.verify }));
+    await assert.rejects(installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: e.unzip, verify: e.verify }));
     assert.equal(e.marker(), 'alt');
     assert.deepEqual(fs.readdirSync(e.helperDir).sort(), ['StreamingHubSync.app', 'state.json']);
   });
 }
 
-test('Asset ohne StreamingHubSync.app wird abgelehnt', t => {
+test('Asset ohne StreamingHubSync.app wird abgelehnt', async t => {
   clearFakeEnv();
   const e = makeEnv(t);
   e.putOld();
-  assert.throws(() => installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: (zip, dest) => fs.mkdirSync(path.join(dest, 'Anderes.app')), verify: e.verify }), /kein StreamingHubSync\.app/);
+  await assert.rejects(installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: (zip, dest) => fs.mkdirSync(path.join(dest, 'Anderes.app')), verify: e.verify }), /kein StreamingHubSync\.app/);
   assert.equal(e.marker(), 'alt');
 });
 
@@ -170,7 +170,7 @@ test('Provider: Helfer fehlt -> Download und Installation, onInstall wird gemeld
   let announced = 0;
   assert.deepEqual(await e.provider.ensure({ force: true, onInstall: () => { announced += 1; } }), { installed: true, version: '1.0.0' });
   assert.equal(announced, 1);
-  assert.deepEqual(e.downloads, ['https://example.invalid/StreamingHubSync-1.0.0.zip']);
+  assert.deepEqual(e.downloads, ['https://github.com/keks-maker/streaming-hub/releases/download/x/StreamingHubSync-1.0.0.zip']);
   assert.equal(e.marker(), 'neu');
 });
 
@@ -224,18 +224,18 @@ test('Provider: Netzfehler, Prüffehler und fehlendes Release liefern failed; al
   assert.equal(fs.readdirSync(os.tmpdir()).some(n => n.startsWith('streaming-hub-synchelper-') && fs.existsSync(path.join(os.tmpdir(), n, 'StreamingHubSync-1.0.0.zip'))), false); // Temp-Zip aufgeräumt
 });
 
-test('AppleDouble: ._*-Einträge und __MACOSX werden abgelehnt (Liste und entpackter Baum)', t => {
+test('AppleDouble: ._*-Einträge und __MACOSX werden abgelehnt (Liste und entpackter Baum)', async t => {
   assert.doesNotThrow(() => assertNoAppleDouble(['StreamingHubSync.app/', 'StreamingHubSync.app/Contents/Info.plist']));
   assert.throws(() => assertNoAppleDouble(['StreamingHubSync.app/Contents/._Info.plist']), /AppleDouble/);
   assert.throws(() => assertNoAppleDouble(['__MACOSX/StreamingHubSync.app/x']), /AppleDouble/);
   const e = makeEnv(t);
   e.putOld();
   const unzipWithDouble = (zip, dest) => { e.unzip(zip, dest); fs.writeFileSync(path.join(dest, 'StreamingHubSync.app', 'Contents', '._marker'), 'x'); };
-  assert.throws(() => installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: unzipWithDouble, verify: e.verify }), /AppleDouble/);
+  await assert.rejects(installSyncHelper({ zipPath: e.zip, helperDir: e.helperDir, unzip: unzipWithDouble, verify: e.verify }), /AppleDouble/);
   assert.equal(e.marker(), 'alt');
 });
 
-test('dittoUnzip: echtes zip mit ._-Eintrag wird vor dem Entpacken abgelehnt, sauberes zip entpackt', { skip: process.platform !== 'darwin' }, t => {
+test('dittoUnzip: echtes zip mit ._-Eintrag wird vor dem Entpacken abgelehnt, sauberes zip entpackt', { skip: process.platform !== 'darwin' }, async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-zip-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const src = path.join(dir, 'src');
@@ -244,12 +244,12 @@ test('dittoUnzip: echtes zip mit ._-Eintrag wird vor dem Entpacken abgelehnt, sa
   fs.writeFileSync(path.join(src, 'StreamingHubSync.app', 'Contents', '._Info.plist'), 'x');
   const bad = path.join(dir, 'bad.zip');
   require('child_process').execFileSync('/usr/bin/zip', ['-qr', bad, 'StreamingHubSync.app'], { cwd: src });
-  assert.throws(() => dittoUnzip(bad, path.join(dir, 'out-bad')), /AppleDouble/);
+  await assert.rejects(dittoUnzip(bad, path.join(dir, 'out-bad')), /AppleDouble/);
   fs.rmSync(path.join(src, 'StreamingHubSync.app', 'Contents', '._Info.plist'));
   const good = path.join(dir, 'good.zip');
   require('child_process').execFileSync('/usr/bin/ditto', ['-c', '-k', '--norsrc', '--keepParent', path.join(src, 'StreamingHubSync.app'), good]);
   fs.mkdirSync(path.join(dir, 'out'));
-  dittoUnzip(good, path.join(dir, 'out'));
+  await dittoUnzip(good, path.join(dir, 'out'));
   assert.ok(fs.existsSync(path.join(dir, 'out', 'StreamingHubSync.app', 'Contents', 'Info.plist')));
 });
 
@@ -395,4 +395,24 @@ test('restoreSyncHelperSafely: wirft restore, bleibt es beim Rückgabewert false
   const { restoreSyncHelperSafely } = require('../updater.js');
   assert.equal(restoreSyncHelperSafely('/x', '/y', () => { throw new Error('kaputt'); }), false);
   assert.equal(restoreSyncHelperSafely('/x', '/y', () => true), true);
+});
+
+test('Quelltext: kein synchroner Prozessaufruf im Helfer-Installationspfad (Hauptprozess bleibt frei)', () => {
+  for (const file of ['sync-helper-update.js', 'sync-helper-provider.js', 'release-download.js']) {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'lib', file), 'utf8');
+    assert.equal(/execFileSync|spawnSync|execSync/.test(src), false, file);
+  }
+});
+
+test('Provider: Download-Host nur github.com/objects.githubusercontent.com (https) oder lokales http', async t => {
+  assert.doesNotThrow(() => assertTrustedDownloadUrl('https://github.com/a/b/releases/download/x/y.zip'));
+  assert.doesNotThrow(() => assertTrustedDownloadUrl('https://objects.githubusercontent.com/x'));
+  assert.doesNotThrow(() => assertTrustedDownloadUrl('http://127.0.0.1:8080/y.zip'));
+  for (const bad of ['https://evil.example/y.zip', 'http://github.com/y.zip', 'http://evil.example/y.zip', 'https://github.com.evil.example/y.zip', 'file:///etc/passwd', 'kaputt']) {
+    assert.throws(() => assertTrustedDownloadUrl(bad), bad);
+  }
+  const evil = { name: 'StreamingHubSync-1.0.0.zip', browser_download_url: 'https://evil.example/StreamingHubSync-1.0.0.zip' };
+  const e = providerEnv(t, { fetchImpl: fetchOf([helperRel('1.0.0', { assets: [evil] })]) });
+  assert.match((await e.provider.ensure({ force: true })).failed, /nicht vertrauenswürdig/);
+  assert.deepEqual(e.downloads, []);
 });

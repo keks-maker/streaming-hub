@@ -280,7 +280,7 @@ const {
   migrateDefaultEpgUrls,
 } = require('./lib/tvsources-default-epg.js');
 const { updateMode } = require('./lib/update-mode.js');
-const { resolveUpdateApiBase, DEFAULT_UPDATE_API_BASE } = require('./lib/update-base.js');
+const { resolveUpdateApiBase, resolveReleasesApiUrl, DEFAULT_UPDATE_API_BASE } = require('./lib/update-base.js');
 const { resolveAllowedM3uPath } = require('./lib/m3u-access.js');
 const { describeM3uFetchError } = require('./lib/m3u-fetch-error.js');
 const { sanitizeHistoryEntry } = require('./lib/history-entry.js');
@@ -893,7 +893,7 @@ app.whenReady().then(() => {
     // Helfer-Bezug unabhängig vom App-Update: beim Einschalten und App-Start (höchstens einmal pro Tag), nur bei eingeschaltetem Schalter.
     const helperProvider = createSyncHelperProvider({
       helperDir: syncHelperDir,
-      apiUrl: process.env.STREAMING_HUB_RELEASES_API_URL || undefined,
+      apiUrl: resolveReleasesApiUrl(process.env, app.isPackaged),
       checkStore: { read: () => userStorage.readJson('icloudHelperCheck', null), write: ms => userStorage.writeJson('icloudHelperCheck', ms) },
       log: message => logger.info(message),
       warn: message => logger.warn(message),
