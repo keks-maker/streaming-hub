@@ -39,6 +39,9 @@ const { registerEpgViewSettingsIpc } = require('./lib/epg-view-settings-ipc.js')
 const { registerYoutubeAdblock } = require('./lib/youtube-adblock-ipc.js');
 const { registerYoutubeMini } = require('./lib/youtube-mini-ipc.js');
 const { registerYoutubeProgress } = require('./lib/youtube-progress-ipc.js');
+const { createICloudSync } = require('./lib/icloud-sync.js');
+const { registerIcloudSyncIpc, readEnabled: readIcloudSyncEnabled } = require('./lib/icloud-sync-ipc.js');
+let icloudSync = null; // iCloud-Abgleich über den Mac-Helfer (lib/icloud-sync.js), No-op ohne Helfer/Konto
 let youtubeMini = null; // Zugriff auf die Mini-Player-Einstellungen (Kontextmenü der Webviews)
 const { attachWebviewGuest } = require('./lib/webview-guest.js');
 const { isProbablyNetworkPath } = require('./lib/recorder/ui-model.js');
@@ -875,7 +878,41 @@ app.whenReady().then(() => {
   youtubeMini = registerYoutubeMini({ ipcMain, session, webContents, storage: userStorage, requireMainRenderer, getMainContents: () => mainWindow?.webContents || null, net, logger });
 
   // YouTube-Wiedergabefortschritt je Video (Format wie iPad), unabhängig vom Mini-Player
-  registerYoutubeProgress({ ipcMain, session, storage: userStorage, getMainContents: () => mainWindow?.webContents || null, logger });
+  const youtubeProgress = registerYoutubeProgress({ ipcMain, session, storage: userStorage, getMainContents: () => mainWindow?.webContents || null, logger });
+
+  // iCloud-Abgleich (D10, nur macOS): Helfer liegt in Application Support/Streaming Hub/SyncHelper (vom Updater gepflegt);
+  // in isolierten Läufen (STREAMING_HUB_USER_DATA) unter dem Temp-userData, nie im echten Ordner.
+  try {
+    const syncHelperDir = process.env.STREAMING_HUB_SYNC_HELPER_DIR
+      || (process.env.STREAMING_HUB_USER_DATA ? path.join(app.getPath('userData'), 'SyncHelper') : path.join(app.getPath('appData'), 'Streaming Hub', 'SyncHelper'));
+    icloudSync = createICloudSync({
+      helperDir: syncHelperDir,
+      enabled: readIcloudSyncEnabled(userStorage),
+      logger,
+      stateStore: { read: () => userStorage.readJson('icloudSyncState', null), write: state => userStorage.writeJson('icloudSyncState', state) },
+      adapter: {
+        readProgress: () => youtubeProgress.getAllEntries(),
+        readQueue: () => youtubeMini.getPlaylist(),
+        applyProgress: change => youtubeProgress.applyRemote(change),
+        applyQueue: items => {
+          youtubeMini.applyRemotePlaylist(items);
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('youtube-mini:playlist-remote', items);
+        },
+      },
+      onStatus: status => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('icloud-sync:status', status); },
+    });
+    youtubeProgress.onChange(() => icloudSync.notifyLocalChange());
+    youtubeMini.onPlaylistChange(() => icloudSync.notifyLocalChange());
+    icloudSync.start();
+  } catch (e) {
+    logger.error('iCloud-Abgleich konnte nicht eingerichtet werden:', e.message);
+  }
+  registerIcloudSyncIpc({
+    ipcMain,
+    storage: userStorage,
+    requireMainRenderer,
+    getSync: () => icloudSync || { getStatus: () => ({ supported: false, enabled: false, state: 'unsupported', message: '', lastSync: null }), setEnabled: async () => ({ supported: false, enabled: false, state: 'unsupported', message: '', lastSync: null }) },
+  });
 
   // ── Radio (Konzept §2/§7): Zustand im Main, Audio im unsichtbaren Player-Fenster ──
   // Das Player-Fenster wird erst beim ersten Abspielen erzeugt (show:false), in Tests öffnet sich nichts.
@@ -1643,6 +1680,7 @@ app.on('before-quit', event => {
   // Wecktermine sind ohne laufende App sinnlos: löschen und Helfer beenden
   if (wakeScheduler) wakeScheduler.cancelAll();
   if (wakeHelper) wakeHelper.quit();
+  if (icloudSync) icloudSync.stop(); // shutdown + EOF; der Helfer beendet sich selbst
   if (epgService) epgService.stop();
   if (scheduler) scheduler.stop();
   if (subscriptionService) subscriptionService.stop();

@@ -32,6 +32,7 @@ const {
 } = require('./lib/bundle-install.js');
 const { findLinuxAppRoot, installLinuxRelease } = require('./lib/linux-install.js');
 const os = require('os');
+const { installSyncHelper, installedHelperVersion, stashSyncHelper, restoreSyncHelper } = require('./lib/sync-helper-update.js');
 const { fetchReleaseCandidates, selectReleaseNotes, targetKey, RELEASES_API_URL, compareVersions: cmpVersions } = require('./lib/github-releases.js');
 
 // Basis-URL setzt main.js nur nach Prüfung (lib/update-base.js) in die Env des Updater-Prozesses; Default GitHub.
@@ -64,6 +65,9 @@ function runSync(command, options) {
   }
 }
 
+// Ordner des Mac-Helfers (iCloud-Abgleich, D10): Teil des Support-Verzeichnisses, das der App-Austausch ersetzt;
+// Env-Override nur für Tests. Der Helfer wird nie ad hoc neu signiert (resignBundleAdHoc betrifft nur das App-Bundle).
+const syncHelperDir = () => process.env.STREAMING_HUB_SYNC_HELPER_DIR || path.join(installDir, 'SyncHelper');
 const legacyAppDir = process.argv[2] || process.cwd();
 const installDir = process.env.STREAMING_HUB_INSTALL_DIR || path.join(os.homedir(), 'Library', 'Application Support', 'Streaming Hub');
 let updateDataDir = legacyAppDir;
@@ -467,6 +471,26 @@ function extractLinuxArchive(archive, installRoot) {
   }
 }
 
+// Mac-Helfer aus dem optionalen Release-Asset aktualisieren. Fehlt das Asset, ist das kein Fehler; ein Prüffehler
+// (Signatur, Gatekeeper) lässt den alten Helfer stehen und bricht das App-Update nicht ab.
+async function updateSyncHelper(release, helperDir, deps = {}) {
+  const asset = release && release.syncHelperAsset;
+  if (!asset) return { skipped: 'kein Helfer-Asset im Release' };
+  const installed = installedHelperVersion(helperDir);
+  if (installed && cmpVersions(installed, asset.version) >= 0) return { skipped: `Helfer ${installed} ist aktuell` };
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-synchelper-'));
+  try {
+    const zipPath = path.join(tempRoot, asset.name);
+    await (deps.download || downloadAsset)(asset.browserDownloadUrl, zipPath);
+    return installSyncHelper({ zipPath, helperDir, unzip: deps.unzip, verify: deps.verify, log: message => updaterLog('INFO', message) });
+  } catch (error) {
+    updaterLog('ERROR', 'Sync-Helfer nicht aktualisiert (alter Helfer bleibt)', error.message);
+    return { failed: error.message };
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
 async function applyLinuxRelease(release, send) {
   const installRoot = linuxInstallRoot();
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'streaming-hub-update-'));
@@ -529,7 +553,21 @@ process.on('message', async msg => {
       if (!bundle) throw new Error('Release-Asset enthält keine macOS-App (.app)');
       process.send({ type: 'progress', step: 'App-Signatur wird geprüft…', percent: 72 });
       verifyMacBundle(bundle, extractDir);
-      installMacBundle(bundle, installDir);
+      // Der App-Austausch ersetzt das ganze Support-Verzeichnis: Helferordner vorher beiseite, danach zurück.
+      const helperDir = syncHelperDir();
+      const helperStash = `${installDir}.synchelper-stash-${process.pid}`;
+      let stashed = false;
+      try {
+        stashed = helperDir.startsWith(installDir + path.sep) && stashSyncHelper(helperDir, helperStash);
+      } catch (stashError) {
+        updaterLog('ERROR', 'Sync-Helfer konnte nicht gesichert werden', stashError.message);
+      }
+      try {
+        installMacBundle(bundle, installDir);
+      } finally {
+        if (stashed) restoreSyncHelper(helperDir, helperStash);
+      }
+      await updateSyncHelper(release, helperDir);
       updateDataDir = installDir;
       restoreUserFiles();
       fs.rmSync(legacyBackupDir, { recursive: true, force: true });
@@ -546,4 +584,4 @@ process.on('message', async msg => {
 });
 }
 
-module.exports = { applyLinuxRelease, extractLinuxArchive, assertSafeArchiveEntries, findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };
+module.exports = { updateSyncHelper, applyLinuxRelease, extractLinuxArchive, assertSafeArchiveEntries, findAppBundle, installMacBundle, resignBundleAdHoc, verifyMacBundle, verifyBundleIntegrity, recoverStaleUpdateDirs, copyBundleTree };

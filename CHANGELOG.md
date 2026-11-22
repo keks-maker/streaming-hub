@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- Neu (iCloud-Abgleich D10, nur macOS): `lib/icloud-sync.js` startet den Helfer `StreamingHubSync` (JSON-Zeilen nach `native/StreamingHubSync/PROTOCOL.md`) und gleicht YouTube-Fortschritt (inkl. `done`) und Warteschlange mit iCloud ab (beim Start, 45 s nach lokalen Änderungen, bei `remoteChange`). Kürzen ist nie eine Löschung. No-op unter Linux/Windows, ohne Helfer, bei ausgeschaltetem Schalter und ohne iCloud-Konto; Helfer-Absturz oder Hängen: Timeout und begrenzter Neustart. Einstellungen: Schalter „iCloud-Abgleich“ mit Status (Streaming, nur macOS, Standard aus). Zuletzt gesehen hat der Desktop keinen Speicher und wird nicht abgeglichen.
+- Neu (Updater): optionales Release-Asset `StreamingHubSync-<Helfer-Version>.zip` (Staging, `codesign --verify --deep --strict`, `spctl`, Identifier/Team, dann atomarer Tausch; alter Helfer bleibt bei Fehler; nie ad-hoc-Neusignierung). Der Helferordner übersteht den App-Austausch. `npm run release:check` zeigt das Asset an.
 - Neu (Vorbereitung iCloud-Abgleich D10, noch inaktiv): `lib/sync-merge.js` (`merge(local, remote, now)`, Regel und 27 gemeinsame Vektoren aus dem Apple-Repo unter `tests/fixtures/sync/`). `youtube-progress.json` behält `done`-Marken (zu Ende gesehen: position 0, bis 100 Stück, 30 Tage) und unbekannte Zusatzfelder; Leser behandeln Marken wie nicht vorhanden; bestehende Dateien bleiben kompatibel.
 - Neu (Navigation): Erster Eintrag „Start“ (Lucide `house`, Farbe `accent`) springt zur Startseite; Kürzel Strg+Umsch+H (im Kürzel-Overlay). Die ausgeblendete Beschriftung `#overlayLocation` samt CSS und Klick-Handler entfällt. Auf der Startseite bleibt die Leiste ausgeblendet. Abgleich iPad nicht nötig, dort vorhanden.
 

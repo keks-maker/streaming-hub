@@ -1141,6 +1141,7 @@ function renderDashboard(groupKey, opts = {}) {
     if (typeof loadRecordingSettingsUi === 'function') loadRecordingSettingsUi();
     loadEpgStartViewUi();
     loadYoutubeAdblockUi();
+    loadIcloudSyncUi();
     loadYoutubeMiniUi();
   } else if (isTv) {
     renderLiveTvDashboard();
@@ -1668,6 +1669,49 @@ if (settingsYoutubeAdblock) {
     } catch (e) {
       settingsYoutubeAdblockStatus.textContent = 'Speichern fehlgeschlagen: ' + (e?.message || e);
       loadYoutubeAdblockUi();
+    }
+  });
+}
+
+// ── Settings „Streaming“: iCloud-Abgleich (nur macOS; Status aus dem Main, lib/icloud-sync.js) ──
+const settingsIcloudCard = document.getElementById('settingsIcloudCard');
+const settingsIcloudSync = document.getElementById('settingsIcloudSync');
+const settingsIcloudStatus = document.getElementById('settingsIcloudStatus');
+const ICLOUD_STATE_TEXT = {
+  disabled: '',
+  starting: 'Verbindung wird aufgebaut',
+  active: 'Aktiv',
+  no_account: 'Kein iCloud-Konto angemeldet',
+  unavailable: 'iCloud vorübergehend nicht erreichbar',
+  no_helper: 'Der Abgleich-Helfer ist noch nicht installiert. Er kommt mit dem nächsten App-Update.',
+  error: 'Fehler',
+};
+
+function renderIcloudStatus(status) {
+  if (!settingsIcloudCard || !status) return;
+  settingsIcloudCard.style.display = status.supported ? '' : 'none';
+  settingsIcloudSync.checked = status.enabled === true;
+  const text = ICLOUD_STATE_TEXT[status.state] ?? '';
+  settingsIcloudStatus.textContent = status.state === 'error' && status.message ? `${text}: ${status.message}` : text;
+}
+
+async function loadIcloudSyncUi() {
+  if (!settingsIcloudSync || !window.electronAPI.getIcloudSyncStatus) return;
+  try {
+    renderIcloudStatus(await window.electronAPI.getIcloudSyncStatus());
+  } catch (_) {
+    settingsIcloudCard.style.display = 'none';
+  }
+}
+
+if (settingsIcloudSync && window.electronAPI.getIcloudSyncStatus) {
+  window.electronAPI.onIcloudSyncStatus(renderIcloudStatus);
+  settingsIcloudSync.addEventListener('change', async () => {
+    try {
+      renderIcloudStatus(await window.electronAPI.setIcloudSyncEnabled(settingsIcloudSync.checked));
+    } catch (e) {
+      settingsIcloudStatus.textContent = 'Speichern fehlgeschlagen: ' + (e?.message || e);
+      loadIcloudSyncUi();
     }
   });
 }

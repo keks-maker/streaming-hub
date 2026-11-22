@@ -85,6 +85,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setYoutubeMiniSettings: patch => ipcRenderer.invoke('youtube-mini:set-settings', patch),
   getYoutubePlaylist: () => ipcRenderer.invoke('youtube-mini:get-playlist'),
   setYoutubePlaylist: list => ipcRenderer.invoke('youtube-mini:set-playlist', list),
+  // iCloud-Abgleich (nur macOS sichtbar): Status { supported, enabled, state, message, lastSync }, Schalter, Push-Status, Fremdstand der Warteschlange
+  getIcloudSyncStatus: () => ipcRenderer.invoke('icloud-sync:get-status'),
+  setIcloudSyncEnabled: enabled => ipcRenderer.invoke('icloud-sync:set-enabled', { enabled }),
+  onIcloudSyncStatus: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('icloud-sync:status', handler);
+    return () => ipcRenderer.removeListener('icloud-sync:status', handler);
+  },
+  onYoutubePlaylistRemote: cb => {
+    const handler = (_e, data) => cb(data);
+    ipcRenderer.on('youtube-mini:playlist-remote', handler);
+    return () => ipcRenderer.removeListener('youtube-mini:playlist-remote', handler);
+  },
   registerYoutubePlayer: webContentsId => ipcRenderer.invoke('youtube-mini:register-player', webContentsId),
   resolveYoutubeTitle: ref => ipcRenderer.invoke('youtube-mini:resolve-title', ref),
   onYoutubeContextAction: cb => {

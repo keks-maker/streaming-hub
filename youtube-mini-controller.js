@@ -568,6 +568,14 @@ function createYoutubeMini(deps) {
     ready = true;
     pushListed();
     emit();
+    if (api.onYoutubePlaylistRemote) {
+      // Warteschlange aus dem iCloud-Abgleich: schon im Main gespeichert, hier nur anzeigen (nicht erneut speichern)
+      api.onYoutubePlaylistRemote(items => {
+        playlist = playlistModel.normalizePlaylist(items);
+        pushListed();
+        emit();
+      });
+    }
     if (api.onYoutubeContextAction) {
       api.onYoutubeContextAction(payload => {
         const target = classifyYoutubeUrl(payload && payload.url);
