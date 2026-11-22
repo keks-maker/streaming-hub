@@ -48,7 +48,7 @@
     "files": [
       "**/*",
       "!{.serena,.claude,.vscode,.idea,.github,e2e,test-results,playwright-report,coverage}{,/**}",
-      "!{docs,tests}{,/**}",
+      "!{docs,tests,native}{,/**}",
       "!{release,release-x64,release-linux}{,/**}",
       "!scripts/**/*",
       "scripts/stage-mac-icon.js",
