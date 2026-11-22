@@ -8,8 +8,8 @@
  *   npm run release:check                 Version aus package.json
  *   npm run release:check -- --version 0.9.9
  * Exit-Code 0 = vollstaendig, 1 = Luecke, 2 = Abfrage fehlgeschlagen (Netz/API).
- * Zusatz-Asset StreamingHubSync-<Helfer-Version>.zip (Mac-Helfer iCloud-Abgleich) ist optional: es wird je Mac-Release nur
- * angezeigt ("Helfer ..."), seine Abwesenheit macht den Satz nicht unvollstaendig.
+ * Zusatz-Asset StreamingHubSync-<Helfer-Version>.zip (Mac-Helfer iCloud-Abgleich) ist auf beiden Mac-Releases (arm64 und x64)
+ * Pflicht, auf Linux nicht: fehlt es, gilt das Mac-Release als unvollstaendig.
  * Ein Release gilt nur als vorhanden, wenn es dem Updater-Schema entspricht (kein Draft/Prerelease,
  * Tag + genau ein Asset mit passendem Namen; lib/github-releases.js).
  */
@@ -26,7 +26,9 @@ async function checkReleaseSet(version, fetchImpl = fetch, apiUrl = RELEASES_API
     } catch (e) {
       error = e.message;
     }
-    results.push({ target, tagName: candidate ? candidate.tagName : null, expectedAsset, ok: !!candidate, error, syncHelperAsset: candidate && candidate.syncHelperAsset ? candidate.syncHelperAsset.name : null });
+    const syncHelperAsset = candidate && candidate.syncHelperAsset ? candidate.syncHelperAsset.name : null;
+    const helperRequired = target.startsWith('darwin-');
+    results.push({ target, tagName: candidate ? candidate.tagName : null, expectedAsset, ok: !!candidate && (!helperRequired || !!syncHelperAsset), error, syncHelperAsset, helperRequired, missingHelper: !!candidate && helperRequired && !syncHelperAsset });
   }
   return results;
 }
@@ -40,8 +42,9 @@ async function main(argv = process.argv.slice(2)) {
   }
   const results = await checkReleaseSet(version, fetch, process.env.STREAMING_HUB_RELEASES_API_URL || RELEASES_API_URL);
   for (const r of results) {
-    console.log(`${r.ok ? 'OK    ' : 'FEHLT '} ${r.target.padEnd(13)} ${r.ok ? r.tagName : `${r.expectedAsset}${r.error ? ` (${r.error})` : ''}`}`);
-    if (r.ok && r.target.startsWith('darwin-')) console.log(`       Helfer-Asset (optional): ${r.syncHelperAsset || 'nicht enthalten'}`);
+    const what = r.ok ? r.tagName : r.missingHelper ? `${r.tagName}: Helfer-Asset StreamingHubSync-<Version>.zip fehlt` : `${r.expectedAsset}${r.error ? ` (${r.error})` : ''}`;
+    console.log(`${r.ok ? 'OK    ' : 'FEHLT '} ${r.target.padEnd(13)} ${what}`);
+    if (r.ok && r.helperRequired) console.log(`       Helfer-Asset: ${r.syncHelperAsset}`);
   }
   if (results.some(r => r.error)) return 2;
   const missing = results.filter(r => !r.ok);
