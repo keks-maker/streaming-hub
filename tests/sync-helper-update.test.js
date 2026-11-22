@@ -212,6 +212,56 @@ test('recoverSyncHelperStash: beides vorhanden, der neuere Helfer bleibt, Stash 
   assert.equal(fs.existsSync(`${helperDir}.old-${process.pid}`), false);
 });
 
+test('recoverSyncHelperStash: Stash neuer, die aktuelle state.json wird nicht von der älteren überschrieben', t => {
+  const { recoverSyncHelperStash } = require('../lib/sync-helper-update.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-recover-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const support = path.join(dir, 'Support');
+  const helperDir = path.join(support, 'SyncHelper');
+  fs.mkdirSync(support);
+  makeApp(helperDir, '1.0.0');
+  fs.writeFileSync(path.join(helperDir, 'state.json'), 'aktuell');
+  const stash = `${support}.synchelper-stash-99999999`;
+  makeApp(stash, '1.9.0');
+  fs.writeFileSync(path.join(stash, 'state.json'), 'alt');
+  recoverSyncHelperStash(helperDir, support);
+  assert.equal(installedHelperVersion(helperDir), '1.9.0');
+  assert.equal(fs.readFileSync(path.join(helperDir, 'state.json'), 'utf8'), 'aktuell');
+});
+
+test('recoverSyncHelperStash: vorhandener .old-Ordner wird bei ungültigem Helfer nicht gelöscht', t => {
+  const { recoverSyncHelperStash } = require('../lib/sync-helper-update.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-recover-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const support = path.join(dir, 'Support');
+  const helperDir = path.join(support, 'SyncHelper');
+  fs.mkdirSync(helperDir, { recursive: true }); // ohne lesbare App
+  const old = `${helperDir}.old-${process.pid}`;
+  fs.mkdirSync(old);
+  fs.writeFileSync(path.join(old, 'wichtig.txt'), 'x');
+  const stash = `${support}.synchelper-stash-99999999`;
+  makeApp(stash, '1.9.0');
+  recoverSyncHelperStash(helperDir, support);
+  assert.equal(installedHelperVersion(helperDir), '1.9.0');
+  assert.equal(fs.readFileSync(path.join(old, 'wichtig.txt'), 'utf8'), 'x');
+});
+
+test('recoverSyncHelperStash: liegengebliebener .old-Ordner wird bei gültigem Helfer aufgeräumt', t => {
+  const { recoverSyncHelperStash } = require('../lib/sync-helper-update.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-recover-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const support = path.join(dir, 'Support');
+  const helperDir = path.join(support, 'SyncHelper');
+  makeApp(helperDir, '1.0.0');
+  const old = `${helperDir}.old-${process.pid}`;
+  fs.mkdirSync(old);
+  const stash = `${support}.synchelper-stash-99999999`;
+  makeApp(stash, '1.9.0');
+  recoverSyncHelperStash(helperDir, support);
+  assert.equal(installedHelperVersion(helperDir), '1.9.0');
+  assert.equal(fs.existsSync(old), false);
+});
+
 test('recoverSyncHelperStash: weder Stash noch Helfer lesbar, nichts wird gelöscht', t => {
   const { recoverSyncHelperStash } = require('../lib/sync-helper-update.js');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synchelper-recover-'));

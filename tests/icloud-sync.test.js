@@ -147,8 +147,37 @@ test('remoteChange löst sync aus', async () => {
   const t = setup({ FAKE_EVENTS: JSON.stringify([{ event: 'remoteChange' }]) });
   try {
     t.sync.start();
-    await until(() => t.commands().filter(c => c.cmd === 'sync').length >= 2, 'sync nach remoteChange', 12000);
+    await until(() => t.commands().filter(c => c.cmd === 'sync').length >= 2, 'sync nach remoteChange');
   } finally { await t.cleanup(); }
+});
+
+test('remoteChange im selben Chunk wie die hello-Antwort wird nicht verworfen', async () => {
+  const { EventEmitter } = require('events');
+  const { PassThrough } = require('stream');
+  const cmds = [];
+  const spawnImpl = () => {
+    const c = new EventEmitter();
+    c.stdout = new PassThrough(); c.stderr = new PassThrough(); c.stdin = new PassThrough();
+    c.kill = () => { setImmediate(() => c.emit('exit', 0)); };
+    let buf = '';
+    c.stdin.on('data', d => {
+      buf += d;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const m = JSON.parse(buf.slice(0, i)); buf = buf.slice(i + 1); cmds.push(m.cmd);
+        if (m.cmd === 'hello') c.stdout.write(JSON.stringify({ id: m.id, ok: true, result: { protocol: 1, account: 'available' } }) + '\n' + JSON.stringify({ event: 'remoteChange' }) + '\n');
+        else if (m.cmd === 'shutdown') { c.stdout.write(JSON.stringify({ id: m.id, ok: true, result: {} }) + '\n'); c.kill(); }
+        else if (m.cmd === 'sync') setTimeout(() => c.stdout.write(JSON.stringify({ id: m.id, ok: true, result: { apply: [], remove: [], settled: m.pending || [], failed: [], lastSync: 1 } }) + '\n'), 5);
+      }
+    });
+    return c;
+  };
+  const s = createICloudSync({ platform: 'darwin', enabled: true, helperDir: '/nonexistent', command: { file: process.execPath, args: [] }, spawnImpl, now: () => NOW,
+    stateStore: { read: () => null, write: () => {} }, adapter: { readProgress: () => [], readQueue: () => [], applyProgress() {}, applyQueue() {} } });
+  try {
+    s.start();
+    await until(() => cmds.filter(c => c === 'sync').length >= 2, 'zweiter sync durch vorgemerktes remoteChange');
+  } finally { await s.stop(); }
 });
 
 test('Kein iCloud-Konto: Status no_account, kein sync', async () => {
